@@ -7,7 +7,7 @@ window.LAB = window.LAB || {};
 
 LAB.Audio = (function () {
   let ctx = null, master, sfx, music, noiseBuf, reverb;
-  let heartTimer = 0, droneNodes = null, alarm = null, genHum = null;
+  let heartTimer = 0, droneNodes = null, alarm = null, genHum = null, chaseNodes = null;
   const U = LAB.U;
 
   function init() {
@@ -110,6 +110,7 @@ LAB.Audio = (function () {
       if (!ctx) return;
       if (droneNodes) { droneNodes.g.gain.setTargetAtTime(0.0001, now(), 0.5); const d = droneNodes; setTimeout(() => { d.oscs.forEach((o) => o.stop()); d.n.stop(); d.lfo.stop(); }, 2000); droneNodes = null; }
       if (alarm) { alarm.g.gain.setTargetAtTime(0.0001, now(), 0.3); const a = alarm; setTimeout(() => { a.o.stop(); a.lfo.stop(); }, 1500); alarm = null; }
+      if (chaseNodes) { chaseNodes.g.gain.setTargetAtTime(0.0001, now(), 0.3); const c = chaseNodes; setTimeout(() => c.oscs.forEach((o) => o.stop()), 1500); chaseNodes = null; }
       if (genHum) { genHum.g.gain.setTargetAtTime(0.0001, now(), 0.3); const h = genHum; setTimeout(() => h.o.forEach((o) => o.stop()), 1500); genHum = null; }
     },
 
@@ -286,6 +287,28 @@ LAB.Audio = (function () {
       o.connect(f); f.connect(g); g.connect(sfx); o.start(); o.stop(now() + 11.5);
     },
 
+    // scary chase music that gets louder when something is hunting you (level 0..1)
+    chase(level) {
+      if (!ctx) return;
+      if (!chaseNodes) {
+        const g = ctx.createGain(); g.gain.value = 0;
+        const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; f.Q.value = 6;
+        const trem = ctx.createGain(); trem.gain.value = 0.6;
+        const lfo = ctx.createOscillator(); lfo.frequency.value = 4.5;
+        const lg = ctx.createGain(); lg.gain.value = 0.4;
+        lfo.connect(lg); lg.connect(trem.gain);
+        const oscs = [55, 55.7, 82.4, 110.3].map((fr) => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = fr; o.connect(f); o.start(); return o; });
+        const hi = ctx.createOscillator(); hi.type = 'sine'; hi.frequency.value = 932;
+        const vib = ctx.createOscillator(); vib.frequency.value = 6; const vg = ctx.createGain(); vg.gain.value = 14;
+        vib.connect(vg); vg.connect(hi.frequency);
+        const hg = ctx.createGain(); hg.gain.value = 0.08; hi.connect(hg); hg.connect(trem);
+        f.connect(trem); trem.connect(g); g.connect(music);
+        lfo.start(); hi.start(); vib.start();
+        chaseNodes = { g, oscs: [...oscs, hi, vib, lfo], f };
+      }
+      chaseNodes.g.gain.setTargetAtTime(level * 0.35, now(), 0.6);
+      chaseNodes.f.frequency.setTargetAtTime(300 + level * 900, now(), 0.6);
+    },
     radioStatic(dur = 0.4) { if (ctx) { noise(dur, 'bandpass', 2200, 0.7, 0.35, 0, 0.01, false); tone('square', 1800, 1800, 0.05, 0.05, 0, 0.002, false); } },
     // creepy computer voice from the speakers (if the browser can talk)
     speak(text, pitch = 0.1, rate = 0.75, female) {

@@ -68,6 +68,14 @@ LAB.Player = (function () {
       this.beacon = new THREE.PointLight(index === 0 ? 0xff7020 : 0x2080ff, 1.2, 3, 2);
       this.beacon.position.set(0, 1.9, -0.3);
       this.beacon.layers.set(index === 0 ? 1 : 2); // only the OTHER player sees this light
+      // a faint visible beam coming out of the flashlight (the other player sees it)
+      this.beam = new THREE.Group();
+      this.beam.position.set(0.22, 1.28, 0.35);
+      const cone = new THREE.Mesh(LAB.Player.beamGeo(), LAB.Player.beamMat());
+      cone.rotation.x = -Math.PI / 2;
+      cone.layers.set(index === 0 ? 1 : 2);
+      this.beam.add(cone);
+      this.body.add(this.beam);
       this.body.add(this.beacon);
     }
 
@@ -273,6 +281,8 @@ LAB.Player = (function () {
       this.body.userData.parts.head.rotation.x = -this.pitch * 0.5;
       this.body.userData.parts.lens.material = this.flashOn ? Mo.M.eyeYellow() : Mo.M.lampOff();
       this.beacon.intensity = this.downed ? 1.5 + Math.sin(time * 6) : 1.0;
+      this.beam.visible = this.flashOn && this.flash.intensity > 2 && !this.downed;
+      this.beam.rotation.x = -this.pitch;
       this.beacon.color.setHex(this.downed ? 0xff0000 : (this.i === 0 ? 0xff7020 : 0x2080ff));
     }
 
@@ -287,5 +297,22 @@ LAB.Player = (function () {
     }
   }
 
+  // shared shape + material for the flashlight beams
+  let bGeo, bMat;
+  Player.beamGeo = () => {
+    if (!bGeo) { bGeo = new THREE.ConeGeometry(2.0, 8, 20, 1, true); bGeo.translate(0, -4, 0); }
+    return bGeo;
+  };
+  Player.beamMat = () => {
+    if (!bMat) {
+      const t = new THREE.CanvasTexture(U.canvas(8, 128, (g, w, h) => {
+        const gr = g.createLinearGradient(0, 0, 0, h);
+        gr.addColorStop(0, 'rgba(255,240,210,1)'); gr.addColorStop(0.35, 'rgba(255,240,210,0.35)'); gr.addColorStop(1, 'rgba(255,240,210,0)');
+        g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      }));
+      bMat = new THREE.MeshBasicMaterial({ map: t, transparent: true, opacity: 0.13, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false });
+    }
+    return bMat;
+  };
   return Player;
 })();

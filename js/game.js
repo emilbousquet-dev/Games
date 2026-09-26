@@ -479,6 +479,15 @@ window.LAB = window.LAB || {};
       if (p.hp < 30) fear = Math.max(fear, 0.35);
     }
     LAB.Audio.updateHeart(dt, fear);
+    // chase music: is something hunting us right now?
+    let chase = 0;
+    for (const a of G.aliens) {
+      if (!a.alive || !a.target || !a.target.standing) continue;
+      const d = U.dist(a.x, a.z, a.target.x, a.target.z);
+      if (a.type === 'stalker' && (a.state === 'hunt' || a.state === 'frozen')) chase = Math.max(chase, U.clamp(1.3 - d / 22, 0.35, 1));
+      else if ((a.type === 'crawler' || a.type === 'husk') && a.state === 'chase') chase = Math.max(chase, U.clamp(0.6 - d / 20, 0, 0.4));
+    }
+    LAB.Audio.chase(G.ending ? 0 : chase);
     G.fear = fear;
 
     // both players down = game over
@@ -583,7 +592,7 @@ window.LAB = window.LAB || {};
     else if (id === 'diff') { G.nightmare = !G.nightmare; drawMenu(); }
     else if (id === 'gfx') {
       try { localStorage.setItem('lab13.gfx', LAB.lowGfx ? 'high' : 'low'); } catch (e) { /* */ }
-      location.search = LAB.lowGfx ? '' : '?low';
+      if (location.search.includes('low')) location.search = ''; else location.reload();
     }
     else if (id === 'controls') $('controls').style.display = $('controls').style.display === 'block' ? 'none' : 'block';
   }
