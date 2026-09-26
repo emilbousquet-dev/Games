@@ -73,7 +73,6 @@ LAB.HUD = (function () {
       const h = this.halves[i];
       h.noteT.textContent = note.title; h.noteP.textContent = note.text;
       h.note.style.display = 'block'; h.noteOpen = note;
-      LAB.Audio.speak(note.text.replace(/\n+/g, '. ').replace(/\[.*?\]/g, ''), 0.95, 0.95);
     }
     toggleMap(i, on) {
       const h = this.halves[i];
@@ -142,7 +141,7 @@ LAB.HUD = (function () {
       for (let y = 0; y < c.height; y += 3) g.fillRect(0, y, c.width, 1);
     }
 
-    closeNote(i) { const h = this.halves[i]; if (h.noteOpen) LAB.Audio.shutUp(); h.note.style.display = 'none'; h.noteOpen = null; }
+    closeNote(i) { const h = this.halves[i]; h.note.style.display = 'none'; h.noteOpen = null; }
 
     flash(i, color) {
       const f = this.halves[i].flashEl;

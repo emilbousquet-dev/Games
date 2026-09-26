@@ -288,14 +288,14 @@ LAB.Scares = (function () {
       this.voiceT -= dt;
       if (this.voiceT <= 0) {
         this.voiceT = U.rand(80, 140);
-        LAB.Audio.speak(U.pick([
-          'Warning. Containment breach on sublevel thirteen.',
+        g.radio(U.pick([
+          'Warning. Containment breach on sublevel 13.',
           'All personnel. Evacuate. Evacuate.',
           'Life signs detected. Two. No. Three.',
           'Do not. Turn off. The lights.',
           'Specimen thirteen. Location. Unknown.',
           'It is. Right. Behind you.',
-        ]));
+        ]), 'FACILITY', 'pa');
       }
     }
   }

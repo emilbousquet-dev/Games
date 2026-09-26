@@ -65,17 +65,29 @@ window.LAB = window.LAB || {};
     return { vol, pan };
   };
 
-  // Dr. Okoye talks to you over the radio (with subtitles)
-  let radioTimer = null;
-  G.radio = function (text, who = 'DR. OKOYE') {
+  // Dr. Okoye talks to you over the radio (with subtitles that type out as she talks)
+  // kind: 'radio' (walkie-talkie) or 'pa' (facility loudspeaker)
+  let radioTimer = null, typeTimer = null;
+  G.radio = function (text, who = 'DR. OKOYE', kind) {
     const el = $('radio');
     if (G.state !== 'play') return;
-    LAB.Audio.radioStatic(0.5);
-    el.innerHTML = `<b>📻 ${who}:</b> ${text}`;
+    const pa = kind === 'pa' || who === 'FACILITY';
+    const dur = pa ? LAB.Audio.pa(text) : LAB.Audio.radioVoice(text, who === 'UNKNOWN' ? 'unknown' : 'okoye');
+    const talkStart = pa ? 1.55 : 0.25;
+    el.className = pa ? 'pa' : who === 'UNKNOWN' ? 'unknown' : '';
+    el.innerHTML = `<b>${pa ? '🔊' : '📻'} ${who}:</b> <span></span>`;
     el.style.display = 'block';
-    setTimeout(() => LAB.Audio.speak(text.replace(/\.\.\./g, ', '), 1.05, 1.0, true), 350);
+    const span = el.querySelector('span');
+    const talk = Math.max(0.5, dur - talkStart - 0.4);
+    const t0 = performance.now();
+    clearInterval(typeTimer);
+    typeTimer = setInterval(() => {
+      const k = Math.min(1, Math.max(0, ((performance.now() - t0) / 1000 - talkStart) / talk));
+      span.textContent = text.slice(0, Math.ceil(text.length * k));
+      if (k >= 1) clearInterval(typeTimer);
+    }, 40);
     clearTimeout(radioTimer);
-    radioTimer = setTimeout(() => { el.style.display = 'none'; LAB.Audio.radioStatic(0.2); }, 4000 + text.length * 55);
+    radioTimer = setTimeout(() => { el.style.display = 'none'; }, Math.max(dur * 1000 + 2500, 3000 + text.length * 45));
   };
   G.radioOnce = function (key, text, who) {
     G.radioDone = G.radioDone || {};
@@ -202,7 +214,7 @@ window.LAB = window.LAB || {};
           G.message(null, (p.i ? 'PARK' : 'REYES') + ' found the SECURITY KEYCARD!');
           setTimeout(() => G.radioOnce('key', 'You got the keycard! The three fuses are in RESEARCH, the MEDBAY and MAINTENANCE. Put them in the generator. And... it knows you are awake now.'), 7000);
           // the breach!
-          setTimeout(() => { if (G.state === 'play' && G.stalker) { G.stalker.wake(G); LAB.Audio.speak('Warning. Specimen thirteen has left containment.'); LAB.Audio.screech(0.5, 0, true); G.message(null, 'Something BIG is awake... Keep your flashlights ready.', 5); } }, 3500);
+          setTimeout(() => { if (G.state === 'play' && G.stalker) { G.stalker.wake(G); G.radio('Warning. Specimen 13 has left containment.', 'FACILITY', 'pa'); LAB.Audio.screech(0.5, 0, true); G.message(null, 'Something BIG is awake... Keep your flashlights ready.', 5); } }, 3500);
         } else if (it.type === 'F') {
           G.team.fuses++;
           G.saveCheckpoint();
@@ -247,9 +259,9 @@ window.LAB = window.LAB || {};
     G.saveCheckpoint();
     LAB.Audio.startGenerator();
     setTimeout(() => LAB.Audio.startAlarm(), 1500);
-    LAB.Audio.speak('Power restored. Surface lift, online. Warning. All specimens, released.');
-    setTimeout(() => G.radioOnce('power', 'The lights! You did it! The LIFT is at the south end. I will meet you th... wait. Something is in here with me... no... NO...'), 6500);
-    setTimeout(() => { if (G.state === 'play') { LAB.Audio.radioStatic(1.2); LAB.Audio.scream(0.5, 0); } }, 15500);
+    G.radio('Power restored. Surface lift online. Warning: all specimens released.', 'FACILITY', 'pa');
+    setTimeout(() => G.radioOnce('power', 'The lights! You did it! The LIFT is at the south end. I will meet you th... wait. Something is in here with me... no... NO...'), 10000);
+    setTimeout(() => { if (G.state === 'play') { LAB.Audio.stopVoice(); LAB.Audio.radioStatic(1.2); LAB.Audio.scream(0.5, 0); } }, 19500);
     G.message(null, 'POWER IS BACK! GET TO THE LIFT! RUN!', 6);
     LAB.Effects.sparks(LAB.World.generator.x, 2, LAB.World.generator.z, 60);
     if (G.stalker) {
@@ -306,10 +318,10 @@ window.LAB = window.LAB || {};
 
   function startEnding() {
     G.ending = { t: 0 };
-    setTimeout(() => G.radioOnce('end', '...Reyes... Park... it is not in here anymore... it is on the ROOF of the lift...', 'UNKNOWN'), 3000);
+    setTimeout(() => G.radioOnce('end', '...Reyes... Park... it is not in here anymore... it is on the ROOF of the lift...', 'UNKNOWN'), 4200);
     G.message(null, 'THE LIFT IS MOVING...', 4);
     LAB.Audio.elevator();
-    LAB.Audio.speak('Surface lift. Ascending.');
+    G.radio('Surface lift ascending.', 'FACILITY', 'pa');
   }
 
   function updateEnding(dt) {
@@ -383,7 +395,7 @@ window.LAB = window.LAB || {};
       box.innerHTML = `<h1>YOU ESCAPED<br>LAB 13</h1>${statsHtml}${record}
         <p class="twist">The lift reached the surface at 04:02 AM.<br>Nobody checked the roof of the lift.<br><br><b>Specimen 13 is free.</b></p>
         <p class="blink">Press ENTER / A to play again</p>`;
-      LAB.Audio.speak('Surface level. Welcome home.', 0.1, 0.7);
+      setTimeout(() => LAB.Audio.pa('Surface level. Welcome home.'), 600);
     } else {
       box.className = 'screen dead';
       G.canContinue = G.lives > 0;
@@ -463,7 +475,7 @@ window.LAB = window.LAB || {};
       }
     }
     // the Stalker wakes up by itself after a while
-    if (G.stalker && G.stalker.state === 'dormant' && G.playTime > (G.nightmare ? 90 : 200)) { G.stalker.wake(G); LAB.Audio.speak('Warning. Specimen thirteen has left containment.'); }
+    if (G.stalker && G.stalker.state === 'dormant' && G.playTime > (G.nightmare ? 90 : 200)) { G.stalker.wake(G); G.radio('Warning. Specimen 13 has left containment.', 'FACILITY', 'pa'); }
 
     pickups();
     generatorUse();
@@ -650,7 +662,7 @@ window.LAB = window.LAB || {};
       intro.innerHTML = '<div class="typed"></div><div class="skip">press any key to skip</div>';
       G.introText = lines.join('\n');
       LAB.Audio.startAmbience();
-      LAB.Audio.speak('Stasis power failure. Waking subjects.');
+      setTimeout(() => LAB.Audio.pa('Stasis power failure. Waking subjects.'), 800);
       warmup();
       render();
     }, 50);
@@ -717,7 +729,8 @@ window.LAB = window.LAB || {};
 
   function toTitle() {
     LAB.Audio.stopAll();
-    try { speechSynthesis.cancel(); } catch (e) { /* */ }
+    LAB.Audio.stopVoice();
+    clearInterval(typeTimer);
     $('end').style.display = 'none';
     $('radio').style.display = 'none';
     $('title').style.display = 'flex';

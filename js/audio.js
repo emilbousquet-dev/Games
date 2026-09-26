@@ -7,7 +7,15 @@ window.LAB = window.LAB || {};
 
 LAB.Audio = (function () {
   let ctx = null, master, sfx, music, noiseBuf, reverb;
-  let heartTimer = 0, droneNodes = null, alarm = null, genHum = null, chaseNodes = null;
+  let heartTimer = 0, droneNodes = null, alarm = null, genHum = null, chaseNodes = null, voiceNodes = null, _crackle = null;
+  // random clicks and pops (radio crackle)
+  function crackleBuf() {
+    if (_crackle) return _crackle;
+    _crackle = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const d = _crackle.getChannelData(0);
+    for (let i = 0; i < d.length; i++) if (Math.random() < 0.0009) { const a = Math.random() * 2 - 1; for (let k = 0; k < 40 && i + k < d.length; k++) d[i + k] += a * Math.exp(-k / 6); }
+    return _crackle;
+  }
   const U = LAB.U;
 
   function init() {
@@ -84,7 +92,6 @@ LAB.Audio = (function () {
 
   const A = {
     init,
-    shutUp() { try { speechSynthesis.cancel(); } catch (e) { /* */ } },
     get ready() { return !!ctx; },
 
     // spooky background drone that never stops
@@ -108,6 +115,7 @@ LAB.Audio = (function () {
 
     stopAll() {
       if (!ctx) return;
+      A.stopVoice();
       if (droneNodes) { droneNodes.g.gain.setTargetAtTime(0.0001, now(), 0.5); const d = droneNodes; setTimeout(() => { d.oscs.forEach((o) => o.stop()); d.n.stop(); d.lfo.stop(); }, 2000); droneNodes = null; }
       if (alarm) { alarm.g.gain.setTargetAtTime(0.0001, now(), 0.3); const a = alarm; setTimeout(() => { a.o.stop(); a.lfo.stop(); }, 1500); alarm = null; }
       if (chaseNodes) { chaseNodes.g.gain.setTargetAtTime(0.0001, now(), 0.3); const c = chaseNodes; setTimeout(() => c.oscs.forEach((o) => o.stop()), 1500); chaseNodes = null; }
@@ -312,20 +320,133 @@ LAB.Audio = (function () {
       chaseNodes.f.frequency.setTargetAtTime(300 + level * 900, now(), 0.6);
     },
     radioStatic(dur = 0.4) { if (ctx) { noise(dur, 'bandpass', 2200, 0.7, 0.35, 0, 0.01, false); tone('square', 1800, 1800, 0.05, 0.05, 0, 0.002, false); } },
-    // creepy computer voice from the speakers (if the browser can talk)
-    speak(text, pitch = 0.1, rate = 0.75, female) {
-      try {
-        if (!window.speechSynthesis) return;
-        const u = new SpeechSynthesisUtterance(text);
-        u.pitch = pitch; u.rate = rate; u.volume = 0.9;
-        if (female) {
-          const v = speechSynthesis.getVoices().find((vv) => /female|zira|samantha|susan|karen|victoria|fiona|moira|tessa/i.test(vv.name) && /^en/i.test(vv.lang));
-          if (v) u.voice = v;
+    // ---------- VOICES: a broken radio ----------
+    // Makes a sound shaped like someone talking (syllables, vowels, rising and falling tone)
+    // and sends it through a wrecked radio: crackle, hiss and dropouts. Returns how long it lasts.
+    //   style: 'okoye' (scientist on the radio), 'unknown' (something wrong...), 'pa' (facility loudspeaker)
+    radioVoice(text, style = 'okoye', delay = 0) {
+      if (!ctx) return 0;
+      A.stopVoice();
+      const S = {
+        okoye: { base: 205, syl: 0.115, spread: 0.12, drive: 5, lp: 3000, hp: 380, drops: true, hiss: 0.05, wet: 0.05 },
+        unknown: { base: 88, syl: 0.2, spread: 0.2, drive: 14, lp: 1900, hp: 180, drops: true, hiss: 0.09, wet: 0.35, low: true },
+        pa: { base: 128, syl: 0.14, spread: 0.05, drive: 3, lp: 2600, hp: 300, drops: false, hiss: 0.02, wet: 0.6 },
+      }[style] || {};
+      const t0 = now() + 0.25 + delay;
+      const nodes = [];
+      // sound sources
+      const osc = ctx.createOscillator(); osc.type = 'sawtooth';
+      const osc2 = ctx.createOscillator(); osc2.type = 'square';
+      const vEnv = ctx.createGain(); vEnv.gain.value = 0;
+      const o2g = ctx.createGain(); o2g.gain.value = S.low ? 0.6 : 0.12;
+      osc.connect(vEnv); osc2.connect(o2g); o2g.connect(vEnv);
+      const nsrc = ctx.createBufferSource(); nsrc.buffer = noiseBuf; nsrc.loop = true;
+      const nhp = ctx.createBiquadFilter(); nhp.type = 'highpass'; nhp.frequency.value = 2800;
+      const cEnv = ctx.createGain(); cEnv.gain.value = 0;
+      nsrc.connect(nhp); nhp.connect(cEnv);
+      // mouth shapes (two formant filters)
+      const f1 = ctx.createBiquadFilter(); f1.type = 'bandpass'; f1.Q.value = 7;
+      const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass'; f2.Q.value = 9;
+      const f3 = ctx.createBiquadFilter(); f3.type = 'bandpass'; f3.Q.value = 6; f3.frequency.value = 2600;
+      const mix = ctx.createGain(); mix.gain.value = 1;
+      const g1 = ctx.createGain(); g1.gain.value = 1.2; const g2 = ctx.createGain(); g2.gain.value = 0.8; const g3 = ctx.createGain(); g3.gain.value = 0.25;
+      vEnv.connect(f1); vEnv.connect(f2); vEnv.connect(f3);
+      f1.connect(g1); f2.connect(g2); f3.connect(g3); g1.connect(mix); g2.connect(mix); g3.connect(mix);
+      cEnv.connect(mix);
+      // the radio
+      const hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = S.hp;
+      const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = S.lp; lp.Q.value = 2;
+      const shaper = ctx.createWaveShaper();
+      const curve = new Float32Array(1024);
+      for (let i = 0; i < 1024; i++) { const x = i / 512 - 1; curve[i] = Math.tanh(x * S.drive) / Math.tanh(S.drive); }
+      shaper.curve = curve;
+      const drop = ctx.createGain(); drop.gain.value = 1;
+      const outG = ctx.createGain(); outG.gain.value = style === 'pa' ? 0.5 : 0.6;
+      mix.connect(hp); hp.connect(lp); lp.connect(shaper); shaper.connect(drop); drop.connect(outG);
+      outG.connect(sfx);
+      const wet = ctx.createGain(); wet.gain.value = S.wet; outG.connect(wet); wet.connect(reverb);
+
+      // ---- schedule the "words" ----
+      const vowels = [[730, 1090], [270, 2290], [300, 870], [530, 1840], [660, 1720], [570, 840], [440, 1020], [490, 1350], [400, 1900]];
+      const fscale = style === 'okoye' ? 1.18 : style === 'unknown' ? 0.85 : 1;
+      const words = text.replace(/\[.*?\]/g, '').split(/\s+/).filter(Boolean);
+      let t = t0;
+      let pitch = S.base * (1 + S.spread * 0.5);
+      for (let wi = 0; wi < words.length; wi++) {
+        const w = words[wi];
+        const letters = w.replace(/[^a-z0-9]/gi, '');
+        const syls = Math.max(1, Math.min(5, Math.round(letters.length / 2.8)));
+        const end = w.match(/[.!?…]+$|,$/);
+        for (let k = 0; k < syls; k++) {
+          const d = S.syl * U.rand(0.75, 1.3) * (/[A-Z]{3,}/.test(w) ? 1.25 : 1);
+          const v = vowels[Math.floor(Math.random() * vowels.length)];
+          f1.frequency.setTargetAtTime(v[0] * fscale, t, 0.02);
+          f2.frequency.setTargetAtTime(v[1] * fscale, t, 0.02);
+          // intonation: slowly falls through a sentence, wobbles a little per syllable
+          pitch = pitch * (1 - S.spread * 0.04) ;
+          const p = pitch * (1 + U.rand(-S.spread, S.spread) * 0.5) * (style === 'unknown' && Math.random() < 0.15 ? 0.6 : 1);
+          osc.frequency.setTargetAtTime(p, t, 0.03); osc2.frequency.setTargetAtTime(p * (S.low ? 0.5 : 1.003), t, 0.03);
+          // consonant hiss at the start of some syllables
+          if (Math.random() < 0.55) { cEnv.gain.setValueAtTime(0, t); cEnv.gain.linearRampToValueAtTime(U.rand(0.08, 0.25), t + 0.012); cEnv.gain.linearRampToValueAtTime(0, t + U.rand(0.03, 0.07)); }
+          vEnv.gain.setValueAtTime(0, t + 0.01);
+          vEnv.gain.linearRampToValueAtTime(U.rand(0.55, 1), t + 0.035);
+          vEnv.gain.setValueAtTime(U.rand(0.5, 0.9), t + d * 0.7);
+          vEnv.gain.linearRampToValueAtTime(0, t + d);
+          t += d;
         }
-        speechSynthesis.cancel();
-        speechSynthesis.speak(u);
-        A.speaking = u;
-      } catch (e) { /* no voice, no problem */ }
+        // gaps between words and at punctuation
+        let gap = U.rand(0.03, 0.08);
+        if (end) {
+          const e = end[0];
+          gap = e.includes('...') || e.includes('…') ? 0.55 : e === ',' ? 0.2 : 0.38;
+          if (e.includes('?')) osc.frequency.setTargetAtTime(pitch * 1.35, t - 0.1, 0.05);
+          pitch = S.base * (1 + S.spread * 0.5); // new sentence
+        }
+        if (style === 'unknown') gap *= 1.4;
+        t += gap;
+      }
+      const dur = t - t0;
+      // radio crackles and dropouts
+      if (S.drops) {
+        for (let k = t0 + U.rand(0.6, 1.5); k < t; k += U.rand(0.8, 2.2)) {
+          const l = U.rand(0.04, 0.14);
+          drop.gain.setValueAtTime(1, k); drop.gain.linearRampToValueAtTime(U.rand(0, 0.15), k + 0.01);
+          drop.gain.setValueAtTime(U.rand(0, 0.15), k + l); drop.gain.linearRampToValueAtTime(1, k + l + 0.01);
+        }
+      }
+      const hiss = ctx.createBufferSource(); hiss.buffer = noiseBuf; hiss.loop = true;
+      const hf = ctx.createBiquadFilter(); hf.type = 'bandpass'; hf.frequency.value = 2000; hf.Q.value = 0.6;
+      const hg = ctx.createGain(); hg.gain.value = 0;
+      hg.gain.setValueAtTime(0, t0 - 0.2); hg.gain.linearRampToValueAtTime(S.hiss, t0 - 0.1); hg.gain.setValueAtTime(S.hiss, t); hg.gain.linearRampToValueAtTime(0, t + 0.25);
+      hiss.connect(hf); hf.connect(hg); hg.connect(sfx);
+      // crackle pops
+      const pops = ctx.createBufferSource(); pops.buffer = crackleBuf(); pops.loop = true;
+      const pg = ctx.createGain(); pg.gain.value = 0;
+      pg.gain.setValueAtTime(style === 'pa' ? 0.05 : 0.22, t0 - 0.1); pg.gain.setValueAtTime(0, t + 0.2);
+      pops.connect(pg); pg.connect(sfx);
+      if (style !== 'pa') { // squelch clicks at the start and the end
+        const sq = (at) => { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = 1400; const gg = ctx.createGain(); gg.gain.setValueAtTime(0, at); gg.gain.linearRampToValueAtTime(0.05, at + 0.005); gg.gain.linearRampToValueAtTime(0, at + 0.06); o.connect(gg); gg.connect(sfx); o.start(at); o.stop(at + 0.08); };
+        sq(t0 - 0.2); sq(t + 0.2);
+      }
+      [osc, osc2, nsrc, hiss, pops].forEach((n) => { n.start(t0 - 0.25); n.stop(t + 0.5); });
+      nodes.push(osc, osc2, nsrc, hiss, pops, outG, hg, pg);
+      voiceNodes = nodes;
+      return dur + 0.5 + delay;
+    },
+    stopVoice() {
+      if (!voiceNodes) return;
+      voiceNodes.forEach((n) => { try { if (n.stop) n.stop(); else if (n.gain) n.gain.setTargetAtTime(0, now(), 0.02); } catch (e) { /* already stopped */ } });
+      voiceNodes = null;
+    },
+    // facility loudspeaker: ding-dong chime, then an echoing announcement
+    pa(text) {
+      if (!ctx) return 0;
+      [[784, 0], [659, 0.35], [523, 0.7]].forEach(([f, d]) => setTimeout(() => {
+        if (!ctx) return;
+        tone('sine', f, f, 1.4, 0.18, 0, 0.005, true);
+        tone('sine', f * 2, f * 2, 0.8, 0.04, 0, 0.005, true);
+      }, d * 1000));
+      return text ? A.radioVoice(text, 'pa', 1.3) : 1.3;
     },
   };
   return A;
