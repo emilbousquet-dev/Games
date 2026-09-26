@@ -82,7 +82,7 @@ SP.Input = (function () {
     prev[i] = {};
     for (const name of names) prev[i][name] = s[name];
     // hold timers: armHold = seconds held so far, armReleased = how long it was held when you let go
-    for (const name of ['arm', 'recall']) {
+    for (const name of ['arm', 'leg', 'recall']) {
       const h = holdTime[i];
       if (s[name]) { h[name] = (h[name] || 0) + dt; s[name + 'Hold'] = h[name]; }
       else { s[name + 'Hold'] = 0; s[name + 'Released'] = h[name] || 0; h[name] = 0; }

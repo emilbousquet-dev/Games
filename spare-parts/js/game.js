@@ -42,12 +42,14 @@ SP.Game = (function () {
 
   SP.Parts.init(scene);
   SP.Effects.init(scene);
+  SP.Aim.init(scene);
   const robots = [
     SP.Robot.create(scene, 'Bolt', 0xff8a2a, 'bolt', 0, 0),
     SP.Robot.create(scene, 'Nutty', 0x3d9cff, 'nutty', 0, 0),
   ];
   robots.forEach((r, i) => { r.index = i; });
   const HOLD = 0.25; // hold a button longer than this to grab or pull
+  const TAP = 0.2;   // let go of a throw button faster than this to just drop the limb
   const LEVELS = SP.Levels.LEVELS;
 
   let level = null, levelIndex = -1, state = 'title', winTimer = 0;
@@ -68,7 +70,7 @@ SP.Game = (function () {
     robots.forEach((r, i) => {
       const [x, y, z] = data.spawns[i];
       r.pos.set(x, y, z); r.spawn.set(x, y, z);
-      r.vel.set(0, 0, 0); r.facing = 0; r.dizzy = 0; r.squished = 0; r.dance = 0; r.jumpers = null;
+      r.vel.set(0, 0, 0); r.facing = 0; r.dizzy = 0; r.squished = 0; r.dance = 0; r.jumpers = null; r.aim = null;
     });
     for (const k in SP.stats) delete SP.stats[k];
     SP.stats.time = 0;
@@ -179,12 +181,23 @@ SP.Game = (function () {
       arm.pulling = input.recallHold > HOLD && arm.wornTime > input.recallHold;
       if (input.recallReleased > 0 && input.recallReleased < HOLD) SP.Parts.recall(r);
     } else {
-      if (input.armPressed) SP.Parts.throwLimb(r, 'arm');
+      throwButton(r, 'arm', input.armHold, input.armReleased);
       if (input.recallPressed) SP.Parts.recall(r);
     }
-    if (input.legPressed) {
-      if (leg) SP.Parts.startAction(leg, 'kick');
-      else SP.Parts.throwLimb(r, 'leg');
+    if (leg) { if (input.legPressed) SP.Parts.startAction(leg, 'kick'); }
+    else throwButton(r, 'leg', input.legHold, input.legReleased);
+  }
+
+  // tap = drop the limb at your feet. hold = aim with the power meter, let go = throw!
+  function throwButton(r, type, hold, released) {
+    if (r.aim && r.aim.type !== type) return; // already aiming the other kind of limb
+    if (!SP.Parts.hasOwn(r, type)) { r.aim = null; return; }
+    if (hold > TAP) {
+      r.aim = { type, power: SP.Parts.power(hold - TAP) };
+    } else if (released > 0) {
+      if (r.aim) SP.Parts.throwLimb(r, type, SP.Parts.power(released - TAP));
+      else SP.Parts.dropLimb(r, type);
+      r.aim = null;
     }
   }
 
@@ -255,6 +268,8 @@ SP.Game = (function () {
     // on the title screen the robots dance every now and then
     if (state === 'title') robots.forEach((r) => { if (!r.dance && Math.random() < dt * 0.25) r.dance = 1.6; });
 
+    if (!playing) robots.forEach((r) => { r.aim = null; });
+    SP.Aim.update(robots, level.solids, SP.Camera.camera, dt);
     SP.Effects.update(dt);
     SP.Camera.update(robots, dt);
     const t = SP.Camera.target;

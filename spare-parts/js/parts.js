@@ -54,7 +54,7 @@ SP.Parts = (function () {
     const limb = {
       type, owner, part, holder, wearer: null, slot: -1, state: 'worn', age: 0,
       pos: new THREE.Vector3(), vel: new THREE.Vector3(), halfW: 0.2, height: 0.3, onGround: false, landSpeed: 0,
-      spin: 0, thrower: null,
+      spin: 0, thrower: null, ignore: null,
       wornTime: 0,       // how long it has been stuck on its wearer
       action: null,      // a slap or kick in progress
       grabbing: false,   // holding on (the wearer is stuck!)
@@ -77,6 +77,7 @@ SP.Parts = (function () {
     limb.slot = slot;
     limb.state = 'worn';
     limb.wornTime = 0;
+    limb.ignore = null;
     limb.action = null;
     limb.grabbing = limb.pulling = false;
     scene.remove(limb.holder);
@@ -117,23 +118,60 @@ SP.Parts = (function () {
     limb.age = 0;
   }
 
-  // throw one of your OWN arms or legs forward (you can't throw away your friend's)
-  function throwLimb(robot, type) {
+  // which of your OWN limbs gets thrown next (the extra slots go first).
+  // You can't throw away your friend's limbs!
+  function nextThrow(robot, type) {
     const worn = list(robot, type);
-    let slot = -1;
-    for (let i = MAX - 1; i >= 0; i--) if (worn[i] && worn[i].owner === robot) { slot = i; break; }
-    if (slot < 0) return false;
-    const limb = worn[slot];
-    detach(limb);
-    limb.pos.y = Math.max(limb.pos.y, robot.pos.y + 0.9); // throw from chest height
+    for (let i = MAX - 1; i >= 0; i--) if (worn[i] && worn[i].owner === robot) return worn[i];
+    return null;
+  }
+  const hasOwn = (robot, type) => !!nextThrow(robot, type);
+
+  // throw power goes up and down while you hold the button (0 = weak, 1 = strong)
+  const POWER_TIME = 1.6; // seconds for one full up-and-down
+  const power = (heldFor) => 0.5 - 0.5 * Math.cos(Math.max(0, heldFor) * Math.PI * 2 / POWER_TIME);
+
+  // where a throw starts and how fast it goes (the aiming dots use this too, so they match)
+  function launch(robot, p) {
     const dirX = Math.sin(robot.facing), dirZ = Math.cos(robot.facing);
-    limb.vel.set(robot.vel.x + dirX * 10, 7, robot.vel.z + dirZ * 10);
+    const forward = 3 + 11 * p, up = 4 + 5 * p;
+    return {
+      pos: new THREE.Vector3(robot.pos.x + dirX * 0.5, robot.pos.y + 1.0, robot.pos.z + dirZ * 0.5),
+      vel: new THREE.Vector3(dirX * forward, up, dirZ * forward),
+    };
+  }
+
+  function release(robot, limb, pos, vel, spin) {
+    detach(limb);
+    limb.pos.copy(pos);
+    limb.holder.position.copy(pos);
+    limb.vel.copy(vel);
     limb.state = 'flying';
     limb.thrower = robot;
-    limb.spin = 14;
+    limb.ignore = robot; // you won't pick it right back up until you step away from it
+    limb.spin = spin;
+  }
+
+  // hold-and-let-go throw with a power from 0 to 1
+  function throwLimb(robot, type, p = 0.6) {
+    const limb = nextThrow(robot, type);
+    if (!limb) return false;
+    const { pos, vel } = launch(robot, p);
+    release(robot, limb, pos, vel, 8 + 10 * p);
     robot.squashVel += 5;
     sfx('pop'); sfx('throw');
     SP.stat('thrown');
+    return true;
+  }
+
+  // a quick tap just drops the limb in front of your feet
+  function dropLimb(robot, type) {
+    const limb = nextThrow(robot, type);
+    if (!limb) return false;
+    const dirX = Math.sin(robot.facing), dirZ = Math.cos(robot.facing);
+    const pos = new THREE.Vector3(robot.pos.x + dirX * 0.5, robot.pos.y + 0.7, robot.pos.z + dirZ * 0.5);
+    release(robot, limb, pos, new THREE.Vector3(dirX * 1.5, 2, dirZ * 1.5), 4);
+    sfx('pop');
     return true;
   }
 
@@ -284,10 +322,11 @@ SP.Parts = (function () {
         limb.holder.rotation.x += limb.spin * dt;
         if (limb.onGround && Math.abs(limb.spin) < 1) limb.holder.rotation.x *= Math.max(0, 1 - 10 * dt);
 
-        // bump into a robot → stick onto it (but not right back onto whoever threw it)
+        // bump into a robot → stick onto it (but not right back onto whoever threw or dropped it,
+        // until they have walked away from it once)
+        if (limb.ignore && limb.age > 0.3 && !touching(limb, limb.ignore, 0.15)) limb.ignore = null;
         for (const r of robots) {
-          const justThrown = r === limb.thrower && limb.age < 0.6;
-          if (!justThrown && touching(limb, r) && attach(limb, r)) break;
+          if (r !== limb.ignore && touching(limb, r) && attach(limb, r)) break;
         }
       }
 
@@ -316,5 +355,5 @@ SP.Parts = (function () {
     robots.forEach((r, i) => { r.ready = ready[i]; r.squashVel = 0; SP.Robot.onLimbsChanged(r); });
   }
 
-  return { init, resetAll, createLimb, attach, throwLimb, recall, update, count, lent, startAction, beforeStep, limbs, SLOTS };
+  return { init, resetAll, createLimb, dropLimb, nextThrow, hasOwn, power, launch, attach, throwLimb, recall, update, count, lent, startAction, beforeStep, limbs, SLOTS };
 })();

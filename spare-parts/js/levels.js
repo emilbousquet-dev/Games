@@ -77,8 +77,8 @@ SP.Levels = (function () {
       goal: [32, 0, 0],
       coins: [[12, 1.1, -2], [12, 1, 3], [23, 1, -3], [30, 1, 3], [-4, 1, -3]],
       hints: [
-        { x: -2, z: 0, r: 3.5, text: 'Q or , throws an arm. Walk over it to put it back on!' },
-        { x: 6.5, z: -1, r: 3, text: 'Throw an arm onto the button on the island to make a bridge!' },
+        { x: -2, z: 0, r: 3.5, text: 'Tap Q or , to drop an arm. HOLD it to aim, and let go to throw! Walk over it to put it back on.' },
+        { x: 6.5, z: -1, r: 3, text: 'Hold Q or , to aim, watch the meter, and throw an arm onto the island button!' },
         { x: 23, z: -2.5, r: 3.5, text: 'This door needs BOTH buttons pressed. Throw an arm each!' },
         { x: 32, z: 0, r: 3, text: 'Tap call back (R or /) to bring your arms home!' },
       ],
@@ -130,7 +130,7 @@ SP.Levels = (function () {
       goal: [46, 0, 0],
       coins: [[14, 1, 0], [25, 1, 3], [35.5, 1.2, 0], [48, 1, 3], [-4, 1, 3]],
       hints: [
-        { x: 1, z: 0, r: 3.5, text: 'SQUISHERS! Stand on the button to stop them... or leave an arm on it!' },
+        { x: 1, z: 0, r: 3.5, text: 'SQUISHERS! Stand on the button to stop them... or tap throw to drop an arm on it!' },
         { x: 25, z: -1, r: 3, text: 'This button stops the squishers too. Help your friend across!' },
         { x: 29, z: 0, r: 2.5, text: 'Hop across the moving platforms!' },
         { x: 45, z: 0, r: 3.5, text: 'Tip: with your arm on your friend, HOLD call back to pull them to you!' },
@@ -164,7 +164,7 @@ SP.Levels = (function () {
       goal: [57, 3.5, 0],
       coins: [[12, 1, 3], [24, 1, -3], [36, 4.6, 0], [48, 4.9, 0], [60, 4.5, 3]],
       hints: [
-        { x: 6.5, z: -1, r: 3, text: 'Remember the bridge trick? Throw an arm on the button!' },
+        { x: 6.5, z: -1, r: 3, text: 'Remember the bridge trick? Hold to aim and throw an arm on the button!' },
         { x: 21, z: -1.5, r: 3, text: 'Swap legs and SUPER JUMP together!' },
         { x: 31.5, z: -1.5, r: 2.5, text: 'This button stops the squisher!' },
         { x: 44, z: 0, r: 2.5, text: 'Almost out! Ride the platform!' },

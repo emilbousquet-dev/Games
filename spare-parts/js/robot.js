@@ -212,6 +212,11 @@ SP.Robot = (function () {
       wx /= legs.length; wz /= legs.length;
     }
     if (r.dizzy > 0) { wx *= 0.4; wz *= 0.4; r.dizzy -= dt; }
+    // aiming a throw: stand still, and the move keys turn you to aim
+    if (r.aim) {
+      if (Math.hypot(me.x, me.z) > 0.2) r.facing += angleDiff(Math.atan2(me.x, me.z), r.facing) * Math.min(1, 10 * dt);
+      wx = 0; wz = 0;
+    }
 
     const tx = wx * r.stats.speed, tz = wz * r.stats.speed;
     const grip = r.onGround ? (r.dizzy > 0 ? 2 : 14) : 5; // less control in the air (or when dizzy, so slaps send you sliding)
@@ -317,12 +322,24 @@ SP.Robot = (function () {
       limb.part.rotation.x = rx;
       limb.part.rotation.z = rz;
     });
+    // aiming: pull the limb back, ready to throw (it shakes more when the power is high)
+    if (r.aim) {
+      const limb = SP.Parts.nextThrow(r, r.aim.type);
+      if (limb) {
+        const shake = Math.sin(r.time * 40) * 0.08 * r.aim.power;
+        if (r.aim.type === 'arm') { limb.part.rotation.x = 2.4 + r.aim.power * 0.5 + shake; limb.part.rotation.z *= 0.3; }
+      }
+    }
     // legs step forward and back (and kick!)
     r.legs.forEach((limb, i) => {
       if (!limb) return;
       limb.part.rotation.x = (i % 2 ? 1 : -1) * wob * 0.6;
       if (limb.action) limb.part.rotation.x = -1.4 * Math.sin(Math.min(1, limb.action.t / 0.4) * Math.PI);
     });
+    if (r.aim && r.aim.type === 'leg') {
+      const limb = SP.Parts.nextThrow(r, 'leg');
+      if (limb) limb.part.rotation.x = 1.3 + r.aim.power * 0.4 + Math.sin(r.time * 40) * 0.06 * r.aim.power;
+    }
 
     // squash when landing, stretch when jumping (a springy wobble)
     if (r.landSpeed > 4) { r.squashVel -= r.landSpeed * 0.9; }

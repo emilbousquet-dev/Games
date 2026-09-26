@@ -79,6 +79,7 @@ SP.Audio = (function () {
     win: () => [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, f, 0.18, 0.1, i * 0.12)),
     hat: () => tone('sine', 600, 1400, 0.2, 0.12),
     menu: () => tone('square', 660, 880, 0.06, 0.08),
+    charge: (p) => tone('square', 300 + p * 900, 320 + p * 900, 0.05, 0.05),
     coin: () => { tone('square', 988, 988, 0.08, 0.1); tone('square', 1319, 1319, 0.25, 0.1, 0.08); },
     // silly robot voice: a few random beeps and boops
     voice: (high) => {

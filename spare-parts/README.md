@@ -25,6 +25,8 @@ The twist: they can **throw, swap and borrow each other's arms and legs!**
 
 ## The rules of spare parts
 
+- **Tap** a throw button to **drop** the limb at your feet. **Hold** it to **aim**: a power meter goes up and down,
+  an arrow shows the direction and dots show where it will land. **Let go** to throw! (Your move keys turn you while aiming.)
 - **Walk over any arm or leg** lying around to stick it on (up to 4 arms and 4 legs).
 - **Your limbs always listen to YOU**, even when your friend is wearing them!
   - Your **legs** on your friend walk where *you* push. If you push different ways, you get pulled around.
@@ -54,7 +56,8 @@ Plain HTML and JavaScript with [three.js](https://threejs.org/) (in `../lib`). A
 |---|---|
 | `js/game.js` | Main loop, menus flow, level loading |
 | `js/robot.js` | Bolt and Nutty: looks, walking, jumping, dancing, flying hats |
-| `js/parts.js` | Arms and legs: throwing, sticking on, slapping, grabbing, pulling |
+| `js/parts.js` | Arms and legs: throwing, dropping, sticking on, slapping, grabbing, pulling |
+| `js/aim.js` | The power meter, arrow and landing dots when you aim a throw |
 | `js/level.js` | Buttons, doors, bridges, platforms, conveyors, squishers, trampolines, golden bolts |
 | `js/levels.js` | The level designs |
 | `js/physics.js` | Box collisions and gravity |

@@ -25,6 +25,8 @@ SP.UI = (function () {
       <tr><td>Silly dance</td><td>G</td><td>'</td><td>Back</td></tr>
     </table>
     <ul>
+      <li><b>Tap</b> a throw button to drop the limb at your feet. <b>Hold</b> it to aim: the meter goes up and down, the dots show where it lands. <b>Let go</b> to throw!</li>
+      <li>While aiming, your move keys turn you around.</li>
       <li>Walk over any arm or leg to stick it on (up to 4 of each).</li>
       <li><b>Your limbs always listen to YOU</b>, even when your friend wears them.</li>
       <li>Your arm on your friend: <b>tap</b> = slap, <b>hold</b> = grab, <b>hold call back</b> = pull them to you.</li>
