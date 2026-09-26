@@ -7,15 +7,16 @@ window.SP = window.SP || {};
 SP.Camera = (function () {
   const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
   const target = new THREE.Vector3();
-  let zoom = 9;
+  let zoom = 15;
 
   function update(robots, dt) {
     const mid = new THREE.Vector3();
     for (const r of robots) mid.add(r.pos);
     mid.divideScalar(robots.length);
     mid.y += 0.8;
+    mid.x += 2; // look a little ahead (levels go to the right)
     const apart = robots[0].pos.distanceTo(robots[1].pos);
-    const wantZoom = Math.max(9, apart * 1.3 + 5);
+    const wantZoom = Math.max(15, apart * 1.1 + 8);
     const k = Math.min(1, 4 * dt);
     zoom += (wantZoom - zoom) * k;
     target.lerp(mid, k);
@@ -36,5 +37,5 @@ SP.Camera = (function () {
     camera.updateProjectionMatrix();
   }
 
-  return { camera, update, snap, resize };
+  return { camera, update, snap, resize, target };
 })();

@@ -4,33 +4,81 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Spare Parts</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap">
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; font-family: 'Trebuchet MS', Arial, sans-serif; }
-    canvas { display: block; }
-    #help {
-      position: fixed; left: 12px; bottom: 12px; padding: 8px 12px; border-radius: 10px;
-      background: rgba(255, 255, 255, 0.8); color: #333; font-size: 14px; line-height: 1.5;
+    :root {
+      --ink: #26304a; --paper: #fffaf0; --bolt: #ff8a2a; --nutty: #3d9cff; --yellow: #ffc933;
+      --font: 'Baloo 2', 'Trebuchet MS', 'Arial Rounded MT Bold', Arial, sans-serif;
     }
-    #help b.p1 { color: #e8731a; } #help b.p2 { color: #2a7fd4; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; font-family: var(--font); color: var(--ink); }
+    canvas { display: block; }
+    [hidden] { display: none !important; }
+    .small { font-size: 0.85em; opacity: 0.8; }
+    .p1 { color: var(--bolt); } .p2 { color: var(--nutty); }
+
+    .sp-level {
+      position: fixed; top: 12px; left: 12px; padding: 4px 14px; border-radius: 999px;
+      background: var(--paper); font-weight: 800; font-size: 18px; box-shadow: 0 3px 0 rgba(0,0,0,.15);
+    }
+    .sp-corner { position: fixed; top: 14px; right: 14px; font-size: 13px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.4); }
+    .sp-hint {
+      position: fixed; left: 50%; bottom: 22px; transform: translate(-50%, 30px); max-width: min(640px, calc(100% - 32px));
+      padding: 10px 20px; border-radius: 18px; background: var(--paper); font-size: 19px; font-weight: 700; text-align: center;
+      box-shadow: 0 5px 0 rgba(0,0,0,.15); opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none;
+    }
+    .sp-hint.show { opacity: 1; transform: translate(-50%, 0); }
+    .sp-toast {
+      position: fixed; left: 50%; top: 70px; transform: translateX(-50%) scale(.6); padding: 6px 18px; border-radius: 999px;
+      background: var(--yellow); font-weight: 800; font-size: 20px; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none;
+    }
+    .sp-toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+    .sp-controls {
+      position: fixed; right: 12px; top: 44px; max-width: min(520px, calc(100% - 24px)); max-height: calc(100% - 60px); overflow: auto;
+      padding: 10px 18px; border-radius: 16px; background: rgba(255, 250, 240, .96); font-size: 15px; line-height: 1.35;
+      box-shadow: 0 6px 0 rgba(0,0,0,.15); z-index: 5;
+    }
+    .sp-controls h2 { margin: 0 0 4px; }
+    .sp-controls table { border-collapse: collapse; width: 100%; }
+    .sp-controls td, .sp-controls th { padding: 2px 6px; text-align: left; }
+    .sp-controls tr:nth-child(even) td { background: rgba(0,0,0,.04); }
+    .sp-controls ul { padding-left: 18px; margin: 8px 0; }
+
+    .sp-menu { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding-inline: 16px; background: rgba(38, 48, 74, .35); z-index: 4; }
+    .sp-card {
+      width: min(420px, 100%); padding: 18px 24px 22px; border-radius: 26px; background: var(--paper); text-align: center;
+      box-shadow: 0 8px 0 rgba(0,0,0,.2); border: 4px solid #fff;
+    }
+    .sp-card.big { width: min(560px, 100%); }
+    .sp-card h1 { margin: 0; font-size: 44px; line-height: 1.1; letter-spacing: 1px; }
+    .sp-card.big h1 { font-size: clamp(44px, 10vw, 76px); color: #fff; text-shadow: 0 4px 0 var(--bolt), 0 8px 0 var(--nutty), 0 12px 18px rgba(0,0,0,.25); }
+    .sp-text { margin: 10px 0 4px; font-size: 18px; line-height: 1.35; }
+    .sp-items { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+    .sp-item {
+      font: 800 21px var(--font); color: var(--ink); padding: 8px 14px; border-radius: 14px; border: 3px solid transparent;
+      background: #f0e6d2; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,.12); transition: transform .08s;
+    }
+    .sp-item.on { background: var(--yellow); border-color: #fff; transform: scale(1.04); }
+    .sp-item:focus-visible { outline: 3px solid var(--nutty); }
+    .sp-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .sp-stats div { background: #f0e6d2; border-radius: 12px; padding: 6px 4px; font-size: 14px; }
+    .sp-bolts { margin: 10px 0 0; font-size: 18px; }
+    .sp-stats b { display: block; font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+    @media (prefers-reduced-motion: reduce) { .sp-hint, .sp-toast, .sp-item { transition: none; } }
   </style>
 </head>
 <body>
-  <div id="help">
-    <b class="p1">Bolt</b>: W A S D move · Space jump · Q throw arm · E throw leg · R call limbs back<br>
-    <b class="p2">Nutty</b>: Arrows move · Enter jump · , throw arm · . throw leg · / call limbs back<br>
-    Walk over any arm or leg to stick it on. <b>Your limbs always listen to YOU</b>, even on your friend!<br>
-    Your arm on your friend: tap = slap · hold = grab · hold call back = pull them to you. Your leg: kick!<br>
-    Wearing your friend's legs? You both steer, and you BOTH press jump for the super jump!<br>
-    Controllers work too! Press a button to join.
-  </div>
-
   <script src="../lib/three.min.js"></script>
   <script src="js/input.js"></script>
+  <script src="js/audio.js"></script>
   <script src="js/physics.js"></script>
+  <script src="js/effects.js"></script>
   <script src="js/parts.js"></script>
   <script src="js/robot.js"></script>
   <script src="js/level.js"></script>
+  <script src="js/levels.js"></script>
   <script src="js/camera.js"></script>
+  <script src="js/ui.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

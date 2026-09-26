@@ -10,6 +10,7 @@ SP.Parts = (function () {
   const MAX = 4;            // a robot can wear up to 4 arms and 4 legs
   const limbs = [];
   let scene = null;
+  const sfx = (n, a) => SP.Audio && SP.Audio.play(n, a);
 
   // where each limb goes on the body: [x, y, z]
   const SLOTS = {
@@ -83,6 +84,12 @@ SP.Parts = (function () {
     limb.part.rotation.set(0, 0, limb.type === 'arm' ? Math.sign(SLOTS.arm[slot][0]) * 0.3 : 0);
     robot.model.squash.add(limb.part);
     robot.squashVel -= 6; // a little "boing" when it clicks on
+    if (robot.ready) {
+      sfx('click');
+      const p = new THREE.Vector3();
+      limb.part.getWorldPosition(p);
+      SP.Effects.sparkle(p, limb.owner.color);
+    }
     if (SP.Robot.onLimbsChanged) SP.Robot.onLimbsChanged(robot);
     return true;
   }
@@ -118,12 +125,15 @@ SP.Parts = (function () {
     if (slot < 0) return false;
     const limb = worn[slot];
     detach(limb);
+    limb.pos.y = Math.max(limb.pos.y, robot.pos.y + 0.9); // throw from chest height
     const dirX = Math.sin(robot.facing), dirZ = Math.cos(robot.facing);
-    limb.vel.set(robot.vel.x + dirX * 9, 7, robot.vel.z + dirZ * 9);
+    limb.vel.set(robot.vel.x + dirX * 10, 7, robot.vel.z + dirZ * 10);
     limb.state = 'flying';
     limb.thrower = robot;
     limb.spin = 14;
     robot.squashVel += 5;
+    sfx('pop'); sfx('throw');
+    SP.stat('thrown');
     return true;
   }
 
@@ -131,6 +141,7 @@ SP.Parts = (function () {
   function recall(robot) {
     for (const limb of limbs) {
       if (limb.owner !== robot || limb.wearer === robot) continue;
+      if (limb.state !== 'returning') sfx('grab');
       if (limb.wearer) { detach(limb); limb.vel.y = 6; }
       limb.state = 'returning';
       limb.age = 0;
@@ -165,7 +176,10 @@ SP.Parts = (function () {
       if (r === w || !inFront(w, r.pos)) continue;
       r.vel.x += dirX * power; r.vel.z += dirZ * power; r.vel.y = 6;
       r.dizzy = 1.3;
+      r.hatPop = true;
       hitSomething = true;
+      sfx(limb.type === 'leg' ? 'kick' : 'slap'); sfx('dizzy'); sfx('voice', r.index === 1);
+      SP.stat('slaps');
     }
     for (const l of limbs) {
       if (l.state === 'worn' || !inFront(w, l.pos)) continue;
@@ -173,6 +187,7 @@ SP.Parts = (function () {
       l.state = 'flying'; l.spin = 15; l.thrower = w; l.age = 0;
       hitSomething = true;
     }
+    if (limb.type === 'leg') sfx('kick');
     if (limb.type === 'leg') {
       // a kick makes the wearer hop forward too
       w.vel.x += dirX * 4; w.vel.z += dirZ * 4;
@@ -181,6 +196,9 @@ SP.Parts = (function () {
       // nothing to slap... so it slaps its own wearer in the face!
       limb.action.self = true;
       w.dizzy = 0.9;
+      w.hatPop = true;
+      sfx('slap'); sfx('dizzy');
+      SP.stat('slaps');
       w.vel.x -= dirX * 3; w.vel.z -= dirZ * 3;
     }
   }
@@ -283,5 +301,20 @@ SP.Parts = (function () {
     }
   }
 
-  return { init, createLimb, attach, throwLimb, recall, update, count, lent, startAction, beforeStep, limbs, SLOTS };
+  // put every limb back on its owner (at the start of a level)
+  function resetAll(robots) {
+    for (const r of robots) { r.arms.fill(null); r.legs.fill(null); }
+    for (const limb of limbs) {
+      if (limb.part.parent) limb.part.parent.remove(limb.part);
+      scene.remove(limb.holder);
+      limb.wearer = null;
+      limb.vel.set(0, 0, 0);
+    }
+    const ready = robots.map((r) => r.ready);
+    robots.forEach((r) => { r.ready = false; });
+    for (const limb of limbs) attach(limb, limb.owner);
+    robots.forEach((r, i) => { r.ready = ready[i]; r.squashVel = 0; SP.Robot.onLimbsChanged(r); });
+  }
+
+  return { init, resetAll, createLimb, attach, throwLimb, recall, update, count, lent, startAction, beforeStep, limbs, SLOTS };
 })();

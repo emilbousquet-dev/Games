@@ -19,6 +19,7 @@ SP.Robot = (function () {
   // how long we wait for the other player to press jump too (seconds)
   const JUMP_TOGETHER_TIME = 0.2;
   const LEG_LENGTH = 0.55;
+  const sfx = (n, a) => SP.Audio && SP.Audio.play(n, a);
 
   function mat(color, shiny = 0.1) {
     return new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: shiny });
@@ -162,7 +163,7 @@ SP.Robot = (function () {
     squash.add(stars);
 
     root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    return { root, squash, head, body, eyes, mouths: { smile, shocked }, propeller, stars };
+    return { root, squash, head, body, eyes, mouths: { smile, shocked }, propeller, stars, hat, hatHome: hat.position.clone(), hatRot: hat.rotation.clone() };
   }
 
   function create(scene, name, color, style, x, z) {
@@ -175,6 +176,7 @@ SP.Robot = (function () {
       facing: 0, walkTime: 0, spawn: new THREE.Vector3(x, 0, z),
       squash: 0, squashVel: 0, blinkTimer: 2 + Math.random() * 3, time: Math.random() * 10,
       index: 0, dizzy: 0, jumpers: null, jumpWait: 0,
+      ready: false, squished: 0, dance: 0, hatPop: false, hatFly: null, style,
     };
     // everyone starts with 2 arms and 2 legs
     for (let i = 0; i < 2; i++) {
@@ -182,6 +184,7 @@ SP.Robot = (function () {
       SP.Parts.attach(SP.Parts.createLimb(r, 'leg'), r);
     }
     r.squashVel = 0;
+    r.ready = true;
     return r;
   }
 
@@ -200,6 +203,8 @@ SP.Robot = (function () {
   function control(r, inputs, dt) {
     const legs = r.legs.filter(Boolean);
     const me = inputs[r.index];
+    if (r.squished > 0) { r.vel.x = r.vel.z = 0; return; } // flat as a pancake, can't move
+    if (me.emotePressed && r.onGround && !r.dance) { r.dance = 1.6; sfx('voice', r.style === 'nutty'); }
     let wx = me.x, wz = me.z;
     if (legs.length) {
       wx = 0; wz = 0;
@@ -233,13 +238,16 @@ SP.Robot = (function () {
           r.vel.y = JUMP[pushing];
           r.squashVel += 9; // stretch up when jumping
           jumped = true;
+          r.dance = 0;
+          if (pushing >= 4) { sfx('superJump'); SP.stat('superJumps'); } else sfx('jump');
         }
         r.jumpers = null;
       }
     }
     if (!jumped && !r.jumpers && moving && r.onGround && legs.length < 2) {
-      r.vel.y = legs ? 4.5 : 2.5; // one leg: boing boing. no legs: bum hops
+      r.vel.y = legs.length ? 4.5 : 2.5; // one leg: boing boing. no legs: bum hops
       r.squashVel += 4;
+      sfx('hop');
     }
     if (moving) {
       const want = Math.atan2(wx, wz);
@@ -318,11 +326,59 @@ SP.Robot = (function () {
 
     // squash when landing, stretch when jumping (a springy wobble)
     if (r.landSpeed > 4) { r.squashVel -= r.landSpeed * 0.9; }
+    if (r.landSpeed > 7) { SP.Effects.dust(r.pos, r.landSpeed > 12 ? 10 : 6); sfx('land'); }
     r.landSpeed = 0;
     r.squashVel += (-r.squash * 180 - r.squashVel * 9) * dt;
     r.squash += r.squashVel * dt;
     const s = THREE.MathUtils.clamp(r.squash * 0.05, -0.35, 0.35);
     m.squash.scale.set(1 - s * 0.6, 1 + s, 1 - s * 0.6);
+    if (r.squished > 0) m.squash.scale.set(1.5, 0.15, 1.5); // SQUISHED!
+
+    // silly dance: spin around and wave your arms
+    if (r.dance > 0) {
+      r.dance -= dt;
+      if (r.dance <= 0) r.dance = 0;
+      const t = 1.6 - r.dance;
+      m.root.rotation.y = r.facing + Math.sin(t * 6) * 0.8 + (t > 1.1 ? (t - 1.1) * Math.PI * 4 : 0);
+      m.root.position.y += Math.abs(Math.sin(t * 10)) * 0.25;
+      r.arms.forEach((limb, i) => {
+        if (!limb) return;
+        limb.part.rotation.z = (i % 2 ? 1 : -1) * (2.4 + Math.sin(t * 14 + i) * 0.5);
+        limb.part.rotation.x = Math.sin(t * 7 + i) * 0.6;
+      });
+    }
+
+    // hat flies off when you get slapped, then lands back on your head
+    if (r.hatPop && !r.hatFly) {
+      r.hatFly = { t: 0, pos: new THREE.Vector3(), vel: new THREE.Vector3((Math.random() - 0.5) * 3, 7, (Math.random() - 0.5) * 3) };
+      m.hat.getWorldPosition(r.hatFly.pos);
+      m.head.remove(m.hat);
+      m.root.parent.add(m.hat);
+      sfx('hat');
+    }
+    r.hatPop = false;
+    if (r.hatFly) {
+      const h = r.hatFly;
+      h.t += dt;
+      if (h.t < 0.9) {
+        h.vel.y -= 20 * dt;
+        h.pos.addScaledVector(h.vel, dt);
+        m.hat.position.copy(h.pos);
+        m.hat.rotation.x += dt * 12; m.hat.rotation.z += dt * 7;
+      } else {
+        const home = new THREE.Vector3();
+        m.head.localToWorld(home.copy(m.hatHome));
+        m.hat.position.lerp(home, Math.min(1, dt * 10));
+        m.hat.rotation.x *= 0.8; m.hat.rotation.z *= 0.8;
+        if (h.t > 1.4) {
+          m.hat.parent.remove(m.hat);
+          m.head.add(m.hat);
+          m.hat.position.copy(m.hatHome);
+          m.hat.rotation.copy(m.hatRot);
+          r.hatFly = null;
+        }
+      }
+    }
 
     // look at your friend when standing still
     let look = 0;
