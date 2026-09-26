@@ -80,6 +80,8 @@ window.LAB = window.LAB || {};
     if (ss) { G.stalker = new LAB.Aliens.Stalker(scene, ss.x, ss.z); G.stalker.game = G; G.aliens.push(G.stalker); }
     G.scaresys = new LAB.Scares(scene, G);
     G.fieldT = 0; G.spawnT = 60; G.lastZone = [null, null];
+    G.explored = new Uint8Array(LAB.World.w * LAB.World.h);
+    G.hud.halves.forEach((h, i) => G.hud.toggleMap(i, false));
     G.hud.layout(mode);
     resize();
   }
@@ -239,10 +241,19 @@ window.LAB = window.LAB || {};
     if (document.pointerLockElement) document.exitPointerLock();
     const t = Math.floor(G.playTime), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
     const statsHtml = `<div class="endstats">TIME ${mm}:${ss} · ALIENS KILLED ${G.stats.kills} · NOTES ${G.stats.notes}/${LAB.NOTES.length}${G.mode > 1 ? ' · REVIVES ' + G.stats.revives : ''}</div>`;
+    // best escape time (saved in this browser)
+    let record = '';
+    if (win) {
+      const key = 'lab13.best.' + G.mode + (G.nightmare ? 'n' : '');
+      let best = null;
+      try { best = +localStorage.getItem(key) || null; } catch (e) { /* */ }
+      if (!best || t < best) { record = '<div class="record">★ NEW RECORD! ★</div>'; try { localStorage.setItem(key, t); } catch (e) { /* */ } }
+      else record = `<div class="endstats">BEST: ${Math.floor(best / 60)}:${String(best % 60).padStart(2, '0')}</div>`;
+    }
     const box = $('end');
     if (win) {
       box.className = 'screen win';
-      box.innerHTML = `<h1>YOU ESCAPED<br>LAB 13</h1>${statsHtml}
+      box.innerHTML = `<h1>YOU ESCAPED<br>LAB 13</h1>${statsHtml}${record}
         <p class="twist">The lift reached the surface at 04:02 AM.<br>Nobody checked the roof of the lift.<br><br><b>Specimen 13 is free.</b></p>
         <p class="blink">Press ENTER / A to play again</p>`;
       LAB.Audio.speak('Surface level. Welcome home.', 0.1, 0.7);
@@ -252,6 +263,7 @@ window.LAB = window.LAB || {};
       LAB.Audio.scream(0.8, 0);
     }
     box.style.display = 'flex';
+    G.hud.show(false);
     G.endLock = 1.5;
   }
 
@@ -286,10 +298,14 @@ window.LAB = window.LAB || {};
       const b = LAB.Input.read(1);
       const a = inputs[0];
       for (const k of ['move', 'strafe', 'turn', 'look']) a[k] = U.clamp(a[k] + b[k], -1, 1);
-      for (const k of ['sprint', 'flash', 'attack', 'use', 'attackPressed', 'usePressed', 'flashPressed', 'pausePressed', 'pad']) a[k] = a[k] || b[k];
+      for (const k of ['sprint', 'flash', 'attack', 'use', 'map', 'attackPressed', 'usePressed', 'flashPressed', 'pausePressed', 'mapPressed', 'pad']) a[k] = a[k] || b[k];
     }
     if (inputs.some((s) => s.pausePressed) || LAB.Input.isDown('Escape') || LAB.Input.isDown('KeyP')) { pause(); return; }
 
+    if (G.wakeT > 0) { // still getting up off the floor
+      G.wakeT -= dt;
+      inputs.forEach((s) => { s.move = s.strafe = s.turn = s.look = 0; s.lookDX = s.lookDY = 0; s.attackPressed = s.attack = false; });
+    }
     G.players.forEach((p, i) => p.update(dt, inputs[i], G.time));
 
     // paths toward each player (for the aliens)
@@ -321,6 +337,21 @@ window.LAB = window.LAB || {};
     G.scaresys.update(dt, G.time);
     LAB.World.update(dt, G.time, G);
     LAB.Effects.update(dt);
+
+    // remember which parts of the lab we've seen (for the map)
+    G.exploreT = (G.exploreT || 0) - dt;
+    if (G.exploreT <= 0) {
+      G.exploreT = 0.25;
+      const W = LAB.World;
+      for (const p of G.players) {
+        for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+          const x = p.cx + dx, y = p.cy + dy;
+          if (x < 0 || y < 0 || x >= W.w || y >= W.h || G.explored[y * W.w + x]) continue;
+          if (dx * dx + dy * dy <= 17 && W.los(p.x, p.z, LAB.U.cellToWorld(x), LAB.U.cellToWorld(y))) G.explored[y * W.w + x] = 1;
+        }
+      }
+    }
+    G.players.forEach((p, i) => { if (inputs[i].mapPressed) G.hud.toggleMap(i); });
 
     // area names
     G.players.forEach((p, i) => {
@@ -503,6 +534,11 @@ window.LAB = window.LAB || {};
       $('intro').style.opacity = 0;
       setTimeout(() => { $('intro').style.display = 'none'; $('intro').style.transition = ''; }, 2000);
       G.hud.show(true);
+      G.wakeT = 4.5;
+      const cv = $('game');
+      cv.style.transition = 'none'; cv.style.filter = 'blur(10px) brightness(0.25)';
+      requestAnimationFrame(() => requestAnimationFrame(() => { cv.style.transition = 'filter 5s ease-out'; cv.style.filter = 'blur(0px) brightness(1)'; }));
+      setTimeout(() => { cv.style.filter = ''; cv.style.transition = ''; }, 5600);
       G.message(null, G.mode > 1 ? 'You both wake up in the dark... Stick together.' : 'You wake up in the dark... alone.', 5);
       LAB.Audio.thud(0.6, 0);
     }

@@ -570,6 +570,7 @@ LAB.World = (function () {
       if (d.type === 'O') {
         want = near(3.2) || game.aliens.some((a) => a.alive && U.dist(a.x, a.z, d.x, d.z) < 2.6);
         if (game.power === false && blackout > 0) want = false;
+        if (d.slamT > 0) { d.slamT -= dt; want = Math.sin(d.slamT * 9) > -0.2; }
       } else if (d.type === 'D') {
         if (game.team.keycard && near(3.2)) { if (!d.unlocked) { d.unlocked = true; LAB.Audio.beep(); } want = true; }
         else if (d.unlocked) want = near(3.2) || game.aliens.some((a) => a.alive && a.type === 'stalker' && U.dist(a.x, a.z, d.x, d.z) < 2.6);
@@ -675,6 +676,20 @@ LAB.World = (function () {
       W.generator.model.position.x = W.generator.x + Math.sin(time * 60) * 0.004;
     }
     if (W.elevator) W.elevator.light.intensity = game.power ? 6 : 0;
+  };
+
+  // blood splattered on the closest wall (big hits)
+  W.addWallBlood = function (x, z, h) {
+    const cx = U.worldToCell(x), cy = U.worldToCell(z);
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]].sort(() => Math.random() - 0.5)) {
+      if (!W.isWall(cx + dx, cy + dy)) continue;
+      const along = dx ? z - U.cellToWorld(cy) : x - U.cellToWorld(cx);
+      const m = wallDecal(W.dyn, cx, cy, dx, dy, U.rand(1.4, 2.2), U.rand(1.4, 2.2), h || U.rand(1.2, 1.8), 'bwLive' + (Math.random() < 0.5 ? 0 : 1), T.bloodWall(Math.random() < 0.5 ? 0 : 1), U.clamp(along, -0.8, 0.8));
+      m.position.addScaledVector(new THREE.Vector3(-dx, 0, -dy), 0.005);
+      liveDecals.push(m);
+      return true;
+    }
+    return false;
   };
 
   // blood that appears during the game (from fights)

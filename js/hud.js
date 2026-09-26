@@ -33,6 +33,7 @@ LAB.HUD = (function () {
         <div class="dot"></div>
         <div class="prompt"></div>
         <div class="msg"></div>
+        <div class="map"><canvas></canvas><div class="maphint">MAP · press again to close</div></div>
         <div class="note"><h3></h3><p></p><small>walk away or press USE to close</small></div>
         <div class="downed"><h2>YOU ARE DOWN</h2><p></p><div class="rev"><i></i></div></div>`;
       document.getElementById('hud').appendChild(el);
@@ -42,6 +43,7 @@ LAB.HUD = (function () {
         note: q('.note'), noteT: q('.note h3'), noteP: q('.note p'), downed: q('.downed'), downedP: q('.downed p'), rev: q('.rev i'),
         blood: q('.bloodfx'), lowhp: q('.lowhp'), flashEl: q('.flashfx'), dev: q('.dev'), inv: q('.inv'),
         msgT: 0, zoneT: 0, noteOpen: null, bloodAlpha: 0,
+        map: q('.map'), mapC: q('.map canvas'), mapOpen: false,
       };
       h.bg = h.blood.getContext('2d');
       return h;
@@ -72,6 +74,73 @@ LAB.HUD = (function () {
       h.noteT.textContent = note.title; h.noteP.textContent = note.text;
       h.note.style.display = 'block'; h.noteOpen = note;
     }
+    toggleMap(i, on) {
+      const h = this.halves[i];
+      h.mapOpen = on === undefined ? !h.mapOpen : on;
+      h.map.style.display = h.mapOpen ? 'flex' : 'none';
+      if (h.mapOpen && LAB.Audio.ready) LAB.Audio.beep(i ? 0.5 : -0.5);
+    }
+
+    // the PDA map (drawn from the level grid)
+    drawMap(i, game) {
+      const h = this.halves[i], W = LAB.World, U = LAB.U;
+      const c = h.mapC, rect = h.map.getBoundingClientRect();
+      const cw = Math.max(200, rect.width * 0.94), ch = Math.max(150, rect.height * 0.8);
+      const s = Math.floor(Math.min(cw / W.w, ch / W.h));
+      if (c.width !== s * W.w || c.height !== s * W.h) { c.width = s * W.w; c.height = s * W.h; }
+      const g = c.getContext('2d');
+      g.fillStyle = '#020a04'; g.fillRect(0, 0, c.width, c.height);
+      const ex = game.explored;
+      for (let y = 0; y < W.h; y++) for (let x = 0; x < W.w; x++) {
+        if (W.isWall(x, y)) continue;
+        const seen = ex[y * W.w + x];
+        g.fillStyle = seen ? '#1d5a2a' : '#0b2210';
+        if (W.propBoxes[y * W.w + x]) g.fillStyle = seen ? '#154020' : '#0a1c0e';
+        g.fillRect(x * s, y * s, s, s);
+      }
+      // doors
+      for (const d of W.doors) {
+        const open = d.unlocked || d.type === 'O';
+        g.fillStyle = d.type === 'O' ? '#3aa050' : open ? '#40ff60' : d.type === 'B' ? '#e0c020' : d.type === 'H' ? '#20c8e0' : '#ff3030';
+        g.fillRect(d.cx * s + 1, d.cy * s + 1, s - 2, s - 2);
+      }
+      // area names
+      g.font = `bold ${Math.max(8, s * 0.9)}px monospace`; g.textAlign = 'center'; g.textBaseline = 'middle';
+      for (const z of LAB.ZONES) {
+        if (z.name.includes('CORRIDOR')) continue;
+        g.fillStyle = 'rgba(140,255,160,0.55)';
+        g.fillText(z.name, ((z.x1 + z.x2 + 1) / 2) * s, ((z.y1 + z.y2 + 1) / 2) * s);
+      }
+      // things we know about
+      const mark = (cx, cy, color, label) => {
+        g.fillStyle = color; g.beginPath(); g.arc((cx + 0.5) * s, (cy + 0.5) * s, s * 0.45, 0, 7); g.fill();
+        if (label) { g.fillStyle = '#000'; g.font = `bold ${Math.max(7, s * 0.7)}px monospace`; g.fillText(label, (cx + 0.5) * s, (cy + 0.55) * s); }
+      };
+      if (W.generator) mark(W.generator.cx, W.generator.cy, game.power ? '#40ff60' : '#ffa020', 'G');
+      if (W.elevator) { g.strokeStyle = game.power ? '#40ff60' : '#888'; g.lineWidth = 2; g.strokeRect(W.elevator.minX * s, W.elevator.minY * s, (W.elevator.maxX - W.elevator.minX + 1) * s, (W.elevator.maxY - W.elevator.minY + 1) * s); }
+      for (const it of W.items) {
+        if (it.taken || !ex[U.worldToCell(it.z) * W.w + U.worldToCell(it.x)]) continue;
+        const col = { K: '#ff4040', F: '#ffa020', A: '#ffe040', M: '#ffffff', N: '#a0ffb0' }[it.type];
+        mark(U.worldToCell(it.x), U.worldToCell(it.z), col, it.type === 'K' ? 'K' : it.type === 'F' ? 'F' : '');
+      }
+      // players (with arrows)
+      const blink = Math.sin(performance.now() / 150) > 0;
+      game.players.forEach((p) => {
+        const px = p.x / LAB.CELL * s, py = p.z / LAB.CELL * s;
+        const f = p.forward();
+        g.fillStyle = p.downed ? (blink ? '#ff0000' : '#600') : (p.i === 0 ? '#ff9a50' : '#6ab0ff');
+        g.beginPath();
+        g.moveTo(px + f.x * s * 1.2, py + f.z * s * 1.2);
+        g.lineTo(px - f.x * s * 0.6 - f.z * s * 0.6, py - f.z * s * 0.6 + f.x * s * 0.6);
+        g.lineTo(px - f.x * s * 0.6 + f.z * s * 0.6, py - f.z * s * 0.6 - f.x * s * 0.6);
+        g.fill();
+        if (p.i === i && blink) { g.strokeStyle = '#fff'; g.lineWidth = 1; g.beginPath(); g.arc(px, py, s * 1.6, 0, 7); g.stroke(); }
+      });
+      // scanlines
+      g.fillStyle = 'rgba(0,0,0,0.25)';
+      for (let y = 0; y < c.height; y += 3) g.fillRect(0, y, c.width, 1);
+    }
+
     closeNote(i) { const h = this.halves[i]; h.note.style.display = 'none'; h.noteOpen = null; }
 
     flash(i, color) {
@@ -138,6 +207,7 @@ LAB.HUD = (function () {
         h.prompt.textContent = game.promptFor(p);
         h.prompt.style.opacity = h.prompt.textContent ? 1 : 0;
         if (h.noteOpen && (p.input && p.input.usePressed)) this.closeNote(i);
+        if (h.mapOpen) this.drawMap(i, game);
       });
     }
   }

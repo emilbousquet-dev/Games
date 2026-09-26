@@ -51,6 +51,10 @@
   .note h3 { margin: 0 0 10px; font-size: 15px; border-bottom: 1px solid #6a604a; padding-bottom: 6px; }
   .note p { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.45; }
   .note small { display: block; margin-top: 12px; color: #6a604a; font-size: 11px; }
+  .map { display: none; position: absolute; inset: 8% 3% 14% 3%; z-index: 5; flex-direction: column; align-items: center; justify-content: center;
+         background: rgba(0,12,4,0.88); border: 2px solid #1d6a30; box-shadow: 0 0 30px rgba(40,255,90,0.2), inset 0 0 40px #000; }
+  .map canvas { image-rendering: pixelated; max-width: 96%; max-height: 88%; }
+  .maphint { color: #3aa050; font-size: 11px; margin-top: 6px; letter-spacing: 2px; }
   .downed { display: none; position: absolute; inset: 0; z-index: 4; flex-direction: column; align-items: center; justify-content: center; background: rgba(90,0,0,0.45); }
   .downed h2 { color: #ff2020; font-size: 34px; margin: 0 0 8px; letter-spacing: 4px; text-shadow: 0 0 20px #000; }
   .downed p { margin: 0 20px 12px; text-align: center; }
@@ -96,6 +100,7 @@
   #end h1 { font-family: Impact, "Arial Black", sans-serif; font-size: clamp(48px, 11vw, 120px); margin: 0 0 16px; color: var(--blood-bright); letter-spacing: 6px; text-shadow: 0 0 30px #f00; line-height: 1.05; }
   #end.win h1 { color: #d8e8f0; text-shadow: 0 0 30px #4af; }
   .endstats { color: #c8c0a8; letter-spacing: 2px; margin: 10px 0 20px; font-size: 14px; }
+  .record { color: #ffd040; font-size: 22px; letter-spacing: 4px; margin: -8px 0 16px; animation: blink 0.8s infinite; }
   .twist { color: #b0a898; line-height: 1.6; } .twist b { color: #ff3030; font-size: 20px; }
   .blink { animation: blink 1.2s infinite; margin-top: 24px; color: var(--dim); }
   @keyframes blink { 50% { opacity: 0.2; } }
@@ -125,6 +130,7 @@
       <tr><td>Flashlight</td><td><kbd>F</kbd></td><td><kbd>L</kbd></td><td>RB / Y</td></tr>
       <tr><td>Hit (wrench)</td><td><kbd>Space</kbd></td><td><kbd>Enter</kbd></td><td>RT / X</td></tr>
       <tr><td>Use / Revive</td><td><kbd>R</kbd></td><td><kbd>/</kbd> or <kbd>K</kbd></td><td>A</td></tr>
+      <tr><td>Map</td><td><kbd>Tab</kbd> / <kbd>C</kbd></td><td><kbd>\</kbd> / <kbd>J</kbd></td><td>Back / B</td></tr>
       <tr><td>Pause</td><td colspan="2"><kbd>Esc</kbd> or <kbd>P</kbd></td><td>Start</td></tr>
     </table>
     <p>1 PLAYER: you can use either side of the keyboard, or a controller.<br>

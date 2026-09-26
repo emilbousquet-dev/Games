@@ -245,6 +245,8 @@ LAB.Aliens = (function () {
             // GOT YOU
             this.cd = 3;
             p.damage(game.nightmare ? 55 : 40, this.x, this.z, this);
+            W.addWallBlood(p.x, p.z); W.addWallBlood(p.x, p.z, 0.8);
+            LAB.Effects.blood(p.x, 1.4, p.z, 45, false, 1.4);
             game.scaresys.face(p, 'stalker');
             this.state = 'flee'; this.fleeT = 6; this.cool = 10;
             this.pickWaypoint(game, true);

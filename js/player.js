@@ -200,7 +200,14 @@ LAB.Player = (function () {
         } else o.reviveT = 0;
       }
 
-      this.placeCamera(dt, time, EYE + this.liftY);
+      let eye = EYE + this.liftY;
+      if (game.wakeT > 0) { // waking up: lying down, then standing
+        const k = U.clamp(1 - game.wakeT / 4.5, 0, 1);
+        const e = k * k * (3 - 2 * k);
+        eye = U.lerp(0.35, EYE, e);
+        this.pitch = U.lerp(1.1, 0, e) + Math.sin(time * 1.3) * 0.05 * (1 - e);
+      }
+      this.placeCamera(dt, time, eye);
     }
 
     updateFlash(dt, inp) {
