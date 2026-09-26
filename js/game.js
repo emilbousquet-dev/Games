@@ -105,6 +105,8 @@ window.LAB = window.LAB || {};
     for (let i = 0; i < mode; i++) G.players.push(new LAB.Player(i, scene, G));
     G.aliens = [];
     for (const s of LAB.World.spawns.C) G.spawnCrawler(s.x, s.z, false);
+    for (const s of LAB.World.spawns.T) { const h = new LAB.Aliens.Spitter(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
+    G.projectiles = [];
     for (const s of LAB.World.spawns.Z) { const h = new LAB.Aliens.Husk(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
     for (const s of LAB.World.spawns.Q) { const h = new LAB.Aliens.Hanger(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
     const ss = LAB.World.spawns.S[0];
@@ -258,6 +260,31 @@ window.LAB = window.LAB || {};
     // more crawlers pour out
     const far = LAB.World.floorCells.filter(([x, y]) => G.players.every((p) => U.dist(p.x, p.z, U.cellToWorld(x), U.cellToWorld(y)) > 16) && LAB.World.passable(x, y));
     for (let i = 0; i < (G.nightmare ? 6 : 4); i++) { const c = U.pick(far); if (c) G.spawnCrawler(U.cellToWorld(c[0]), U.cellToWorld(c[1]), true); }
+  }
+
+  // acid blobs flying through the air
+  function updateProjectiles(dt) {
+    for (let i = G.projectiles.length - 1; i >= 0; i--) {
+      const b = G.projectiles[i];
+      b.vy -= 14 * dt;
+      b.x += b.vx * dt; b.y += b.vy * dt; b.z += b.vz * dt;
+      b.model.position.set(b.x, b.y, b.z);
+      let hit = null;
+      for (const p of G.players) if (p.standing && U.dist(p.x, p.z, b.x, b.z) < 0.55 && b.y < 2.0) hit = p;
+      const wall = LAB.World.isWall(U.worldToCell(b.x), U.worldToCell(b.z)) || b.y <= 0.05 || b.y > LAB.WALL_H;
+      if (hit || wall) {
+        const s = G.soundAt(b.x, b.z, 18);
+        LAB.Audio.sizzle(s.vol, s.pan); LAB.Audio.splat(s.vol * 0.5, s.pan);
+        LAB.Effects.blood(b.x, Math.max(0.1, b.y), b.z, 18, true, 0.8);
+        LAB.World.addBlood(b.x, b.z, 1.3, true);
+        if (hit) {
+          hit.damage(G.nightmare ? 16 : 11, b.x - b.vx * 0.1, b.z - b.vz * 0.1);
+          G.hud.acid(hit.i);
+        }
+        G.scene.remove(b.model);
+        G.projectiles.splice(i, 1);
+      }
+    }
   }
 
   function checkScares() {
@@ -420,6 +447,8 @@ window.LAB = window.LAB || {};
     if (G.fieldT <= 0) { G.fieldT = 0.4; G.fields = G.players.map((p) => LAB.World.flowField(p.cx, p.cy)); }
 
     if (!G.ending) for (const a of G.aliens) a.update(dt, G.time, G);
+    updateProjectiles(dt);
+    G.players.forEach((p) => { p.lastX = p.x; p.lastZ = p.z; });
     LAB.Aliens.separate(G.aliens);
 
     // new crawlers sometimes crawl out of the vents
@@ -474,7 +503,7 @@ window.LAB = window.LAB || {};
         if (!a.alive || a.state === 'dormant') continue;
         const d = U.dist(p.x, p.z, a.x, a.z);
         if (a.type === 'stalker') fear = Math.max(fear, U.clamp(1 - d / 16, 0, 1));
-        else if ((a.type === 'crawler' || a.type === 'husk') && a.state !== 'idle') fear = Math.max(fear, U.clamp(1 - d / 10, 0, 0.6));
+        else if ((a.type === 'crawler' || a.type === 'husk' || a.type === 'spitter') && a.state !== 'idle') fear = Math.max(fear, U.clamp(1 - d / 10, 0, 0.6));
       }
       if (p.hp < 30) fear = Math.max(fear, 0.35);
     }
@@ -485,7 +514,7 @@ window.LAB = window.LAB || {};
       if (!a.alive || !a.target || !a.target.standing) continue;
       const d = U.dist(a.x, a.z, a.target.x, a.target.z);
       if (a.type === 'stalker' && (a.state === 'hunt' || a.state === 'frozen')) chase = Math.max(chase, U.clamp(1.3 - d / 22, 0.35, 1));
-      else if ((a.type === 'crawler' || a.type === 'husk') && a.state === 'chase') chase = Math.max(chase, U.clamp(0.6 - d / 20, 0, 0.4));
+      else if ((a.type === 'crawler' || a.type === 'husk' || a.type === 'spitter') && a.state === 'chase') chase = Math.max(chase, U.clamp(0.6 - d / 20, 0, 0.4));
     }
     LAB.Audio.chase(G.ending ? 0 : chase);
     G.fear = fear;

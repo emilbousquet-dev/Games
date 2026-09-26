@@ -157,6 +157,75 @@ LAB.Aliens = (function () {
   }
 
   // =====================================================
+  class Spitter {
+    constructor(scene, x, z) {
+      this.type = 'spitter';
+      this.x = x; this.z = z; this.yaw = Math.random() * 6;
+      this.hp = 2; this.alive = true; this.radius = 0.45;
+      this.state = 'idle'; this.t = Math.random() * 10; this.cd = U.rand(1, 2); this.charge = 0; this.lost = 0;
+      this.model = Mo.spitter();
+      this.scene = scene;
+      scene.add(this.model);
+    }
+    update(dt, time, game) {
+      this.t += dt;
+      if (!this.alive) { this.model.userData.sac.scale.multiplyScalar(0.9); return; }
+      this.cd -= dt;
+      let speed = 0;
+      const seen = sense(this, game, 16, 0.8);
+      if (seen) { if (this.state === 'idle') { const s = game.soundAt(this.x, this.z, 22); LAB.Audio.chitter(s.vol * 0.6, s.pan); } this.state = 'chase'; this.target = seen; this.lost = 0; }
+      else if (this.state === 'chase') { this.lost += dt; if (this.lost > 6) this.state = 'idle'; }
+      if (this.state === 'chase' && this.target && this.target.standing) {
+        const p = this.target, d = U.dist(this.x, this.z, p.x, p.z);
+        const see = W.los(this.x, this.z, p.x, p.z);
+        this.yaw += U.clamp(U.angleDiff(this.yaw, Math.atan2(p.x - this.x, p.z - this.z)), -4 * dt, 4 * dt);
+        if (!see || d > 11) { chase(this, p, 2.2, dt, game); speed = 2; }
+        else if (d < 4.5) { // too close: back away
+          const pos = { x: this.x - (p.x - this.x) / d * 1.8 * dt, z: this.z - (p.z - this.z) / d * 1.8 * dt };
+          W.collide(pos, this.radius); this.x = pos.x; this.z = pos.z; speed = 1.8;
+        }
+        if (see && d < 13 && this.cd <= 0) {
+          this.charge += dt / 0.7;
+          if (this.charge >= 1) { this.charge = 0; this.cd = game.nightmare ? 1.8 : 2.6; this.spit(p, game); }
+        } else this.charge = Math.max(0, this.charge - dt);
+      }
+      this.model.position.set(this.x, 0, this.z);
+      this.model.rotation.y = this.yaw;
+      Mo.animateSpitter(this.model, this.t, speed, this.charge);
+    }
+    spit(p, game) {
+      const s = game.soundAt(this.x, this.z, 25);
+      LAB.Audio.spit(s.vol, s.pan);
+      // aim where the player will be (a little)
+      const lead = 0.35;
+      const tx = p.x + (p.x - (p.lastX || p.x)) * 30 * lead, tz = p.z + (p.z - (p.lastZ || p.z)) * 30 * lead;
+      const sx = this.x + Math.sin(this.yaw) * 0.7, sz = this.z + Math.cos(this.yaw) * 0.7, sy = 0.8;
+      const d = Math.max(1, U.dist(sx, sz, tx, tz));
+      const flight = d / 10;
+      game.projectiles.push({
+        x: sx, y: sy, z: sz, vx: (tx - sx) / flight, vz: (tz - sz) / flight, vy: (1.4 - sy) / flight + 7 * flight,
+        model: (() => { const m = Mo.acidBlob(); this.scene.add(m); return m; })(), from: this,
+      });
+    }
+    hit(player, dmg) {
+      this.hp -= dmg;
+      const s = this.game.soundAt(this.x, this.z, 20);
+      LAB.Audio.splat(0.8, s.pan);
+      LAB.Effects.blood(this.x, 0.8, this.z, 20, true);
+      this.charge = 0; this.cd = Math.max(this.cd, 1);
+      if (this.hp <= 0) {
+        this.alive = false;
+        LAB.Audio.screech(s.vol, s.pan); LAB.Audio.sizzle(1, s.pan);
+        LAB.Effects.blood(this.x, 0.9, this.z, 60, true, 1.5);
+        LAB.Effects.gibs(this.x, 0.8, this.z, 8, 0x70d020);
+        W.addBlood(this.x, this.z, 3, true);
+        this.model.rotation.z = 0.4; this.model.position.y = -0.2;
+        this.game.stats.kills++;
+      }
+    }
+  }
+
+  // =====================================================
   class Husk {
     constructor(scene, x, z) {
       this.type = 'husk';
@@ -429,5 +498,5 @@ LAB.Aliens = (function () {
     }
   }
 
-  return { Crawler, Husk, Stalker, Hanger, separate };
+  return { Crawler, Spitter, Husk, Stalker, Hanger, separate };
 })();

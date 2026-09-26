@@ -34,6 +34,8 @@ Press any button on a controller to connect it. On the title screen you can see 
 ## The monsters
 
 - **Crawler**: small, fast, and it jumps at you. Three hits with the wrench kill it.
+- **Spitter**: a bloated alien with a glowing acid sac. It stays far away and spits acid, so rush it!
+  Two hits to kill it.
 - **Husk**: an infected scientist with an alien growing out of its head. Slow, but it hits hard.
   Five hits to kill it.
 - **Stalker**: 2.7 meters tall and it can't be killed. It has no eyes, but it **hates light**:

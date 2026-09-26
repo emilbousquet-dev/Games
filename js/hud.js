@@ -162,6 +162,12 @@ LAB.HUD = (function () {
       }
       h.bloodAlpha = 1;
     }
+    // green acid splashed on your screen
+    acid(i) {
+      const h = this.halves[i], g = h.bg, w = h.blood.width, hh = h.blood.height;
+      for (let k = 0; k < 4; k++) LAB.Tex.splat(g, U.rand(w * 0.15, w * 0.85), U.rand(hh * 0.15, hh * 0.85), U.rand(12, 26), 'rgba(110,210,30,0.75)', U.randInt(2, 5));
+      h.bloodAlpha = 1.2;
+    }
     hands(i) {
       const h = this.halves[i], g = h.bg, w = h.blood.width, hh = h.blood.height;
       const cx = U.rand(w * 0.2, w * 0.8), cy = U.rand(hh * 0.2, hh * 0.7), s = U.rand(1.2, 2);

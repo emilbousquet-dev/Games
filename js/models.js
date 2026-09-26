@@ -323,6 +323,59 @@ LAB.Models = (function () {
     d.head.rotation.y = Math.sin(t * 2.3) * 0.2;
   }
 
+  // SPITTER — bloated alien with a glowing acid sac. Spits from far away!
+  function spitter() {
+    const g = new THREE.Group();
+    const body = pivot(g, 0, 0.55, 0);
+    sph(body, 0.35, M.alien(), 0, 0, 0.1, 1.1, 0.75, 1.2);
+    const sacMat = mat('acidSac', () => new THREE.MeshStandardMaterial({ color: 0x70d020, emissive: 0x40a010, emissiveIntensity: 1.2, transparent: true, opacity: 0.85, roughness: 0.1 }));
+    const sac = pivot(body, 0, 0.25, -0.25);
+    sph(sac, 0.38, sacMat, 0, 0, 0, 1, 0.9, 1.1);
+    for (let i = 0; i < 8; i++) { // veins over the sac
+      const a = i / 8 * Math.PI * 2;
+      tube(sac, new THREE.Vector3(0, 0.33, 0), new THREE.Vector3(Math.cos(a) * 0.37, -0.05, Math.sin(a) * 0.4), 0.018, M.fleshWet(), 4);
+    }
+    // long mouth tube that aims at you
+    const neck = pivot(body, 0, 0.05, 0.4);
+    tube(neck, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.12, 0.35), 0.1, M.alienRed());
+    add(neck, new THREE.TorusGeometry(0.1, 0.035, 6, 12), M.fleshWet(), 0, 0.12, 0.36);
+    teethRing(neck, 0.09, 8, 0.06, M.teeth(), 0.12, false, 1.2);
+    sph(neck, 0.07, sacMat, 0, 0.12, 0.33, 1, 1, 0.5, 8);
+    for (let i = 0; i < 4; i++) sph(body, 0.03, M.eyeYellow(), (i % 2 ? 1 : -1) * (0.12 + (i >> 1) * 0.1), 0.18, 0.38 - (i >> 1) * 0.08, 1, 1, 1, 6);
+    // 4 stubby bent legs
+    const legs = [];
+    for (let i = 0; i < 4; i++) {
+      const side = i % 2 ? 1 : -1, z = i < 2 ? 0.25 : -0.2;
+      const hip = pivot(body, side * 0.3, -0.05, z);
+      hip.rotation.z = -side * 0.8;
+      tube(hip, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.3, 0), 0.05, M.alien());
+      const knee = pivot(hip, 0, 0.3, 0);
+      knee.rotation.z = -side * 2.0;
+      tube(knee, new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.5, 0), 0.04, M.alienRed());
+      cone(knee, 0.04, 0.1, M.teeth(), 0, 0.55, 0);
+      legs.push({ hip, side, base: hip.rotation.z, i });
+    }
+    g.userData = { body, sac, neck, legs };
+    return g;
+  }
+  function animateSpitter(m, t, speed, charge) {
+    const d = m.userData;
+    d.legs.forEach((l) => { l.hip.rotation.z = l.base + Math.sin(t * (speed > 0.1 ? 10 : 2) + l.i * 1.6) * (speed > 0.1 ? 0.3 : 0.04); });
+    const pulse = 1 + Math.sin(t * 3) * 0.05 + charge * 0.3;
+    d.sac.scale.set(pulse, pulse, pulse);
+    d.neck.rotation.x = -charge * 0.6;
+    d.body.position.y = 0.55 + Math.sin(t * 2) * 0.02;
+  }
+  // a blob of acid in the air
+  function acidBlob() {
+    const g = new THREE.Group();
+    const m = mat('acidBlob', () => new THREE.MeshBasicMaterial({ color: 0x9aff40 }));
+    sph(g, 0.12, m, 0, 0, 0, 1, 1, 1, 8);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0x80ff30, transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.scale.set(0.9, 0.9, 1); g.add(glow);
+    return g;
+  }
+
   // HUSK — an infected scientist. The alien grows out of its head!
   function husk() {
     const g = human('deadcoat');
@@ -1223,7 +1276,7 @@ LAB.Models = (function () {
   const opt = (f) => (...a) => U.optimize(f(...a));
   return {
     M, mat, human: opt(human), animateHuman, corpse, viewModel: opt(viewModel),
-    crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, claw: opt(claw), stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
+    crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, spitter: opt(spitter), animateSpitter, acidBlob, claw: opt(claw), stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
     cryoPod, specimenTank, labTable, desk, serverRack, crates, barrels, shelf, morgueBed, generator,
     item: opt(item), ceilingLamp: opt(ceilingLamp), beacon: opt(beacon), door: opt(door), wallButton: opt(wallButton), elevator: opt(elevator), fleshGrowth, vent, signMat, glowTex,
     lockers, cabinet, cart, papers, debris, bin, extinguisher, bodyBag, wetSign,
