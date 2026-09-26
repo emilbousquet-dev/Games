@@ -24,6 +24,7 @@ SP.Game = (function () {
   scene.add(sun);
 
   const level = SP.Level.build(scene, SP.Level.TEST_ROOM);
+  SP.Parts.init(scene);
   const robots = [
     SP.Robot.create(scene, 'Bolt', 0xff8a2a, 'bolt', ...level.spawns[0]),
     SP.Robot.create(scene, 'Nutty', 0x3d9cff, 'nutty', ...level.spawns[1]),
@@ -39,7 +40,11 @@ SP.Game = (function () {
   function update(dt) {
     SP.Input.pollJoin();
     robots.forEach((r, i) => {
-      SP.Robot.control(r, SP.Input.read(i), dt);
+      const input = SP.Input.read(i);
+      SP.Robot.control(r, input, dt);
+      if (input.armPressed) SP.Parts.throwLimb(r, 'arm');
+      if (input.legPressed) SP.Parts.throwLimb(r, 'leg');
+      if (input.recallPressed) SP.Parts.recall(r);
       // the other robot is solid too, so you can stand on your friend's head!
       const others = robots.filter((o) => o !== r).map(SP.Physics.bodyBox);
       SP.Physics.step(r, dt, level.solids.concat(others));
@@ -47,6 +52,7 @@ SP.Game = (function () {
       if (r.pos.y < -10) { r.pos.copy(r.spawn); r.vel.set(0, 0, 0); }
       SP.Robot.animate(r, dt, robots[1 - i]);
     });
+    SP.Parts.update(dt, robots, level.solids);
     SP.Camera.update(robots, dt);
   }
 

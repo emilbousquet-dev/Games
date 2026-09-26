@@ -8,9 +8,11 @@ SP.Input = (function () {
   const KEYMAP = [
     { // PLAYER 1: Bolt (left side of the keyboard)
       up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], jump: ['Space'],
+      arm: ['KeyQ'], leg: ['KeyE'], recall: ['KeyR'],
     },
     { // PLAYER 2: Nutty (arrows + right side)
-      up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['Enter', 'NumpadEnter'],
+      up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], jump: ['Enter', 'NumpadEnter', 'Numpad0'],
+      arm: ['Comma', 'Numpad1'], leg: ['Period', 'Numpad2'], recall: ['Slash', 'Numpad3'],
     },
   ];
   const pads = [null, null];   // which gamepad belongs to each player
@@ -18,7 +20,7 @@ SP.Input = (function () {
 
   function init() {
     window.addEventListener('keydown', (e) => {
-      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) e.preventDefault();
+      if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Slash', 'Quote'].includes(e.code)) e.preventDefault();
       keys.add(e.code);
     });
     window.addEventListener('keyup', (e) => keys.delete(e.code));
@@ -50,7 +52,7 @@ SP.Input = (function () {
     const s = {
       x: (down(k.right) ? 1 : 0) - (down(k.left) ? 1 : 0),
       z: (down(k.down) ? 1 : 0) - (down(k.up) ? 1 : 0),
-      jump: down(k.jump),
+      jump: down(k.jump), arm: down(k.arm), leg: down(k.leg), recall: down(k.recall),
     };
     const gp = pads[i] !== null ? getPads()[pads[i]] : null;
     if (gp) {
@@ -60,12 +62,16 @@ SP.Input = (function () {
       if (b(14)) s.x -= 1; if (b(15)) s.x += 1;
       if (b(12)) s.z -= 1; if (b(13)) s.z += 1;
       s.jump = s.jump || b(0);
+      s.arm = s.arm || b(5) || b(2);     // RB or X: throw an arm
+      s.leg = s.leg || b(7) || b(3);     // RT or Y: throw a leg
+      s.recall = s.recall || b(4) || b(6) || b(1); // LB, LT or B: call your limbs back
     }
     // don't move faster on diagonals
     const len = Math.hypot(s.x, s.z);
     if (len > 1) { s.x /= len; s.z /= len; }
-    s.jumpPressed = s.jump && !prev[i].jump;
-    prev[i] = { jump: s.jump };
+    // new presses (true only on the first frame)
+    for (const name of ['jump', 'arm', 'leg', 'recall']) s[name + 'Pressed'] = s[name] && !prev[i][name];
+    prev[i] = { jump: s.jump, arm: s.arm, leg: s.leg, recall: s.recall };
     return s;
   }
 

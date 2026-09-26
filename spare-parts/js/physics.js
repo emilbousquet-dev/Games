@@ -49,8 +49,7 @@ SP.Physics = (function () {
   // one physics step for a body: gravity, then move and collide
   function step(b, dt, solids) {
     b.vel.y -= GRAVITY * dt;
-    moveAxis(b, 'x', b.vel.x * dt, solids);
-    moveAxis(b, 'z', b.vel.z * dt, solids);
+    const hits = { x: moveAxis(b, 'x', b.vel.x * dt, solids), z: moveAxis(b, 'z', b.vel.z * dt, solids) };
     const wasFalling = b.vel.y < 0;
     b.onGround = false;
     if (moveAxis(b, 'y', b.vel.y * dt, solids)) {
@@ -58,6 +57,7 @@ SP.Physics = (function () {
       b.landSpeed = -b.vel.y;
       b.vel.y = 0;
     }
+    return hits;
   }
 
   return { GRAVITY, box, bodyBox, overlap, step };
