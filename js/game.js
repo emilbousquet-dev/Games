@@ -17,8 +17,8 @@ window.LAB = window.LAB || {};
 
   // ---------- setup ----------
   const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: true, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.shadowMap.enabled = true;
+  renderer.setPixelRatio(LAB.lowGfx ? 0.75 : Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.shadowMap.enabled = !LAB.lowGfx;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.shadowMap.autoUpdate = false;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -263,7 +263,7 @@ window.LAB = window.LAB || {};
     last = now;
     G.time += dt;
     LAB.Input.pollJoin();
-    if (G.state === 'title') { titleUpdate(dt); return; }
+    if (G.state === 'title') { titleUpdate(dt); titleRender(dt); return; }
     if (G.state === 'intro') { introUpdate(dt); }
     if (G.state === 'play' || G.state === 'intro') {
       if (G.state === 'play') update(dt);
@@ -370,6 +370,43 @@ window.LAB = window.LAB || {};
 
   // ---------- menus ----------
   const menu = { sel: 0, items: [], lockT: 0 };
+  // a creepy 3D scene behind the title menu
+  let titleScene = null;
+  function titleRender(dt) {
+    if (!titleScene) {
+      const sc = new THREE.Scene();
+      sc.fog = new THREE.FogExp2(0x000000, 0.18);
+      sc.background = new THREE.Color(0x000000);
+      const st = LAB.Models.stalker();
+      st.position.set(3.0, 0, -0.5); st.rotation.y = -0.6;
+      sc.add(st);
+      const cr = LAB.Models.crawler(); cr.position.set(-2.8, 0, 1.4); cr.rotation.y = 0.7; sc.add(cr);
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.MeshStandardMaterial({ map: LAB.Tex.floorMetal(), roughness: 0.5, metalness: 0.5 }));
+      floor.material.map.repeat.set(12, 12);
+      floor.rotation.x = -Math.PI / 2; sc.add(floor);
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(30, 8), new THREE.MeshStandardMaterial({ map: LAB.Tex.wallConcrete(), roughness: 0.9 }));
+      back.material.map = back.material.map.clone(); back.material.map.repeat.set(8, 2); back.material.map.needsUpdate = true;
+      back.position.set(0, 4, -4); sc.add(back);
+      const red = new THREE.PointLight(0xff2010, 30, 14, 1.5); red.position.set(3, 3, 2); sc.add(red);
+      const cold = new THREE.SpotLight(0x8098c0, 40, 20, 0.5, 0.6, 1.2); cold.position.set(-4, 5, 5); cold.target = st; sc.add(cold);
+      sc.add(new THREE.AmbientLight(0x202020, 0.4));
+      const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 50);
+      titleScene = { sc, st, cr, red, cam, t: 0 };
+    }
+    const T = titleScene;
+    T.t += dt;
+    T.cam.aspect = window.innerWidth / window.innerHeight; T.cam.updateProjectionMatrix();
+    T.cam.position.set(Math.sin(T.t * 0.1) * 1.5, 1.6, 6 - Math.sin(T.t * 0.07));
+    T.cam.lookAt(0.3, 1.5, 0);
+    LAB.Models.animateStalker(T.st, T.t * 0.6, 0.4, Math.sin(T.t * 0.5) > 0.7, Math.sin(T.t * 0.3) > 0.8);
+    LAB.Models.animateCrawler(T.cr, T.t, 0, Math.sin(T.t * 2) > 0.5);
+    const n = Math.sin(T.t * 11) + Math.sin(T.t * 23.1) + Math.sin(T.t * 3.3);
+    T.red.intensity = n > 1.8 ? 2 : 30 + Math.sin(T.t * 2) * 8;
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+    renderer.setViewport(0, 0, w, h); renderer.setScissor(0, 0, w, h);
+    renderer.render(T.sc, T.cam);
+  }
+
   function titleUpdate(dt) {
     menu.lockT -= dt;
     const i0 = LAB.Input.read(0), i1 = LAB.Input.read(1);
@@ -392,6 +429,7 @@ window.LAB = window.LAB || {};
       { id: 'p1', label: '1 PLAYER' },
       { id: 'p2', label: '2 PLAYERS · SPLIT SCREEN' },
       { id: 'diff', label: 'DIFFICULTY: ' + (G.nightmare ? '☠ NIGHTMARE ☠' : 'NORMAL') },
+      { id: 'gfx', label: 'GRAPHICS: ' + (LAB.lowGfx ? 'LOW (FAST)' : 'HIGH') },
       { id: 'controls', label: 'CONTROLS' },
     ];
     $('menu').innerHTML = menu.items.map((it, i) => `<div class="mi ${i === menu.sel ? 'sel' : ''}" data-id="${it.id}">${it.label}</div>`).join('');
@@ -405,6 +443,10 @@ window.LAB = window.LAB || {};
     LAB.Audio.init();
     if (id === 'p1' || id === 'p2') startIntro(id === 'p1' ? 1 : 2);
     else if (id === 'diff') { G.nightmare = !G.nightmare; drawMenu(); }
+    else if (id === 'gfx') {
+      try { localStorage.setItem('lab13.gfx', LAB.lowGfx ? 'high' : 'low'); } catch (e) { /* */ }
+      location.search = LAB.lowGfx ? '' : '?low';
+    }
     else if (id === 'controls') $('controls').style.display = $('controls').style.display === 'block' ? 'none' : 'block';
   }
 
@@ -433,9 +475,20 @@ window.LAB = window.LAB || {};
       G.introText = lines.join('\n');
       LAB.Audio.startAmbience();
       LAB.Audio.speak('Stasis power failure. Waking subjects.');
-      // render one frame for the shaders to warm up
+      warmup();
       render();
     }, 50);
+  }
+
+  // prepare every material now, so nothing stutters when a monster first appears
+  function warmup() {
+    const extra = [LAB.Models.scareFace(), LAB.Models.corpse('deadcoat'), LAB.Models.crawler()];
+    extra.forEach((m) => { m.position.set(-50, 0, -50); scene.add(m); });
+    const hidden = [];
+    scene.traverse((o) => { if (!o.visible) { hidden.push(o); o.visible = true; } });
+    try { G.players.forEach((p) => renderer.compile(scene, p.cam)); } catch (e) { /* older browsers */ }
+    hidden.forEach((o) => (o.visible = false));
+    extra.forEach((m) => scene.remove(m));
   }
 
   function introUpdate(dt) {

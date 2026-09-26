@@ -172,7 +172,7 @@ LAB.Aliens = (function () {
     wake(game) {
       if (this.state !== 'dormant') return;
       this.state = 'roam'; this.model.visible = true;
-      this.pickWaypoint(game, true);
+      this.pickWaypoint(game, false);
     }
     pickWaypoint(game, far) {
       const wps = W.waypoints;
@@ -183,6 +183,14 @@ LAB.Aliens = (function () {
           const wx = U.cellToWorld(w.cx), wz = U.cellToWorld(w.cy);
           const d = Math.min(...game.players.map((p) => U.dist(p.x, p.z, wx, wz)));
           if (d > bd) { bd = d; best = w; }
+        }
+      } else if (Math.random() < (game.power ? 0.85 : 0.6)) {
+        // it can SMELL you: go to the room where a player is
+        const p = U.pick(game.players.filter((pp) => pp.standing)) || game.players[0];
+        let bd = Infinity;
+        for (const w of wps) {
+          const d = U.dist(p.x, p.z, U.cellToWorld(w.cx), U.cellToWorld(w.cy));
+          if (d < bd) { bd = d; best = w; }
         }
       } else best = U.pick(wps);
       this.wp = best;
@@ -248,8 +256,8 @@ LAB.Aliens = (function () {
           if (!this.wp) this.pickWaypoint(game, false);
           const wx = U.cellToWorld(this.wp.cx), wz = U.cellToWorld(this.wp.cy);
           if (U.dist(this.x, this.z, wx, wz) < 1.5) this.pickWaypoint(game, false);
-          else followField(this, this.wpField, 1.9, dt, wx, wz);
-          speed = 1.9;
+          else followField(this, this.wpField, 2.3, dt, wx, wz);
+          speed = 2.3;
         }
       }
 

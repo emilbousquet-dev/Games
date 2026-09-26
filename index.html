@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LAB 13</title>
+<link rel="icon" href="data:,">
 <style>
   :root {
     --blood: #8a0000;
@@ -60,14 +61,14 @@
 
   /* ---------- screens ---------- */
   .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 20; padding: 16px; }
-  #title { display: flex; background: radial-gradient(ellipse at 50% 40%, #1a0404 0%, #000 70%); overflow: auto; }
+  #title { display: flex; background: radial-gradient(ellipse at 50% 40%, rgba(26,4,4,0.35) 0%, rgba(0,0,0,0.55) 70%); overflow: auto; }
   #title h1 { font-family: Impact, "Arial Black", sans-serif; font-size: clamp(64px, 16vw, 170px); margin: 0; letter-spacing: 8px; color: var(--blood-bright);
               text-shadow: 0 0 30px rgba(255,0,0,0.5), 4px 0 #300, -3px 0 rgba(0,200,255,0.25); animation: glitch 4s infinite; position: relative; line-height: 1; }
   #title h1::after { content: ''; position: absolute; left: 12%; right: 12%; top: 88%; height: 60px;
                      background: repeating-linear-gradient(90deg, var(--blood) 0 6px, transparent 6px 22px, var(--blood) 22px 26px, transparent 26px 47px);
                      -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); animation: drip 6s ease-in infinite; transform-origin: top; }
   @keyframes drip { 0% { transform: scaleY(0.2); } 70% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0.2; } }
-  @keyframes glitch { 0%, 92%, 100% { transform: none; } 93% { transform: translate(-6px, 2px) skewX(10deg); } 95% { transform: translate(5px, -2px); filter: hue-rotate(90deg); } 97% { transform: translate(-2px, 0) skewX(-6deg); } }
+  @keyframes glitch { 0%, 92%, 100% { transform: none; filter: none; } 93% { transform: translate(-6px, 2px) skewX(10deg); filter: none; } 95% { transform: translate(5px, -2px); filter: hue-rotate(160deg); } 97% { transform: translate(-2px, 0) skewX(-6deg); filter: none; } }
   .sub { color: var(--dim); letter-spacing: 6px; margin: 18px 0 30px; font-size: 14px; }
   #menu { display: flex; flex-direction: column; gap: 10px; min-width: min(420px, 90vw); }
   .mi { padding: 12px 20px; border: 1px solid #3a1010; background: rgba(30,0,0,0.5); font-size: 18px; letter-spacing: 3px; cursor: pointer; transition: all 0.15s; }

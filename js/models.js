@@ -168,6 +168,7 @@ LAB.Models = (function () {
         cyl(fl, 0.03, 0.03, 0.2, M.darkMetal(), 0, 0, 0.06, Math.PI / 2, 0, 0);
         cyl(fl, 0.045, 0.03, 0.05, M.darkMetal(), 0, 0, 0.17, Math.PI / 2, 0, 0);
         const lens = cyl(fl, 0.04, 0.04, 0.01, M.eyeYellow(), 0, 0, 0.2, Math.PI / 2, 0, 0);
+        lens.userData.keep = true;
         parts.lens = lens;
       }
     }
@@ -230,6 +231,7 @@ LAB.Models = (function () {
     cyl(right, 0.02, 0.02, 0.16, M.darkMetal(), 0, 0.03, -0.07, Math.PI / 2, 0, 0);
     cyl(right, 0.028, 0.02, 0.035, M.darkMetal(), 0, 0.03, -0.16, Math.PI / 2, 0, 0);
     const lens = cyl(right, 0.024, 0.024, 0.005, M.eyeYellow(), 0, 0.03, -0.18, Math.PI / 2, 0, 0);
+    lens.userData.keep = true;
     // left hand + wrench
     const left = pivot(g, -0.19, -0.25, -0.42);
     box(left, 0.06, 0.06, 0.16, suit, 0, -0.01, 0.12);
@@ -413,8 +415,10 @@ LAB.Models = (function () {
     teethRing(top, 0.22, 12, 0.14, M.teeth(), -0.44, true, 0.4);
     const tongue = pivot(top, 0, -0.45, 0);
     const tg = add(tongue, new THREE.CylinderGeometry(0.035, 0.05, 1, 6), M.fleshWet());
+    tg.userData.keep = true;
     tg.position.y = -0.5;
     const tip = sph(tongue, 0.09, M.fleshWet(), 0, -1, 0, 1, 1.4, 1);
+    tip.userData.keep = true;
     g.userData = { top, tongue, tg, tip, length: LAB.WALL_H - 0.75 };
     setTongue(g, g.userData.length);
     return g;
@@ -482,9 +486,6 @@ LAB.Models = (function () {
     for (let i = 0; i < 5; i++) tube(g, new THREE.Vector3(U.rand(-0.2, 0.2), -0.45, 0.16), new THREE.Vector3(U.rand(-0.25, 0.25), -0.8 - Math.random() * 0.3, 0.2), 0.008, M.fleshWet(), 4); // drool
     // neck
     cyl(g, 0.22, 0.3, 0.6, dark, 0, -0.55, -0.35, 0.4, 0, 0);
-    const light = new THREE.PointLight(0xff3020, 4, 3, 1);
-    light.position.set(0, 0.2, 0.9);
-    g.add(light);
     g.userData = { mand };
     return g;
   }
@@ -823,6 +824,7 @@ LAB.Models = (function () {
     add(g, new THREE.PlaneGeometry(0.46, 0.12), signMat('HOLD', color === 0xffd020 ? '#c8a818' : '#18a8b8'), 0, 1.58, 0.052);
     const btnMat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5 });
     const btn = cyl(g, 0.12, 0.12, 0.08, btnMat, 0, 1.25, 0.08, Math.PI / 2, 0, 0, 16);
+    btn.userData.keep = true;
     g.userData = { btn, btnMat };
     return g;
   }
@@ -968,11 +970,13 @@ LAB.Models = (function () {
     return g;
   }
 
+  // glue parts together so the game runs fast (animation still works)
+  const opt = (f) => (...a) => U.optimize(f(...a));
   return {
-    M, mat, human, animateHuman, corpse, viewModel,
-    crawler, animateCrawler, stalker, animateStalker, hanger, setTongue, scareFace,
+    M, mat, human: opt(human), animateHuman, corpse, viewModel: opt(viewModel),
+    crawler: opt(crawler), animateCrawler, stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
     cryoPod, specimenTank, labTable, desk, serverRack, crates, barrels, shelf, morgueBed, generator,
-    item, ceilingLamp, beacon, door, wallButton, elevator, fleshGrowth, vent, signMat, glowTex,
+    item: opt(item), ceilingLamp: opt(ceilingLamp), beacon: opt(beacon), door: opt(door), wallButton: opt(wallButton), elevator: opt(elevator), fleshGrowth, vent, signMat, glowTex,
     lockers, cabinet, cart, papers, debris, bin, extinguisher, bodyBag, wetSign,
     helpers: { box, cyl, sph, cone, tube, pivot, add },
   };

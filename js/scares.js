@@ -65,7 +65,7 @@ LAB.Scares = (function () {
       face.position.set(U.rand(-0.2, 0.2), -0.05, -4);
       this.active.push({ kind: 'face', p, face, t: 0 });
       LAB.Audio.scream(1, this.pan(p));
-      this.game.hud.flash(p.i, 'rgba(255,255,255,0.9)');
+      this.game.hud.flash(p.i, 'rgba(255,230,220,0.35)');
       LAB.Input.rumble(p.i, 1, 700);
       p.shake = 1.2;
     }
@@ -153,6 +153,12 @@ LAB.Scares = (function () {
           a.face.position.x += (Math.random() - 0.5) * 0.02;
           a.face.rotation.z = Math.sin(a.t * 40) * 0.08;
           a.face.rotation.x = Math.sin(a.t * 27) * 0.05;
+          const open = Math.min(1, a.t * 5);
+          a.face.userData.mand.forEach((m, k) => {
+            const ax = k % 2 ? 1 : -1, ay = k < 2 ? 1 : -1;
+            m.rotation.z = -ax * ay * 0.5 * open * (1 + Math.sin(a.t * 35 + k) * 0.25);
+            m.rotation.x = -ay * 0.4 * open;
+          });
           if (a.t > 0.95) { a.p.cam.remove(a.face); this.active.splice(i, 1); }
         } else if (a.kind === 'drop') {
           if (!a.landed) {

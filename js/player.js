@@ -39,12 +39,12 @@ LAB.Player = (function () {
 
       // flashlight
       this.flash = new THREE.SpotLight(0xfff1d6, 60, 26, 0.42, 0.45, 1.3);
-      this.flash.castShadow = true;
+      this.flash.castShadow = !LAB.lowGfx;
       this.flash.shadow.mapSize.set(512, 512);
       this.flash.shadow.camera.near = 0.3;
       this.flash.shadow.camera.far = 26;
       this.flash.shadow.bias = -0.002;
-      this.flash.position.set(0.2, -0.15, 0);
+      this.flash.position.set(0.14, -0.13, -0.55);
       this.cam.add(this.flash);
       this.flash.target.position.set(0, -0.1, -5);
       this.cam.add(this.flash.target);
@@ -54,6 +54,11 @@ LAB.Player = (function () {
       this.vm = Mo.viewModel(this.style);
       this.vm.traverse((o) => { o.layers.set(index === 0 ? 3 : 4); o.castShadow = false; o.receiveShadow = false; });
       this.cam.add(this.vm);
+      // a tiny light that only shines on my own hands
+      this.handLight = new THREE.PointLight(0xffe8d0, 0.35, 1.0, 2);
+      this.handLight.position.set(0, 0.05, -0.2);
+      this.handLight.layers.set(index === 0 ? 3 : 4);
+      this.cam.add(this.handLight);
 
       // the body the other player sees
       this.body = Mo.human(this.style);

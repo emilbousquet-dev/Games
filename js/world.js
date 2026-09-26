@@ -143,21 +143,7 @@ LAB.World = (function () {
     });
     const out = new THREE.Group();
     for (const { mat, geos } of buckets.values()) {
-      let n = 0; geos.forEach((g) => (n += g.attributes.position.count));
-      const pos = new Float32Array(n * 3), nor = new Float32Array(n * 3), uv = new Float32Array(n * 2);
-      let o3 = 0, o2 = 0;
-      for (const g of geos) {
-        pos.set(g.attributes.position.array, o3);
-        nor.set(g.attributes.normal.array, o3);
-        uv.set(g.attributes.uv.array, o2);
-        o3 += g.attributes.position.count * 3; o2 += g.attributes.position.count * 2;
-        g.dispose();
-      }
-      const bg = new THREE.BufferGeometry();
-      bg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-      bg.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-      bg.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
-      bg.computeBoundingSphere();
+      const bg = U.mergeGeometries(geos);
       const m = new THREE.Mesh(bg, mat);
       m.castShadow = !mat.transparent;
       m.receiveShadow = true;
@@ -552,7 +538,7 @@ LAB.World = (function () {
 
     // a pool of real lights that follow the players around (fast!)
     W.pool = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < (LAB.lowGfx ? 4 : 8); i++) {
       const l = new THREE.PointLight(0xffffff, 0, 13, 1.7);
       scene.add(l);
       W.pool.push(l);
