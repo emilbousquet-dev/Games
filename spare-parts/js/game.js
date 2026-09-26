@@ -25,8 +25,8 @@ SP.Game = (function () {
 
   const level = SP.Level.build(scene, SP.Level.TEST_ROOM);
   const robots = [
-    SP.Robot.create(scene, 'Bolt', 0xff8a2a, ...level.spawns[0]),
-    SP.Robot.create(scene, 'Nutty', 0x3d9cff, ...level.spawns[1]),
+    SP.Robot.create(scene, 'Bolt', 0xff8a2a, 'bolt', ...level.spawns[0]),
+    SP.Robot.create(scene, 'Nutty', 0x3d9cff, 'nutty', ...level.spawns[1]),
   ];
 
   SP.Input.init();
@@ -45,7 +45,7 @@ SP.Game = (function () {
       SP.Physics.step(r, dt, level.solids.concat(others));
       // fell off the world? pop back to the start
       if (r.pos.y < -10) { r.pos.copy(r.spawn); r.vel.set(0, 0, 0); }
-      SP.Robot.animate(r, dt);
+      SP.Robot.animate(r, dt, robots[1 - i]);
     });
     SP.Camera.update(robots, dt);
   }
