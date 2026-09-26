@@ -268,7 +268,11 @@ LAB.World = (function () {
         else if (c === 'G') rot = 0;
         else rot = rnd() * Math.PI * 2;
         switch (c) {
-          case 'R': model = Mo.cryoPod(rnd() < 0.45, rnd() < 0.6, rnd); rot = y < 3 ? 0 : Math.PI; break;
+          case 'R': {
+            // the pods right next to where the players start are smashed open
+            const nearStart = W.map.some((row, sy) => [...row].some((ch, sx) => (ch === '1' || ch === '2') && Math.abs(sx - x) <= 1 && Math.abs(sy - y) <= 2));
+            model = Mo.cryoPod(nearStart || rnd() < 0.4, !nearStart && rnd() < 0.6, rnd); rot = y < 3 ? 0 : Math.PI; break;
+          }
           case 'p': model = Mo.specimenTank(rnd() < 0.35, rnd); break;
           case 't': model = Mo.labTable(rnd); break;
           case 'w': model = Mo.desk(rnd, screenI++); break;

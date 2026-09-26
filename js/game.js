@@ -112,6 +112,8 @@ window.LAB = window.LAB || {};
     if (ss) { G.stalker = new LAB.Aliens.Stalker(scene, ss.x, ss.z); G.stalker.game = G; G.aliens.push(G.stalker); }
     G.scaresys = new LAB.Scares(scene, G);
     G.fieldT = 0; G.spawnT = 60; G.lastZone = [null, null]; G.radioDone = {};
+    G.lives = nightmare ? 0 : 2;
+    G.saveCheckpoint();
     G.explored = new Uint8Array(LAB.World.w * LAB.World.h);
     G.hud.halves.forEach((h, i) => G.hud.toggleMap(i, false));
     G.hud.layout(mode);
@@ -154,6 +156,37 @@ window.LAB = window.LAB || {};
     return '';
   };
 
+  // ---------- checkpoints ----------
+  G.saveCheckpoint = function () {
+    G.checkpoint = G.players.map((p) => ({ x: p.x, z: p.z, yaw: p.yaw }));
+  };
+  function continueGame() {
+    G.lives--;
+    $('end').style.display = 'none';
+    G.players.forEach((p, i) => {
+      const c = G.checkpoint[i] || G.checkpoint[0];
+      if (p.grabbedBy) p.grabbedBy.release();
+      p.x = c.x + (i ? 0.6 : 0); p.z = c.z; p.yaw = c.yaw;
+      p.hp = 100; p.downed = false; p.dead = false; p.bleed = 0; p.battery = 100; p.flashOn = true; p.stamina = 100;
+    });
+    // monsters near the checkpoint go away
+    for (const a of G.aliens) {
+      if (!a.alive || a.type === 'hanger') continue;
+      const near = G.players.some((p) => U.dist(p.x, p.z, a.x, a.z) < 14);
+      if (a.type === 'stalker') { if (a.state !== 'dormant') { a.state = 'flee'; a.fleeT = 10; a.cool = 20; a.pickWaypoint(G, true); } }
+      else if (near) { a.alive = false; a.model.visible = false; }
+    }
+    G.state = 'play'; G.allDownT = 0;
+    G.hud.show(true);
+    LAB.Audio.startAmbience();
+    if (G.power) { LAB.Audio.startGenerator(); LAB.Audio.startAlarm(); }
+    G.message(null, `You got back up... (${G.lives} ${G.lives === 1 ? 'life' : 'lives'} left)`, 4);
+    const cv = $('game');
+    cv.style.transition = 'none'; cv.style.filter = 'blur(8px) brightness(0.3)';
+    requestAnimationFrame(() => requestAnimationFrame(() => { cv.style.transition = 'filter 3s ease-out'; cv.style.filter = 'none'; }));
+    last = performance.now();
+  }
+
   function pickups() {
     for (const it of LAB.World.items) {
       if (it.taken) continue;
@@ -163,12 +196,14 @@ window.LAB = window.LAB || {};
         let take = true;
         if (it.type === 'K') {
           G.team.keycard = true;
+          G.saveCheckpoint();
           G.message(null, (p.i ? 'PARK' : 'REYES') + ' found the SECURITY KEYCARD!');
           setTimeout(() => G.radioOnce('key', 'You got the keycard! The three fuses are in RESEARCH, the MEDBAY and MAINTENANCE. Put them in the generator. And... it knows you are awake now.'), 7000);
           // the breach!
           setTimeout(() => { if (G.state === 'play' && G.stalker) { G.stalker.wake(G); LAB.Audio.speak('Warning. Specimen thirteen has left containment.'); LAB.Audio.screech(0.5, 0, true); G.message(null, 'Something BIG is awake... Keep your flashlights ready.', 5); } }, 3500);
         } else if (it.type === 'F') {
           G.team.fuses++;
+          G.saveCheckpoint();
           G.message(null, `FUSE found! (${G.team.fuses + G.team.placed}/3)`);
           const got = G.team.fuses + G.team.placed;
           if (got === 1) G.radioOnce('f1', 'One fuse! Good. If the tall one comes, shine your flashlight right at it. It cannot move in the light.');
@@ -207,6 +242,7 @@ window.LAB = window.LAB || {};
 
   function powerOn() {
     G.power = true;
+    G.saveCheckpoint();
     LAB.Audio.startGenerator();
     setTimeout(() => LAB.Audio.startAlarm(), 1500);
     LAB.Audio.speak('Power restored. Surface lift, online. Warning. All specimens, released.');
@@ -260,13 +296,38 @@ window.LAB = window.LAB || {};
       G.players.forEach((p) => { p.liftY = rise; p.cam.position.y = 1.62 + rise; p.body.position.y = rise; });
       el.light.position.y = LAB.WALL_H - 0.4 + rise;
     }
+    // claws punch through the roof!
+    if (e.t > 6.3 && !e.claws) {
+      e.claws = [];
+      G.players.forEach((p, i) => {
+        const c = LAB.Models.claw();
+        const f = p.forward();
+        c.userData.lx = (p.x + f.x * 1.3) - el.x; c.userData.lz = (p.z + f.z * 1.3) - el.z;
+        c.position.set(c.userData.lx, LAB.WALL_H + 1.2, c.userData.lz);
+        c.rotation.y = Math.atan2(p.x - (p.x + f.x), p.z - (p.z + f.z)) + (i ? 0.4 : -0.4);
+        el.model.add(c);
+        e.claws.push({ c, t: -i * 0.6, p });
+      });
+    }
+    if (e.claws) for (const k of e.claws) {
+      k.t += dt;
+      if (k.t < 0) continue;
+      const y = LAB.WALL_H + 1.2 - Math.min(1, k.t / 0.18) * 1.9;
+      k.c.position.y = y + Math.sin(G.time * 30) * 0.02 * (k.t < 1 ? 1 : 0);
+      if (!k.hit && k.t > 0.18) {
+        k.hit = true;
+        LAB.Audio.clang(0); LAB.Audio.scream(1, G.mode > 1 ? (k.p.i ? 0.6 : -0.6) : 0);
+        LAB.Effects.sparks(el.x + k.c.userData.lx, LAB.WALL_H + el.model.position.y - 0.1, el.z + k.c.userData.lz, 40);
+        k.p.shake = 1.5; G.hud.flash(k.p.i, 'rgba(160,0,0,0.6)'); LAB.Input.rumble(k.p.i, 1, 900);
+      }
+    }
     if (e.t > 6 && !e.bang) {
       e.bang = true;
       LAB.Audio.thud(1, 0); setTimeout(() => LAB.Audio.thud(1, 0.3), 500); setTimeout(() => { LAB.Audio.scream(0.8, 0); LAB.Audio.clang(0); }, 1100);
       G.players.forEach((p) => { p.shake = 1.5; LAB.Input.rumble(p.i, 1, 800); G.hud.bloodSplat(p.i, 30); });
       G.message(null, 'SOMETHING IS ON THE ROOF!', 3);
     }
-    if (e.t > 8.5 && !e.done) { e.done = true; finish(true); }
+    if (e.t > 9.2 && !e.done) { e.done = true; finish(true); }
   }
 
   G.onPlayerDied = function (p) {
@@ -298,7 +359,10 @@ window.LAB = window.LAB || {};
       LAB.Audio.speak('Surface level. Welcome home.', 0.1, 0.7);
     } else {
       box.className = 'screen dead';
-      box.innerHTML = `<h1>YOU DIED</h1><p>${reason || 'Lab 13 claimed two more victims.'}</p>${statsHtml}<p class="blink">Press ENTER / A to try again</p>`;
+      G.canContinue = G.lives > 0;
+      box.innerHTML = `<h1>YOU DIED</h1><p>${reason || 'Lab 13 claimed two more victims.'}</p>${statsHtml}` +
+        (G.canContinue ? `<p class="lives">${'❤ '.repeat(G.lives)}</p><p class="blink">Press ENTER / A to CONTINUE from the last checkpoint</p><p class="hint">(Q / B to give up)</p>`
+          : `<p class="blink">Press ENTER / A to try again</p>`);
       LAB.Audio.scream(0.8, 0);
     }
     box.style.display = 'flex';
@@ -323,7 +387,10 @@ window.LAB = window.LAB || {};
     } else if (G.state === 'win' || G.state === 'dead') {
       G.endLock -= dt;
       const i0 = LAB.Input.read(0), i1 = LAB.Input.read(1);
-      if (G.endLock <= 0 && (LAB.Input.isDown('Enter') || LAB.Input.isDown('Space') || i0.usePressed || i1.usePressed)) toTitle();
+      const go = LAB.Input.isDown('Enter') || LAB.Input.isDown('Space') || i0.usePressed || i1.usePressed;
+      const quit = LAB.Input.isDown('KeyQ') || LAB.Input.isDown('Escape') || (i0.map && i0.pad) || (i1.map && i1.pad);
+      if (G.endLock <= 0 && G.state === 'dead' && G.canContinue && go) continueGame();
+      else if (G.endLock <= 0 && (go || (G.state === 'dead' && quit))) toTitle();
       render();
     } else if (G.state === 'paused') {
       pauseUpdate();

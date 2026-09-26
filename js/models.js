@@ -459,6 +459,23 @@ LAB.Models = (function () {
     d.mouthL.rotation.y = -open; d.mouthR.rotation.y = open;
   }
 
+  // a huge clawed arm that punches through the ceiling (ending)
+  function claw() {
+    const g = new THREE.Group();
+    const S = M.alienDark();
+    tube(g, new THREE.Vector3(0, 1.2, 0), new THREE.Vector3(0, 0.25, 0.05), 0.09, S);
+    sph(g, 0.13, S, 0, 0.2, 0.05, 1, 1.3, 0.9);
+    for (let f = 0; f < 4; f++) {
+      const x = (f - 1.5) * 0.07;
+      const end = new THREE.Vector3(x * 2.4, -0.35, 0.15 + Math.abs(f - 1.5) * 0.04);
+      tube(g, new THREE.Vector3(x, 0.15, 0.05), end, 0.025, S, 6);
+      const c = cone(g, 0.028, 0.22, M.teeth(), end.x, end.y - 0.1, end.z, Math.PI, 0, 0, 6);
+    }
+    // torn metal around the hole
+    for (let i = 0; i < 6; i++) { const a = i / 6 * 6.28; box(g, 0.25, 0.02, 0.1, M.metal(), Math.cos(a) * 0.25, 1.1, Math.sin(a) * 0.25, U.rand(-0.8, 0.8), a, U.rand(0.3, 0.9)); }
+    return g;
+  }
+
   // HANGER — hangs on the ceiling and drops a sticky tongue down
   function hanger() {
     const g = new THREE.Group();
@@ -1206,7 +1223,7 @@ LAB.Models = (function () {
   const opt = (f) => (...a) => U.optimize(f(...a));
   return {
     M, mat, human: opt(human), animateHuman, corpse, viewModel: opt(viewModel),
-    crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
+    crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, claw: opt(claw), stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
     cryoPod, specimenTank, labTable, desk, serverRack, crates, barrels, shelf, morgueBed, generator,
     item: opt(item), ceilingLamp: opt(ceilingLamp), beacon: opt(beacon), door: opt(door), wallButton: opt(wallButton), elevator: opt(elevator), fleshGrowth, vent, signMat, glowTex,
     lockers, cabinet, cart, papers, debris, bin, extinguisher, bodyBag, wetSign,
