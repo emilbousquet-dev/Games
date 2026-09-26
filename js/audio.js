@@ -84,6 +84,7 @@ LAB.Audio = (function () {
 
   const A = {
     init,
+    shutUp() { try { speechSynthesis.cancel(); } catch (e) { /* */ } },
     get ready() { return !!ctx; },
 
     // spooky background drone that never stops
@@ -285,14 +286,20 @@ LAB.Audio = (function () {
       o.connect(f); f.connect(g); g.connect(sfx); o.start(); o.stop(now() + 11.5);
     },
 
+    radioStatic(dur = 0.4) { if (ctx) { noise(dur, 'bandpass', 2200, 0.7, 0.35, 0, 0.01, false); tone('square', 1800, 1800, 0.05, 0.05, 0, 0.002, false); } },
     // creepy computer voice from the speakers (if the browser can talk)
-    speak(text, pitch = 0.1, rate = 0.75) {
+    speak(text, pitch = 0.1, rate = 0.75, female) {
       try {
         if (!window.speechSynthesis) return;
         const u = new SpeechSynthesisUtterance(text);
         u.pitch = pitch; u.rate = rate; u.volume = 0.9;
+        if (female) {
+          const v = speechSynthesis.getVoices().find((vv) => /female|zira|samantha|susan|karen|victoria|fiona|moira|tessa/i.test(vv.name) && /^en/i.test(vv.lang));
+          if (v) u.voice = v;
+        }
         speechSynthesis.cancel();
         speechSynthesis.speak(u);
+        A.speaking = u;
       } catch (e) { /* no voice, no problem */ }
     },
   };

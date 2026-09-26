@@ -65,6 +65,25 @@ window.LAB = window.LAB || {};
     return { vol, pan };
   };
 
+  // Dr. Okoye talks to you over the radio (with subtitles)
+  let radioTimer = null;
+  G.radio = function (text, who = 'DR. OKOYE') {
+    const el = $('radio');
+    if (G.state !== 'play') return;
+    LAB.Audio.radioStatic(0.5);
+    el.innerHTML = `<b>📻 ${who}:</b> ${text}`;
+    el.style.display = 'block';
+    setTimeout(() => LAB.Audio.speak(text.replace(/\.\.\./g, ', '), 1.05, 1.0, true), 350);
+    clearTimeout(radioTimer);
+    radioTimer = setTimeout(() => { el.style.display = 'none'; LAB.Audio.radioStatic(0.2); }, 4000 + text.length * 55);
+  };
+  G.radioOnce = function (key, text, who) {
+    G.radioDone = G.radioDone || {};
+    if (G.radioDone[key]) return;
+    G.radioDone[key] = true;
+    G.radio(text, who);
+  };
+
   G.message = (i, text, t) => G.hud.message(i === null ? null : (i >= G.players.length ? null : i), text, t);
 
   G.spawnCrawler = function (x, z, awake) {
@@ -92,7 +111,7 @@ window.LAB = window.LAB || {};
     G.stalker = null;
     if (ss) { G.stalker = new LAB.Aliens.Stalker(scene, ss.x, ss.z); G.stalker.game = G; G.aliens.push(G.stalker); }
     G.scaresys = new LAB.Scares(scene, G);
-    G.fieldT = 0; G.spawnT = 60; G.lastZone = [null, null];
+    G.fieldT = 0; G.spawnT = 60; G.lastZone = [null, null]; G.radioDone = {};
     G.explored = new Uint8Array(LAB.World.w * LAB.World.h);
     G.hud.halves.forEach((h, i) => G.hud.toggleMap(i, false));
     G.hud.layout(mode);
@@ -145,11 +164,15 @@ window.LAB = window.LAB || {};
         if (it.type === 'K') {
           G.team.keycard = true;
           G.message(null, (p.i ? 'PARK' : 'REYES') + ' found the SECURITY KEYCARD!');
+          setTimeout(() => G.radioOnce('key', 'You got the keycard! The three fuses are in RESEARCH, the MEDBAY and MAINTENANCE. Put them in the generator. And... it knows you are awake now.'), 7000);
           // the breach!
           setTimeout(() => { if (G.state === 'play' && G.stalker) { G.stalker.wake(G); LAB.Audio.speak('Warning. Specimen thirteen has left containment.'); LAB.Audio.screech(0.5, 0, true); G.message(null, 'Something BIG is awake... Keep your flashlights ready.', 5); } }, 3500);
         } else if (it.type === 'F') {
           G.team.fuses++;
           G.message(null, `FUSE found! (${G.team.fuses + G.team.placed}/3)`);
+          const got = G.team.fuses + G.team.placed;
+          if (got === 1) G.radioOnce('f1', 'One fuse! Good. If the tall one comes, shine your flashlight right at it. It cannot move in the light.');
+          if (got === 3) G.radioOnce('f3', 'That is all three! The GENERATOR is in the middle of the lab. Go!');
         } else if (it.type === 'A') {
           if (p.battery > 95) take = false; else { p.battery = Math.min(100, p.battery + 60); G.message(p.i, 'Battery +60%'); }
         } else if (it.type === 'M') {
@@ -187,6 +210,8 @@ window.LAB = window.LAB || {};
     LAB.Audio.startGenerator();
     setTimeout(() => LAB.Audio.startAlarm(), 1500);
     LAB.Audio.speak('Power restored. Surface lift, online. Warning. All specimens, released.');
+    setTimeout(() => G.radioOnce('power', 'The lights! You did it! The LIFT is at the south end. I will meet you th... wait. Something is in here with me... no... NO...'), 6500);
+    setTimeout(() => { if (G.state === 'play') { LAB.Audio.radioStatic(1.2); LAB.Audio.scream(0.5, 0); } }, 15500);
     G.message(null, 'POWER IS BACK! GET TO THE LIFT! RUN!', 6);
     LAB.Effects.sparks(LAB.World.generator.x, 2, LAB.World.generator.z, 60);
     if (G.stalker) {
@@ -218,6 +243,7 @@ window.LAB = window.LAB || {};
 
   function startEnding() {
     G.ending = { t: 0 };
+    setTimeout(() => G.radioOnce('end', '...Reyes... Park... it is not in here anymore... it is on the ROOF of the lift...', 'UNKNOWN'), 3000);
     G.message(null, 'THE LIFT IS MOVING...', 4);
     LAB.Audio.elevator();
     LAB.Audio.speak('Surface lift. Ascending.');
@@ -276,6 +302,7 @@ window.LAB = window.LAB || {};
       LAB.Audio.scream(0.8, 0);
     }
     box.style.display = 'flex';
+    $('radio').style.display = 'none';
     G.hud.show(false);
     G.endLock = 1.5;
   }
@@ -553,6 +580,7 @@ window.LAB = window.LAB || {};
       requestAnimationFrame(() => requestAnimationFrame(() => { cv.style.transition = 'filter 5s ease-out'; cv.style.filter = 'blur(0px) brightness(1)'; }));
       setTimeout(() => { cv.style.filter = ''; cv.style.transition = ''; }, 5600);
       G.message(null, G.mode > 1 ? 'You both wake up in the dark... Stick together.' : 'You wake up in the dark... alone.', 5);
+      setTimeout(() => { if (G.state === 'play') G.radio('...anyone? Is anyone awake? The stasis pods failed... You have to get out. The SECURITY KEYCARD is in the Security Office, up the corridor. Please hurry.'); }, 7000);
       LAB.Audio.thud(0.6, 0);
     }
     G.players.forEach((p) => p.placeCamera(dt, G.time, 1.62));
@@ -586,6 +614,7 @@ window.LAB = window.LAB || {};
     LAB.Audio.stopAll();
     try { speechSynthesis.cancel(); } catch (e) { /* */ }
     $('end').style.display = 'none';
+    $('radio').style.display = 'none';
     $('title').style.display = 'flex';
     G.hud.show(false);
     G.state = 'title';
