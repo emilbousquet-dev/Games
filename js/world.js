@@ -638,8 +638,8 @@ LAB.World = (function () {
               d.stayOpen = true; d.unlocked = true; d.soloArmed = undefined;
               LAB.Audio.beep(); game.message(0, 'Made it! The lock opens!');
             } else if (d.soloArmed !== i) {
-              d.soloArmed = i; d.soloT = 9;
-              LAB.Audio.beep(); game.message(0, 'Button pressed! RUN to the other button! 9 seconds!', 3);
+              d.soloArmed = i; d.soloT = 14;
+              LAB.Audio.beep(); game.message(0, 'Button pressed! RUN to the other button! 14 seconds!', 3);
             }
           });
           if (d.soloT > 0) {

@@ -192,7 +192,8 @@ LAB.HUD = (function () {
         h.sta.style.width = p.stamina + '%';
         h.dev.textContent = LAB.Input.pads[i] !== null && LAB.Input.pads[i] !== undefined ? '🎮' : (i === 0 && LAB.Input.mouse.locked ? '🖱' : '⌨');
         const t = game.team;
-        h.inv.innerHTML = (t.keycard ? '<span class="k">KEYCARD</span>' : '') + (t.fuses ? `<span class="f">FUSE ×${t.fuses}</span>` : '');
+        const inv = (t.keycard ? '<span class="k">KEYCARD</span>' : '') + (t.fuses ? `<span class="f">FUSE ×${t.fuses}</span>` : '') + (game.lives > 0 ? `<span class="l">${'❤'.repeat(game.lives)}</span>` : '');
+        if (h.invCache !== inv) { h.inv.innerHTML = inv; h.invCache = inv; }
         h.obj.textContent = game.objective();
         if (h.msgT > 0) { h.msgT -= dt; if (h.msgT <= 0) h.msg.style.opacity = 0; }
         if (h.zoneT > 0) { h.zoneT -= dt; if (h.zoneT <= 0) h.zone.style.opacity = 0; }

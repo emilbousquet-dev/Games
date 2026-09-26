@@ -702,7 +702,7 @@ window.LAB = window.LAB || {};
   LAB.Input.onAnyPress(() => LAB.Audio.init());
 
   // test helpers (for the ?debug URL)
-  G.debug = { newGame, startIntro, powerOn, finish, render, update: (dt) => update(dt) };
+  G.debug = { newGame, startIntro, powerOn, finish, render, update: (dt) => update(dt), cont: () => continueGame() };
 
   drawMenu();
   resize();

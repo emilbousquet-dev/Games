@@ -25,6 +25,7 @@ Play **alone** or with a **friend** in split screen, using the keyboard or contr
 | Flashlight | `F` | `L` | RB / Y |
 | Hit with wrench | `Space` | `Enter` | RT / X |
 | Use / Revive | `R` | `/` or `K` | A |
+| Map | `Tab` or `C` | `\` or `J` | Back / B |
 | Pause | `Esc` / `P` | | Start |
 
 In **1 player** mode you can use either side of the keyboard, or a controller.
@@ -33,10 +34,23 @@ Press any button on a controller to connect it. On the title screen you can see 
 ## The monsters
 
 - **Crawler**: small, fast, and it jumps at you. Three hits with the wrench kill it.
+- **Husk**: an infected scientist with an alien growing out of its head. Slow, but it hits hard.
+  Five hits to kill it.
 - **Stalker**: 2.7 meters tall and it can't be killed. It has no eyes, but it **hates light**:
   shine your flashlight at it and it **freezes**. Keep it in the light long enough and it runs away.
 - **Hanger**: hides on the ceiling with its tongue hanging down. If it grabs you, hit it
   (or get your partner to hit it!).
+
+## Story
+
+Find the **notes** (they are read out loud to you) and listen to **Dr. Okoye** on the radio
+to find out what happened in Lab 13... and what is really waiting at the end. 👀
+
+## Lives and checkpoints
+
+On **Normal** you get **2 extra lives** (❤). If you die, you get back up at the last checkpoint
+(the keycard, each fuse, and the generator). On **Nightmare** there are no extra lives. ☠
+Your fastest escape time is saved as a **record**.
 
 ## Co-op tricks
 
@@ -45,6 +59,9 @@ Press any button on a controller to connect it. On the title screen you can see 
 - **Revive**: if your partner goes down, hold USE next to them for 3 seconds.
 - **Flashlights**: one player holds the Stalker in the light while the other one works.
   Your flashlight drains while it's on and recharges while it's off.
+- **Map**: open your map to see the rooms, the doors, where your partner is, and items you've already seen.
+  But be careful: the game does NOT pause while you look at it!
+- **Graphics**: if the game is slow on your computer, choose **GRAPHICS: LOW** on the title screen.
 
 ## Make your own level!
 
