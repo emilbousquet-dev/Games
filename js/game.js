@@ -38,6 +38,18 @@ window.LAB = window.LAB || {};
     LAB.World.build(scene);
     LAB.Effects.init(scene);
     G.scene = scene;
+    // reflections for metal and glass: a tiny dark "room" with a few lamps
+    if (!G.envTex) {
+      const pm = new THREE.PMREMGenerator(renderer);
+      const es = new THREE.Scene();
+      es.add(new THREE.Mesh(new THREE.BoxGeometry(12, 6, 12), new THREE.MeshBasicMaterial({ color: 0x1a1c1e, side: THREE.BackSide })));
+      const lamp = (x, y, z, w, d, c) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: c })); m.position.set(x, y, z); m.lookAt(0, 0, 0); es.add(m); };
+      lamp(0, 2.9, 0, 3, 0.6, 0xfff0d8); lamp(3, 2.9, -3, 2, 0.4, 0xd8e0ff); lamp(-5.9, 0.5, 2, 1.5, 1, 0x801010); lamp(4, 0, 5.9, 2, 2, 0x303840);
+      G.envTex = pm.fromScene(es, 0.03).texture;
+      pm.dispose();
+    }
+    scene.environment = G.envTex;
+    scene.traverse((o) => { if (o.material && o.material.isMeshStandardMaterial) o.material.envMapIntensity = 0.45; });
   }
 
   // sound volume + left/right based on where it is

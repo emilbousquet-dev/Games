@@ -314,7 +314,7 @@ LAB.World = (function () {
 
       // dead bodies
       if (c === 'd') {
-        const style = rnd() < 0.25 ? 'deadguard' : rnd() < 0.15 ? 'deadhazmat' : 'deadcoat';
+        const style = rnd() < 0.3 ? 'deadguard' : 'deadcoat';
         const body = Mo.corpse(style, rnd);
         body.position.set(wx + U.rand(-0.4, 0.4), 0, wz + U.rand(-0.4, 0.4));
         body.rotation.y = rnd() * 6.28;

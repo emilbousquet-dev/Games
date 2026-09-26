@@ -38,6 +38,7 @@ LAB.Models = (function () {
     hazmat: () => std('hazmat', { color: 0xd8641a, roughness: 0.55 }),
     hazmatDark: () => std('hazmatDark', { color: 0x2b2b2b, roughness: 0.5, metalness: 0.3 }),
     guard: () => std('guard', { color: 0x2d4a78, roughness: 0.75 }),
+    guardDead: () => std('guardDead', { color: 0x3c4436, roughness: 0.85 }),
     vest: () => std('vest', { color: 0x1c2026, roughness: 0.7 }),
     visor: () => std('visor', { color: 0x10202a, roughness: 0.05, metalness: 0.9, emissive: 0x05202a }),
     alien: () => std('alien', { map: T.alienSkin('pale'), roughness: 0.3, metalness: 0.05 }),
@@ -111,56 +112,66 @@ LAB.Models = (function () {
     const g = new THREE.Group();
     const parts = {};
     const dead = style.startsWith('dead');
-    const suit = style.includes('hazmat') ? M.hazmat() : style.includes('guard') ? M.guard() : (dead ? M.coat() : M.coatClean());
+    const suit = style.includes('hazmat') ? M.hazmat() : style === 'deadguard' ? M.guardDead() : style.includes('guard') ? M.guard() : (dead ? M.coat() : M.coatClean());
     const legsMat = style.includes('hazmat') ? M.hazmat() : M.pants();
     const skin = dead ? M.skinDead() : M.skinHuman();
 
     const body = pivot(g, 0, 0, 0);
     parts.body = body;
-    // torso
+    const cap = (p, r, len, m, x, y, z) => add(p, new THREE.CapsuleGeometry(r, len, 4, 10), m, x, y, z);
+    // torso (rounded, wider at the shoulders)
     const torso = pivot(body, 0, 0.95, 0);
     parts.torso = torso;
-    box(torso, 0.46, 0.6, 0.26, suit, 0, 0.32, 0);
-    box(torso, 0.4, 0.14, 0.24, suit, 0, 0.02, 0); // belly/belt
-    box(torso, 0.42, 0.05, 0.27, M.rubber(), 0, -0.04, 0); // belt
+    const chest = add(torso, new THREE.CylinderGeometry(0.235, 0.19, 0.6, 12), suit, 0, 0.32, 0);
+    chest.scale.z = 0.62;
+    sph(torso, 0.2, suit, 0, 0.02, 0, 1, 0.6, 0.7); // hips
+    add(torso, new THREE.CylinderGeometry(0.2, 0.2, 0.05, 12), M.rubber(), 0, 0.03, 0).scale.z = 0.72; // belt
+    for (const x of [-0.24, 0.24]) sph(torso, 0.1, suit, x, 0.56, 0, 1, 0.8, 1); // shoulders
     if (style.includes('hazmat')) {
-      box(torso, 0.3, 0.3, 0.05, M.hazmatDark(), 0, 0.38, 0.14); // chest plate
-      box(torso, 0.1, 0.1, 0.02, M.ledOrange(), 0, 0.42, 0.17);
-      box(torso, 0.34, 0.44, 0.16, M.hazmatDark(), 0, 0.34, -0.2); // air tank pack
-      cyl(torso, 0.07, 0.07, 0.4, M.steel(), -0.09, 0.36, -0.29);
-      cyl(torso, 0.07, 0.07, 0.4, M.steel(), 0.09, 0.36, -0.29);
+      box(torso, 0.3, 0.3, 0.05, M.hazmatDark(), 0, 0.38, 0.13); // chest plate
+      box(torso, 0.1, 0.1, 0.02, M.ledOrange(), 0, 0.42, 0.16);
+      box(torso, 0.32, 0.44, 0.14, M.hazmatDark(), 0, 0.34, -0.18); // air tank pack
+      cyl(torso, 0.07, 0.07, 0.42, M.steel(), -0.09, 0.36, -0.27);
+      cyl(torso, 0.07, 0.07, 0.42, M.steel(), 0.09, 0.36, -0.27);
+      tube(torso, new THREE.Vector3(0.09, 0.58, -0.27), new THREE.Vector3(0.1, 0.66, 0.05), 0.02, M.rubber(), 5);
     } else if (style.includes('guard')) {
-      box(torso, 0.48, 0.42, 0.29, M.vest(), 0, 0.36, 0); // bullet vest
-      box(torso, 0.12, 0.06, 0.02, M.yellow(), 0.1, 0.5, 0.15); // badge
-      box(torso, 0.1, 0.16, 0.05, M.rubber(), -0.14, 0.44, 0.16); // radio
+      const vest = add(torso, new THREE.CylinderGeometry(0.245, 0.215, 0.44, 12), M.vest(), 0, 0.36, 0);
+      vest.scale.z = 0.66;
+      box(torso, 0.1, 0.06, 0.02, M.yellow(), 0.1, 0.5, 0.155); // badge
+      box(torso, 0.08, 0.14, 0.05, M.rubber(), -0.13, 0.44, 0.15); // radio
+      box(torso, 0.14, 0.12, 0.1, M.rubber(), 0.18, 0.02, 0.08); // holster
     } else {
       box(torso, 0.08, 0.12, 0.02, M.white(), 0.12, 0.5, 0.14); // ID card
-      box(torso, 0.5, 0.35, 0.28, suit, 0, -0.12, 0); // coat bottom
+      const coatB = add(torso, new THREE.CylinderGeometry(0.22, 0.26, 0.4, 12, 1, true), suit, 0, -0.12, 0);
+      coatB.scale.z = 0.7;
+      coatB.material = suit;
     }
     // head
     const neck = pivot(torso, 0, 0.64, 0);
     parts.head = neck;
-    cyl(neck, 0.06, 0.07, 0.1, skin, 0, 0.02, 0);
-    sph(neck, 0.13, skin, 0, 0.17, 0, 1, 1.1, 1.05);
+    cyl(neck, 0.055, 0.065, 0.1, skin, 0, 0.02, 0);
+    sph(neck, 0.125, skin, 0, 0.17, 0.01, 0.95, 1.12, 1.05);
+    sph(neck, 0.03, skin, 0, 0.16, 0.13, 0.8, 1, 1, 6); // nose
     if (style.includes('hazmat')) {
       sph(neck, 0.17, M.hazmat(), 0, 0.18, -0.01, 1, 1.05, 1.05); // helmet
-      sph(neck, 0.13, M.visor(), 0, 0.18, 0.07, 1, 0.8, 0.85); // visor
+      sph(neck, 0.135, M.visor(), 0, 0.18, 0.07, 1, 0.8, 0.85); // visor
       cyl(neck, 0.035, 0.035, 0.12, M.hazmatDark(), 0.1, 0.08, 0.12, 1.2, 0, 0);
     } else if (style.includes('guard')) {
-      sph(neck, 0.155, M.guard(), 0, 0.23, -0.01, 1, 0.7, 1.08); // helmet
+      sph(neck, 0.155, suit, 0, 0.23, -0.01, 1, 0.7, 1.08); // helmet
       box(neck, 0.26, 0.05, 0.08, M.visor(), 0, 0.2, 0.13); // visor strip
       box(neck, 0.02, 0.1, 0.02, M.rubber(), 0.14, 0.1, 0); // strap
     } else {
-      sph(neck, 0.135, M.rubber(), 0, 0.24, -0.02, 1, 0.55, 1.05); // hair
+      sph(neck, 0.13, M.rubber(), 0, 0.23, -0.02, 1, 0.6, 1.05); // hair
       box(neck, 0.18, 0.03, 0.02, M.rubber(), 0, 0.19, 0.125); // glasses
     }
     // arms
+    const glove = style.includes('hazmat') ? M.hazmatDark() : skin;
     for (const side of [-1, 1]) {
-      const sh = pivot(torso, side * 0.29, 0.56, 0);
-      box(sh, 0.13, 0.34, 0.13, suit, 0, -0.17, 0);
-      const el = pivot(sh, 0, -0.34, 0);
-      box(el, 0.11, 0.3, 0.11, suit, 0, -0.15, 0);
-      box(el, 0.09, 0.1, 0.09, style.includes('hazmat') ? M.hazmatDark() : skin, 0, -0.34, 0);
+      const sh = pivot(torso, side * 0.27, 0.55, 0);
+      cap(sh, 0.062, 0.2, suit, 0, -0.16, 0);
+      const el = pivot(sh, 0, -0.33, 0);
+      cap(el, 0.052, 0.2, suit, 0, -0.14, 0);
+      sph(el, 0.055, glove, 0, -0.33, 0.01, 0.8, 1.2, 1);
       parts[side < 0 ? 'armL' : 'armR'] = sh;
       parts[side < 0 ? 'elbowL' : 'elbowR'] = el;
       if (side > 0 && !dead) { // flashlight in right hand
@@ -174,11 +185,11 @@ LAB.Models = (function () {
     }
     // legs
     for (const side of [-1, 1]) {
-      const hip = pivot(body, side * 0.12, 0.92, 0);
-      box(hip, 0.17, 0.46, 0.18, legsMat, 0, -0.23, 0);
+      const hip = pivot(body, side * 0.11, 0.92, 0);
+      cap(hip, 0.085, 0.3, legsMat, 0, -0.23, 0);
       const knee = pivot(hip, 0, -0.46, 0);
-      box(knee, 0.15, 0.42, 0.16, legsMat, 0, -0.21, 0);
-      box(knee, 0.16, 0.08, 0.28, M.rubber(), 0, -0.42, 0.05); // boot
+      cap(knee, 0.07, 0.28, legsMat, 0, -0.2, 0);
+      box(knee, 0.15, 0.1, 0.28, M.rubber(), 0, -0.41, 0.05); // boot
       parts[side < 0 ? 'legL' : 'legR'] = hip;
       parts[side < 0 ? 'kneeL' : 'kneeR'] = knee;
     }
