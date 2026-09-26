@@ -222,6 +222,20 @@ LAB.Audio = (function () {
       if (!ctx) return;
       for (let i = 0; i < 5; i++) setTimeout(() => ctx && noise(U.rand(0.2, 0.5), 'bandpass', U.rand(1800, 3500), 6, 0.35, pan, 0.08, true), i * U.rand(150, 300));
     },
+    // husk groan (a moan through a throat full of alien)
+    groan(vol, pan) {
+      if (!ctx || vol < 0.02) return;
+      const o = ctx.createOscillator(); o.type = 'sawtooth';
+      const f0 = U.rand(70, 110);
+      o.frequency.setValueAtTime(f0, now()); o.frequency.linearRampToValueAtTime(f0 * U.rand(0.6, 1.3), now() + 1.2);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 5;
+      f.frequency.setValueAtTime(400, now()); f.frequency.linearRampToValueAtTime(U.rand(600, 900), now() + 0.6); f.frequency.linearRampToValueAtTime(300, now() + 1.3);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now()); g.gain.exponentialRampToValueAtTime(1, now() + 0.2); g.gain.exponentialRampToValueAtTime(0.0001, now() + 1.4);
+      o.connect(f); f.connect(g); g.connect(out(vol * 0.9, pan));
+      o.start(); o.stop(now() + 1.5);
+      noise(1.2, 'bandpass', 500, 4, vol * 0.3, pan, 0.2);
+    },
     // hanger tongue / wet sounds
     slurp(vol, pan) { if (ctx) { noise(0.5, 'lowpass', 1200, 8, vol, pan, 0.05, true, 300); tone('sine', 300, 90, 0.4, vol * 0.3, pan); } },
     // stalker breathing (call often)

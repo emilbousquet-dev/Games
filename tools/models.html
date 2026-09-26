@@ -11,7 +11,7 @@
 const Mo = LAB.Models, U = LAB.U;
 const rnd = U.seeded(7);
 const list = {
-  crawler: () => Mo.crawler(), stalker: () => Mo.stalker(), hanger: () => Mo.hanger(), face: () => { const f = Mo.scareFace(); f.position.y = 1.2; const g = new THREE.Group(); g.add(f); return g; },
+  crawler: () => Mo.crawler(), husk: () => { const h = Mo.husk(); Mo.animateHusk(h, 1, 0, false); return h; }, stalker: () => Mo.stalker(), hanger: () => Mo.hanger(), face: () => { const f = Mo.scareFace(); f.position.y = 1.2; const g = new THREE.Group(); g.add(f); return g; },
   reyes: () => Mo.human('hazmat'), park: () => Mo.human('guard'), scientist: () => Mo.human('coat'), corpse: () => Mo.corpse('deadcoat', rnd),
   cryoPod: () => Mo.cryoPod(false, true, rnd), cryoBroken: () => Mo.cryoPod(true, false, rnd), tank: () => Mo.specimenTank(false, rnd), tankCracked: () => Mo.specimenTank(true, rnd),
   labTable: () => Mo.labTable(rnd), desk: () => Mo.desk(rnd, 0), serverRack: () => Mo.serverRack(rnd), crates: () => Mo.crates(rnd),

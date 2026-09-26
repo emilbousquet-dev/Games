@@ -86,6 +86,7 @@ window.LAB = window.LAB || {};
     for (let i = 0; i < mode; i++) G.players.push(new LAB.Player(i, scene, G));
     G.aliens = [];
     for (const s of LAB.World.spawns.C) G.spawnCrawler(s.x, s.z, false);
+    for (const s of LAB.World.spawns.Z) { const h = new LAB.Aliens.Husk(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
     for (const s of LAB.World.spawns.Q) { const h = new LAB.Aliens.Hanger(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
     const ss = LAB.World.spawns.S[0];
     G.stalker = null;
@@ -379,7 +380,7 @@ window.LAB = window.LAB || {};
         if (!a.alive || a.state === 'dormant') continue;
         const d = U.dist(p.x, p.z, a.x, a.z);
         if (a.type === 'stalker') fear = Math.max(fear, U.clamp(1 - d / 16, 0, 1));
-        else if (a.type === 'crawler' && a.state !== 'idle') fear = Math.max(fear, U.clamp(1 - d / 10, 0, 0.6));
+        else if ((a.type === 'crawler' || a.type === 'husk') && a.state !== 'idle') fear = Math.max(fear, U.clamp(1 - d / 10, 0, 0.6));
       }
       if (p.hp < 30) fear = Math.max(fear, 0.35);
     }

@@ -190,7 +190,7 @@ LAB.World = (function () {
     W.doorGrid = new Array(W.w * W.h).fill(null);
     W.propBoxes = new Array(W.w * W.h).fill(null);
     W.doors = []; W.items = []; W.lights = []; W.beacons = []; W.buttons = { B: [], H: [] };
-    W.spawns = { C: [], S: [], Q: [] }; W.starts = []; W.scares = []; W.elevatorCells = [];
+    W.spawns = { C: [], S: [], Q: [], Z: [] }; W.starts = []; W.scares = []; W.elevatorCells = [];
     W.anim = []; W.floorCells = [];
     const root = new THREE.Group();          // things that never move -> merged
     const dyn = new THREE.Group();            // things that move / blink
@@ -421,7 +421,7 @@ LAB.World = (function () {
         W.buttons[c === '*' ? 'B' : 'H'].push({ x: wx + side[0] * 0.9, z: wz + side[1] * 0.9, model: btn, held: false });
       }
 
-      if (c === 'C' || c === 'S' || c === 'Q') W.spawns[c].push({ x: wx, z: wz, cx: x, cy: y });
+      if (c === 'C' || c === 'S' || c === 'Q' || c === 'Z') W.spawns[c].push({ x: wx, z: wz, cx: x, cy: y });
       if (c === 'J') W.scares.push({ cx: x, cy: y, x: wx, z: wz, type: LAB.SCARES[scareI++ % LAB.SCARES.length], done: false });
       if (c === 'X') W.elevatorCells.push([x, y]);
 

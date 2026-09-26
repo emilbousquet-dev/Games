@@ -157,6 +157,80 @@ LAB.Aliens = (function () {
   }
 
   // =====================================================
+  class Husk {
+    constructor(scene, x, z) {
+      this.type = 'husk';
+      this.x = x; this.z = z; this.yaw = Math.random() * 6;
+      this.hp = 5; this.alive = true; this.radius = 0.38;
+      this.state = 'idle'; this.t = Math.random() * 10; this.cd = 0; this.lost = 0;
+      this.homeX = x; this.homeZ = z; this.wanderT = 0; this.groanT = U.rand(2, 6);
+      this.model = Mo.husk();
+      scene.add(this.model);
+    }
+    update(dt, time, game) {
+      this.t += dt;
+      if (!this.alive) {
+        this.fallT = Math.min(1, (this.fallT || 0) + dt * 2);
+        this.model.userData.parts.body.rotation.x = -Math.PI / 2 * this.fallT;
+        this.model.userData.parts.body.position.y = 0.15 * this.fallT;
+        return;
+      }
+      this.cd -= dt;
+      let speed = 0;
+      if (this.stagger > 0) { this.stagger -= dt; }
+      else if (this.windup > 0) {
+        this.windup -= dt;
+        if (this.windup <= 0) {
+          const p = this.target;
+          if (p && p.standing && U.dist(this.x, this.z, p.x, p.z) < 1.9) {
+            p.damage(game.nightmare ? 26 : 18, this.x, this.z, this);
+            W.addWallBlood(p.x, p.z);
+          }
+          this.cd = 1.4;
+        }
+      } else {
+        const seen = sense(this, game, 11, 0.8);
+        if (seen) { if (this.state === 'idle') { const s = game.soundAt(this.x, this.z, 22); LAB.Audio.groan(s.vol, s.pan); } this.state = 'chase'; this.target = seen; this.lost = 0; }
+        else if (this.state === 'chase') { this.lost += dt; if (this.lost > 8 || !this.target || !this.target.standing) { this.state = 'idle'; this.homeX = this.x; this.homeZ = this.z; } }
+        if (this.state === 'chase' && this.target && this.target.standing) {
+          const p = this.target, d = U.dist(this.x, this.z, p.x, p.z);
+          if (d < 1.5 && this.cd <= 0) { this.windup = 0.55; const s = game.soundAt(this.x, this.z, 20); LAB.Audio.groan(s.vol, s.pan); }
+          else if (d > 1.1) { chase(this, p, game.power ? 2.4 : 1.9, dt, game); speed = 1.9; }
+          else this.yaw = Math.atan2(p.x - this.x, p.z - this.z);
+        } else {
+          this.wanderT -= dt;
+          if (this.wanderT <= 0) { this.wanderT = U.rand(3, 7); this.wx = this.homeX + U.rand(-2, 2); this.wz = this.homeZ + U.rand(-2, 2); }
+          if (this.wx !== undefined && U.dist(this.x, this.z, this.wx, this.wz) > 0.3) { steer(this, this.wx, this.wz, 0.6, dt, 2); speed = 0.6; }
+        }
+      }
+      this.groanT -= dt;
+      if (this.groanT <= 0) { this.groanT = U.rand(3, 7); const s = game.soundAt(this.x, this.z, 18); LAB.Audio.groan(s.vol * 0.7, s.pan); }
+      this.model.position.set(this.x, 0, this.z);
+      this.model.rotation.y = this.yaw;
+      Mo.animateHusk(this.model, this.t, speed, this.windup > 0, false);
+    }
+    hit(player, dmg) {
+      this.hp -= dmg;
+      const s = this.game.soundAt(this.x, this.z, 20);
+      LAB.Audio.splat(0.8, s.pan);
+      LAB.Effects.blood(this.x, 1.3, this.z, 18, false);
+      const d = U.dist(this.x, this.z, player.x, player.z) || 1;
+      const pos = { x: this.x + (this.x - player.x) / d * 0.6, z: this.z + (this.z - player.z) / d * 0.6 };
+      W.collide(pos, this.radius); this.x = pos.x; this.z = pos.z;
+      this.stagger = 0.35; this.windup = 0; this.target = player; this.state = 'chase';
+      if (this.hp <= 0) {
+        this.alive = false;
+        LAB.Audio.groan(1, s.pan); LAB.Audio.splat(1, s.pan);
+        LAB.Effects.blood(this.x, 1.5, this.z, 40, false, 1.3);
+        LAB.Effects.blood(this.x, 1.8, this.z, 20, true, 1.1);
+        LAB.Effects.gibs(this.x, 1.6, this.z, 8, 0x7a1822);
+        W.addBlood(this.x, this.z, 2.4);
+        this.game.stats.kills++;
+      }
+    }
+  }
+
+  // =====================================================
   class Stalker {
     constructor(scene, x, z) {
       this.type = 'stalker';
@@ -355,5 +429,5 @@ LAB.Aliens = (function () {
     }
   }
 
-  return { Crawler, Stalker, Hanger, separate };
+  return { Crawler, Husk, Stalker, Hanger, separate };
 })();

@@ -323,6 +323,53 @@ LAB.Models = (function () {
     d.head.rotation.y = Math.sin(t * 2.3) * 0.2;
   }
 
+  // HUSK — an infected scientist. The alien grows out of its head!
+  function husk() {
+    const g = human('deadcoat');
+    const p = g.userData.parts;
+    // split open skull with tendrils and a pulsing growth
+    const h = p.head;
+    sph(h, 0.1, M.alienRed(), 0, 0.3, -0.02, 1.2, 0.9, 1.1);
+    sph(h, 0.07, M.fleshWet(), 0.05, 0.36, 0.03, 1, 1, 1, 8);
+    for (let i = 0; i < 7; i++) {
+      const a = i / 7 * Math.PI * 2;
+      const end = new THREE.Vector3(Math.cos(a) * 0.28, 0.45 + Math.random() * 0.25, Math.sin(a) * 0.28);
+      tube(h, new THREE.Vector3(Math.cos(a) * 0.05, 0.3, Math.sin(a) * 0.05), end, 0.018, M.alienRed(), 5);
+      sph(h, 0.03, M.fleshWet(), end.x, end.y, end.z, 1, 1, 1, 6);
+    }
+    sph(h, 0.028, M.eyeYellow(), -0.045, 0.19, 0.11, 1, 1, 1, 6);
+    sph(h, 0.028, M.eyeYellow(), 0.045, 0.19, 0.11, 1, 1, 1, 6);
+    const jaw = pivot(h, 0, 0.1, 0.06);
+    box(jaw, 0.12, 0.05, 0.1, M.skinDead(), 0, -0.02, 0.02);
+    box(jaw, 0.1, 0.04, 0.02, M.mouth(), 0, 0.01, 0.07);
+    p.jaw = jaw;
+    // chest torn open, with alien ribs
+    sph(p.torso, 0.14, M.fleshWet(), 0, 0.38, 0.1, 1.1, 1.3, 0.5);
+    for (let i = 0; i < 4; i++) {
+      const r = add(p.torso, new THREE.TorusGeometry(0.12, 0.012, 4, 10, Math.PI), M.teeth(), 0, 0.28 + i * 0.07, 0.14);
+      r.rotation.set(0, 0, Math.PI);
+    }
+    // long claws growing out of the fingers
+    for (const e of [p.elbowL, p.elbowR]) for (let f = 0; f < 3; f++) cone(e, 0.012, 0.16, M.teeth(), (f - 1) * 0.03, -0.44, 0.02, Math.PI, 0, 0, 5);
+    return g;
+  }
+  function animateHusk(m, t, speed, attack, dead) {
+    const p = m.userData.parts;
+    if (dead) return;
+    const s = Math.sin(t * 3.2), amp = Math.min(1, speed / 1.5) * 0.45;
+    p.legL.rotation.x = s * amp; p.legR.rotation.x = -s * amp;
+    p.kneeL.rotation.x = Math.max(0, -s) * amp; p.kneeR.rotation.x = Math.max(0, s) * amp;
+    const reach = attack ? -2.2 + Math.sin(t * 20) * 0.2 : -1.35 + Math.sin(t * 1.7) * 0.15;
+    p.armL.rotation.x = reach + s * 0.1; p.armR.rotation.x = reach - s * 0.1;
+    p.armL.rotation.z = -0.15; p.armR.rotation.z = 0.15;
+    p.torso.rotation.x = 0.25 + Math.sin(t * 1.1) * 0.05;
+    p.torso.rotation.z = Math.sin(t * 1.6) * 0.12; // limping sway
+    p.head.rotation.z = 0.5 + Math.sin(t * 0.9) * 0.2; // head flopped to the side
+    p.head.rotation.x = Math.sin(t * 13) * (attack ? 0.15 : 0.02); // twitch
+    p.jaw.rotation.x = attack ? 0.6 : 0.25 + Math.sin(t * 2) * 0.1;
+    p.body.position.y = Math.abs(Math.cos(t * 3.2)) * amp * 0.05;
+  }
+
   // STALKER — very tall, thin, no eyes, a mouth that opens sideways
   function stalker() {
     const g = new THREE.Group();
@@ -1159,7 +1206,7 @@ LAB.Models = (function () {
   const opt = (f) => (...a) => U.optimize(f(...a));
   return {
     M, mat, human: opt(human), animateHuman, corpse, viewModel: opt(viewModel),
-    crawler: opt(crawler), animateCrawler, stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
+    crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
     cryoPod, specimenTank, labTable, desk, serverRack, crates, barrels, shelf, morgueBed, generator,
     item: opt(item), ceilingLamp: opt(ceilingLamp), beacon: opt(beacon), door: opt(door), wallButton: opt(wallButton), elevator: opt(elevator), fleshGrowth, vent, signMat, glowTex,
     lockers, cabinet, cart, papers, debris, bin, extinguisher, bodyBag, wetSign,
