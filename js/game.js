@@ -1,0 +1,514 @@
+// ============================================================
+//  LAB 13 — THE GAME (main loop, rules, menus, ending)
+// ============================================================
+window.LAB = window.LAB || {};
+
+(function () {
+  const U = LAB.U;
+  const $ = (id) => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+
+  const G = {
+    state: 'title', mode: 2, nightmare: false, god: params.has('god'),
+    players: [], aliens: [], fields: [], team: { keycard: false, fuses: 0, placed: 0 },
+    power: false, stats: {}, time: 0, playTime: 0,
+  };
+  LAB.game = G;
+
+  // ---------- setup ----------
+  const renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: true, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.25;
+  renderer.setScissorTest(true);
+
+  let scene;
+  G.hud = new LAB.HUD();
+  LAB.Input.init();
+
+  function buildWorld() {
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x000000);
+    scene.fog = new THREE.FogExp2(0x020203, 0.07);
+    scene.add(new THREE.AmbientLight(0x303848, 0.35));
+    scene.add(new THREE.HemisphereLight(0x202830, 0x100808, 0.25));
+    LAB.World.build(scene);
+    LAB.Effects.init(scene);
+    G.scene = scene;
+  }
+
+  // sound volume + left/right based on where it is
+  G.soundAt = function (x, z, range) {
+    let best = Infinity, bi = 0;
+    G.players.forEach((p, i) => { const d = U.dist(p.x, p.z, x, z); if (d < best) { best = d; bi = i; } });
+    const vol = Math.pow(Math.max(0, 1 - best / range), 1.5);
+    let pan = 0;
+    const p = G.players[bi];
+    if (!p) return { vol, pan };
+    if (G.players.length > 1) pan = bi === 0 ? -0.65 : 0.65;
+    else { const f = p.forward(); const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz) || 1; pan = ((-f.z) * dx + f.x * dz) / d * 0.8; }
+    return { vol, pan };
+  };
+
+  G.message = (i, text, t) => G.hud.message(i === null ? null : (i >= G.players.length ? null : i), text, t);
+
+  G.spawnCrawler = function (x, z, awake) {
+    const c = new LAB.Aliens.Crawler(scene, x, z, awake);
+    c.game = G;
+    if (awake) c.target = G.players.find((p) => p.standing) || null;
+    G.aliens.push(c);
+    return c;
+  };
+
+  // ---------- start a new game ----------
+  function newGame(mode, nightmare) {
+    buildWorld();
+    G.mode = mode; G.nightmare = nightmare;
+    G.team = { keycard: false, fuses: 0, placed: 0 };
+    G.power = false; G.playTime = 0; G.ending = null;
+    G.stats = { kills: 0, notes: 0, revives: 0, scares: 0 };
+    G.players = [];
+    for (let i = 0; i < mode; i++) G.players.push(new LAB.Player(i, scene, G));
+    G.aliens = [];
+    for (const s of LAB.World.spawns.C) G.spawnCrawler(s.x, s.z, false);
+    for (const s of LAB.World.spawns.Q) { const h = new LAB.Aliens.Hanger(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
+    const ss = LAB.World.spawns.S[0];
+    G.stalker = null;
+    if (ss) { G.stalker = new LAB.Aliens.Stalker(scene, ss.x, ss.z); G.stalker.game = G; G.aliens.push(G.stalker); }
+    G.scaresys = new LAB.Scares(scene, G);
+    G.fieldT = 0; G.spawnT = 60; G.lastZone = [null, null];
+    G.hud.layout(mode);
+    resize();
+  }
+
+  // ---------- rules ----------
+  G.objective = function () {
+    const t = G.team;
+    if (G.ending) return 'ESCAPE!';
+    if (G.power) return G.mode > 1 ? '▶ GET TO THE SURFACE LIFT — BOTH OF YOU!' : '▶ GET TO THE SURFACE LIFT!';
+    if (!t.keycard) return '▶ Find the SECURITY KEYCARD (Security Office)';
+    if (t.fuses + t.placed < 3) return `▶ Find the 3 FUSES (${t.fuses + t.placed}/3)` + (t.fuses ? ' — or put them in the GENERATOR' : '');
+    return '▶ Put the fuses in the GENERATOR';
+  };
+
+  G.promptFor = function (p) {
+    if (!p.standing) return '';
+    const useKey = LAB.Input.pads[p.i] !== null ? '[A]' : (G.mode === 1 ? '[R]' : (p.i === 0 ? '[R]' : '[/]'));
+    const o = G.players[1 - p.i];
+    if (o && o.downed && U.dist(p.x, p.z, o.x, o.z) < 2.0) return `HOLD ${useKey} TO REVIVE PARTNER`;
+    const gen = LAB.World.generator;
+    if (gen && U.dist(p.x, p.z, gen.x, gen.z + 1.4) < 1.8 && !G.power) {
+      return G.team.fuses ? `${useKey} INSERT FUSES (${G.team.placed}/3 placed)` : `GENERATOR: ${G.team.placed}/3 FUSES`;
+    }
+    for (const type of ['B', 'H']) for (const b of LAB.World.buttons[type]) {
+      if (U.dist(p.x, p.z, b.x, b.z) < 1.8) {
+        const d = LAB.World.doors.find((dd) => dd.type === type);
+        if (d && d.stayOpen) return '';
+        return G.mode > 1 ? `HOLD ${useKey} — your partner must hold the other button!` : `${useKey} PRESS — then run to the other button in time!`;
+      }
+    }
+    for (const d of LAB.World.doors) {
+      if (U.dist(p.x, p.z, d.x, d.z) > 2.6) continue;
+      if (d.type === 'D' && !G.team.keycard) return 'LOCKED — needs the SECURITY KEYCARD';
+      if (d.type === 'P' && !G.power) return 'LIFT OFFLINE — no power';
+      if ((d.type === 'B' || d.type === 'H') && !d.stayOpen) return '2-PERSON LOCK — hold both buttons';
+    }
+    if (p.grabbedBy) return 'ATTACK TO BREAK FREE!';
+    return '';
+  };
+
+  function pickups() {
+    for (const it of LAB.World.items) {
+      if (it.taken) continue;
+      for (const p of G.players) {
+        if (!p.standing || U.dist(p.x, p.z, it.x, it.z) > 1.3) continue;
+        const pan = G.mode > 1 ? (p.i ? 0.6 : -0.6) : 0;
+        let take = true;
+        if (it.type === 'K') {
+          G.team.keycard = true;
+          G.message(null, (p.i ? 'PARK' : 'REYES') + ' found the SECURITY KEYCARD!');
+          // the breach!
+          setTimeout(() => { if (G.state === 'play' && G.stalker) { G.stalker.wake(G); LAB.Audio.speak('Warning. Specimen thirteen has left containment.'); LAB.Audio.screech(0.5, 0, true); G.message(null, 'Something BIG is awake... Keep your flashlights ready.', 5); } }, 3500);
+        } else if (it.type === 'F') {
+          G.team.fuses++;
+          G.message(null, `FUSE found! (${G.team.fuses + G.team.placed}/3)`);
+        } else if (it.type === 'A') {
+          if (p.battery > 95) take = false; else { p.battery = Math.min(100, p.battery + 60); G.message(p.i, 'Battery +60%'); }
+        } else if (it.type === 'M') {
+          if (p.hp > 95) take = false; else { p.heal(50); G.message(p.i, 'Medkit +50 health'); }
+        } else if (it.type === 'N') {
+          G.hud.showNote(p.i, it.note); G.stats.notes++; p.noteItem = it;
+          LAB.Audio.noteSound(pan);
+        }
+        if (take) {
+          it.taken = true; it.model.visible = false;
+          if (it.type !== 'N') LAB.Audio.pickup(pan);
+          break;
+        }
+      }
+    }
+    // close notes when walking away
+    G.players.forEach((p, i) => { if (p.noteItem && U.dist(p.x, p.z, p.noteItem.x, p.noteItem.z) > 3.5) { G.hud.closeNote(i); p.noteItem = null; } });
+  }
+
+  function generatorUse() {
+    const gen = LAB.World.generator;
+    if (!gen || G.power) return;
+    for (const p of G.players) {
+      if (!p.standing || !p.input || !p.input.usePressed) continue;
+      if (U.dist(p.x, p.z, gen.x, gen.z + 1.4) > 1.8 || G.team.fuses <= 0) continue;
+      while (G.team.fuses > 0 && G.team.placed < 3) { gen.fuses[G.team.placed].visible = true; G.team.placed++; G.team.fuses--; }
+      LAB.Audio.clang(0); LAB.Audio.beep(0);
+      if (G.team.placed >= 3) powerOn();
+      else G.message(null, `Fuses in the generator: ${G.team.placed}/3`);
+    }
+  }
+
+  function powerOn() {
+    G.power = true;
+    LAB.Audio.startGenerator();
+    setTimeout(() => LAB.Audio.startAlarm(), 1500);
+    LAB.Audio.speak('Power restored. Surface lift, online. Warning. All specimens, released.');
+    G.message(null, 'POWER IS BACK! GET TO THE LIFT! RUN!', 6);
+    LAB.Effects.sparks(LAB.World.generator.x, 2, LAB.World.generator.z, 60);
+    if (G.stalker) {
+      G.stalker.wake(G);
+      G.stalker.cool = 0; G.stalker.state = 'hunt';
+      G.stalker.target = G.players.find((p) => p.standing);
+    }
+    // more crawlers pour out
+    const far = LAB.World.floorCells.filter(([x, y]) => G.players.every((p) => U.dist(p.x, p.z, U.cellToWorld(x), U.cellToWorld(y)) > 16) && LAB.World.passable(x, y));
+    for (let i = 0; i < (G.nightmare ? 6 : 4); i++) { const c = U.pick(far); if (c) G.spawnCrawler(U.cellToWorld(c[0]), U.cellToWorld(c[1]), true); }
+  }
+
+  function checkScares() {
+    for (const s of LAB.World.scares) {
+      if (s.done) continue;
+      const p = G.players.find((pp) => pp.standing && pp.cx === s.cx && pp.cy === s.cy);
+      if (p) { s.done = true; G.scaresys.trigger(s.type, p); }
+    }
+  }
+
+  function checkElevator() {
+    const el = LAB.World.elevator;
+    if (!el || !G.power || G.ending) return;
+    const inside = (p) => p.standing && p.cx >= el.minX && p.cx <= el.maxX && p.cy >= el.minY && p.cy <= el.maxY;
+    const n = G.players.filter(inside).length;
+    if (n === G.players.length) startEnding();
+    else if (n > 0) G.players.forEach((p) => { if (inside(p)) G.hud.halves[p.i].prompt.textContent = 'WAIT FOR YOUR PARTNER!'; });
+  }
+
+  function startEnding() {
+    G.ending = { t: 0 };
+    G.message(null, 'THE LIFT IS MOVING...', 4);
+    LAB.Audio.elevator();
+    LAB.Audio.speak('Surface lift. Ascending.');
+  }
+
+  function updateEnding(dt) {
+    const e = G.ending, el = LAB.World.elevator;
+    e.t += dt;
+    const gate = el.model.userData.gate;
+    gate.position.y = Math.max(LAB.WALL_H, gate.position.y - dt * 2);
+    if (e.t > 2) {
+      const rise = (e.t - 2) * (e.t - 2) * 0.6;
+      el.model.position.y = rise;
+      G.players.forEach((p) => { p.liftY = rise; p.cam.position.y = 1.62 + rise; p.body.position.y = rise; });
+      el.light.position.y = LAB.WALL_H - 0.4 + rise;
+    }
+    if (e.t > 6 && !e.bang) {
+      e.bang = true;
+      LAB.Audio.thud(1, 0); setTimeout(() => LAB.Audio.thud(1, 0.3), 500); setTimeout(() => { LAB.Audio.scream(0.8, 0); LAB.Audio.clang(0); }, 1100);
+      G.players.forEach((p) => { p.shake = 1.5; LAB.Input.rumble(p.i, 1, 800); G.hud.bloodSplat(p.i, 30); });
+      G.message(null, 'SOMETHING IS ON THE ROOF!', 3);
+    }
+    if (e.t > 8.5 && !e.done) { e.done = true; finish(true); }
+  }
+
+  G.onPlayerDied = function (p) {
+    if (G.state !== 'play') return;
+    finish(false, (p.i === 0 ? 'Dr. Reyes' : 'Officer Park') + ' bled out.');
+  };
+
+  function finish(win, reason) {
+    G.state = win ? 'win' : 'dead';
+    LAB.Audio.stopAll();
+    if (document.pointerLockElement) document.exitPointerLock();
+    const t = Math.floor(G.playTime), mm = Math.floor(t / 60), ss = String(t % 60).padStart(2, '0');
+    const statsHtml = `<div class="endstats">TIME ${mm}:${ss} · ALIENS KILLED ${G.stats.kills} · NOTES ${G.stats.notes}/${LAB.NOTES.length}${G.mode > 1 ? ' · REVIVES ' + G.stats.revives : ''}</div>`;
+    const box = $('end');
+    if (win) {
+      box.className = 'screen win';
+      box.innerHTML = `<h1>YOU ESCAPED<br>LAB 13</h1>${statsHtml}
+        <p class="twist">The lift reached the surface at 04:02 AM.<br>Nobody checked the roof of the lift.<br><br><b>Specimen 13 is free.</b></p>
+        <p class="blink">Press ENTER / A to play again</p>`;
+      LAB.Audio.speak('Surface level. Welcome home.', 0.1, 0.7);
+    } else {
+      box.className = 'screen dead';
+      box.innerHTML = `<h1>YOU DIED</h1><p>${reason || 'Lab 13 claimed two more victims.'}</p>${statsHtml}<p class="blink">Press ENTER / A to try again</p>`;
+      LAB.Audio.scream(0.8, 0);
+    }
+    box.style.display = 'flex';
+    G.endLock = 1.5;
+  }
+
+  // ---------- main loop ----------
+  let last = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    G.time += dt;
+    LAB.Input.pollJoin();
+    if (G.state === 'title') { titleUpdate(dt); return; }
+    if (G.state === 'intro') { introUpdate(dt); }
+    if (G.state === 'play' || G.state === 'intro') {
+      if (G.state === 'play') update(dt);
+      render();
+    } else if (G.state === 'win' || G.state === 'dead') {
+      G.endLock -= dt;
+      const i0 = LAB.Input.read(0), i1 = LAB.Input.read(1);
+      if (G.endLock <= 0 && (LAB.Input.isDown('Enter') || LAB.Input.isDown('Space') || i0.usePressed || i1.usePressed)) toTitle();
+      render();
+    } else if (G.state === 'paused') {
+      pauseUpdate();
+    }
+  }
+
+  function update(dt) {
+    G.playTime += dt;
+    // input
+    const inputs = G.players.map((p, i) => LAB.Input.read(i));
+    if (G.mode === 1) { // one player can use either side of the keyboard + any pad
+      const b = LAB.Input.read(1);
+      const a = inputs[0];
+      for (const k of ['move', 'strafe', 'turn', 'look']) a[k] = U.clamp(a[k] + b[k], -1, 1);
+      for (const k of ['sprint', 'flash', 'attack', 'use', 'attackPressed', 'usePressed', 'flashPressed', 'pausePressed', 'pad']) a[k] = a[k] || b[k];
+    }
+    if (inputs.some((s) => s.pausePressed) || LAB.Input.isDown('Escape') || LAB.Input.isDown('KeyP')) { pause(); return; }
+
+    G.players.forEach((p, i) => p.update(dt, inputs[i], G.time));
+
+    // paths toward each player (for the aliens)
+    G.fieldT -= dt;
+    if (G.fieldT <= 0) { G.fieldT = 0.4; G.fields = G.players.map((p) => LAB.World.flowField(p.cx, p.cy)); }
+
+    if (!G.ending) for (const a of G.aliens) a.update(dt, G.time, G);
+    LAB.Aliens.separate(G.aliens);
+
+    // new crawlers sometimes crawl out of the vents
+    G.spawnT -= dt;
+    if (G.spawnT <= 0) {
+      G.spawnT = G.power ? 22 : U.rand(45, 75);
+      const alive = G.aliens.filter((a) => a.type === 'crawler' && a.alive).length;
+      if (alive < (G.nightmare ? 8 : 5)) {
+        const far = LAB.World.floorCells.filter(([x, y]) => LAB.World.passable(x, y) && G.players.every((p) => U.dist(p.x, p.z, U.cellToWorld(x), U.cellToWorld(y)) > 18));
+        const c = U.pick(far);
+        if (c) G.spawnCrawler(U.cellToWorld(c[0]), U.cellToWorld(c[1]), G.power);
+      }
+    }
+    // the Stalker wakes up by itself after a while
+    if (G.stalker && G.stalker.state === 'dormant' && G.playTime > (G.nightmare ? 90 : 200)) { G.stalker.wake(G); LAB.Audio.speak('Warning. Specimen thirteen has left containment.'); }
+
+    pickups();
+    generatorUse();
+    checkScares();
+    checkElevator();
+    if (G.ending) updateEnding(dt);
+    G.scaresys.update(dt, G.time);
+    LAB.World.update(dt, G.time, G);
+    LAB.Effects.update(dt);
+
+    // area names
+    G.players.forEach((p, i) => {
+      const z = LAB.World.zoneAt(p.cx, p.cy);
+      if (z && z !== G.lastZone[i]) { G.lastZone[i] = z; G.hud.zone(i, z.name); }
+    });
+
+    // heartbeat: how close is danger?
+    let fear = 0;
+    for (const p of G.players) {
+      if (!p.standing) continue;
+      for (const a of G.aliens) {
+        if (!a.alive || a.state === 'dormant') continue;
+        const d = U.dist(p.x, p.z, a.x, a.z);
+        if (a.type === 'stalker') fear = Math.max(fear, U.clamp(1 - d / 16, 0, 1));
+        else if (a.type === 'crawler' && a.state !== 'idle') fear = Math.max(fear, U.clamp(1 - d / 10, 0, 0.6));
+      }
+      if (p.hp < 30) fear = Math.max(fear, 0.35);
+    }
+    LAB.Audio.updateHeart(dt, fear);
+    G.fear = fear;
+
+    // both players down = game over
+    if (G.players.every((p) => p.downed)) {
+      G.allDownT = (G.allDownT || 0) + dt;
+      if (G.allDownT > 2) finish(false, G.mode > 1 ? 'Nobody was left to help.' : 'Nobody was there to help you.');
+    } else G.allDownT = 0;
+
+    G.hud.update(dt, G);
+  }
+
+  function render() {
+    const w = renderer.domElement.clientWidth, h = renderer.domElement.clientHeight;
+    renderer.shadowMap.needsUpdate = true;
+    const n = G.players.length;
+    G.players.forEach((p, i) => {
+      const vw = Math.floor(w / n), vx = i * vw;
+      p.cam.aspect = vw / h;
+      p.cam.fov = n > 1 ? 70 : 68;
+      p.cam.updateProjectionMatrix();
+      renderer.setViewport(vx, 0, vw, h);
+      renderer.setScissor(vx, 0, vw, h);
+      // hide my own helmet light in my own view
+      renderer.render(scene, p.cam);
+    });
+  }
+
+  // ---------- menus ----------
+  const menu = { sel: 0, items: [], lockT: 0 };
+  function titleUpdate(dt) {
+    menu.lockT -= dt;
+    const i0 = LAB.Input.read(0), i1 = LAB.Input.read(1);
+    const up = i0.move > 0.5 || i1.move > 0.5, down = i0.move < -0.5 || i1.move < -0.5;
+    const left = i0.turn < -0.5 || i1.turn < -0.5 || i0.strafe < -0.5 || i1.strafe < -0.5;
+    const right = i0.turn > 0.5 || i1.turn > 0.5 || i0.strafe > 0.5 || i1.strafe > 0.5;
+    if (menu.lockT <= 0) {
+      if (up) { menu.sel = (menu.sel + menu.items.length - 1) % menu.items.length; menu.lockT = 0.2; drawMenu(); LAB.Audio.ready && LAB.Audio.beep(); }
+      if (down) { menu.sel = (menu.sel + 1) % menu.items.length; menu.lockT = 0.2; drawMenu(); LAB.Audio.ready && LAB.Audio.beep(); }
+      if ((left || right) && menu.items[menu.sel].id === 'diff') { G.nightmare = !G.nightmare; menu.lockT = 0.25; drawMenu(); }
+    }
+    if (i0.usePressed || i1.usePressed || i0.attackPressed || i1.attackPressed) choose(menu.items[menu.sel].id);
+    // show which controllers belong to which player
+    const pads = LAB.Input.pads;
+    $('padinfo').innerHTML = [0, 1].map((i) => `<span>P${i + 1}: ${pads[i] !== null ? '🎮 CONTROLLER ' + (pads[i] + 1) : '⌨ KEYBOARD'}</span>`).join('');
+  }
+
+  function drawMenu() {
+    menu.items = [
+      { id: 'p1', label: '1 PLAYER' },
+      { id: 'p2', label: '2 PLAYERS · SPLIT SCREEN' },
+      { id: 'diff', label: 'DIFFICULTY: ' + (G.nightmare ? '☠ NIGHTMARE ☠' : 'NORMAL') },
+      { id: 'controls', label: 'CONTROLS' },
+    ];
+    $('menu').innerHTML = menu.items.map((it, i) => `<div class="mi ${i === menu.sel ? 'sel' : ''}" data-id="${it.id}">${it.label}</div>`).join('');
+    $('menu').querySelectorAll('.mi').forEach((el, i) => {
+      el.onclick = () => { menu.sel = i; choose(el.dataset.id); };
+      el.onmouseenter = () => { menu.sel = i; drawMenu(); };
+    });
+  }
+
+  function choose(id) {
+    LAB.Audio.init();
+    if (id === 'p1' || id === 'p2') startIntro(id === 'p1' ? 1 : 2);
+    else if (id === 'diff') { G.nightmare = !G.nightmare; drawMenu(); }
+    else if (id === 'controls') $('controls').style.display = $('controls').style.display === 'block' ? 'none' : 'block';
+  }
+
+  function startIntro(mode) {
+    $('title').style.display = 'none';
+    $('controls').style.display = 'none';
+    $('loading').style.display = 'flex';
+    setTimeout(() => {
+      newGame(mode, G.nightmare);
+      $('loading').style.display = 'none';
+      G.state = 'intro';
+      G.introT = 0;
+      G.hud.show(false);
+      const intro = $('intro');
+      intro.style.display = 'flex';
+      intro.style.opacity = 1;
+      const lines = [
+        'KESSLER DEEP RESEARCH FACILITY',
+        'SUBLEVEL 13 · 900 METERS UNDERGROUND',
+        '03:13 AM',
+        '',
+        'STASIS POWER FAILURE . . .',
+        'WAKING SUBJECTS: ' + (mode > 1 ? 'R-07 REYES, P-02 PARK' : 'R-07 REYES'),
+      ];
+      intro.innerHTML = '<div class="typed"></div><div class="skip">press any key to skip</div>';
+      G.introText = lines.join('\n');
+      LAB.Audio.startAmbience();
+      LAB.Audio.speak('Stasis power failure. Waking subjects.');
+      // render one frame for the shaders to warm up
+      render();
+    }, 50);
+  }
+
+  function introUpdate(dt) {
+    G.introT += dt;
+    const n = Math.floor(G.introT * 28);
+    const el = document.querySelector('#intro .typed');
+    if (el) el.textContent = G.introText.slice(0, n);
+    const keyed = LAB.Input.keys.size > 0 || G.players.some((p, i) => { const s = LAB.Input.read(i); return s.usePressed || s.attackPressed; });
+    if ((G.introT > 1 && keyed) || G.introT > 10) {
+      G.state = 'play';
+      $('intro').style.transition = 'opacity 2s';
+      $('intro').style.opacity = 0;
+      setTimeout(() => { $('intro').style.display = 'none'; $('intro').style.transition = ''; }, 2000);
+      G.hud.show(true);
+      G.message(null, G.mode > 1 ? 'You both wake up in the dark... Stick together.' : 'You wake up in the dark... alone.', 5);
+      LAB.Audio.thud(0.6, 0);
+    }
+    G.players.forEach((p) => p.placeCamera(dt, G.time, 1.62));
+    LAB.World.update(dt, G.time, G);
+  }
+
+  function pause() {
+    G.state = 'paused';
+    $('pause').style.display = 'flex';
+    if (document.pointerLockElement) document.exitPointerLock();
+    G.pauseLock = 0.3;
+    LAB.Input.keys.delete('Escape'); LAB.Input.keys.delete('KeyP');
+  }
+  function pauseUpdate() {
+    G.pauseLock -= 1 / 60;
+    const i0 = LAB.Input.read(0), i1 = LAB.Input.read(1);
+    if (G.pauseLock > 0) return;
+    if (LAB.Input.isDown('Escape') || LAB.Input.isDown('KeyP') || LAB.Input.isDown('Enter') || i0.pausePressed || i1.pausePressed || i0.usePressed || i1.usePressed) resume();
+    if (LAB.Input.isDown('KeyQ') || LAB.Input.isDown('Backspace')) { $('pause').style.display = 'none'; toTitle(); }
+  }
+  function resume() {
+    G.state = 'play';
+    $('pause').style.display = 'none';
+    LAB.Input.keys.clear();
+    last = performance.now();
+  }
+  $('resumeBtn').onclick = resume;
+  $('quitBtn').onclick = () => { $('pause').style.display = 'none'; toTitle(); };
+
+  function toTitle() {
+    LAB.Audio.stopAll();
+    try { speechSynthesis.cancel(); } catch (e) { /* */ }
+    $('end').style.display = 'none';
+    $('title').style.display = 'flex';
+    G.hud.show(false);
+    G.state = 'title';
+    menu.lockT = 0.4;
+    drawMenu();
+  }
+
+  // P1 can click to use the mouse
+  $('game').addEventListener('click', () => {
+    if (G.state === 'play' && !document.pointerLockElement) { try { $('game').requestPointerLock(); } catch (e) { /* */ } }
+  });
+
+  function resize() {
+    renderer.setSize(window.innerWidth, window.innerHeight, false);
+    G.hud.resize();
+  }
+  window.addEventListener('resize', resize);
+  LAB.Input.onAnyPress(() => LAB.Audio.init());
+
+  // test helpers (for the ?debug URL)
+  G.debug = { newGame, startIntro, powerOn, finish, render, update: (dt) => update(dt) };
+
+  drawMenu();
+  resize();
+  G.hud.show(false);
+  requestAnimationFrame(frame);
+  if (params.has('solo') || params.has('duo')) startIntro(params.has('solo') ? 1 : 2);
+})();

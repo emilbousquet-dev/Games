@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LAB 13</title>
+<style>
+  :root {
+    --blood: #8a0000;
+    --blood-bright: #d01010;
+    --ink: #d8d4c8;
+    --dim: #7a766c;
+    --bg: #000;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; font-family: "Courier New", Courier, monospace; user-select: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+  .half { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+  .half::after { /* dark corners */
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.75) 100%);
+  }
+  .bloodfx { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; }
+  .lowhp { position: absolute; inset: 0; z-index: 1; opacity: 0; background: radial-gradient(ellipse at center, rgba(120,0,0,0) 35%, rgba(150,0,0,0.9) 100%); }
+  .flashfx { position: absolute; inset: 0; z-index: 5; opacity: 0; }
+  .stats { position: absolute; left: 16px; bottom: 16px; width: min(240px, 42%); z-index: 3; }
+  .pname { font-weight: bold; font-size: 13px; letter-spacing: 1px; margin-bottom: 6px; text-shadow: 0 0 6px #000; }
+  .p1 .pname { color: #ff9a50; } .p2 .pname { color: #6ab0ff; }
+  .bar { position: relative; height: 14px; background: rgba(20,20,20,0.7); border: 1px solid rgba(255,255,255,0.25); margin-bottom: 4px; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; transition: width 0.2s; }
+  .bar b { position: absolute; left: 6px; top: 0; font-size: 10px; line-height: 14px; font-weight: normal; letter-spacing: 1px; text-shadow: 0 0 3px #000; }
+  .hp i { background: linear-gradient(90deg, #600, #c01818); }
+  .bat i { background: linear-gradient(90deg, #7a6400, #f0d040); }
+  .bat.off i { background: #555; }
+  .sta { height: 5px; border: none; } .sta i { background: #4a8ad0; }
+  .inv { margin-top: 6px; font-size: 11px; }
+  .inv span { display: inline-block; padding: 2px 6px; margin-right: 4px; border: 1px solid; }
+  .inv .k { color: #ff5050; } .inv .f { color: #ffa030; }
+  .obj { position: absolute; top: 14px; left: 16px; right: 16px; font-size: 14px; font-weight: bold; color: #e8e0c0; text-shadow: 0 0 8px #000, 0 0 2px #000; z-index: 3; }
+  .zone { position: absolute; top: 22%; left: 0; right: 0; text-align: center; font-size: 20px; letter-spacing: 6px; color: #c8c0a8; opacity: 0; transition: opacity 1s; text-shadow: 0 0 10px #000; z-index: 3; }
+  .dot { position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px; background: rgba(255,255,255,0.45); border-radius: 50%; z-index: 3; }
+  .prompt { position: absolute; top: 58%; left: 0; right: 0; text-align: center; font-size: 15px; font-weight: bold; color: #fff; text-shadow: 0 0 6px #000, 0 0 2px #000; z-index: 3; opacity: 0; transition: opacity 0.2s; padding: 0 10px; }
+  .msg { position: absolute; bottom: 22%; left: 0; right: 0; text-align: center; font-size: 17px; font-weight: bold; color: #ff4a3a; text-shadow: 0 0 8px #000, 0 0 2px #000; z-index: 3; opacity: 0; transition: opacity 0.5s; padding: 0 10px; }
+  .note { display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-1deg); width: min(420px, 88%); max-height: 80%; overflow: auto;
+          background: #d8d0b4; color: #201a10; padding: 18px 22px; z-index: 6; box-shadow: 0 0 40px #000; font-family: "Courier New", monospace;
+          background-image: radial-gradient(circle at 85% 80%, rgba(110,0,0,0.55) 0 22px, transparent 24px), radial-gradient(circle at 10% 10%, rgba(80,60,20,0.25) 0 40px, transparent 42px); }
+  .note h3 { margin: 0 0 10px; font-size: 15px; border-bottom: 1px solid #6a604a; padding-bottom: 6px; }
+  .note p { margin: 0; white-space: pre-wrap; font-size: 14px; line-height: 1.45; }
+  .note small { display: block; margin-top: 12px; color: #6a604a; font-size: 11px; }
+  .downed { display: none; position: absolute; inset: 0; z-index: 4; flex-direction: column; align-items: center; justify-content: center; background: rgba(90,0,0,0.45); }
+  .downed h2 { color: #ff2020; font-size: 34px; margin: 0 0 8px; letter-spacing: 4px; text-shadow: 0 0 20px #000; }
+  .downed p { margin: 0 20px 12px; text-align: center; }
+  .rev { width: 200px; height: 10px; border: 1px solid #fff; } .rev i { display: block; height: 100%; background: #40ff60; width: 0; }
+  #divider { position: fixed; top: 0; bottom: 0; left: 50%; width: 3px; margin-left: -1px; background: linear-gradient(#300, #800, #300); display: none; z-index: 7; pointer-events: none; }
+  #grain { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0.55; mix-blend-mode: overlay; image-rendering: pixelated; z-index: 8; }
+  #scan { position: fixed; inset: 0; pointer-events: none; z-index: 8; background: repeating-linear-gradient(rgba(0,0,0,0) 0 2px, rgba(0,0,0,0.12) 2px 3px); }
+
+  /* ---------- screens ---------- */
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; z-index: 20; padding: 16px; }
+  #title { display: flex; background: radial-gradient(ellipse at 50% 40%, #1a0404 0%, #000 70%); overflow: auto; }
+  #title h1 { font-family: Impact, "Arial Black", sans-serif; font-size: clamp(64px, 16vw, 170px); margin: 0; letter-spacing: 8px; color: var(--blood-bright);
+              text-shadow: 0 0 30px rgba(255,0,0,0.5), 4px 0 #300, -3px 0 rgba(0,200,255,0.25); animation: glitch 4s infinite; position: relative; line-height: 1; }
+  #title h1::after { content: ''; position: absolute; left: 12%; right: 12%; top: 88%; height: 60px;
+                     background: repeating-linear-gradient(90deg, var(--blood) 0 6px, transparent 6px 22px, var(--blood) 22px 26px, transparent 26px 47px);
+                     -webkit-mask: linear-gradient(#000, transparent); mask: linear-gradient(#000, transparent); animation: drip 6s ease-in infinite; transform-origin: top; }
+  @keyframes drip { 0% { transform: scaleY(0.2); } 70% { transform: scaleY(1); } 100% { transform: scaleY(1); opacity: 0.2; } }
+  @keyframes glitch { 0%, 92%, 100% { transform: none; } 93% { transform: translate(-6px, 2px) skewX(10deg); } 95% { transform: translate(5px, -2px); filter: hue-rotate(90deg); } 97% { transform: translate(-2px, 0) skewX(-6deg); } }
+  .sub { color: var(--dim); letter-spacing: 6px; margin: 18px 0 30px; font-size: 14px; }
+  #menu { display: flex; flex-direction: column; gap: 10px; min-width: min(420px, 90vw); }
+  .mi { padding: 12px 20px; border: 1px solid #3a1010; background: rgba(30,0,0,0.5); font-size: 18px; letter-spacing: 3px; cursor: pointer; transition: all 0.15s; }
+  .mi.sel { border-color: var(--blood-bright); background: rgba(120,0,0,0.5); color: #fff; box-shadow: 0 0 20px rgba(200,0,0,0.4); }
+  .mi.sel::before { content: '▶ '; }
+  #padinfo { margin-top: 18px; color: var(--dim); font-size: 13px; display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
+  .warn { margin-top: 22px; color: #6a2020; font-size: 12px; letter-spacing: 1px; }
+  .hint { margin-top: 8px; color: var(--dim); font-size: 12px; }
+  #controls { display: none; margin-top: 18px; text-align: left; font-size: 13px; background: rgba(0,0,0,0.6); border: 1px solid #3a1010; padding: 14px 18px; max-width: 760px; }
+  #controls table { border-collapse: collapse; width: 100%; }
+  #controls td, #controls th { padding: 3px 10px; border-bottom: 1px solid #2a1010; }
+  #controls th { color: var(--blood-bright); text-align: left; }
+  kbd { background: #222; border: 1px solid #555; border-radius: 3px; padding: 0 5px; font-family: inherit; }
+
+  #intro { background: #000; z-index: 15; }
+  #intro .typed { white-space: pre; font-size: clamp(14px, 2.4vw, 22px); line-height: 1.8; color: #b8b0a0; letter-spacing: 2px; text-align: left; }
+  #intro .skip { position: absolute; bottom: 24px; color: #444; font-size: 12px; }
+  #loading { background: #000; z-index: 16; font-size: 18px; letter-spacing: 4px; color: #6a1010; }
+  #pause { background: rgba(0,0,0,0.8); z-index: 18; }
+  #pause h2 { font-size: 48px; color: var(--blood-bright); letter-spacing: 8px; margin: 0 0 20px; }
+  #pause button { font: inherit; font-size: 18px; letter-spacing: 3px; background: rgba(60,0,0,0.6); color: var(--ink); border: 1px solid var(--blood); padding: 10px 26px; margin: 6px; cursor: pointer; pointer-events: auto; }
+  #end { z-index: 19; }
+  #end.dead { background: radial-gradient(ellipse at center, rgba(90,0,0,0.85), #000 75%); }
+  #end.win { background: radial-gradient(ellipse at center, rgba(10,20,30,0.9), #000 75%); }
+  #end h1 { font-family: Impact, "Arial Black", sans-serif; font-size: clamp(48px, 11vw, 120px); margin: 0 0 16px; color: var(--blood-bright); letter-spacing: 6px; text-shadow: 0 0 30px #f00; line-height: 1.05; }
+  #end.win h1 { color: #d8e8f0; text-shadow: 0 0 30px #4af; }
+  .endstats { color: #c8c0a8; letter-spacing: 2px; margin: 10px 0 20px; font-size: 14px; }
+  .twist { color: #b0a898; line-height: 1.6; } .twist b { color: #ff3030; font-size: 20px; }
+  .blink { animation: blink 1.2s infinite; margin-top: 24px; color: var(--dim); }
+  @keyframes blink { 50% { opacity: 0.2; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="hud"></div>
+<div id="divider"></div>
+<canvas id="grain"></canvas>
+<div id="scan"></div>
+
+<div id="title" class="screen">
+  <h1>LAB 13</h1>
+  <div class="sub">A CO-OP SURVIVAL HORROR · ESCAPE TOGETHER</div>
+  <div id="menu"></div>
+  <div id="padinfo"></div>
+  <div class="hint">Arrows / W S to choose · ENTER, SPACE or (A) to start · Press a button on a controller to connect it</div>
+  <div id="controls">
+    <table>
+      <tr><th></th><th>PLAYER 1</th><th>PLAYER 2</th><th>🎮 CONTROLLER</th></tr>
+      <tr><td>Walk</td><td><kbd>W</kbd> <kbd>S</kbd></td><td><kbd>↑</kbd> <kbd>↓</kbd></td><td>Left stick</td></tr>
+      <tr><td>Turn</td><td><kbd>A</kbd> <kbd>D</kbd> (or mouse: click the game)</td><td><kbd>←</kbd> <kbd>→</kbd></td><td>Right stick</td></tr>
+      <tr><td>Side step</td><td><kbd>Q</kbd> <kbd>E</kbd></td><td><kbd>,</kbd> <kbd>.</kbd></td><td>Left stick</td></tr>
+      <tr><td>Look up/down</td><td><kbd>Z</kbd> <kbd>X</kbd></td><td><kbd>'</kbd> <kbd>;</kbd></td><td>Right stick</td></tr>
+      <tr><td>Run</td><td><kbd>Left Shift</kbd></td><td><kbd>Right Shift</kbd> / <kbd>M</kbd></td><td>LT</td></tr>
+      <tr><td>Flashlight</td><td><kbd>F</kbd></td><td><kbd>L</kbd></td><td>RB / Y</td></tr>
+      <tr><td>Hit (wrench)</td><td><kbd>Space</kbd></td><td><kbd>Enter</kbd></td><td>RT / X</td></tr>
+      <tr><td>Use / Revive</td><td><kbd>R</kbd></td><td><kbd>/</kbd> or <kbd>K</kbd></td><td>A</td></tr>
+      <tr><td>Pause</td><td colspan="2"><kbd>Esc</kbd> or <kbd>P</kbd></td><td>Start</td></tr>
+    </table>
+    <p>1 PLAYER: you can use either side of the keyboard, or a controller.<br>
+    TIP: Shine your flashlight at the tall one. It hates the light.</p>
+  </div>
+  <div class="warn">⚠ Contains blood, aliens and a LOT of jump scares. Best played in the dark with headphones.</div>
+</div>
+
+<div id="loading" class="screen">WAKING UP...</div>
+<div id="intro" class="screen"></div>
+<div id="pause" class="screen"><h2>PAUSED</h2><div><button id="resumeBtn">RESUME</button><button id="quitBtn">QUIT</button></div><p class="hint">ENTER / Start to resume · Q to quit</p></div>
+<div id="end" class="screen"></div>
+
+<script src="lib/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/map.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/models.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/world.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/player.js"></script>
+<script src="js/aliens.js"></script>
+<script src="js/scares.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

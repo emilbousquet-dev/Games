@@ -1,0 +1,52 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>LAB 13 — Model Viewer</title>
+<style>body{margin:0;background:#111;color:#ccc;font-family:monospace;overflow:hidden}#l{position:fixed;left:10px;top:10px;z-index:2}canvas{display:block}</style></head>
+<body><div id="l">LAB 13 model viewer — drag to spin · ?m=name to show one model</div>
+<script src="../lib/three.min.js"></script>
+<script src="../js/util.js"></script>
+<script src="../js/map.js"></script>
+<script src="../js/textures.js"></script>
+<script src="../js/models.js"></script>
+<script>
+const Mo = LAB.Models, U = LAB.U;
+const rnd = U.seeded(7);
+const list = {
+  crawler: () => Mo.crawler(), stalker: () => Mo.stalker(), hanger: () => Mo.hanger(), face: () => { const f = Mo.scareFace(); f.position.y = 1.2; const g = new THREE.Group(); g.add(f); return g; },
+  reyes: () => Mo.human('hazmat'), park: () => Mo.human('guard'), scientist: () => Mo.human('coat'), corpse: () => Mo.corpse('deadcoat', rnd),
+  cryoPod: () => Mo.cryoPod(false, true, rnd), cryoBroken: () => Mo.cryoPod(true, false, rnd), tank: () => Mo.specimenTank(false, rnd), tankCracked: () => Mo.specimenTank(true, rnd),
+  labTable: () => Mo.labTable(rnd), desk: () => Mo.desk(rnd, 0), serverRack: () => Mo.serverRack(rnd), crates: () => Mo.crates(rnd),
+  barrels: () => Mo.barrels(rnd), shelf: () => Mo.shelf(rnd), morgueBed: () => Mo.morgueBed(rnd), generator: () => Mo.generator(),
+  door: () => Mo.door('D'), lockers: () => Mo.lockers(rnd), cabinet: () => Mo.cabinet(rnd), cart: () => Mo.cart(rnd),
+  bodyBag: () => Mo.bodyBag(rnd), flesh: () => Mo.fleshGrowth(rnd), elevator: () => Mo.elevator(), items: () => { const g = new THREE.Group(); 'KFAMN'.split('').forEach((t, i) => { const m = Mo.item(t); m.position.set(i * 0.6 - 1.2, 1, 0); g.add(m); }); return g; },
+};
+const only = new URLSearchParams(location.search).get('m');
+const names = only ? only.split(',') : Object.keys(list);
+const r = new THREE.WebGLRenderer({ antialias: true });
+r.setSize(innerWidth, innerHeight); r.toneMapping = THREE.ACESFilmicToneMapping; r.shadowMap.enabled = true;
+document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0x3a3d42);
+s.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.6));
+const d = new THREE.DirectionalLight(0xffffff, 2.2); d.position.set(5, 10, 8); d.castShadow = true; s.add(d);
+const cols = Math.ceil(Math.sqrt(names.length * 1.6)), sp = 3.6;
+names.forEach((n, i) => {
+  const m = list[n](); m.traverse(o => o.layers && o.layers.set(0));
+  const x = (i % cols) * sp, z = Math.floor(i / cols) * sp * 1.1;
+  m.position.set(x, 0, z); s.add(m);
+  const lab = document.createElement('canvas'); lab.width = 256; lab.height = 48;
+  const g = lab.getContext('2d'); g.fillStyle = '#fff'; g.font = '28px monospace'; g.fillText(n, 4, 34);
+  const sp2 = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(lab) })); sp2.scale.set(2, 0.4, 1); sp2.position.set(x, 3.4, z); s.add(sp2);
+});
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x55585c })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; s.add(floor);
+const rows = Math.ceil(names.length / cols);
+const cx = (cols - 1) * sp / 2, cz = (rows - 1) * sp * 1.1 / 2;
+const cam = new THREE.PerspectiveCamera(only ? 35 : 40, innerWidth / innerHeight, 0.1, 300);
+let ang = +(new URLSearchParams(location.search).get('a') || 0.5), dist = only && names.length === 1 ? 5 : Math.max(cols, rows) * sp * 1.25, h = +(new URLSearchParams(location.search).get('h') || 0.55);
+let ly = 0.5;
+if (only && names.length === 1) { const b = new THREE.Box3().setFromObject(s.children.find(o => o.isGroup)); const sz = b.getSize(new THREE.Vector3()); ly = (b.min.y + b.max.y) / 2; dist = Math.max(sz.x, sz.y, sz.z) * 2.2 + 0.5; }
+function place() { cam.position.set(cx + Math.sin(ang) * dist, ly + dist * h, cz + Math.cos(ang) * dist); cam.lookAt(cx, ly, cz); }
+place();
+let drag = null; addEventListener('mousedown', e => drag = e.clientX); addEventListener('mouseup', () => drag = null);
+addEventListener('mousemove', e => { if (drag !== null) { ang -= (e.clientX - drag) * 0.01; drag = e.clientX; place(); } });
+addEventListener('wheel', e => { dist *= e.deltaY > 0 ? 1.1 : 0.9; place(); });
+(function loop() { requestAnimationFrame(loop); r.render(s, cam); })();
+</script></body></html>
