@@ -2,6 +2,7 @@
 //  SPARE PARTS — ARMS AND LEGS THAT COME OFF
 //  A limb is either stuck on a robot, flying through the air,
 //  lying on the floor, or crawling back home to its owner.
+//  A limb always listens to its OWNER, even on someone else!
 // ============================================================
 window.SP = window.SP || {};
 
@@ -53,6 +54,10 @@ SP.Parts = (function () {
       type, owner, part, holder, wearer: null, slot: -1, state: 'worn', age: 0,
       pos: new THREE.Vector3(), vel: new THREE.Vector3(), halfW: 0.2, height: 0.3, onGround: false, landSpeed: 0,
       spin: 0, thrower: null,
+      wornTime: 0,       // how long it has been stuck on its wearer
+      action: null,      // a slap or kick in progress
+      grabbing: false,   // holding on (the wearer is stuck!)
+      pulling: false,    // dragging the wearer toward the owner
     };
     limbs.push(limb);
     return limb;
@@ -70,6 +75,9 @@ SP.Parts = (function () {
     limb.wearer = robot;
     limb.slot = slot;
     limb.state = 'worn';
+    limb.wornTime = 0;
+    limb.action = null;
+    limb.grabbing = limb.pulling = false;
     scene.remove(limb.holder);
     limb.part.position.set(...SLOTS[limb.type][slot]);
     limb.part.rotation.set(0, 0, limb.type === 'arm' ? Math.sign(SLOTS.arm[slot][0]) * 0.3 : 0);
@@ -102,11 +110,11 @@ SP.Parts = (function () {
     limb.age = 0;
   }
 
-  // throw one of your arms or legs forward (the extra ones go first)
+  // throw one of your OWN arms or legs forward (you can't throw away your friend's)
   function throwLimb(robot, type) {
     const worn = list(robot, type);
     let slot = -1;
-    for (let i = MAX - 1; i >= 0; i--) if (worn[i]) { slot = i; break; }
+    for (let i = MAX - 1; i >= 0; i--) if (worn[i] && worn[i].owner === robot) { slot = i; break; }
     if (slot < 0) return false;
     const limb = worn[slot];
     detach(limb);
@@ -129,6 +137,76 @@ SP.Parts = (function () {
     }
   }
 
+  // your limbs that someone else is wearing right now
+  function lent(owner, type) {
+    return limbs.filter((l) => l.owner === owner && l.type === type && l.wearer && l.wearer !== owner);
+  }
+
+  // start a slap or a kick with a limb your friend is wearing
+  function startAction(limb, type) {
+    if (limb.action) return;
+    limb.action = { type, t: 0, done: false, self: false };
+  }
+
+  // is this spot right in front of a robot?
+  function inFront(robot, p, reach = 0.95) {
+    const cx = robot.pos.x + Math.sin(robot.facing) * reach;
+    const cz = robot.pos.z + Math.cos(robot.facing) * reach;
+    return Math.hypot(p.x - cx, p.z - cz) < 0.85 && p.y > robot.pos.y - 0.6 && p.y < robot.pos.y + 2.2;
+  }
+
+  // the moment a slap or kick lands: hit whatever is in front
+  function strike(limb, robots) {
+    const w = limb.wearer;
+    const dirX = Math.sin(w.facing), dirZ = Math.cos(w.facing);
+    const power = limb.type === 'leg' ? 10 : 8;
+    let hitSomething = false;
+    for (const r of robots) {
+      if (r === w || !inFront(w, r.pos)) continue;
+      r.vel.x += dirX * power; r.vel.z += dirZ * power; r.vel.y = 6;
+      r.dizzy = 1.3;
+      hitSomething = true;
+    }
+    for (const l of limbs) {
+      if (l.state === 'worn' || !inFront(w, l.pos)) continue;
+      l.vel.set(dirX * power * 1.2, 6, dirZ * power * 1.2);
+      l.state = 'flying'; l.spin = 15; l.thrower = w; l.age = 0;
+      hitSomething = true;
+    }
+    if (limb.type === 'leg') {
+      // a kick makes the wearer hop forward too
+      w.vel.x += dirX * 4; w.vel.z += dirZ * 4;
+      if (w.onGround) w.vel.y = 5;
+    } else if (!hitSomething) {
+      // nothing to slap... so it slaps its own wearer in the face!
+      limb.action.self = true;
+      w.dizzy = 0.9;
+      w.vel.x -= dirX * 3; w.vel.z -= dirZ * 3;
+    }
+  }
+
+  // things your limbs do to the robot wearing them, before it moves.
+  // returns true if the robot is being held in place
+  function beforeStep(robot, dt) {
+    let held = false;
+    for (const limb of [...robot.arms, ...robot.legs]) {
+      if (!limb || limb.owner === robot) continue;
+      if (limb.grabbing) held = true;
+      if (limb.pulling) {
+        const to = limb.owner.pos.clone().sub(robot.pos);
+        to.y = 0;
+        if (to.length() > 1.5) {
+          to.normalize();
+          robot.vel.x = to.x * 6;
+          robot.vel.z = to.z * 6;
+          robot.facing = Math.atan2(to.x, to.z);
+        }
+      }
+    }
+    if (held) robot.vel.set(0, 0, 0);
+    return held;
+  }
+
   // is the limb touching this robot?
   function touching(limb, robot, extra = 0) {
     const r = SP.Physics.bodyBox(robot);
@@ -140,7 +218,16 @@ SP.Parts = (function () {
 
   function update(dt, robots, solids) {
     for (const limb of limbs) {
-      if (limb.state === 'worn') continue;
+      if (limb.state === 'worn') {
+        limb.wornTime += dt;
+        const a = limb.action;
+        if (a) {
+          a.t += dt;
+          if (!a.done && a.t > 0.12) { a.done = true; strike(limb, robots); }
+          if (a.t > 0.4) limb.action = null;
+        }
+        continue;
+      }
       limb.age += dt;
       const owner = limb.owner;
 
@@ -196,5 +283,5 @@ SP.Parts = (function () {
     }
   }
 
-  return { init, createLimb, attach, throwLimb, recall, update, count, limbs, SLOTS };
+  return { init, createLimb, attach, throwLimb, recall, update, count, lent, startAction, beforeStep, limbs, SLOTS };
 })();

@@ -17,6 +17,7 @@ SP.Input = (function () {
   ];
   const pads = [null, null];   // which gamepad belongs to each player
   const prev = [{}, {}];       // buttons last frame (to find new presses)
+  const holdTime = [{}, {}];   // how long each button has been held down
 
   function init() {
     window.addEventListener('keydown', (e) => {
@@ -47,7 +48,7 @@ SP.Input = (function () {
   }
 
   // everything a player is pressing this frame
-  function read(i) {
+  function read(i, dt = 0) {
     const k = KEYMAP[i];
     const s = {
       x: (down(k.right) ? 1 : 0) - (down(k.left) ? 1 : 0),
@@ -72,6 +73,12 @@ SP.Input = (function () {
     // new presses (true only on the first frame)
     for (const name of ['jump', 'arm', 'leg', 'recall']) s[name + 'Pressed'] = s[name] && !prev[i][name];
     prev[i] = { jump: s.jump, arm: s.arm, leg: s.leg, recall: s.recall };
+    // hold timers: armHold = seconds held so far, armReleased = how long it was held when you let go
+    for (const name of ['arm', 'recall']) {
+      const h = holdTime[i];
+      if (s[name]) { h[name] = (h[name] || 0) + dt; s[name + 'Hold'] = h[name]; }
+      else { s[name + 'Hold'] = 0; s[name + 'Released'] = h[name] || 0; h[name] = 0; }
+    }
     return s;
   }
 

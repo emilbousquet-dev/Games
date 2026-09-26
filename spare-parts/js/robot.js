@@ -6,14 +6,18 @@
 window.SP = window.SP || {};
 
 SP.Robot = (function () {
-  // how you move with 0, 1, 2, 3 or 4 legs
+  // how fast you walk with 0, 1, 2, 3 or 4 legs
   const LEG_STATS = [
-    { speed: 1.8, jump: 5 },    // no legs: scoot on your bottom
-    { speed: 3.2, jump: 7.5 },  // one leg: pogo hop
-    { speed: 5, jump: 10 },     // normal
-    { speed: 5.3, jump: 13 },   // extra leg: big jump
-    { speed: 5.6, jump: 16 },   // 4 legs: SUPER JUMP
+    { speed: 1.8 },  // no legs: scoot on your bottom
+    { speed: 3.2 },  // one leg: pogo hop
+    { speed: 5 },    // normal
+    { speed: 5.3 },
+    { speed: 5.6 },
   ];
+  // how high you jump with 0, 1, 2, 3 or 4 legs pushing at the same time
+  const JUMP = [5, 7.5, 10, 13, 16];
+  // how long we wait for the other player to press jump too (seconds)
+  const JUMP_TOGETHER_TIME = 0.2;
   const LEG_LENGTH = 0.55;
 
   function mat(color, shiny = 0.1) {
@@ -145,8 +149,20 @@ SP.Robot = (function () {
     head.position.y = 1.55;
     squash.add(head);
 
+    // dizzy stars that spin around your head after a slap
+    const stars = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.09), new THREE.MeshBasicMaterial({ color: 0xffe14a }));
+      const a = (i / 3) * Math.PI * 2;
+      star.position.set(Math.cos(a) * 0.45, 0, Math.sin(a) * 0.45);
+      stars.add(star);
+    }
+    stars.position.y = 2.15;
+    stars.visible = false;
+    squash.add(stars);
+
     root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
-    return { root, squash, head, body, eyes, mouths: { smile, shocked }, propeller };
+    return { root, squash, head, body, eyes, mouths: { smile, shocked }, propeller, stars };
   }
 
   function create(scene, name, color, style, x, z) {
@@ -158,6 +174,7 @@ SP.Robot = (function () {
       halfW: 0.4, height: 1.75, onGround: false, landSpeed: 0,
       facing: 0, walkTime: 0, spawn: new THREE.Vector3(x, 0, z),
       squash: 0, squashVel: 0, blinkTimer: 2 + Math.random() * 3, time: Math.random() * 10,
+      index: 0, dizzy: 0, jumpers: null, jumpWait: 0,
     };
     // everyone starts with 2 arms and 2 legs
     for (let i = 0; i < 2; i++) {
@@ -177,23 +194,55 @@ SP.Robot = (function () {
     r.height = legs ? 1.75 : 1.3;
   }
 
-  // controls → speed and direction
-  function control(r, input, dt) {
-    const tx = input.x * r.stats.speed, tz = input.z * r.stats.speed;
-    const grip = r.onGround ? 14 : 5; // less control in the air
+  // controls → speed and direction.
+  // Every leg listens to its OWNER, so if you wear your friend's legs,
+  // your friend steers them! inputs = what both players are pressing.
+  function control(r, inputs, dt) {
+    const legs = r.legs.filter(Boolean);
+    const me = inputs[r.index];
+    let wx = me.x, wz = me.z;
+    if (legs.length) {
+      wx = 0; wz = 0;
+      for (const leg of legs) { wx += inputs[leg.owner.index].x; wz += inputs[leg.owner.index].z; }
+      wx /= legs.length; wz /= legs.length;
+    }
+    if (r.dizzy > 0) { wx *= 0.4; wz *= 0.4; r.dizzy -= dt; }
+
+    const tx = wx * r.stats.speed, tz = wz * r.stats.speed;
+    const grip = r.onGround ? (r.dizzy > 0 ? 2 : 14) : 5; // less control in the air (or when dizzy, so slaps send you sliding)
     r.vel.x += (tx - r.vel.x) * Math.min(1, grip * dt);
     r.vel.z += (tz - r.vel.z) * Math.min(1, grip * dt);
-    const moving = Math.hypot(input.x, input.z) > 0.1;
-    const legs = SP.Parts.count(r, 'leg');
-    if (input.jumpPressed && r.onGround) {
-      r.vel.y = r.stats.jump;
-      r.squashVel += 9; // stretch up when jumping
-    } else if (moving && r.onGround && legs < 2) {
+    const moving = Math.hypot(wx, wz) > 0.1;
+
+    // jumping: each leg only pushes if its owner presses jump.
+    // If the legs belong to both players, we wait a moment for the other one to press too.
+    const owners = [...new Set(legs.map((l) => l.owner))];
+    const pressers = legs.length ? owners.filter((o) => inputs[o.index].jumpPressed) : (me.jumpPressed ? [r] : []);
+    if (pressers.length && r.onGround && !r.jumpers) {
+      r.jumpers = new Set(pressers);
+      r.jumpWait = owners.length > 1 ? JUMP_TOGETHER_TIME : 0;
+    } else if (r.jumpers) {
+      pressers.forEach((o) => r.jumpers.add(o));
+    }
+    let jumped = false;
+    if (r.jumpers) {
+      r.jumpWait -= dt;
+      if (r.jumpWait <= 0 || r.jumpers.size >= owners.length) {
+        const pushing = legs.filter((l) => r.jumpers.has(l.owner)).length;
+        if (r.onGround) {
+          r.vel.y = JUMP[pushing];
+          r.squashVel += 9; // stretch up when jumping
+          jumped = true;
+        }
+        r.jumpers = null;
+      }
+    }
+    if (!jumped && !r.jumpers && moving && r.onGround && legs.length < 2) {
       r.vel.y = legs ? 4.5 : 2.5; // one leg: boing boing. no legs: bum hops
       r.squashVel += 4;
     }
     if (moving) {
-      const want = Math.atan2(input.x, input.z);
+      const want = Math.atan2(wx, wz);
       r.facing += angleDiff(want, r.facing) * Math.min(1, 12 * dt);
     }
   }
@@ -245,12 +294,26 @@ SP.Robot = (function () {
     r.arms.forEach((limb, i) => {
       if (!limb) return;
       const side = i % 2 ? 1 : -1;
-      limb.part.rotation.x = side * wob * 0.9 + (i > 1 ? Math.sin(r.time * 9 + i) * 0.5 : 0); // extra arms wiggle
-      limb.part.rotation.z = side * (0.3 + flap);
+      let rx = side * wob * 0.9 + (i > 1 ? Math.sin(r.time * 9 + i) * 0.5 : 0); // extra arms wiggle
+      let rz = side * (0.3 + flap);
+      const a = limb.action;
+      if (a) {
+        const swing = Math.sin(Math.min(1, a.t / 0.4) * Math.PI);
+        if (a.self) { rx = -2.3 * swing; rz = -side * 0.9 * swing; } // slap your own face!
+        else { rx = -2.2 * swing; rz = side * 0.2; }                 // big slap forward
+      } else if (limb.grabbing) {
+        rx = -1.5 + Math.sin(r.time * 30) * 0.05; rz = side * 0.05;   // holding on tight
+      } else if (limb.pulling) {
+        rx = -1.4 + Math.sin(r.time * 12) * 0.25; rz = side * 0.1;    // being dragged
+      }
+      limb.part.rotation.x = rx;
+      limb.part.rotation.z = rz;
     });
-    // legs step forward and back
+    // legs step forward and back (and kick!)
     r.legs.forEach((limb, i) => {
-      if (limb) limb.part.rotation.x = (i % 2 ? 1 : -1) * wob * 0.6;
+      if (!limb) return;
+      limb.part.rotation.x = (i % 2 ? 1 : -1) * wob * 0.6;
+      if (limb.action) limb.part.rotation.x = -1.4 * Math.sin(Math.min(1, limb.action.t / 0.4) * Math.PI);
     });
 
     // squash when landing, stretch when jumping (a springy wobble)
@@ -270,6 +333,14 @@ SP.Robot = (function () {
     m.head.rotation.y += (look - m.head.rotation.y) * Math.min(1, 5 * dt);
     m.head.rotation.z = -wob * 0.18;
 
+    // dizzy: head wobbles around and stars spin
+    m.stars.visible = r.dizzy > 0;
+    if (r.dizzy > 0) {
+      m.head.rotation.y = Math.sin(r.time * 14) * 0.7;
+      m.head.rotation.z = Math.cos(r.time * 11) * 0.25;
+      m.stars.rotation.y += dt * 8;
+    }
+
     // blink every few seconds
     r.blinkTimer -= dt;
     const blink = r.blinkTimer < 0.12;
@@ -278,7 +349,7 @@ SP.Robot = (function () {
     wobbleEyes(r, dt);
 
     // shocked face when falling fast
-    const scared = !r.onGround && r.vel.y < -7;
+    const scared = (!r.onGround && r.vel.y < -7) || r.dizzy > 0;
     m.mouths.smile.visible = !scared;
     m.mouths.shocked.visible = scared;
 
