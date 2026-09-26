@@ -17,7 +17,7 @@ const list = {
   labTable: () => Mo.labTable(rnd), desk: () => Mo.desk(rnd, 0), serverRack: () => Mo.serverRack(rnd), crates: () => Mo.crates(rnd),
   barrels: () => Mo.barrels(rnd), shelf: () => Mo.shelf(rnd), morgueBed: () => Mo.morgueBed(rnd), generator: () => Mo.generator(),
   door: () => Mo.door('D'), lockers: () => Mo.lockers(rnd), cabinet: () => Mo.cabinet(rnd), cart: () => Mo.cart(rnd),
-  bodyBag: () => Mo.bodyBag(rnd), flesh: () => Mo.fleshGrowth(rnd), elevator: () => Mo.elevator(), items: () => { const g = new THREE.Group(); 'KFAMN'.split('').forEach((t, i) => { const m = Mo.item(t); m.position.set(i * 0.6 - 1.2, 1, 0); g.add(m); }); return g; },
+  bodyBag: () => Mo.bodyBag(rnd), surgery: () => Mo.surgeryTable(rnd), cocoon: () => Mo.cocoon(rnd), vending: () => Mo.vendingMachine(rnd), monitors: () => Mo.monitorWall(rnd), window: () => Mo.windowPane(rnd), hole: () => Mo.wallHole(rnd), pillar: () => Mo.pillar(rnd), transformer: () => Mo.transformer(rnd), pipes: () => Mo.pipeCluster(rnd), breakTable: () => Mo.breakTable(rnd), flesh: () => Mo.fleshGrowth(rnd), elevator: () => Mo.elevator(), items: () => { const g = new THREE.Group(); 'KFAMN'.split('').forEach((t, i) => { const m = Mo.item(t); m.position.set(i * 0.6 - 1.2, 1, 0); g.add(m); }); return g; },
 };
 const only = new URLSearchParams(location.search).get('m');
 const names = only ? only.split(',') : Object.keys(list);

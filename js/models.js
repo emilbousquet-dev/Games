@@ -963,6 +963,180 @@ LAB.Models = (function () {
     return g;
   }
 
+  // ---------- more lab props ----------
+  function surgeryTable(rnd) {
+    const g = new THREE.Group();
+    cyl(g, 0.35, 0.45, 0.1, M.darkMetal(), 0, 0.05, 0);
+    cyl(g, 0.1, 0.12, 0.75, M.steel(), 0, 0.45, 0);
+    box(g, 0.7, 0.1, 2.0, M.steel(), 0, 0.85, 0);
+    box(g, 0.62, 0.06, 1.9, M.sheetBloody(), 0, 0.93, 0);
+    // restraint straps
+    for (const z of [-0.6, 0, 0.6]) box(g, 0.72, 0.03, 0.08, M.rubber(), 0, 0.97, z);
+    // broken straps + blood pool
+    box(g, 0.3, 0.02, 0.08, M.rubber(), 0.45, 0.6, 0.6, 0, 0, 1.2);
+    add(g, new THREE.CircleGeometry(0.8, 16), M.blood(), 0.2, 0.012, 0.3, -Math.PI / 2, 0, 0);
+    // surgical lamp hanging from the ceiling
+    const H = LAB.WALL_H;
+    cyl(g, 0.03, 0.03, 0.8, M.steel(), 0, H - 0.4, -0.3);
+    tube(g, new THREE.Vector3(0, H - 0.8, -0.3), new THREE.Vector3(0.4, H - 1.0, 0.2), 0.025, M.steel());
+    const lamp = pivot(g, 0.4, H - 1.05, 0.2);
+    lamp.rotation.x = 0.3;
+    cyl(lamp, 0.35, 0.2, 0.12, M.white(), 0, 0, 0);
+    for (let i = 0; i < 5; i++) { const a = i / 5 * 6.28; sph(lamp, 0.06, M.lampOff(), Math.cos(a) * 0.2, -0.07, Math.sin(a) * 0.2, 1, 0.5, 1, 8); }
+    // tool tray on a stand
+    cyl(g, 0.02, 0.02, 1.0, M.steel(), 0.8, 0.5, -0.6);
+    box(g, 0.5, 0.02, 0.35, M.steel(), 0.8, 1.0, -0.6);
+    for (let i = 0; i < 5; i++) box(g, 0.02, 0.01, U.rand(0.1, 0.2), M.steel(), 0.65 + i * 0.07, 1.015, -0.6, 0, U.rand(-0.3, 0.3), 0);
+    box(g, 0.08, 0.02, 0.08, M.bloodBright(), 0.95, 1.02, -0.5);
+    return g;
+  }
+
+  // a person wrapped in alien flesh, stuck to the wall (+z = away from wall)
+  function cocoon(rnd) {
+    const g = new THREE.Group();
+    const body = pivot(g, 0, 0, 0.25);
+    sph(body, 0.38, M.flesh(), 0, 1.25, 0, 1, 2.1, 0.85);
+    sph(body, 0.3, M.fleshWet(), 0, 0.5, 0.05, 1.2, 1.1, 0.9);
+    sph(body, 0.2, M.alienRed(), 0.12, 1.7, 0.1, 1, 1.2, 1);
+    // a face pushing through the flesh
+    sph(body, 0.12, M.skinDead(), -0.05, 1.72, 0.28, 0.9, 1.1, 0.6);
+    sph(body, 0.03, M.eyeBlack(), -0.1, 1.76, 0.36, 1, 1, 1, 6);
+    sph(body, 0.03, M.eyeBlack(), 0.0, 1.76, 0.36, 1, 1, 1, 6);
+    sph(body, 0.04, M.mouth(), -0.05, 1.65, 0.36, 1.2, 0.8, 0.5, 6);
+    // a hand reaching out
+    const arm = pivot(body, 0.25, 1.25, 0.2);
+    arm.rotation.set(-0.9, 0, -0.5);
+    box(arm, 0.08, 0.35, 0.08, M.skinDead(), 0, 0.15, 0);
+    for (let f = 0; f < 4; f++) box(arm, 0.015, 0.09, 0.015, M.skinDead(), -0.03 + f * 0.02, 0.37, 0.01);
+    // stringy flesh attaching it to wall and floor
+    for (let i = 0; i < 10; i++) {
+      const a = i / 10 * Math.PI * 2;
+      tube(g, new THREE.Vector3(Math.cos(a) * 0.3, 1.2 + Math.sin(a) * 0.8, 0.2), new THREE.Vector3(Math.cos(a) * 0.9, 1.2 + Math.sin(a) * 1.2, 0), 0.025, M.fleshWet(), 5);
+    }
+    add(g, new THREE.CircleGeometry(0.9, 14), M.goo(), 0, 0.012, 0.5, -Math.PI / 2, 0, 0);
+    return g;
+  }
+
+  function vendingMachine(rnd) {
+    const g = new THREE.Group();
+    const front = mat('vendFront', () => new THREE.MeshStandardMaterial({ map: T.vending(), emissive: 0xffffff, emissiveMap: T.vending(), emissiveIntensity: 0.55, roughness: 0.3 }));
+    box(g, 0.95, 1.9, 0.8, M.darkMetal(), 0, 0.95, 0);
+    add(g, new THREE.PlaneGeometry(0.85, 1.75), front, 0, 0.97, 0.402);
+    add(g, new THREE.PlaneGeometry(0.62, 1.2), M.glassCrack(), -0.08, 1.15, 0.41);
+    for (let i = 0; i < 3; i++) box(g, U.rand(0.08, 0.15), 0.04, 0.1, [M.yellow(), M.bloodBright(), M.white()][i], U.rand(-0.6, 0.6), 0.02, U.rand(0.5, 0.9), 0, rnd() * 3, 0); // spilled snacks
+    return g;
+  }
+
+  function monitorWall(rnd) {
+    const g = new THREE.Group();
+    box(g, 2.2, 0.8, 0.7, M.darkMetal(), 0, 0.4, 0); // desk console
+    box(g, 2.2, 0.05, 0.75, M.plastic(), 0, 0.82, 0.02);
+    for (let i = 0; i < 12; i++) box(g, 0.05, 0.03, 0.05, [M.ledGreen(), M.ledRed(), M.ledOrange()][i % 3], -0.9 + i * 0.16, 0.86, 0.25);
+    const screens = [];
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
+      const idx = r * 3 + c;
+      const sm = mat('staticM' + (idx % 6), () => new THREE.MeshStandardMaterial({ map: T.static(idx), emissive: 0xffffff, emissiveMap: T.static(idx), emissiveIntensity: 0.7, roughness: 0.2 }));
+      box(g, 0.66, 0.5, 0.35, M.rubber(), -0.7 + c * 0.7, 1.2 + r * 0.54, -0.1);
+      add(g, new THREE.PlaneGeometry(0.58, 0.42), sm, -0.7 + c * 0.7, 1.2 + r * 0.54, 0.076);
+    }
+    return g;
+  }
+
+  // a window in the wall; the glass is cracked and bloody
+  function windowPane(rnd) {
+    const g = new THREE.Group();
+    const C = LAB.CELL, H = LAB.WALL_H;
+    const wall = mat('winWall', () => new THREE.MeshStandardMaterial({ map: T.wallMetal(), roughness: 0.6, metalness: 0.4 }));
+    box(g, C, 1.0, C * 0.9, wall, 0, 0.5, 0);
+    box(g, C, H - 2.3, C * 0.9, wall, 0, (H + 2.3) / 2, 0);
+    box(g, C, 0.08, 0.2, M.darkMetal(), 0, 1.02, 0);
+    box(g, C, 0.08, 0.2, M.darkMetal(), 0, 2.28, 0);
+    for (const x of [-C / 2 + 0.05, 0, C / 2 - 0.05]) box(g, 0.08, 1.3, 0.2, M.darkMetal(), x, 1.65, 0);
+    add(g, new THREE.PlaneGeometry(C, 1.25), mat('winGlass', () => new THREE.MeshStandardMaterial({ color: 0x7fa8b8, roughness: 0.1, metalness: 0.3, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })), 0, 1.65, 0);
+    const hands = mat('winHands', () => new THREE.MeshStandardMaterial({ map: T.handprints(), transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+    if (rnd() < 0.7) add(g, new THREE.PlaneGeometry(1.1, 1.1), hands, U.rand(-0.6, 0.6), 1.6, 0.01);
+    return g;
+  }
+
+  // a hole torn through the wall (+z = out of the wall)
+  function wallHole(rnd) {
+    const g = new THREE.Group();
+    const ring = add(g, new THREE.TorusGeometry(0.7, 0.18, 8, 18), M.flesh(), 0, 1.0, 0.02);
+    ring.scale.set(1, 1.2, 0.6);
+    const dark = mat('holeDark', () => new THREE.MeshBasicMaterial({ color: 0x000000 }));
+    add(g, new THREE.CircleGeometry(0.72, 18), dark, 0, 1.0, 0.03).scale.set(1, 1.2, 1);
+    for (let i = 0; i < 9; i++) { // broken concrete bits + tendrils
+      const a = rnd() * 6.28;
+      box(g, U.rand(0.1, 0.3), U.rand(0.08, 0.2), U.rand(0.1, 0.25), M.plastic(), Math.cos(a) * U.rand(0.8, 1.3), 0.06, U.rand(0.2, 0.8), rnd(), rnd(), rnd());
+      tube(g, new THREE.Vector3(Math.cos(a) * 0.7, 1.0 + Math.sin(a) * 0.84, 0.05), new THREE.Vector3(Math.cos(a) * 1.1, 1.0 + Math.sin(a) * 1.1, 0.25), 0.03, M.fleshWet(), 5);
+    }
+    return g;
+  }
+
+  // big square support column
+  function pillar(rnd) {
+    const g = new THREE.Group();
+    const conc = mat('pillar', () => new THREE.MeshStandardMaterial({ map: T.wallConcrete(), roughness: 0.9 }));
+    box(g, 0.7, LAB.WALL_H, 0.7, conc, 0, LAB.WALL_H / 2, 0);
+    box(g, 0.8, 0.25, 0.8, M.yellow(), 0, 0.125, 0);
+    box(g, 0.78, 0.2, 0.78, M.darkMetal(), 0, LAB.WALL_H - 0.1, 0);
+    if (rnd() < 0.5) { // pipes running up the side
+      cyl(g, 0.06, 0.06, LAB.WALL_H, M.rust(), 0.42, LAB.WALL_H / 2, 0.2);
+      cyl(g, 0.04, 0.04, LAB.WALL_H, M.metal(), 0.42, LAB.WALL_H / 2, -0.1);
+    }
+    if (rnd() < 0.5) box(g, 0.3, 0.4, 0.12, M.darkMetal(), 0, 1.4, 0.4); // junction box
+    return g;
+  }
+  // big electrical transformer with warning lights
+  function transformer(rnd) {
+    const g = new THREE.Group();
+    box(g, 1.4, 1.8, 1.0, M.metal(), 0, 0.9, 0);
+    for (let i = 0; i < 6; i++) box(g, 1.42, 0.04, 1.02, M.darkMetal(), 0, 0.3 + i * 0.26, 0);
+    add(g, new THREE.PlaneGeometry(0.8, 0.25), signMat('DANGER', '#c8a818'), 0, 1.5, 0.51);
+    box(g, 0.08, 0.08, 0.02, rnd() < 0.5 ? M.ledRed() : M.ledOrange(), 0.5, 1.7, 0.51);
+    for (let i = 0; i < 3; i++) { // insulators on top
+      cyl(g, 0.08, 0.1, 0.35, M.white(), -0.45 + i * 0.45, 1.97, 0);
+      for (let k = 0; k < 3; k++) cyl(g, 0.12, 0.12, 0.03, M.white(), -0.45 + i * 0.45, 1.85 + k * 0.1, 0);
+      tube(g, new THREE.Vector3(-0.45 + i * 0.45, 2.15, 0), new THREE.Vector3(-0.45 + i * 0.45, LAB.WALL_H, 0.3), 0.02, M.cable(), 4);
+    }
+    return g;
+  }
+  // bundle of pipes from floor to ceiling with valves
+  function pipeCluster(rnd) {
+    const g = new THREE.Group();
+    const n = U.randInt(2, 4);
+    for (let i = 0; i < n; i++) {
+      const x = U.rand(-0.35, 0.35), z = U.rand(-0.35, 0.35), r = U.rand(0.07, 0.15);
+      const m = rnd() < 0.5 ? M.rust() : M.metal();
+      cyl(g, r, r, LAB.WALL_H, m, x, LAB.WALL_H / 2, z);
+      cyl(g, r + 0.03, r + 0.03, 0.08, M.darkMetal(), x, U.rand(0.4, 2.6), z);
+      if (i === 0) { // valve wheel
+        const v = add(g, new THREE.TorusGeometry(0.15, 0.02, 6, 14), M.bloodBright(), x, 1.3, z + r + 0.1);
+        box(g, 0.02, 0.28, 0.02, M.bloodBright(), x, 1.3, z + r + 0.1);
+      }
+    }
+    return g;
+  }
+  // round table with chairs (break room)
+  function breakTable(rnd) {
+    const g = new THREE.Group();
+    cyl(g, 0.6, 0.6, 0.04, M.white(), 0, 0.75, 0, 0, 0, 0, 20);
+    cyl(g, 0.05, 0.05, 0.75, M.steel(), 0, 0.37, 0);
+    cyl(g, 0.3, 0.3, 0.03, M.steel(), 0, 0.02, 0);
+    cyl(g, 0.045, 0.04, 0.1, M.white(), 0.2, 0.82, 0.1); // mug
+    add(g, new THREE.PlaneGeometry(0.3, 0.3), M.paper(), -0.2, 0.772, -0.1, -Math.PI / 2, 0, 0.5);
+    for (let i = 0; i < 3; i++) {
+      const a = i * 2.1 + rnd();
+      const ch = pivot(g, Math.cos(a) * 0.85, 0, Math.sin(a) * 0.85);
+      ch.rotation.y = -a - Math.PI / 2;
+      if (rnd() < 0.3) { ch.rotation.z = Math.PI / 2; ch.position.y = 0.25; }
+      box(ch, 0.42, 0.05, 0.42, M.chair(), 0, 0.45, 0);
+      box(ch, 0.42, 0.45, 0.05, M.chair(), 0, 0.7, -0.19);
+      for (const x of [-0.18, 0.18]) for (const z of [-0.18, 0.18]) box(ch, 0.03, 0.45, 0.03, M.steel(), x, 0.22, z);
+    }
+    return g;
+  }
+
   function vent() {
     const g = new THREE.Group();
     box(g, 0.9, 0.6, 0.06, M.darkMetal(), 0, 0, 0);
@@ -978,6 +1152,7 @@ LAB.Models = (function () {
     cryoPod, specimenTank, labTable, desk, serverRack, crates, barrels, shelf, morgueBed, generator,
     item: opt(item), ceilingLamp: opt(ceilingLamp), beacon: opt(beacon), door: opt(door), wallButton: opt(wallButton), elevator: opt(elevator), fleshGrowth, vent, signMat, glowTex,
     lockers, cabinet, cart, papers, debris, bin, extinguisher, bodyBag, wetSign,
+    surgeryTable, cocoon, vendingMachine, monitorWall, windowPane, wallHole, pillar, transformer, pipeCluster, breakTable,
     helpers: { box, cyl, sph, cone, tube, pivot, add },
   };
 })();

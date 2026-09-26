@@ -38,7 +38,7 @@ LAB.Player = (function () {
       scene.add(this.cam);
 
       // flashlight
-      this.flash = new THREE.SpotLight(0xfff1d6, 60, 26, 0.42, 0.45, 1.3);
+      this.flash = new THREE.SpotLight(0xfff1d6, 32, 28, 0.44, 0.5, 1.0);
       this.flash.castShadow = !LAB.lowGfx;
       this.flash.shadow.mapSize.set(512, 512);
       this.flash.shadow.camera.near = 0.3;
@@ -216,7 +216,7 @@ LAB.Player = (function () {
         this.battery = Math.max(0, this.battery - dt * (this.freezing ? 1.4 : 0.55));
         if (this.battery <= 0) { this.flashOn = false; this.game.message(this.i, 'Flashlight battery is EMPTY! Turn it off to recharge or find a battery.'); }
       } else this.battery = Math.min(100, this.battery + dt * 0.8);
-      let inten = this.flashOn ? 60 : 0;
+      let inten = this.flashOn ? 32 : 0;
       if (this.flashOn && this.battery < 20) { // low battery flicker
         if (Math.sin(performance.now() * 0.03) + Math.sin(performance.now() * 0.011) > 1.4) inten *= 0.1;
         inten *= 0.4 + this.battery / 33;
@@ -264,7 +264,7 @@ LAB.Player = (function () {
       vm.left.rotation.set(-s * 1.6, s * 0.6, s * 0.5);
       vm.left.position.set(-0.19 + s * 0.1, -0.25 + Math.sin(this.bob * 2) * 0.008 + s * 0.08, -0.42 - s * 0.1);
       vm.right.position.set(0.17 + bobX * 0.15, -0.21 + bobY * 0.25, -0.42);
-      vm.lens.material = this.flashOn && this.flash.intensity > 5 ? Mo.M.eyeYellow() : Mo.M.lampOff();
+      vm.lens.material = this.flashOn && this.flash.intensity > 3 ? Mo.M.eyeYellow() : Mo.M.lampOff();
       this.vm.visible = !this.downed;
       // body seen by the other player
       this.body.position.set(this.x, (this.liftY || 0), this.z);
@@ -278,7 +278,7 @@ LAB.Player = (function () {
 
     // is point (x,y,z) inside my flashlight beam?
     lights(x, z, maxDist = 17) {
-      if (!this.flashOn || this.downed || this.flash.intensity < 5) return false;
+      if (!this.flashOn || this.downed || this.flash.intensity < 3) return false;
       const dx = x - this.x, dz = z - this.z, d = Math.hypot(dx, dz);
       if (d > maxDist || d < 0.01) return false;
       const f = this.forward();

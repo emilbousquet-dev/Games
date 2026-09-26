@@ -334,6 +334,38 @@ LAB.Tex = (function () {
       }
     }))),
 
+    // TV static for the security monitors
+    static: (i) => once('static' + i, () => {
+      const c = U.canvas(128, 96, (g, w, h) => {
+        const img = g.createImageData(w, h);
+        for (let k = 0; k < img.data.length; k += 4) { const v = Math.random() * 200; img.data[k] = v * 0.8; img.data[k + 1] = v; img.data[k + 2] = v * 0.85; img.data[k + 3] = 255; }
+        g.putImageData(img, 0, 0);
+        g.fillStyle = 'rgba(0,0,0,0.4)'; for (let y = 0; y < h; y += 2) g.fillRect(0, y, w, 1);
+        if (i % 3 === 1) { // a camera view with a dark figure
+          g.fillStyle = 'rgba(0,0,0,0.75)'; g.fillRect(0, 0, w, h);
+          g.fillStyle = 'rgba(120,140,120,0.5)'; g.fillRect(0, h * 0.7, w, h * 0.3);
+          g.fillStyle = '#000'; g.fillRect(w * 0.6, h * 0.2, 6, h * 0.55); g.beginPath(); g.ellipse(w * 0.6 + 3, h * 0.18, 5, 9, 0, 0, 7); g.fill();
+          g.fillStyle = '#e02020'; g.font = '10px monospace'; g.fillText('● CAM ' + (i + 3), 4, 12);
+        }
+        if (i % 3 === 2) { g.fillStyle = '#fff'; g.font = 'bold 14px monospace'; g.fillText('NO SIGNAL', 22, 52); }
+      });
+      return U.tex(c);
+    }),
+
+    vending: () => once('vending', () => U.tex(U.canvas(128, 256, (g, w, h) => {
+      g.fillStyle = '#101418'; g.fillRect(0, 0, w, h);
+      g.fillStyle = '#c01818'; g.fillRect(0, 0, w, 36);
+      g.fillStyle = '#fff'; g.font = 'bold 22px Arial'; g.fillText('SNACKS', 22, 26);
+      const cols = ['#e0c020', '#20a0e0', '#e04020', '#40c040', '#c040c0'];
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 4; c++) {
+        g.fillStyle = cols[(r + c) % 5]; g.fillRect(8 + c * 24, 46 + r * 34, 18, 24);
+        g.fillStyle = 'rgba(255,255,255,0.3)'; g.fillRect(8 + c * 24, 46 + r * 34, 18, 5);
+      }
+      g.fillStyle = '#333'; g.fillRect(104, 60, 18, 80);
+      g.fillStyle = '#000'; g.fillRect(10, 222, 86, 26);
+      noise(g, w, h, 800, 0.3);
+    }))),
+
     grate: () => once('grate', () => {
       const t = U.tex(U.canvas(64, 64, (g, w, h) => {
         g.fillStyle = '#23262a'; g.fillRect(0, 0, w, h);

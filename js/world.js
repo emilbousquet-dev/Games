@@ -9,8 +9,8 @@ LAB.World = (function () {
   const U = LAB.U, T = LAB.Tex, Mo = LAB.Models;
   const C = LAB.CELL, H = LAB.WALL_H;
   const WALLS = '#VW ';
-  const PROP_SIZE = { R: [1.3, 1.3], p: [1.5, 1.5], t: [2.05, 0.95], w: [1.55, 0.8], r: [0.85, 0.95], k: [1.3, 1.3], o: [1.4, 1.4], s: [1.5, 0.55], m: [2.05, 0.85], G: [2.7, 1.9] };
-  const AGAINST_WALL = 'wrsm';
+  const PROP_SIZE = { R: [1.3, 1.3], p: [1.5, 1.5], t: [2.05, 0.95], w: [1.55, 0.8], r: [0.85, 0.95], k: [1.3, 1.3], o: [1.4, 1.4], s: [1.5, 0.55], m: [2.05, 0.85], G: [2.7, 1.9], u: [0.9, 2.1], c: [1.0, 0.8], v: [1.0, 0.85], y: [2.25, 0.8] };
+  const AGAINST_WALL = 'wrsmcvy';
   const DOORS = 'ODBHP';
 
   const W = {};
@@ -264,7 +264,7 @@ LAB.World = (function () {
           rot = faceAway(side[0], side[1]);
           const depth = PROP_SIZE[c][1];
           off = [side[0] * (C / 2 - depth / 2 - 0.1), side[1] * (C / 2 - depth / 2 - 0.1)];
-        } else if (c === 't' || c === 'm') rot = rnd() < 0.5 ? 0 : Math.PI / 2;
+        } else if (c === 't' || c === 'm' || c === 'u') rot = rnd() < 0.5 ? 0 : Math.PI / 2;
         else if (c === 'G') rot = 0;
         else rot = rnd() * Math.PI * 2;
         switch (c) {
@@ -278,8 +278,13 @@ LAB.World = (function () {
           case 's': model = Mo.shelf(rnd); break;
           case 'm': model = Mo.morgueBed(rnd); break;
           case 'G': model = Mo.generator(); break;
+          case 'u': model = Mo.surgeryTable(rnd); break;
+          case 'c': model = Mo.cocoon(rnd); break;
+          case 'v': model = Mo.vendingMachine(rnd); break;
+          case 'y': model = Mo.monitorWall(rnd); break;
         }
         model.position.set(wx + off[0], 0, wz + off[1]);
+        if (c === 'c' && side) model.position.set(wx + side[0] * (C / 2 - 0.02), 0, wz + side[1] * (C / 2 - 0.02)); // stuck on the wall
         model.rotation.y = rot;
         root.add(model);
         // collision box
@@ -321,6 +326,25 @@ LAB.World = (function () {
         const dm = floorDecal(root, body.position.x + Math.cos(a) * 1.6, body.position.z + Math.sin(a) * 1.6, 1, 'drag', T.drag(), 0);
         dm.scale.set(0.8, 3.2, 1);
         dm.rotation.z = -a + Math.PI / 2;
+      }
+
+      // glass windows
+      if (c === 'W') {
+        const m = Mo.windowPane(rnd);
+        m.position.set(wx, 0, wz);
+        if (!(W.isWall(x - 1, y) || W.isWall(x + 1, y))) m.rotation.y = Math.PI / 2;
+        root.add(m);
+      }
+      // holes torn in the wall
+      if (c === 'h') {
+        const side = wallSide(x, y);
+        if (side) {
+          const m = Mo.wallHole(rnd);
+          m.position.set(wx + side[0] * (C / 2), 0, wz + side[1] * (C / 2));
+          m.rotation.y = faceAway(side[0], side[1]);
+          root.add(m);
+          floorDecal(root, wx, wz, 2.4, 'goo', T.goo());
+        }
       }
 
       // alien flesh growths
@@ -441,6 +465,30 @@ LAB.World = (function () {
       if (nearSpecial(x, y) || (z && z.name === 'SURFACE LIFT')) continue;
       const wx = U.cellToWorld(x), wz = U.cellToWorld(y);
       const side = wallSide(x, y);
+      // pillars in a grid inside big rooms, and themed furniture in the middle
+      const bigRoom = z && !corridor && z.x2 - z.x1 >= 8 && z.y2 - z.y1 >= 5;
+      const pillarSpot = bigRoom && !side && (x - z.x1) % 4 === 2 && (y - z.y1) % 4 === 2;
+      if (pillarSpot || (!corridor && !side && z && rnd() < 0.12)) {
+        let m, bw, bd;
+        const theme = z.name;
+        if (pillarSpot) { m = Mo.pillar(rnd); bw = bd = 0.8; }
+        else if (theme === 'GENERATOR ROOM') { if (rnd() < 0.5) { m = Mo.transformer(rnd); bw = 1.45; bd = 1.05; } else { m = Mo.pipeCluster(rnd); bw = bd = 0.9; } }
+        else if (theme === 'MAINTENANCE' || theme === 'STORAGE') { if (rnd() < 0.5) { m = Mo.pipeCluster(rnd); bw = bd = 0.9; } else { m = Mo.crates(rnd); bw = bd = 1.3; } }
+        else if (theme === 'BREAK ROOM') { m = Mo.breakTable(rnd); bw = bd = 1.3; }
+        else if (theme === 'MEDBAY / MORGUE') { m = Mo.morgueBed(rnd); bw = 2.05; bd = 0.85; }
+        else if (theme === 'RESEARCH LAB') { m = Mo.labTable(rnd); bw = 2.05; bd = 0.95; }
+        else if (theme === 'CONTAINMENT CELL 13') { m = Mo.cocoon(rnd); bw = 1.0; bd = 0.8; }
+        else continue;
+        const rot = pillarSpot || theme === 'BREAK ROOM' ? 0 : (rnd() < 0.5 ? 0 : Math.PI / 2);
+        if (rot) [bw, bd] = [bd, bw];
+        W.propBoxes[y * W.w + x] = [[wx - bw / 2, wz - bd / 2, wx + bw / 2, wz + bd / 2]];
+        const n = openCount();
+        if (n < reachable - 1) { W.propBoxes[y * W.w + x] = null; continue; }
+        reachable = n;
+        m.position.set(wx, 0, wz); m.rotation.y = rot;
+        root.add(m);
+        continue;
+      }
       if (!corridor && side && rnd() < 0.22) {
         const isLocker = rnd() < 0.55;
         const [bw, bd] = isLocker ? [1.6, 0.55] : [1.2, 0.5];
@@ -666,8 +714,8 @@ LAB.World = (function () {
       pl.position.set(s.L.x, s.L.y, s.L.z);
       pl.color.copy(s.L.color);
       const isRed = s.L.mode === 'emergency';
-      pl.intensity = s.L.level * (isRed ? 9 : 14) * U.clamp((30 - s.d) / 8, 0, 1);
-      pl.distance = isRed ? 9 : 13;
+      pl.intensity = s.L.level * (isRed ? 10 : 16) * U.clamp((30 - s.d) / 8, 0, 1);
+      pl.distance = isRed ? 10 : 15;
     });
 
     // generator
