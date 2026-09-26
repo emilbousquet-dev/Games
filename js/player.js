@@ -34,7 +34,7 @@ LAB.Player = (function () {
       this.cam = new THREE.PerspectiveCamera(72, 1, 0.05, 80);
       this.cam.layers.enable(0);
       this.cam.layers.enable(index === 0 ? 2 : 1); // see the OTHER player's body
-      this.cam.layers.enable(index === 0 ? 3 : 4); // see our own hands
+      this.vmLayer = index === 0 ? 3 : 4; // our own hands are drawn in a second pass (see game.js render)
       scene.add(this.cam);
 
       // flashlight
@@ -52,6 +52,8 @@ LAB.Player = (function () {
 
       // hands in first person
       this.vm = Mo.viewModel(this.style);
+      this.vm.scale.setScalar(0.88);
+      this.vm.position.set(0, -0.015, -0.02);
       this.vm.traverse((o) => { o.layers.set(index === 0 ? 3 : 4); o.castShadow = false; o.receiveShadow = false; });
       this.cam.add(this.vm);
       // a tiny light that only shines on my own hands
@@ -219,7 +221,7 @@ LAB.Player = (function () {
     }
 
     updateFlash(dt, inp) {
-      if (inp.flashPressed && this.battery > 0) { this.flashOn = !this.flashOn; LAB.Audio.flashClick(this.i === 0 ? -0.5 : 0.5); }
+      if (inp.flashPressed && this.battery > 0) { this.flashOn = !this.flashOn; this.clickT = 0.18; LAB.Audio.flashClick(this.i === 0 ? -0.5 : 0.5); }
       if (this.flashOn) {
         this.battery = Math.max(0, this.battery - dt * (this.freezing ? 1.4 : 0.55));
         if (this.battery <= 0) { this.flashOn = false; this.game.message(this.i, 'Flashlight battery is EMPTY! Turn it off to recharge or find a battery.'); }
@@ -265,14 +267,41 @@ LAB.Player = (function () {
       this.cam.rotation.y = this.yaw + bobX * 0.05;
       this.cam.rotation.x = this.pitch + (Math.random() - 0.5) * sh * 0.1;
       this.cam.rotation.z = this.downed ? 0.5 : bobX * 0.3;
-      // hands animation
+      // ---- hands animation ----
       const vm = this.vm.userData;
-      this.swingAnim = Math.max(0, this.swingAnim - dt * 3.5);
-      const s = Math.sin(this.swingAnim * Math.PI);
-      vm.left.rotation.set(-s * 1.6, s * 0.6, s * 0.5);
-      vm.left.position.set(-0.19 + s * 0.1, -0.25 + Math.sin(this.bob * 2) * 0.008 + s * 0.08, -0.42 - s * 0.1);
-      vm.right.position.set(0.17 + bobX * 0.15, -0.21 + bobY * 0.25, -0.42);
+      this.swingAnim = Math.max(0, this.swingAnim - dt * 2.4);
+      let wind = 0, strike = 0;
+      if (this.swingAnim > 0) { // wind up -> strike -> follow through
+        const q = 1 - this.swingAnim;
+        if (q < 0.22) wind = Math.sin(q / 0.22 * Math.PI / 2);
+        else if (q < 0.45) { const k = (q - 0.22) / 0.23; wind = 1 - k; strike = k * k; }
+        else strike = 1 - (q - 0.45) / 0.55;
+      }
+      const walk = Math.min(1, this.speed / 3);
+      const bx = Math.cos(this.bob) * 0.012 * walk, by = Math.abs(Math.sin(this.bob)) * 0.016 * walk;
+      const breathe = Math.sin(time * 1.7) * 0.004 + Math.sin(time * 0.6) * 0.002;
+      this.sprintK = U.lerp(this.sprintK || 0, this.sprinting ? 1 : 0, Math.min(1, dt * 6));
+      const yawVel = U.angleDiff(this.lastYaw === undefined ? this.yaw : this.lastYaw, this.yaw) / Math.max(dt, 0.001);
+      this.lastYaw = this.yaw;
+      this.swayX = U.lerp(this.swayX || 0, U.clamp(yawVel * 0.012, -0.035, 0.035), Math.min(1, dt * 7));
+      this.swayY = U.lerp(this.swayY || 0, U.clamp((this.pitch - (this.lastPitch || 0)) / Math.max(dt, 0.001) * 0.01, -0.03, 0.03), Math.min(1, dt * 7));
+      this.lastPitch = this.pitch;
+      const fear = this.game.fear || 0;
+      const tr = fear > 0.35 ? fear * 0.0035 : 0; // hands shake when scared
+      const jx = (Math.random() - 0.5) * tr, jy = (Math.random() - 0.5) * tr;
+      this.clickT = Math.max(0, (this.clickT || 0) - dt);
+      const click = Math.sin(this.clickT / 0.18 * Math.PI) * (this.clickT > 0 ? 1 : 0);
+      const sk = this.sprintK;
+      const grab = this.grabbedBy ? 1 : 0;
+      vm.right.position.set(0.16 + bx + this.swayX + jx, -0.19 - by + breathe - sk * 0.045 + jy + this.swayY + grab * 0.1, -0.38 + sk * 0.03 - grab * 0.05);
+      vm.right.rotation.set(sk * 0.45 + click * 0.12 - grab * 0.6, this.swayX * 2.5 + grab * 0.4, -sk * 0.25 + Math.sin(this.bob) * 0.03 * walk);
+      vm.left.position.set(-0.18 - bx + this.swayX + strike * 0.13 - wind * 0.03 + jx, -0.23 + by + breathe - sk * 0.06 + wind * 0.07 - strike * 0.03 + jy + this.swayY + grab * 0.12, -0.4 + wind * 0.05 - strike * 0.12);
+      vm.left.rotation.set(wind * 0.8 - strike * 1.7 - sk * 0.35 + grab * 0.5, wind * 0.25 - strike * 0.55 + this.swayX * 2.5, wind * 0.35 - strike * 0.7 + sk * 0.2);
       vm.lens.material = this.flashOn && this.flash.intensity > 2 ? Mo.M.eyeYellow() : Mo.M.lampOff();
+      // the wristwatch shows the time down here (the lab clock started at 03:13)
+      const mins = 13 + Math.floor((this.game.playTime || 0) / 60);
+      const colon = Math.floor(time * 2) % 2 ? ':' : ' ';
+      Mo.setWatch(this.vm, '0' + (3 + Math.floor(mins / 60)) + colon + String(mins % 60).padStart(2, '0'), this.hp < 30);
       this.vm.visible = !this.downed;
       // body seen by the other player
       this.body.position.set(this.x, (this.liftY || 0), this.z);

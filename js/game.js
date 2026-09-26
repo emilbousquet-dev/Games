@@ -130,6 +130,8 @@ window.LAB = window.LAB || {};
     G.saveCheckpoint();
     G.explored = new Uint8Array(LAB.World.w * LAB.World.h);
     G.hud.halves.forEach((h, i) => G.hud.toggleMap(i, false));
+    // every world light also lights the hands (layer 5 is used by the hands pass)
+    scene.traverse((o) => { if (o.isLight && o.layers.isEnabled(0)) o.layers.enable(5); });
     G.hud.layout(mode);
     resize();
   }
@@ -551,8 +553,18 @@ window.LAB = window.LAB || {};
       p.cam.updateProjectionMatrix();
       renderer.setViewport(vx, 0, vw, h);
       renderer.setScissor(vx, 0, vw, h);
-      // hide my own helmet light in my own view
       renderer.render(scene, p.cam);
+      // second pass: my own hands (and jump-scare faces) on top, so they never go through walls
+      const mask = p.cam.layers.mask;
+      p.cam.layers.mask = (1 << p.vmLayer) | (1 << 5);
+      const bg = scene.background;
+      scene.background = null; // don't paint over the world
+      renderer.autoClear = false;
+      renderer.clearDepth();
+      renderer.render(scene, p.cam);
+      renderer.autoClear = true;
+      scene.background = bg;
+      p.cam.layers.mask = mask;
     });
   }
 

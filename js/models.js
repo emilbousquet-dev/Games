@@ -229,33 +229,120 @@ LAB.Models = (function () {
     return h;
   }
 
+  // ---------- FIRST PERSON HANDS ----------
+  // A gloved hand wrapped around a stick that points along -z (like holding a flashlight).
+  // side = +1 for the right hand (palm on the right), -1 for the left hand.
+  function gripHand(parent, glove, suit, side, r) {
+    const h = pivot(parent, 0, 0, 0);
+    const R = r + 0.011;
+    // back of the hand / palm
+    sph(h, 0.034, glove, side * (r + 0.02), 0.004, 0.012, 0.75, 1.15, 1.45, 12);
+    // four fingers curling around the grip (torus arcs) with finger tips and knuckles
+    for (let f = 0; f < 4; f++) {
+      const z = -0.03 + f * 0.021;
+      const fr = 0.0105 - f * 0.0007;
+      const arc = 3.5 - f * 0.08;
+      const ring = add(h, new THREE.TorusGeometry(R, fr, 6, 14, arc), glove, 0, 0, z);
+      // start at the palm side and wrap under the grip
+      const start = side > 0 ? 0.35 - arc : Math.PI - 0.35;
+      ring.rotation.z = start;
+      const tip = side > 0 ? start : start + arc;
+      sph(h, fr * 1.05, glove, Math.cos(tip) * R, Math.sin(tip) * R, z, 1, 1, 1, 8); // finger tip
+      sph(h, fr * 1.25, glove, side * (R + 0.004), -0.006, z, 1, 1, 1, 8); // knuckle
+    }
+    // thumb lying along the top of the grip
+    const th = pivot(h, side * 0.012, R + 0.004, 0.004);
+    th.rotation.set(0, -side * 0.35, 0);
+    add(th, new THREE.CapsuleGeometry(0.0105, 0.036, 4, 8), glove, 0, 0, -0.02).rotation.x = Math.PI / 2;
+    sph(th, 0.013, glove, side * 0.004, -0.004, 0.012, 1.1, 1, 1.3, 8);
+    // wrist, glove cuff and sleeve going back toward you
+    cyl(h, 0.03, 0.028, 0.06, glove, side * 0.02, -0.004, 0.075, Math.PI / 2, 0, 0, 12);
+    add(h, new THREE.TorusGeometry(0.032, 0.007, 6, 16), glove, side * 0.02, -0.004, 0.105);
+    add(h, new THREE.CapsuleGeometry(0.044, 0.26, 4, 12), suit, side * 0.024, -0.008, 0.27).rotation.x = Math.PI / 2;
+    add(h, new THREE.TorusGeometry(0.046, 0.008, 6, 18), suit, side * 0.024, -0.008, 0.13);
+    for (let k = 0; k < 3; k++) add(h, new THREE.TorusGeometry(0.045, 0.003, 4, 18), M.darkMetal(), side * 0.024, -0.008, 0.18 + k * 0.05); // fabric folds
+    return h;
+  }
+
   // what you see in your own hands (first person)
   function viewModel(style) {
     const g = new THREE.Group();
     const suit = style === 'hazmat' ? M.hazmat() : M.guard();
-    const glove = style === 'hazmat' ? M.hazmatDark() : M.rubber();
-    const vmMetal = mat('vmMetal', () => new THREE.MeshStandardMaterial({ color: 0x9aa0a6, roughness: 0.4, metalness: 0.5 }));
-    // right hand + flashlight
-    const right = pivot(g, 0.17, -0.21, -0.42);
-    box(right, 0.06, 0.06, 0.16, suit, 0, -0.01, 0.12);
-    box(right, 0.065, 0.07, 0.07, glove, 0, 0, 0);
-    cyl(right, 0.02, 0.02, 0.16, M.darkMetal(), 0, 0.03, -0.07, Math.PI / 2, 0, 0);
-    cyl(right, 0.028, 0.02, 0.035, M.darkMetal(), 0, 0.03, -0.16, Math.PI / 2, 0, 0);
-    const lens = cyl(right, 0.024, 0.024, 0.005, M.eyeYellow(), 0, 0.03, -0.18, Math.PI / 2, 0, 0);
+    const glove = style === 'hazmat'
+      ? mat('gloveHaz', () => new THREE.MeshStandardMaterial({ color: 0x2a2c2a, roughness: 0.55, metalness: 0.05 }))
+      : mat('gloveGuard', () => new THREE.MeshStandardMaterial({ color: 0x151515, roughness: 0.8 }));
+    const alu = mat('vmAlu', () => new THREE.MeshStandardMaterial({ color: 0x2b2e33, roughness: 0.35, metalness: 0.8 }));
+    const chrome = mat('vmChrome', () => new THREE.MeshStandardMaterial({ color: 0xc8ccd0, roughness: 0.15, metalness: 1 }));
+    const steelW = mat('vmSteel', () => new THREE.MeshStandardMaterial({ color: 0x9aa1a8, roughness: 0.35, metalness: 0.75 }));
+
+    // ---- RIGHT HAND + FLASHLIGHT ----
+    const right = pivot(g, 0.16, -0.19, -0.38);
+    const fl = pivot(right, 0, 0, 0);
+    cyl(fl, 0.021, 0.021, 0.17, alu, 0, 0, -0.025, Math.PI / 2, 0, 0, 16); // body
+    for (let k = 0; k < 7; k++) add(fl, new THREE.TorusGeometry(0.0215, 0.0022, 4, 16), M.darkMetal(), 0, 0, 0.035 - k * 0.012); // knurled grip
+    cyl(fl, 0.022, 0.022, 0.018, M.rubber(), 0, 0, 0.066, Math.PI / 2, 0, 0, 16); // tail cap
+    cyl(fl, 0.01, 0.012, 0.008, M.rubber(), 0, 0, 0.078, Math.PI / 2, 0, 0, 10); // click button
+    cyl(fl, 0.031, 0.022, 0.045, alu, 0, 0, -0.13, Math.PI / 2, 0, 0, 18); // flared head
+    add(fl, new THREE.TorusGeometry(0.031, 0.004, 6, 20), chrome, 0, 0, -0.153); // bezel
+    const refl = add(fl, new THREE.CylinderGeometry(0.027, 0.012, 0.012, 16, 1, true), chrome, 0, 0, -0.148);
+    refl.rotation.x = Math.PI / 2;
+    const lens = cyl(fl, 0.027, 0.027, 0.003, M.eyeYellow(), 0, 0, -0.154, Math.PI / 2, 0, 0, 18);
     lens.userData.keep = true;
-    // left hand + wrench
-    const left = pivot(g, -0.19, -0.25, -0.42);
-    box(left, 0.06, 0.06, 0.16, suit, 0, -0.01, 0.12);
-    box(left, 0.065, 0.07, 0.07, glove, 0, 0, 0);
-    const wrench = pivot(left, 0, 0.02, -0.02);
-    box(wrench, 0.02, 0.22, 0.012, vmMetal, 0, 0.1, 0);
-    box(wrench, 0.07, 0.028, 0.014, vmMetal, 0, 0.22, 0);
-    box(wrench, 0.018, 0.045, 0.014, vmMetal, -0.027, 0.25, 0);
-    box(wrench, 0.018, 0.045, 0.014, vmMetal, 0.027, 0.25, 0);
-    box(wrench, 0.03, 0.07, 0.02, M.rubber(), 0, 0.0, 0);
-    wrench.rotation.set(-0.9, 0, 0.3);
-    g.userData = { right, left, wrench, lens };
+    box(fl, 0.006, 0.006, 0.05, M.rubber(), 0.0, 0.022, 0.0); // pocket clip
+    gripHand(right, glove, suit, 1, 0.021);
+
+    // ---- LEFT HAND + WRENCH ----
+    const left = pivot(g, -0.18, -0.23, -0.4);
+    const hand = pivot(left, 0, 0, 0);
+    gripHand(hand, glove, suit, -1, 0.013);
+    // the wrench: its handle runs along the hand's grip line
+    const wrench = pivot(hand, 0, 0, 0);
+    const wr = pivot(wrench, 0, 0, 0);
+    wr.rotation.x = -Math.PI / 2; // wrench "up" = forward out of the fist
+    const hl = add(wr, new THREE.CapsuleGeometry(0.011, 0.22, 4, 8), steelW, 0, 0.06, 0);
+    hl.scale.set(1.25, 1, 0.55);
+    box(wr, 0.03, 0.08, 0.018, M.rubber(), 0, -0.02, 0); // rubber grip
+    for (let k = 0; k < 4; k++) box(wr, 0.032, 0.004, 0.02, M.darkMetal(), 0, -0.05 + k * 0.02, 0);
+    // open jaw at the top
+    const jaw = pivot(wr, 0, 0.2, 0);
+    box(jaw, 0.06, 0.03, 0.013, steelW, 0, 0, 0);
+    box(jaw, 0.016, 0.045, 0.013, steelW, -0.025, 0.03, 0, 0, 0, 0.18);
+    box(jaw, 0.016, 0.045, 0.013, steelW, 0.025, 0.03, 0, 0, 0, -0.18);
+    box(jaw, 0.012, 0.006, 0.014, M.darkMetal(), 0.012, -0.003, 0); // adjusting screw
+    // ring end at the bottom
+    const ring = add(wr, new THREE.TorusGeometry(0.019, 0.007, 6, 14), steelW, 0, -0.085, 0);
+    ring.scale.z = 0.6;
+    // wristwatch on the left wrist (shows the time in the lab)
+    const watchTex = new THREE.CanvasTexture(U.canvas(64, 32, () => {}));
+    const watchScreen = new THREE.MeshStandardMaterial({ map: watchTex, emissive: 0xffffff, emissiveMap: watchTex, emissiveIntensity: 1.2 });
+    const wbase = pivot(hand, -0.02, 0.028, 0.1);
+    wbase.rotation.z = 0.35;
+    box(wbase, 0.034, 0.012, 0.03, M.rubber(), 0, 0, 0);
+    const scr = add(wbase, new THREE.PlaneGeometry(0.026, 0.02), watchScreen, 0, 0.0065, 0);
+    scr.rotation.x = -Math.PI / 2; scr.rotation.z = Math.PI / 2;
+    scr.userData.keep = true;
+    add(wbase, new THREE.TorusGeometry(0.03, 0.004, 4, 16), M.rubber(), 0, -0.012, 0).rotation.x = Math.PI / 2;
+    if (style === 'hazmat') { // Reyes has a geiger counter clipped on the sleeve
+      box(hand, 0.03, 0.02, 0.05, M.yellow(), -0.045, 0.02, 0.2);
+      box(hand, 0.02, 0.003, 0.012, M.ledGreen(), -0.045, 0.031, 0.19);
+    } else { // Park's radio cord
+      tube(right, new THREE.Vector3(0.03, 0.03, 0.14), new THREE.Vector3(0.05, 0.08, 0.3), 0.004, M.rubber(), 4);
+    }
+    hand.rotation.set(0.95, 0.3, 0.45); // wrench held up, ready to swing
+    g.userData = { right, left, fl, hand, wrench, lens, watchTex };
     return g;
+  }
+
+  // update the digital watch (every few seconds is enough)
+  function setWatch(vm, text, warn) {
+    const t = vm.userData.watchTex;
+    if (!t || t.userData.text === text) return;
+    t.userData.text = text;
+    const g = t.image.getContext('2d');
+    g.fillStyle = '#031006'; g.fillRect(0, 0, 64, 32);
+    g.fillStyle = warn ? '#ff4030' : '#48ff80'; g.font = 'bold 20px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillText(text, 32, 17);
+    t.needsUpdate = true;
   }
 
   // =====================================================
@@ -1275,7 +1362,7 @@ LAB.Models = (function () {
   // glue parts together so the game runs fast (animation still works)
   const opt = (f) => (...a) => U.optimize(f(...a));
   return {
-    M, mat, human: opt(human), animateHuman, corpse, viewModel: opt(viewModel),
+    M, mat, human: opt(human), animateHuman, corpse, viewModel: opt(viewModel), setWatch,
     crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, spitter: opt(spitter), animateSpitter, acidBlob, claw: opt(claw), stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
     cryoPod, specimenTank, labTable, desk, serverRack, crates, barrels, shelf, morgueBed, generator,
     item: opt(item), ceilingLamp: opt(ceilingLamp), beacon: opt(beacon), door: opt(door), wallButton: opt(wallButton), elevator: opt(elevator), fleshGrowth, vent, signMat, glowTex,
