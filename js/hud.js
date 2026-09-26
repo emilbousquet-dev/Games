@@ -197,7 +197,7 @@ LAB.HUD = (function () {
         h.sta.style.width = p.stamina + '%';
         h.dev.textContent = LAB.Input.pads[i] !== null && LAB.Input.pads[i] !== undefined ? '🎮' : (i === 0 && LAB.Input.mouse.locked ? '🖱' : '⌨');
         const t = game.team;
-        const inv = (t.keycard ? '<span class="k">KEYCARD</span>' : '') + (t.fuses ? `<span class="f">FUSE ×${t.fuses}</span>` : '') + (game.lives > 0 ? `<span class="l">${'❤'.repeat(game.lives)}</span>` : '');
+        const inv = (t.keycard ? '<span class="k">KEYCARD</span>' : '') + (t.fuses ? `<span class="f">FUSE ×${t.fuses}</span>` : '') + (p.flares ? `<span class="fl">FLARE ×${p.flares}</span>` : '') + (game.lives > 0 ? `<span class="l">${'❤'.repeat(game.lives)}</span>` : '');
         if (h.invCache !== inv) { h.inv.innerHTML = inv; h.invCache = inv; }
         h.obj.textContent = game.objective();
         if (h.msgT > 0) { h.msgT -= dt; if (h.msgT <= 0) h.msg.style.opacity = 0; }

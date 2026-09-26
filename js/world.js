@@ -360,7 +360,7 @@ LAB.World = (function () {
       }
 
       // items
-      if ('KFAMN'.includes(c)) {
+      if ('KFAMNI'.includes(c)) {
         const m = Mo.item(c);
         m.position.set(wx, 1.0, wz);
         dyn.add(m);
@@ -459,7 +459,7 @@ LAB.World = (function () {
     };
     let reachable = openCount();
     const nearSpecial = (x, y) => {
-      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((DOORS + '*+XKFAMNJ').includes(W.ch(x + dx, y + dy))) return true;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if ((DOORS + '*+XKFAMNJI').includes(W.ch(x + dx, y + dy))) return true;
       return false;
     };
     for (const [x, y] of W.floorCells) {
@@ -688,6 +688,8 @@ LAB.World = (function () {
         lv = 0;
         if (Math.random() < 0.004) { L.spark = 0.08; const p = game.soundAt(L.x, L.z, 15); LAB.Audio.spark(p.pan); }
         if (L.spark > 0) { L.spark -= dt; lv = 0.8; }
+      } else if (L.mode === 'flare') {
+        lv = L.flare.life > 0 ? (1.1 + Math.random() * 0.35) * Math.min(1, L.flare.life / 2) : 0;
       } else if (L.mode === 'emergency') {
         lv = game.power ? 1.4 : 0.5 + Math.sin(time * 2 + L.phase) * 0.1;
         L.beacon.userData.spin.rotation.y += dt * (game.power ? 8 : 0);
@@ -700,7 +702,7 @@ LAB.World = (function () {
           if (n > 1.6) lv = 0.05; else if (n > 1.2) lv = 0.4;
         }
       }
-      if (blackout > 0) lv = L.mode === 'emergency' ? lv * 0.15 : 0;
+      if (blackout > 0 && L.mode !== 'flare') lv = L.mode === 'emergency' ? lv * 0.15 : 0;
       L.level = lv;
       if (L.lampMat) L.lampMat.emissiveIntensity = lv * 1.8;
       if (L.lamp && L.mode === 'dead') L.lamp.userData.hang.rotation.z = 0.6 + Math.sin(time * 1.3 + L.phase) * 0.05;
@@ -717,9 +719,9 @@ LAB.World = (function () {
       if (!s || s.d > 30) { pl.intensity = 0; return; }
       pl.position.set(s.L.x, s.L.y, s.L.z);
       pl.color.copy(s.L.color);
-      const isRed = s.L.mode === 'emergency';
-      pl.intensity = s.L.level * (isRed ? 10 : 16) * U.clamp((30 - s.d) / 8, 0, 1);
-      pl.distance = isRed ? 10 : 15;
+      const isRed = s.L.mode === 'emergency', isFlare = s.L.mode === 'flare';
+      pl.intensity = s.L.level * (isFlare ? 20 : isRed ? 10 : 16) * U.clamp((30 - s.d) / 8, 0, 1);
+      pl.distance = isFlare ? 12 : isRed ? 10 : 15;
     });
 
     // generator

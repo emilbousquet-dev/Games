@@ -25,6 +25,7 @@ Play **alone** or with a **friend** in split screen, using the keyboard or contr
 | Flashlight | `F` | `L` | RB / Y |
 | Hit with wrench | `Space` | `Enter` | RT / X |
 | Use / Revive | `R` | `/` or `K` | A |
+| Throw a flare | `G` | `N` | LB |
 | Map | `Tab` or `C` | `\` or `J` | Back / B |
 | Pause | `Esc` / `P` | | Start |
 
@@ -61,6 +62,8 @@ Your fastest escape time is saved as a **record**.
 - **Revive**: if your partner goes down, hold USE next to them for 3 seconds.
 - **Flashlights**: one player holds the Stalker in the light while the other one works.
   Your flashlight drains while it's on and recharges while it's off.
+- **Flares**: throw a burning red flare. The Stalker can't come near it for 20 seconds!
+  You start with one, and there are more hidden in the lab.
 - **Map**: open your map to see the rooms, the doors, where your partner is, and items you've already seen.
   But be careful: the game does NOT pause while you look at it!
 - **Graphics**: if the game is slow on your computer, choose **GRAPHICS: LOW** on the title screen.

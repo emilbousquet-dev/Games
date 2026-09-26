@@ -344,7 +344,8 @@ LAB.Aliens = (function () {
       this.t += dt;
       this.cd -= dt; this.cool -= dt;
       let speed = 0;
-      const lit = game.players.some((p) => p.lights(this.x, this.z) || p.lights(this.x + Math.sin(this.yaw) * 0.3, this.z + Math.cos(this.yaw) * 0.3));
+      const nearFlare = (game.flares || []).some((f) => f.life > 0 && U.dist(f.x, f.z, this.x, this.z) < 5.5);
+      const lit = nearFlare || game.players.some((p) => p.lights(this.x, this.z) || p.lights(this.x + Math.sin(this.yaw) * 0.3, this.z + Math.cos(this.yaw) * 0.3));
       game.players.forEach((p) => (p.freezing = p.lights(this.x, this.z)));
 
       if (this.state === 'apparition') { this.model.visible = false; return; }

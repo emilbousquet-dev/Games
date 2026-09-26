@@ -142,6 +142,40 @@ LAB.Scares = (function () {
       setTimeout(() => LAB.Audio.scream(0.6, this.pan(p)), 1600);
     }
 
+    // THE STALKER SMASHES THROUGH A WALL near a player
+    wallBreak() {
+      const g = this.game, st = g.stalker;
+      const p = U.pick(g.players.filter((pp) => pp.standing)) || g.players[0];
+      let best = null;
+      for (let dy = -5; dy <= 5; dy++) for (let dx = -5; dx <= 5; dx++) {
+        const cx = p.cx + dx, cy = p.cy + dy;
+        if (!W.passable(cx, cy) || W.doorAt(cx, cy)) continue;
+        const x = U.cellToWorld(cx), z = U.cellToWorld(cy), d = U.dist(p.x, p.z, x, z);
+        if (d < 5 || d > 11 || !W.los(p.x, p.z, x, z)) continue;
+        for (const [sx, sy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
+          if (!W.isWall(cx + sx, cy + sy) || W.ch(cx + sx, cy + sy) === 'W') continue;
+          const score = Math.abs(d - 7.5) + Math.random();
+          if (!best || score < best.score) best = { cx, cy, sx, sy, x, z, score };
+        }
+      }
+      if (!best) return;
+      const hole = Mo.wallHole(Math.random);
+      hole.position.set(best.x + best.sx * LAB.CELL / 2, 0, best.z + best.sy * LAB.CELL / 2);
+      hole.rotation.y = best.sy === -1 ? 0 : best.sy === 1 ? Math.PI : best.sx === -1 ? Math.PI / 2 : -Math.PI / 2;
+      W.dyn.add(hole);
+      const wx = best.x + best.sx * 1.1, wz = best.z + best.sy * 1.1;
+      for (let k = 0; k < 3; k++) setTimeout(() => { LAB.Effects.gibs(wx, 1.2, wz, 14, 0x6a6e70); LAB.Effects.sparks(wx, 1.8, wz, 20); }, k * 90);
+      LAB.Effects.blood(wx, 1.5, wz, 30, false);
+      const s = g.soundAt(wx, wz, 40);
+      LAB.Audio.thud(1, s.pan); LAB.Audio.clang(s.pan); LAB.Audio.glass(s.pan);
+      setTimeout(() => LAB.Audio.scream(1, s.pan), 150);
+      g.players.forEach((pp) => { pp.shake = Math.max(pp.shake, U.dist(pp.x, pp.z, wx, wz) < 15 ? 1.4 : 0.5); LAB.Input.rumble(pp.i, 1, 700); });
+      st.wake(g);
+      st.placeAt(best.x, best.z, Math.atan2(p.x - best.x, p.z - best.z));
+      st.state = 'hunt'; st.target = p; st.cool = 0; st.cd = 1.2;
+      g.message(null, 'IT CAME THROUGH THE WALL!', 3);
+    }
+
     // something crawls through the vents above you
     ventCrawl(p) {
       const pan0 = U.rand(-1, 1);

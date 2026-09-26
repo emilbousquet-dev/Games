@@ -20,7 +20,7 @@ LAB.Player = (function () {
       this.x = s.x; this.z = s.z;
       this.yaw = Math.PI; // facing "down" the map (toward the cryo door)
       this.pitch = 0;
-      this.hp = 100; this.battery = 100; this.stamina = 100;
+      this.hp = 100; this.battery = 100; this.stamina = 100; this.flares = 1;
       this.flashOn = true;
       this.downed = false; this.bleed = 0; this.reviveT = 0;
       this.attackT = 0; this.swingAnim = 0;
@@ -193,6 +193,12 @@ LAB.Player = (function () {
 
       // ---- flashlight ----
       this.updateFlash(dt, inp);
+
+      // ---- throw a flare ----
+      if (inp.flarePressed) {
+        if (this.flares > 0) { this.flares--; this.game.throwFlare(this); }
+        else this.game.message(this.i, 'No flares left! Look for red flares in the lab.', 2);
+      }
 
       // ---- attack (wrench) ----
       if (inp.attackPressed && this.attackT <= 0) this.swing();

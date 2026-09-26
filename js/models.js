@@ -453,6 +453,21 @@ LAB.Models = (function () {
     d.neck.rotation.x = -charge * 0.6;
     d.body.position.y = 0.55 + Math.sin(t * 2) * 0.02;
   }
+  // a burning flare lying on the floor
+  function flare() {
+    const g = new THREE.Group();
+    const red = mat('flareRed', () => new THREE.MeshStandardMaterial({ color: 0xc01010, emissive: 0x600000, roughness: 0.5 }));
+    const hot = mat('flareHot', () => new THREE.MeshBasicMaterial({ color: 0xffe0d0 }));
+    const stick = pivot(g, 0, 0.03, 0);
+    stick.rotation.z = Math.PI / 2;
+    cyl(stick, 0.028, 0.028, 0.28, red, 0, 0, 0);
+    cyl(stick, 0.022, 0.028, 0.04, hot, 0, 0.16, 0);
+    const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: 0xff3018, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending }));
+    glow.position.set(-0.16, 0.05, 0); glow.scale.set(1.2, 1.2, 1);
+    g.add(glow);
+    g.userData = { glow, stick };
+    return g;
+  }
   // a blob of acid in the air
   function acidBlob() {
     const g = new THREE.Group();
@@ -951,12 +966,17 @@ LAB.Models = (function () {
       box(inner, 0.2, 0.06, 0.02, red, 0, 0, 0.075);
       box(inner, 0.06, 0.2, 0.02, red, 0, 0, 0.075);
       box(inner, 0.14, 0.04, 0.04, M.rubber(), 0, 0.15, 0);
+    } else if (type === 'I') { // road flare
+      const red = mat('flareRed', () => new THREE.MeshStandardMaterial({ color: 0xc01010, emissive: 0x600000, roughness: 0.5 }));
+      cyl(inner, 0.03, 0.03, 0.3, red, 0, 0, 0);
+      cyl(inner, 0.033, 0.033, 0.06, M.rubber(), 0, 0.16, 0);
+      box(inner, 0.062, 0.08, 0.001, M.white(), 0, -0.02, 0.03);
     } else if (type === 'N') {
       box(inner, 0.26, 0.34, 0.015, M.darkMetal(), 0, 0, 0); // clipboard
       add(inner, new THREE.PlaneGeometry(0.23, 0.29), new THREE.MeshStandardMaterial({ map: T.paper(), emissive: 0x333322, side: THREE.DoubleSide }), 0, -0.01, 0.01);
       box(inner, 0.1, 0.04, 0.03, M.steel(), 0, 0.16, 0.01);
     }
-    const colors = { K: 0xff3030, F: 0xff9020, A: 0xffe040, M: 0xffffff, N: 0xa0ffb0 };
+    const colors = { K: 0xff3030, F: 0xff9020, A: 0xffe040, M: 0xffffff, N: 0xa0ffb0, I: 0xff2010 };
     // soft glow sprite
     const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex(), color: colors[type], transparent: true, opacity: 0.55, depthWrite: false, blending: THREE.AdditiveBlending }));
     glow.scale.set(1.1, 1.1, 1);
@@ -1363,7 +1383,7 @@ LAB.Models = (function () {
   const opt = (f) => (...a) => U.optimize(f(...a));
   return {
     M, mat, human: opt(human), animateHuman, corpse, viewModel: opt(viewModel), setWatch,
-    crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, spitter: opt(spitter), animateSpitter, acidBlob, claw: opt(claw), stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
+    crawler: opt(crawler), animateCrawler, husk: opt(husk), animateHusk, spitter: opt(spitter), animateSpitter, acidBlob, flare, claw: opt(claw), stalker: opt(stalker), animateStalker, hanger: opt(hanger), setTongue, scareFace: opt(scareFace),
     cryoPod, specimenTank, labTable, desk, serverRack, crates, barrels, shelf, morgueBed, generator,
     item: opt(item), ceilingLamp: opt(ceilingLamp), beacon: opt(beacon), door: opt(door), wallButton: opt(wallButton), elevator: opt(elevator), fleshGrowth, vent, signMat, glowTex,
     lockers, cabinet, cart, papers, debris, bin, extinguisher, bodyBag, wetSign,

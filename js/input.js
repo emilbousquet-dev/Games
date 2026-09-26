@@ -9,12 +9,12 @@ LAB.Input = (function () {
     { // PLAYER 1 (left side of the keyboard)
       fwd: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
       strafeL: ['KeyQ'], strafeR: ['KeyE'], lookUp: ['KeyZ'], lookDown: ['KeyX'],
-      sprint: ['ShiftLeft'], flash: ['KeyF'], attack: ['Space'], use: ['KeyR'], map: ['Tab', 'KeyC'],
+      sprint: ['ShiftLeft'], flash: ['KeyF'], attack: ['Space'], use: ['KeyR'], map: ['Tab', 'KeyC'], flare: ['KeyG'],
     },
     { // PLAYER 2 (arrows + right side)
       fwd: ['ArrowUp'], back: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
       strafeL: ['Comma'], strafeR: ['Period'], lookUp: ['Quote', 'PageUp'], lookDown: ['Semicolon', 'PageDown'],
-      sprint: ['ShiftRight', 'KeyM'], flash: ['KeyL'], attack: ['Enter', 'NumpadEnter', 'Numpad0'], use: ['Slash', 'KeyK', 'Numpad1'], map: ['Backslash', 'KeyJ', 'Numpad2'],
+      sprint: ['ShiftRight', 'KeyM'], flash: ['KeyL'], attack: ['Enter', 'NumpadEnter', 'Numpad0'], use: ['Slash', 'KeyK', 'Numpad1'], map: ['Backslash', 'KeyJ', 'Numpad2'], flare: ['KeyN', 'Numpad3'],
     },
   ];
   const pads = [null, null];          // which gamepad index belongs to each player
@@ -80,7 +80,7 @@ LAB.Input = (function () {
       turn: (down(k.right) ? 1 : 0) - (down(k.left) ? 1 : 0),
       look: (down(k.lookUp) ? 1 : 0) - (down(k.lookDown) ? 1 : 0),
       lookDX: 0, lookDY: 0,
-      sprint: down(k.sprint), flash: down(k.flash), attack: down(k.attack), use: down(k.use), map: down(k.map),
+      sprint: down(k.sprint), flash: down(k.flash), attack: down(k.attack), use: down(k.use), map: down(k.map), flare: down(k.flare),
       pause: false, pad: false,
     };
     // player 1 can also use the mouse after clicking on the game
@@ -107,6 +107,7 @@ LAB.Input = (function () {
         s.flash = s.flash || b(5) || b(3);
         s.pause = b(9);
         s.map = s.map || b(8) || b(1);
+        s.flare = s.flare || b(4);
         if (b(12)) s.move += 1; if (b(13)) s.move -= 1;
         if (b(14)) s.turn -= 1; if (b(15)) s.turn += 1;
       }
@@ -120,7 +121,8 @@ LAB.Input = (function () {
     s.flashPressed = s.flash && !p.flash;
     s.pausePressed = s.pause && !p.pause;
     s.mapPressed = s.map && !p.map;
-    prev[i] = { attack: s.attack, use: s.use, flash: s.flash, pause: s.pause, map: s.map };
+    s.flarePressed = s.flare && !p.flare;
+    prev[i] = { attack: s.attack, use: s.use, flash: s.flash, pause: s.pause, map: s.map, flare: s.flare };
     return s;
   }
 

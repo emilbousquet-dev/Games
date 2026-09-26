@@ -119,6 +119,7 @@ window.LAB = window.LAB || {};
     for (const s of LAB.World.spawns.C) G.spawnCrawler(s.x, s.z, false);
     for (const s of LAB.World.spawns.T) { const h = new LAB.Aliens.Spitter(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
     G.projectiles = [];
+    G.flares = [];
     for (const s of LAB.World.spawns.Z) { const h = new LAB.Aliens.Husk(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
     for (const s of LAB.World.spawns.Q) { const h = new LAB.Aliens.Hanger(scene, s.x, s.z); h.game = G; G.aliens.push(h); }
     const ss = LAB.World.spawns.S[0];
@@ -228,6 +229,8 @@ window.LAB = window.LAB || {};
           if (p.battery > 95) take = false; else { p.battery = Math.min(100, p.battery + 60); G.message(p.i, 'Battery +60%'); }
         } else if (it.type === 'M') {
           if (p.hp > 95) take = false; else { p.heal(50); G.message(p.i, 'Medkit +50 health'); }
+        } else if (it.type === 'I') {
+          p.flares++; G.message(p.i, `Picked up a FLARE (${p.flares}) — throw it with ${G.mode === 1 ? 'G' : p.i ? 'N' : 'G'} / LB`);
         } else if (it.type === 'N') {
           G.hud.showNote(p.i, it.note); G.stats.notes++; p.noteItem = it;
           LAB.Audio.noteSound(pan);
@@ -271,9 +274,53 @@ window.LAB = window.LAB || {};
       G.stalker.cool = 0; G.stalker.state = 'hunt';
       G.stalker.target = G.players.find((p) => p.standing);
     }
+    setTimeout(() => { if (G.state === 'play' && G.stalker) G.scaresys.wallBreak(); }, 4500);
     // more crawlers pour out
     const far = LAB.World.floorCells.filter(([x, y]) => G.players.every((p) => U.dist(p.x, p.z, U.cellToWorld(x), U.cellToWorld(y)) > 16) && LAB.World.passable(x, y));
     for (let i = 0; i < (G.nightmare ? 6 : 4); i++) { const c = U.pick(far); if (c) G.spawnCrawler(U.cellToWorld(c[0]), U.cellToWorld(c[1]), true); }
+  }
+
+  // ---------- flares ----------
+  G.throwFlare = function (p) {
+    const f = p.forward();
+    const m = LAB.Models.flare();
+    scene.add(m);
+    const fl = { x: p.x + f.x * 0.5, y: 1.3, z: p.z + f.z * 0.5, vx: f.x * 7 + (p.kx || 0), vy: 2.5 + p.pitch * 4, vz: f.z * 7, life: 22, model: m, spin: 10, burnT: 0 };
+    const L = { x: fl.x, y: 0.4, z: fl.z, color: new THREE.Color(0xff2a10), base: 1, mode: 'flare', level: 1, phase: 0, flare: fl };
+    fl.light = L;
+    LAB.World.lights.push(L);
+    G.flares.push(fl);
+    LAB.Audio.flareIgnite(G.mode > 1 ? (p.i ? 0.6 : -0.6) : 0);
+    G.message(p.i, 'FLARE! The Stalker cannot come close to it.', 2.5);
+  };
+  function updateFlares(dt) {
+    for (let i = G.flares.length - 1; i >= 0; i--) {
+      const f = G.flares[i];
+      f.life -= dt;
+      if (f.vx || f.vz || f.y > 0.03) { // flying / bouncing
+        f.vy -= 14 * dt;
+        const nx = f.x + f.vx * dt, nz = f.z + f.vz * dt;
+        if (LAB.World.isWall(U.worldToCell(nx), f.cz = U.worldToCell(f.z))) f.vx *= -0.3; else f.x = nx;
+        if (LAB.World.isWall(U.worldToCell(f.x), U.worldToCell(nz))) f.vz *= -0.3; else f.z = nz;
+        f.y += f.vy * dt;
+        if (f.y <= 0.03) { f.y = 0.03; f.vy = -f.vy * 0.3; f.vx *= 0.6; f.vz *= 0.6; if (Math.abs(f.vy) < 0.5) f.vy = 0; if (Math.hypot(f.vx, f.vz) < 0.2) f.vx = f.vz = 0; }
+        f.model.rotation.y += f.spin * dt;
+      }
+      f.model.position.set(f.x, f.y, f.z);
+      f.light.x = f.x; f.light.z = f.z; f.light.y = f.y + 0.35;
+      f.model.userData.glow.material.opacity = f.life > 0 ? 0.7 + Math.random() * 0.3 : 0;
+      f.burnT -= dt;
+      if (f.life > 0 && f.burnT <= 0) {
+        f.burnT = 0.45;
+        LAB.Effects.sparks(f.x, f.y + 0.05, f.z, 3);
+        const s = G.soundAt(f.x, f.z, 10); LAB.Audio.flareBurn(s.vol, s.pan);
+      }
+      if (f.life < -5) { // burnt out: remove
+        scene.remove(f.model);
+        const k = LAB.World.lights.indexOf(f.light); if (k >= 0) LAB.World.lights.splice(k, 1);
+        G.flares.splice(i, 1);
+      }
+    }
   }
 
   // acid blobs flying through the air
@@ -462,6 +509,7 @@ window.LAB = window.LAB || {};
 
     if (!G.ending) for (const a of G.aliens) a.update(dt, G.time, G);
     updateProjectiles(dt);
+    updateFlares(dt);
     G.players.forEach((p) => { p.lastX = p.x; p.lastZ = p.z; });
     LAB.Aliens.separate(G.aliens);
 

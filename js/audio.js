@@ -232,6 +232,8 @@ LAB.Audio = (function () {
       if (!ctx) return;
       for (let i = 0; i < 5; i++) setTimeout(() => ctx && noise(U.rand(0.2, 0.5), 'bandpass', U.rand(1800, 3500), 6, 0.35, pan, 0.08, true), i * U.rand(150, 300));
     },
+    flareIgnite(pan) { if (ctx) { noise(0.25, 'highpass', 2500, 1, 0.5, pan, 0.005); noise(1.2, 'bandpass', 1800, 0.8, 0.25, pan, 0.1); } },
+    flareBurn(vol, pan) { if (ctx && vol > 0.02) noise(0.5, 'bandpass', U.rand(1500, 3000), 1.5, vol * 0.18, pan, 0.05, false); },
     spit(vol, pan) { if (ctx) { noise(0.3, 'bandpass', 1400, 3, vol, pan, 0.01, true, 400); tone('sine', 500, 150, 0.2, vol * 0.4, pan); } },
     sizzle(vol, pan) { if (ctx) noise(0.9, 'highpass', 3000, 0.5, vol * 0.5, pan, 0.02); },
     // husk groan (a moan through a throat full of alien)
