@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spare Parts</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; font-family: 'Trebuchet MS', Arial, sans-serif; }
+    canvas { display: block; }
+    #help {
+      position: fixed; left: 12px; bottom: 12px; padding: 8px 12px; border-radius: 10px;
+      background: rgba(255, 255, 255, 0.8); color: #333; font-size: 14px; line-height: 1.5;
+    }
+    #help b.p1 { color: #e8731a; } #help b.p2 { color: #2a7fd4; }
+  </style>
+</head>
+<body>
+  <div id="help">
+    <b class="p1">Bolt</b>: W A S D to move, Space to jump<br>
+    <b class="p2">Nutty</b>: Arrows to move, Enter to jump<br>
+    Controllers work too! Press a button to join.
+  </div>
+
+  <script src="../lib/three.min.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/robot.js"></script>
+  <script src="js/level.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
