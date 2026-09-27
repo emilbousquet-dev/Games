@@ -21,7 +21,7 @@ FP.Game = (function () {
   let state = 'title', mode = null, scores = {}, round = 0, timer = 0, count = 0;
   let paused = false, botCount = {}, nextId = 1, lobbyPanel = null, outTimers = [];
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
-  const VERSION = '1.0';
+  const VERSION = '1.1';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
   let tourOpts = { games: 5, bots: null, list: false };
   let playlist = [];         // your own list of games for a Party Tour (saved on this computer)

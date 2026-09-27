@@ -1,7 +1,7 @@
 # FLOPPY PARTY
 
 A **wobbly ragdoll party game** for 1 to 4 players, in a cute cartoon style.
-Punch, grab and throw your friends around in 42 silly mini-games!
+Punch, grab and throw your friends around in 43 silly mini-games, a Story Mode with a giant Robot Boss, and arenas you build yourself!
 Play on **one computer** (2 players on the keyboard, plus controllers and bots) or **online** with a room code.
 
 ## How to play
@@ -87,6 +87,7 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Cooking Chaos** | Cook soups together: run into crates for ingredients, into pots to fill them (3 of a kind or 3 different), then bring the soup to the SERVE window. Don't let it burn, watch out for spills. | 1 to 4 |
 | **Hide and Seek** | Hiders get 12 seconds to hide: **grab** next to furniture to hide inside. The seeker **punches** furniture to look inside. Hidden furniture wiggles sometimes. Everyone takes a turn seeking. | 2 to 4 |
 | **Water Balloon Wars** | Red vs Blue in a backyard. **Punch** to lob water balloons that splash everyone nearby, refill at your team's tap. Wet = slippery! | 2 to 4 |
+| **My Arena** | Knockout on an arena **you built** in the Level Editor. Jump pads, ice, lava and walls. Last one standing wins. First to 3. | 2 to 4 |
 
 After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race, Kart Racing, Bowling)
 can be played alone with no bots. The other games need at least 2 players, so if you play alone you get at least 1 bot.
@@ -105,13 +106,43 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
 - **Surprise me!**: a spinning wheel of mini-games stops on a random one.
 - **Daily Challenge** (title screen): a new mini-game with a twist every day, like *Moon Gravity Bowling* or *Disco Soccer*, sometimes against hard bots. Win it for 150 or 200 bonus coins and keep your streak going.
 
-## Party coins, Hat Shop and achievements
+## Story Mode: the Floppy World Tour
+
+Press **Story Mode: World Tour** on the title screen. Travel through 5 worlds (Sunny Meadow, Sandy Beach, Snowy Peaks,
+Lava Land and the Robot Factory), with 4 levels each. Come 1st in a level to open the next one.
+Win on **Easy** for 1 star, **Normal** for 2 stars, **Hard** for 3 stars (60 stars in total).
+
+Stars win prizes you can't buy in the shop: the **Hero mask** (10 stars), **Gold stars** trail (20), **Knight armor** (30)
+and the **Champion** victory dance (45).
+
+The very last level is the **Robot Boss**: everyone on your computer plays together (plus a bot friend if you're alone)
+against a giant robot. Jump over its shockwave rings and its spinning laser, get out of the red circles when it fires
+missiles, and don't stand right in front of it (it swats!). When it gets tired it sits down and opens its chest:
+**punch the glowing core!** Break it three times to win the **Robot helmet**. Falling off costs one of your team's hearts.
+
+## Level Editor
+
+Press **Level Editor** on the title screen (or **Edit** on the My Arena setup screen). Build an arena on a 14 by 14 grid:
+floor, blocks, walls, jump pads, ice, lava and up to 4 start spots. You see it in 3D while you build.
+There are 3 save slots, and you can name each arena. Then press **Play it!** to fight on it with friends and bots.
+It works online too: your friends get your arena automatically.
+
+- Mouse or touch: click or drag to paint, right-click to erase.
+- Keyboard: arrow keys move, **Space** paints, **Backspace** erases, **1 to 8** (or Q and E) pick a tool, **Enter** plays.
+- Controller: stick or d-pad moves, **A** paints, **X** erases, **LB / RB** pick a tool, **Start** plays.
+
+## Party coins, the Shop and achievements
 
 - After every mini-game, players on this computer earn **party coins**: 40 for 1st place, 25 for 2nd, 15 for 3rd, 10 for everyone else.
-- Spend them in the **Hat Shop** (on the title screen or in the lobby) on 8 new hats: Headphones, Flower crown, Wizard hat, Antlers,
-  Pirate hat, Viking helmet, Halo and Space helmet. Hats you own show up in the lobby.
+- Spend them in the **Shop** (on the title screen or in the lobby). It has 5 tabs:
+  - **Hats**: Headphones, Flower crown, Wizard hat, Antlers, Pirate hat, Viking helmet, Halo, Space helmet.
+  - **Outfits**: Tutu, Tuxedo, Superhero, Space suit, Hoodie, Jersey.
+  - **Face paint**: Whiskers, Stars, Shades, Tiger, Clown nose.
+  - **Victory dances**: Robot, Backflip, Spin, Floss, Chicken. Your winner does it on the podium!
+  - **Trails**: Sparkles, Hearts, Bubbles, Rainbow, Fire. They follow you when you run.
+- Pick what you own in the lobby (rows for hat, outfit, face, dance and trail).
 - **Achievements** (14 of them) give 50 bonus coins each, like "Yeet Master" (throw 10 people) or "Party Champion" (win a Party Tour).
-- Coins, hats and achievements are saved on this computer.
+- Coins, everything you own, World Tour stars, your arenas and achievements are saved on this computer.
 
 ## Other nice things
 
@@ -165,7 +196,9 @@ All sounds and music are made with code.
 | `js/modes/*.js` | The mini-games (`kit.js` has helpers they share) |
 | `js/fun.js` | The fun options (moon gravity, big heads, disco...) |
 | `js/props.js` | Models for the mini-games: chairs, jukebox, billboard, gravestones, towers, crowds... |
-| `js/profile.js` | Party coins, the Hat Shop and achievements |
+| `js/profile.js` | Party coins, the Shop and achievements |
+| `js/style.js` | Face paint, victory dances and trails |
+| `js/editor.js` | The Level Editor |
 | `js/settings.js` | The settings screen |
 | `js/bots.js` | Computer players |
 | `js/net.js` | Online play (the claude.ai room, or PeerJS with room codes) |
