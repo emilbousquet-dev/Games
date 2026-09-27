@@ -1,7 +1,7 @@
 # FLOPPY PARTY
 
 A **wobbly ragdoll party game** for 1 to 4 players, in a cute cartoon style.
-Punch, grab and throw your friends around in 18 silly mini-games!
+Punch, grab and throw your friends around in 24 silly mini-games!
 Play on **one computer** (2 players on the keyboard, plus controllers and bots) or **online** with a room code.
 
 ## How to play
@@ -59,8 +59,14 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Musical Seats** | Walk around the jukebox while the music plays. When it stops, jump onto a chair. There is always one chair too few! First to 2. | 2 to 4 |
 | **Zombie Tag** | Zombies turn everyone they touch into zombies. Zombies are slower, and a punch stuns them. Survivors score a point every second, and the last survivor gets a bonus. | 2 to 4 |
 | **Boulder Dodge** | Giant boulders roll across the island. Red arrows show where they come from. Dodge! First to 3. | 2 to 4 |
+| **Kart Racing** | Floppy drivers in go-karts, 3 laps. Drive through **?** boxes for items (boost, banana, bouncy ball, star, triple boost) and press **punch** to use them. Hold **jump** while turning to drift for a mini boost. The camera is behind your kart, with split screen for 2 to 4 players on one computer. | 1 to 4 |
+| **Sumo Wrestling** | Push everyone out of the rope circle. **Jump** does a big belly charge, and punches push extra hard. First to 3. | 2 to 4 |
+| **Bowling** | Everyone has a lane. Grab your ball, run and let go to bowl. 3 throws, strikes give a bonus. Most pins wins. | 1 to 4 |
+| **Basketball** | Red vs Blue. Grab the ball and let go near the other team's hoop to shoot (2 or 3 points). Punch the carrier to steal. First to 10. | 2 to 4 |
+| **Meteor Shower** | Meteors fall from the sky. Red circles show where. Get out of the way! First to 3. | 2 to 4 |
+| **Conveyor Brawl** | The floor is moving belts that push you toward the edge and keep getting faster. First to 2. | 2 to 4 |
 
-After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race)
+After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race, Kart Racing, Bowling)
 can be played alone with no bots. The other games need at least 2 players, so if you play alone you get at least 1 bot.
 
 ## Bots

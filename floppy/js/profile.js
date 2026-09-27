@@ -15,7 +15,7 @@ FP.Profile = (function () {
     { id: 'champion', name: 'Party Champion', desc: 'Win a Party Tour.' },
     { id: 'yeet', name: 'Yeet Master', desc: 'Throw 10 people.', stat: 'throws', goal: 10 },
     { id: 'ko', name: 'Knockout King', desc: 'Knock out 25 characters.', stat: 'kos', goal: 25 },
-    { id: 'explorer', name: 'Explorer', desc: 'Play every mini-game.', stat: 'playedCount', goal: 18 },
+    { id: 'explorer', name: 'Explorer', desc: 'Play every mini-game.', stat: 'playedCount', goal: 24 },
     { id: 'hard', name: 'Bot Boss', desc: 'Win a game against Hard bots.' },
     { id: 'survivor', name: 'Survivor', desc: 'Be the last survivor in Zombie Tag.' },
     { id: 'sharp', name: 'Sharpshooter', desc: 'Win Dodgeball.' },
@@ -33,6 +33,8 @@ FP.Profile = (function () {
 
   const ICON = () => FP.UI.ICON;
   const statValue = (a) => (a.stat === 'playedCount' ? data.played.length : data.stats[a.stat] || 0);
+  // "Explorer": play every mini-game (however many there are now)
+  function goalOf(a) { return a.id === 'explorer' && FP.Game && FP.Game.MODES ? FP.Game.MODES().length : a.goal; }
   const has = (id) => data.ach.includes(id);
 
   function earn(n) {
@@ -55,7 +57,7 @@ FP.Profile = (function () {
   }
 
   // achievements that count something (throws, knockouts...) unlock by themselves
-  function check() { for (const a of ACH) if (a.goal && !has(a.id) && statValue(a) >= a.goal) unlock(a.id); }
+  function check() { for (const a of ACH) if (a.goal && !has(a.id) && statValue(a) >= goalOf(a)) unlock(a.id); }
 
   // is this character played by someone on THIS computer?
   const isLocal = (c) => { const k = c && c.player && c.player.source && c.player.source.kind; return k === 'keys' || k === 'pad'; };
@@ -72,6 +74,7 @@ FP.Profile = (function () {
   function matchEnded({ mode, places, skill, funCount, bots, online, extra = {} }) {
     data.stats.games++;
     if (!data.played.includes(mode.id)) data.played.push(mode.id);
+    check();
     const got = {};
     let total = 0;
     places.forEach((group, i) => {
@@ -165,7 +168,8 @@ FP.Profile = (function () {
   function achievementsScreen(back) {
     const rows = ACH.map((a) => {
       const done = has(a.id);
-      const prog = a.goal && !done ? `<span class="prog"><i style="width:${Math.min(100, Math.round((statValue(a) / a.goal) * 100))}%"></i></span><small>${Math.min(statValue(a), a.goal)} / ${a.goal}</small>` : '';
+      const goal = goalOf(a);
+      const prog = a.goal && !done ? `<span class="prog"><i style="width:${Math.min(100, Math.round((statValue(a) / goal) * 100))}%"></i></span><small>${Math.min(statValue(a), goal)} / ${goal}</small>` : '';
       return `<div class="ach${done ? ' done' : ''}"><span class="medal-ico">${done ? ICON().trophy : ICON().starEmpty}</span><span class="txt"><b>${a.name}</b><small>${a.desc}</small>${prog}</span></div>`;
     }).join('');
     FP.UI.screen({
