@@ -9,7 +9,7 @@ window.FP = window.FP || {};
 FP.Game = (function () {
   const scene = FP.Stage.scene;
   const MAX_PLAYERS = 4;
-  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder'];
+  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor'];
   const MODES = () => MODE_ORDER.map((id) => FP.Modes[id]).filter(Boolean);
   const BOT_NAMES = ['Wobbles', 'Noodle', 'Biscuit', 'Pickle', 'Jellybean', 'Mr. Flop', 'Sprout', 'Bonkers'];
   const ICON = FP.UI.ICON;
@@ -592,6 +592,12 @@ FP.Game = (function () {
     seats: ['Keep walking while the music plays', 'When it stops, jump onto a chair', 'No chair? You are out!'],
     zombie: ['Run from the zombies!', 'Punch a zombie to stun it', 'Zombies are slower than you'],
     boulder: ['Red arrows show where boulders come from', 'Step out of the way', 'They get faster!'],
+    kart: ['Steer left and right (the kart drives by itself). Back = brake', 'Hold JUMP while turning to drift: sparks give a boost', 'Drive through ? boxes, then PUNCH to use the item'],
+    sumo: ['Push everyone out of the ring', 'JUMP does a belly charge!', 'Punches push extra hard here'],
+    bowling: ['Grab a bowling ball (hold grab)', 'Run toward your pins and let go to throw', 'Knock down the most pins in 3 throws'],
+    hoops: ['Grab the ball and run to the other team\'s hoop', 'Let go near the hoop to shoot', 'Punch the ball carrier to make them drop it'],
+    meteor: ['Red circles show where meteors land', 'Get out of the circles!', 'Push others into them'],
+    conveyor: ['The floor moves! Walk against it', 'Belts push you toward the edge', 'Last one on the platform wins'],
   };
   const INTRO_TIME = 15;
   let ready = new Set(), introT = 0;
@@ -731,6 +737,7 @@ FP.Game = (function () {
     return spots;
   }
   function clientPodium(placeIds) {
+    state = 'clientResults';
     const byId = (id) => players.find((p) => p.id === id) || { id };
     buildPodium((placeIds || []).map((g) => g.map(byId)));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
@@ -992,7 +999,7 @@ FP.Game = (function () {
     FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));
     if (FP.Net && FP.Net.isClient()) {
       FP.Net.clientFrame(dt);
-      FP.UI.nameTags(FP.Game.chars, FP.Camera.camera, state === 'lobby' || state === 'client');
+      FP.UI.nameTags(FP.Game.chars, FP.Camera.camera, state === 'lobby' || (state === 'client' && !(mode && mode.noTags)));
       return;
     }
     padPause();
@@ -1005,7 +1012,8 @@ FP.Game = (function () {
     acc += dt;
     let steps = 0;
     while (acc >= FP.Physics.STEP && steps < 4) {
-      for (const c of chars) FP.Ragdoll.control(c, inputFor(c), FP.Physics.STEP);
+      const modeControls = mode && mode.control && ['intro', 'countdown', 'play', 'roundOver'].includes(state);
+      for (const c of chars) { const inp = inputFor(c); if (modeControls) mode.control(c, inp, FP.Physics.STEP, state === 'play'); else FP.Ragdoll.control(c, inp, FP.Physics.STEP); }
       if (mode && mode.beforeStep && ['countdown', 'play', 'roundOver'].includes(state)) mode.beforeStep(FP.Physics.STEP, chars);
       FP.Physics.step();
       acc -= FP.Physics.STEP;
@@ -1052,7 +1060,7 @@ FP.Game = (function () {
     const playing = mode && ['countdown', 'play', 'roundOver'].includes(state);
     const focus = playing && mode.focus ? mode.focus(chars) : chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
     FP.Camera.update(focus.length ? focus : chars.map(FP.Ragdoll.center), dt, state === 'results' ? 7 : mode && state !== 'lobby' ? (mode.minZoom || 12) : 11);
-    FP.UI.nameTags(chars, FP.Camera.camera, ['lobby', 'countdown', 'play', 'roundOver'].includes(state));
+    FP.UI.nameTags(chars, FP.Camera.camera, ['lobby', 'countdown', 'play', 'roundOver'].includes(state) && !(mode && mode.noTags && state !== 'lobby'));
     if (FP.Net) FP.Net.hostFrame(dt);
   }
 
@@ -1078,7 +1086,9 @@ FP.Game = (function () {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
     if (!api.manual) update(dt);
-    FP.Stage.render(FP.Camera.camera);
+    // some mini-games draw their own cameras (like the kart race with split screen)
+    if (mode && mode.render && ['intro', 'countdown', 'play', 'roundOver', 'client'].includes(state)) mode.render(FP.Stage.renderer, FP.Stage.scene, dt);
+    else FP.Stage.render(FP.Camera.camera);
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
