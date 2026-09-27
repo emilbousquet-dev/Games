@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Floppy Party - wobbly ragdoll party game</title>
-  <meta name="description" content="A wobbly ragdoll party game with 31 silly mini-games for 1 to 4 players. Play on one computer or online with friends.">
+  <meta name="description" content="A wobbly ragdoll party game with 34 silly mini-games for 1 to 4 players. Play on one computer or online with friends.">
   <meta name="theme-color" content="#ffcf33">
   <meta property="og:title" content="Floppy Party">
-  <meta property="og:description" content="Punch, grab and throw your friends in 31 silly ragdoll mini-games. Free, in your browser, online with friends.">
+  <meta property="og:description" content="Punch, grab and throw your friends in 34 silly ragdoll mini-games. Free, in your browser, online with friends.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://emilbousquet-dev.github.io/Games/floppy/preview.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -186,6 +186,10 @@
     .credit-list small { font-size: 14px; opacity: .6; font-weight: 700; }
     .version { opacity: .5; }
     /* kart racing */
+    .extra:has(.tug-bar) { flex-direction: column; gap: 4px; padding: 4px 16px; border-radius: 16px; }
+    .tug-bar { position: relative; width: 240px; height: 14px; border-radius: 99px; background: linear-gradient(90deg, #ff5a5f 0 50%, #4aa8ff 50% 100%); border: 2px solid #fff; }
+    .tug-bar.speed { background: linear-gradient(90deg, #fff, #ffcf33 50%, #5cc44a); }
+    .tug-bar i { position: absolute; top: -5px; width: 8px; height: 20px; margin-left: -4px; background: #ffcf33; border: 2px solid #2a2140; border-radius: 3px; }
     .extra:has(.hud-tip) { flex-direction: column; gap: 2px; padding: 4px 16px; border-radius: 16px; }
     .hud-tip { font-size: 12px; opacity: .85; font-weight: 700; }
     .extra:has(.bowl-card) { flex-direction: column; background: none; padding: 0; }
@@ -382,6 +386,9 @@
   <script src="js/modes/golf.js"></script>
   <script src="js/modes/bumpers.js"></script>
   <script src="js/modes/fruit.js"></script>
+  <script src="js/modes/tug.js"></script>
+  <script src="js/modes/volley.js"></script>
+  <script src="js/modes/hurdles.js"></script>
   <script src="js/net.js"></script>
   <script src="js/game.js"></script>
 </body>

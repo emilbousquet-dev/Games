@@ -1,7 +1,7 @@
 # FLOPPY PARTY
 
 A **wobbly ragdoll party game** for 1 to 4 players, in a cute cartoon style.
-Punch, grab and throw your friends around in 31 silly mini-games!
+Punch, grab and throw your friends around in 34 silly mini-games!
 Play on **one computer** (2 players on the keyboard, plus controllers and bots) or **online** with a room code.
 
 ## How to play
@@ -76,6 +76,9 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Floppy Golf** | Stand by your ball and face the hole: an arrow shows your shot. **Punch** and your caddy picks the power, or **hold grab** to pick the power yourself and let go to hit. First in the hole gets the most points. 3 holes. | 1 to 4 |
 | **Bumper Bash** | A pinball table full of bumpers. Touch one and BOING, you fly! After a while the bumpers get super bouncy and shockwaves push everyone out. First to 2. | 2 to 4 |
 | **Fruit Frenzy** | Fruit falls from a giant tree. Watch the shadows and catch it with your head. Golden fruit is worth 3, rotten fruit knocks you out. 60 seconds. | 1 to 4 |
+| **Tug of War** | Red vs Blue on a rope over a mud pit. **Mash punch** to pull! When the sign says HEAVE!, every press counts 3 times. The losers land in the mud. First to 2. | 2 to 4 |
+| **Beach Volleyball** | Red vs Blue at the beach. Stand under the floaty ball to bump it (3 touches per side), **punch** to hit it over, **jump and punch** up high to SPIKE. First to 7. | 2 to 4 |
+| **Hurdle Dash** | A sprint race: **mash punch** to run faster and **jump** over the hurdles (hit one and you trip). 3 races with points for every place. | 1 to 4 |
 
 After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race, Kart Racing, Bowling)
 can be played alone with no bots. The other games need at least 2 players, so if you play alone you get at least 1 bot.

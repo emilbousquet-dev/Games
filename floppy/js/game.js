@@ -9,7 +9,7 @@ window.FP = window.FP || {};
 FP.Game = (function () {
   const scene = FP.Stage.scene;
   const MAX_PLAYERS = 4;
-  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit'];
+  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit', 'tug', 'volley', 'hurdles'];
   const MODES = () => MODE_ORDER.map((id) => FP.Modes[id]).filter(Boolean);
   const BOT_NAMES = ['Wobbles', 'Noodle', 'Biscuit', 'Pickle', 'Jellybean', 'Mr. Flop', 'Sprout', 'Bonkers'];
   const ICON = FP.UI.ICON;
@@ -605,6 +605,9 @@ FP.Game = (function () {
     golf: ['Stand behind your ball and face the hole', 'Punch to hit it (the caddy picks how hard)', 'First in the hole gets the most points'],
     bumpers: ['Touching a bumper sends you flying', 'Punch others into the bumpers', 'Last one on the table wins'],
     fruit: ['Watch the shadows on the ground', 'Catch fruit with your head', 'Dodge the rotten fruit!'],
+    tug: ['MASH PUNCH as fast as you can to pull', 'When the sign says HEAVE!, presses count 3 times', 'Pull the flag over your line!'],
+    volley: ['Stand under the ball and you BUMP it', 'PUNCH near the ball to hit it over the net', 'JUMP and PUNCH up high to SPIKE!'],
+    hurdles: ['MASH PUNCH as fast as you can to run', 'JUMP over the hurdles (or trip!)', '3 races: points for every place'],
   };
   const INTRO_TIME = 15;
   let ready = new Set(), introT = 0;
