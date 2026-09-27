@@ -20,10 +20,12 @@ FP.Input = (function () {
     { // PLAYER 1 (left side)
       up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
       jump: ['Space'], punch: ['KeyF', 'KeyE'], grab: ['KeyG', 'KeyQ', 'ShiftLeft'], color: ['KeyZ'], hat: ['KeyX'], outfit: ['KeyC'],
+      emotes: [['Digit1'], ['Digit2'], ['Digit3']],
     },
     { // PLAYER 2 (right side)
       up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
       jump: ['Slash', 'Numpad0'], punch: ['Period', 'Numpad1'], grab: ['Comma', 'ShiftRight', 'Numpad2'], color: ['KeyK', 'Numpad4'], hat: ['KeyL', 'Numpad5'], outfit: ['KeyJ', 'Numpad6'],
+      emotes: [['Digit8', 'Numpad7'], ['Digit9', 'Numpad8'], ['Digit0', 'Numpad9']],
     },
   ];
   const pads = [null, null, null, null]; // up to 4 controllers
@@ -53,6 +55,7 @@ FP.Input = (function () {
 
   // read a "source": { kind: 'keys', map: 0|1 } or { kind: 'pad', index }
   function read(source, id) {
+    if (source.kind === 'touch') return FP.Touch ? FP.Touch.read(id) : { x: 0, z: 0 };
     const s = { x: 0, z: 0, jump: false, punch: false, grab: false, start: false, color: false, hat: false, outfit: false };
     if (source.kind === 'keys') {
       const k = KEYMAP[source.map];
@@ -68,7 +71,7 @@ FP.Input = (function () {
         s.jump = b(0);
         s.punch = b(2) || b(1);
         s.grab = b(7) || b(5) || b(6) || b(4);
-        s.start = b(9); s.color = b(8); s.hat = b(3); s.outfit = b(11);
+        s.start = b(9); s.color = b(8); s.hat = b(3); s.outfit = b(11); s.dance = b(10);
       }
     }
     const len = Math.hypot(s.x, s.z);
@@ -82,6 +85,7 @@ FP.Input = (function () {
       s.jumpPressed = tapped(k.jump); s.punchPressed = tapped(k.punch);
       s.colorPressed = tapped(k.color); s.hatPressed = tapped(k.hat); s.outfitPressed = tapped(k.outfit);
       s.startPressed = false;
+      s.emote = k.emotes.findIndex((list) => tapped(list)) + 1; // 1 wave, 2 dance, 3 cheer (0 = none)
     } else {
       s.jumpPressed = s.jump && !p.jump;
       s.punchPressed = s.punch && !p.punch;
@@ -89,8 +93,9 @@ FP.Input = (function () {
       s.colorPressed = s.color && !p.color;
       s.hatPressed = s.hat && !p.hat;
       s.outfitPressed = s.outfit && !p.outfit;
+      s.emote = s.dance && !p.dance ? 2 : 0; // left stick click: dance!
     }
-    prev[id] = { jump: s.jump, punch: s.punch, start: s.start, color: s.color, hat: s.hat, outfit: s.outfit, t: now };
+    prev[id] = { jump: s.jump, punch: s.punch, start: s.start, color: s.color, hat: s.hat, outfit: s.outfit, dance: s.dance, t: now };
     return s;
   }
 

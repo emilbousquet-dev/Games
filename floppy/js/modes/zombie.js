@@ -161,7 +161,7 @@ FP.Modes.zombie = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#c9c2e8"/><ellipse cx="60" cy="66" rx="52" ry="10" fill="#7fb069" stroke="#2a2140" stroke-width="2"/><path d="M92 62V46a6 6 0 0 1 12 0v16z" fill="#b8b4c8" stroke="#2a2140" stroke-width="2"/><ellipse cx="40" cy="52" rx="7" ry="9" fill="#7dff5a" stroke="#2a2140" stroke-width="2"/><circle cx="40" cy="39" r="6" fill="#7dff5a" stroke="#2a2140" stroke-width="2"/><path d="M46 46h12M46 50h11" stroke="#7dff5a" stroke-width="4" stroke-linecap="round"/><path d="M46 46h12M46 50h11" stroke="#2a2140" stroke-width="1" stroke-linecap="round" opacity=".6"/><ellipse cx="76" cy="52" rx="7" ry="9" fill="#ff9a3c" stroke="#2a2140" stroke-width="2" transform="rotate(15 76 52)"/><circle cx="73" cy="40" r="6" fill="#ff9a3c" stroke="#2a2140" stroke-width="2"/><path d="M86 42h8M86 48h10" stroke="#2a2140" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>';
 
   self = {
-    id: 'zombie', name: 'Zombie Tag', roundsToWin: 1, single: true, minTotal: 2, song: 'tense', minZoom: 16, art: ART,
+    id: 'zombie', name: 'Zombie Tag', roundsToWin: 1, single: true, minTotal: 2, song: 'spooky', minZoom: 16, art: ART,
     desc: 'Zombies turn everyone they touch into zombies! Punch them to stun them. Survive to score.',
     build, spawn, update, botThink, hud, visual,
     scoreLabel: (s) => `${Math.floor(s)}`,

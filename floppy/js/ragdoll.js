@@ -178,6 +178,14 @@ FP.Ragdoll = (function () {
     } else c.strength = 1;
     const s = c.strength;
 
+    // emotes: 1 wave, 2 dance, 3 cheer. Moving, punching or grabbing stops them
+    if (input.emote && s > 0.9 && !c.grabbedBy) { c.emote = { k: input.emote, t: 0, hop: 0.2 }; FP.bus.emit('emote', c); }
+    if (c.emote) {
+      c.emote.t += dt;
+      const moving = Math.hypot(input.x || 0, input.z || 0) > 0.3;
+      if (c.emote.t > 2.6 || c.ko > 0 || c.grabbedBy || input.punchPressed || input.grab || (moving && c.emote.t > 0.3)) c.emote = null;
+    }
+
     // being carried: mash jump to wriggle free!
     if (c.grabbedBy && input.jumpPressed) {
       c.struggle++;
@@ -253,6 +261,8 @@ FP.Ragdoll = (function () {
         FP.bus.emit('jump', c);
       }
 
+      if (c.emote && c.emote.k === 2) c.yaw += Math.sin(c.emote.t * 5) * dt * 2.5; // dance: wiggle side to side
+      if (c.emote && c.emote.k !== 1 && c.grounded && (c.emote.hop -= dt) <= 0) { c.emote.hop = c.emote.k === 3 ? 0.65 : 0.5; for (const b of c.bodies) b.velocity.y += c.emote.k === 3 ? 5 : 3; }
       legs(c, dt, s, groundVel);
       arms(c, input, dt, s);
     } else {
@@ -318,6 +328,15 @@ FP.Ragdoll = (function () {
       // "out" points from the middle of the body out to this shoulder
       const out = new Vec3(sh.x - t.position.x, 0, sh.z - t.position.z);
       out.normalize();
+      const em = c.emote;
+      if (em && !input.grab && !(c.punchT < 0.22 && c.punchArm === i) && (em.k !== 1 || i === 1)) {
+        const up = em.k === 1 ? 0.5 : em.k === 2 ? 0.15 + 0.35 * (0.5 + 0.5 * Math.sin(em.t * 9 + i * Math.PI)) : 0.55 + 0.08 * Math.sin(em.t * 18 + i);
+        const side = em.k === 1 ? 0.25 + Math.sin(em.t * 16) * 0.16 : em.k === 2 ? 0.35 : 0.15;
+        const fwd = em.k === 3 ? 0 : 0.12;
+        const target = new Vec3(sh.x + out.x * side + f.x * fwd, sh.y + up, sh.z + out.z * side + f.z * fwd);
+        pull(arm, HAND, target, 18, 0.6, s, t.velocity);
+        continue;
+      }
       if (c.punchT < 0.22 && c.punchArm === i) {
         const target = new Vec3(sh.x + f.x * 0.8 - out.x * 0.2, sh.y + 0.05, sh.z + f.z * 0.8 - out.z * 0.2);
         pull(arm, HAND, target, 34, 0.5, s, t.velocity);
@@ -486,7 +505,7 @@ FP.Ragdoll = (function () {
     else if (c.exprTimer > 0) e = c.expression;
     else if (c.punchT < 0.5 || (c.grab[0] || c.grab[1])) e = 'angry';
     else if (c.airTime > 0.6 || c.grabbedBy) e = 'oh';
-    else if (c.cheer > 0) e = 'happy';
+    else if (c.cheer > 0 || c.emote) e = 'happy';
     c.cheer = Math.max(0, (c.cheer || 0) - dt);
     c.faceExpr = e;
     // blink every few seconds

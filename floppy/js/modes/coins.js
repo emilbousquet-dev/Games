@@ -179,7 +179,7 @@ FP.Modes.coins = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><ellipse cx="60" cy="64" rx="52" ry="11" fill="#7ad35e" stroke="#2a2140" stroke-width="2"/><rect x="74" y="44" width="24" height="12" fill="#cfe8ff" stroke="#2a2140" stroke-width="2"/><g stroke="#2a2140" stroke-width="2"><circle cx="30" cy="40" r="7" fill="#ffcf33"/><circle cx="86" cy="32" r="7" fill="#ffcf33"/><circle cx="58" cy="24" r="11" fill="#ffcf33"/><circle cx="46" cy="52" r="6" fill="#ffcf33"/></g><path d="M58 18l2 4 4 .5-3 3 .8 4-3.8-2-3.8 2 .8-4-3-3 4-.5z" fill="#fff5c2"/><ellipse cx="70" cy="54" rx="5" ry="6" fill="#9b6bff" stroke="#2a2140" stroke-width="2"/><circle cx="70" cy="45" r="4" fill="#9b6bff" stroke="#2a2140" stroke-width="2"/></svg>';
 
   self = {
-    id: 'coins', name: 'Coin Grab', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 3, song: 'party', minZoom: 16, art: ART,
+    id: 'coins', name: 'Coin Grab', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 3, song: 'chill', minZoom: 16, art: ART,
     desc: 'Grab the most coins! Knock people out and they drop theirs. Watch for the big coin.',
     build, spawn: (i, n) => FP.Kit.ring(i, n, 4, 3, 0.5), update, botThink, hud, visual,
     scoreLabel: (s) => `${Math.floor(s)}`,

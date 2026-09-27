@@ -183,7 +183,7 @@ FP.Net = (function () {
       const c = conns.get(p.peer);
       const pr = p.presence && p.presence.fp;
       if (!c || !pr) continue;
-      inputs[c.pid] = { x: +pr.x || 0, z: +pr.z || 0, jump: !!pr.j, grab: !!pr.g, jc: pr.jc | 0, pc: pr.pc | 0 };
+      inputs[c.pid] = { x: +pr.x || 0, z: +pr.z || 0, jump: !!pr.j, grab: !!pr.g, jc: pr.jc | 0, pc: pr.pc | 0, em: pr.em | 0, ek: pr.ek | 0 };
       const last = lastActs[p.peer] || { c: 0, h: 0, o: 0 };
       const pl = FP.Game.players.find((q) => q.id === c.pid);
       if (pl && FP.Game.state === 'lobby') {
@@ -246,9 +246,9 @@ FP.Net = (function () {
   function inputOf(pid) {
     const m = inputs[pid];
     if (!m) return { x: 0, z: 0 };
-    const prev = prevCount[pid] || { j: m.jc, p: m.pc };
-    const out = { x: m.x || 0, z: m.z || 0, jump: !!m.jump, grab: !!m.grab, jumpPressed: m.jc > prev.j, punchPressed: m.pc > prev.p };
-    prevCount[pid] = { j: m.jc, p: m.pc };
+    const prev = prevCount[pid] || { j: m.jc, p: m.pc, e: m.em | 0 };
+    const out = { x: m.x || 0, z: m.z || 0, jump: !!m.jump, grab: !!m.grab, jumpPressed: m.jc > prev.j, punchPressed: m.pc > prev.p, emote: (m.em | 0) > (prev.e | 0) ? Math.max(0, Math.min(3, m.ek | 0)) : 0 };
+    prevCount[pid] = { j: m.jc, p: m.pc, e: m.em | 0 };
     return out;
   }
 
@@ -459,17 +459,20 @@ FP.Net = (function () {
   function clientFrame(dt) {
     if (!isClient()) return;
     // my buttons (either side of the keyboard, or the first controller)
-    const a = FP.Input.read({ kind: 'keys', map: 0 }, 'net0'), b = FP.Input.read({ kind: 'keys', map: 1 }, 'net1'), pad = FP.Input.read({ kind: 'pad', index: 0 }, 'netpad');
+    const a = FP.Input.read({ kind: 'keys', map: 0 }, 'net0'), b = FP.Input.read({ kind: 'keys', map: 1 }, 'net1');
+    const pad = FP.Touch && FP.Touch.available ? FP.Input.read({ kind: 'touch' }, 'nettouch') : FP.Input.read({ kind: 'pad', index: 0 }, 'netpad');
     const x = Math.max(-1, Math.min(1, a.x + b.x + pad.x)), z = Math.max(-1, Math.min(1, a.z + b.z + pad.z));
     if (a.jumpPressed || b.jumpPressed || pad.jumpPressed) pressCount.jump++;
     if (a.punchPressed || b.punchPressed || pad.punchPressed) pressCount.punch++;
+    const emote = a.emote || b.emote || pad.emote;
+    if (emote) { pressCount.em = (pressCount.em || 0) + 1; pressCount.ek = emote; }
     if (clientState === 'lobby' && (a.colorPressed || b.colorPressed || pad.colorPressed)) send({ t: 'color' });
     if (clientState === 'lobby' && (a.hatPressed || b.hatPressed || pad.hatPressed)) send({ t: 'hat' });
     if (clientState === 'lobby' && (a.outfitPressed || b.outfitPressed || pad.outfitPressed)) send({ t: 'outfit' });
     const jump = a.jump || b.jump || pad.jump, grab = a.grab || b.grab || pad.grab;
     if (kind === 'room') {
       // the room sends presence about 30 times a second by itself: just keep it up to date
-      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, jc: pressCount.jump, pc: pressCount.punch, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit } }).catch(() => {});
+      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit } }).catch(() => {});
       if (myId === null) {
         joinWait -= dt;
         if (joinWait <= 0) { FP.UI.toast(hostPeer ? 'That party is full (4 players)' : 'Nobody is hosting that party right now', 3); leave(); menu(); return; }
@@ -478,7 +481,7 @@ FP.Net = (function () {
       inTimer -= dt;
       if (inTimer <= 0 && hostConn && hostConn.open) {
         inTimer = 1 / 30;
-        hostConn.send({ t: 'in', x, z, jump, grab, jc: pressCount.jump, pc: pressCount.punch });
+        hostConn.send({ t: 'in', x, z, jump, grab, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0 });
       }
     }
     // move everything to where the host says (smoothly)

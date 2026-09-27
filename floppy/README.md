@@ -20,9 +20,12 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 | Jump | `Space` | `/` | A |
 | Punch | `F` | `.` | X or B |
 | Grab (hold) | `G` | `,` | RT or RB |
+| Emotes: wave / dance / cheer | `1` / `2` / `3` | `8` / `9` / `0` | Left stick click (dance) |
 | Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / left stick click |
 
 `H` help, `Esc` pause, `M` music on or off.
+
+**Phones and tablets:** a joystick appears on the left, and Jump, Punch, Grab and Emote buttons on the right. The pause button is at the top right.
 In the lobby you can also click the arrows on your player card to change your color, hat and outfit.
 
 - **Punch** someone 3 times quickly to **knock them out**. They go completely floppy!
@@ -78,6 +81,10 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
 - Coins, hats and achievements are saved on this computer.
 
 ## Other nice things
+
+- **Emotes:** wave, dance and cheer at your friends. Bots sometimes show off after knocking someone out.
+- **Music:** 7 songs made with code (party, tense, race, chill, spooky, circus and the menu song), with drums and chords.
+- **Slow motion** on the final knockout of a round.
 
 - Before each mini-game there is a **how to play** card with tips and controls. Everyone presses **jump** when they're ready.
 - At the end, the winners stand on a **3D podium** (1st, 2nd and 3rd) while the crowd cheers.

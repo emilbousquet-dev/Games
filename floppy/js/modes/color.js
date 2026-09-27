@@ -150,7 +150,7 @@ FP.Modes.color = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><g stroke="#2a2140" stroke-width="2"><rect x="18" y="40" width="20" height="14" fill="#ff7eb6"/><rect x="38" y="40" width="20" height="14" fill="#4aa8ff"/><rect x="58" y="40" width="20" height="14" fill="#ffd23f"/><rect x="78" y="40" width="20" height="14" fill="#6ad65a"/><rect x="18" y="54" width="20" height="14" fill="#a77bff"/><rect x="38" y="54" width="20" height="14" fill="#ffd23f"/><rect x="78" y="54" width="20" height="14" fill="#ff7eb6"/><rect x="42" y="8" width="36" height="20" rx="3" fill="#ffd23f"/></g><path d="M58 60h20" stroke="#2a2140" stroke-width="2" stroke-dasharray="3 3"/><ellipse cx="68" cy="34" rx="5" ry="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><circle cx="68" cy="25" r="4" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/></svg>';
 
   return {
-    id: 'color', name: 'Color Panic', roundsToWin: 3, minTotal: 2, removeOut: 1.5, song: 'tense', minZoom: 16, art: ART,
+    id: 'color', name: 'Color Panic', roundsToWin: 3, minTotal: 2, removeOut: 1.5, song: 'race', minZoom: 16, art: ART,
     desc: 'A color is called: run to a tile of that color before the others drop away!',
     build, spawn, update, botThink, hud, visual,
     netState: () => ({ c: tiles.map((t) => t.c).join(''), t: target, p: phase, k: Math.round(timer * 10) / 10, n: cycle }),

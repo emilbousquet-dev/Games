@@ -14,7 +14,7 @@ FP.Audio = (function () {
       musicGain = ctx.createGain(); musicGain.gain.value = 0.16; musicGain.connect(master);
       sfxGain = ctx.createGain(); sfxGain.gain.value = 1; sfxGain.connect(master);
       setVolumes(...vols);
-      setInterval(tick, 150);
+      setInterval(schedule, 25);
     } catch (e) { ctx = null; }
   }
 
@@ -78,23 +78,73 @@ FP.Audio = (function () {
     sfxGain.gain.value = fx;
   }
 
-  // a bouncy party tune
+  // ------------------------------------------------------------
+  //  MUSIC: songs made of chords, a bass line, soft arpeggios,
+  //  a melody and drums. Notes are scheduled a little ahead of
+  //  time so the beat stays steady.
+  // ------------------------------------------------------------
+  const midi = (n) => 440 * Math.pow(2, (n - 69) / 12);
+  // melody: 64 steps (4 bars of 16th notes). A number is a note, '.' is a rest, '-' holds the note longer
   const SONGS = {
-    party: { bass: [131, 131, 196, 196, 175, 175, 147, 196], mel: [523, 0, 659, 784, 0, 784, 880, 784, 659, 0, 587, 659, 523, 0, 392, 0] },
-    circus: { bass: [147, 220, 147, 220, 131, 196, 131, 196], mel: [587, 554, 587, 0, 880, 0, 784, 740, 784, 0, 659, 0, 587, 659, 740, 0] },
-    tense: { bass: [110, 110, 131, 110, 98, 98, 117, 98], mel: [440, 0, 523, 0, 494, 0, 440, 415, 0, 0, 440, 0, 523, 587, 523, 0] },
+    menu: { bpm: 106, chords: [[55, 'M'], [52, 'm'], [48, 'M'], [50, 'M']], lead: 'triangle', arp: true, bass: 'x.....x.x.......',
+      drums: { k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.' },
+      mel: '79 . . 83 . . 86 . 83 . . . 81 . . . 79 . . 83 . . 88 . 86 . . . 83 . . . 76 . . 79 . . 84 . 83 . . . 81 . . . 78 . . 81 . . 86 . 84 - 83 . 81 . . .' },
+    party: { bpm: 124, chords: [[60, 'M'], [57, 'm'], [53, 'M'], [55, 'M']], lead: 'square', arp: true, bass: 'x..x..x.x..x..x.',
+      drums: { k: 'x...x...x...x...', s: '....x.......x..x', h: '..x...x...x...xx' },
+      mel: '72 . 76 . 79 . 76 . 81 . 79 . 76 . 74 . 72 . 76 . 81 . 79 . 76 . 72 . 69 . 71 . 72 . 77 . 81 . 77 . 84 . 81 . 77 . 76 . 74 . 79 . 83 . 79 . 86 - 83 . 79 . 74 .' },
+    tense: { bpm: 136, chords: [[57, 'm'], [53, 'M'], [55, 'M'], [52, 'M']], lead: 'sawtooth', arp: true, bass: 'x.x.x.x.x.x.x.x.',
+      drums: { k: 'x..x..x.x..x..x.', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+      mel: '69 . 72 . 76 . 72 . 74 . 72 . 71 . 69 . 65 . 69 . 72 . 69 . 71 . 69 . 67 . 65 . 67 . 71 . 74 . 71 . 72 . 71 . 69 . 67 . 68 . 71 . 76 . 71 . 74 - 72 . 71 . 68 .' },
+    race: { bpm: 156, chords: [[62, 'M'], [59, 'm'], [55, 'M'], [57, 'M']], lead: 'square', arp: true, bass: 'x.xxx.xxx.xxx.xx',
+      drums: { k: 'x...x...x...x...', s: '....x.......x.x.', h: 'xxxxxxxxxxxxxxxx' },
+      mel: '74 74 78 . 81 . 78 . 86 . 81 . 78 . 76 . 74 74 78 . 83 . 78 . 86 . 83 . 78 . 74 . 74 74 79 . 83 . 79 . 86 . 83 . 79 . 78 . 76 76 81 . 85 . 81 . 88 - 85 . 81 . 76 .' },
+    chill: { bpm: 94, chords: [[53, 'M'], [50, 'm'], [46, 'M'], [48, 'M']], lead: 'triangle', arp: true, bass: 'x.......x..x....',
+      drums: { k: 'x.......x.x.....', s: '....x.......x...', h: '..x.x.x...x.x.xx' },
+      mel: '77 . . . 81 . . 79 . . 77 . . . 76 . 74 . . . 77 . . 76 . . 74 . . . 72 . 70 . . . 74 . . 77 . . 76 . . . 74 . 72 . . . 76 . . 79 . - . 77 . 76 . . .' },
+    spooky: { bpm: 100, chords: [[50, 'm'], [46, 'M'], [43, 'm'], [45, 'M']], lead: 'triangle', arp: true, bass: 'x.....x.........',
+      drums: { k: 'x.......x.......', s: '............x...', h: '....x.......x...' },
+      mel: '74 . . 77 . . 76 . 74 . . . 73 . . . 74 . . 77 . . 81 . 79 . . . 77 . . . 74 . . 70 . . 72 . 74 . . . 76 . . . 73 . . 76 . . 79 . 81 - - . 76 . . .' },
+    circus: { bpm: 144, chords: [[62, 'M'], [57, 'M'], [57, 'M'], [62, 'M']], lead: 'square', arp: false, bass: 'x...x...x...x...',
+      drums: { k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.' },
+      mel: '74 73 74 . 81 . 79 78 79 . 76 . 74 76 78 . 76 75 76 . 81 . 79 78 79 . 76 . 73 76 79 . 76 75 76 . 85 . 83 82 83 . 79 . 76 79 81 . 78 77 78 . 86 . 85 83 81 . 78 . 74 . . .' },
   };
-  function tick() {
-    if (!ctx || !musicOn || ctx.state !== 'running') return;
-    if (song === 'silent') return; // the music stopped (musical seats!)
-    const s = SONGS[song] || SONGS.party;
-    const b = s.bass[(step >> 1) % s.bass.length];
-    if (step % 2 === 0) tone('triangle', b, b, 0.28, 0.55, 0, musicGain);
-    const m = s.mel[step % s.mel.length];
-    if (m && (step >> 4) % 4 !== 0) tone('square', m, m, 0.12, 0.13, 0, musicGain);
-    if (step % 4 === 2) noise(0.05, 0.3, 6000, 0, musicGain);
-    if (step % 8 === 0) tone('sine', 120, 45, 0.15, 0.6, 0, musicGain);
-    step++;
+  for (const k in SONGS) SONGS[k].notes = SONGS[k].mel.split(' ');
+
+  let nextTime = 0, playing = null, loop = 0;
+  function playStep(sg, i, when) {
+    const bar = Math.floor(i / 16) % 4, st = i % 16;
+    const [root, q] = sg.chords[bar];
+    const third = root + (q === 'm' ? 3 : 4), fifth = root + 7;
+    const sixteenth = 60 / sg.bpm / 4;
+    const at = Math.max(0, when - ctx.currentTime);
+    // bass (root, and the fifth now and then)
+    if (sg.bass[st] === 'x') { const n = (st === 8 || st === 14 ? fifth : root) - 12; tone('triangle', midi(n), midi(n), sixteenth * 1.8, 0.5, at, musicGain); }
+    // soft arpeggio of the chord
+    if (sg.arp) { const arp = [root, third, fifth, root + 12]; const n = arp[st % 4] + 12; tone('square', midi(n), midi(n), sixteenth * 0.9, 0.035, at, musicGain); }
+    // the melody (it drops out every 4th time around, and goes up high on the last time)
+    const sect = loop % 4;
+    const tok = sg.notes[i % 64];
+    if (tok !== '.' && tok !== '-' && sect !== 0) {
+      let len = 1; while (sg.notes[(i + len) % 64] === '-' && len < 8) len++;
+      const n = +tok + (sect === 3 ? 12 : 0);
+      tone(sg.lead, midi(n), midi(n), sixteenth * len * 0.95, sg.lead === 'sawtooth' ? 0.06 : 0.1, at, musicGain);
+    }
+    // drums
+    if (sg.drums.k[st] === 'x') tone('sine', 150, 42, 0.16, 0.7, at, musicGain);
+    if (sg.drums.s[st] === 'x') { noise(0.12, 0.32, 1900, at, musicGain, 0.7); tone('triangle', 220, 140, 0.07, 0.18, at, musicGain); }
+    if (sg.drums.h[st] === 'x') noise(0.035, 0.12, 8500, at, musicGain, 1.2);
+  }
+  function schedule() {
+    if (!ctx || !musicOn || ctx.state !== 'running' || song === 'silent') { if (ctx) nextTime = ctx.currentTime + 0.05; return; }
+    const sg = SONGS[song] || SONGS.party;
+    if (playing !== song) { playing = song; step = 0; loop = 1; nextTime = ctx.currentTime + 0.05; }
+    if (nextTime < ctx.currentTime - 0.2) nextTime = ctx.currentTime + 0.05; // the tab was asleep: don't play a pile of old notes
+    while (nextTime < ctx.currentTime + 0.12) {
+      playStep(sg, step, nextTime);
+      nextTime += 60 / sg.bpm / 4;
+      step++;
+      if (step % 64 === 0) loop++;
+    }
   }
 
   // react to things happening

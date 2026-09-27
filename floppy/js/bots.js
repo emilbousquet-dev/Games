@@ -214,7 +214,13 @@ FP.Bots = (function () {
     // 5. silly extra jumps (goofy bots love jumping)
     if (c.grounded && !out.grab && Math.random() < dt * sk.silly * (goofy ? 4 : 1)) out.jumpPressed = true;
 
-    // 6. grabbed? mash jump to get free (better players mash faster)
+    // 6. show off after knocking someone out
+    if (b.tauntT > 0) {
+      b.tauntT -= dt;
+      if (b.tauntT <= 0 && c.grounded && !c.grabbedBy) { out.emote = 1 + Math.floor(Math.random() * 3); b.pauseT = 1.4; out.x = 0; out.z = 0; out.punchPressed = false; }
+    }
+
+    // 7. grabbed? mash jump to get free (better players mash faster)
     if (c.grabbedBy) out.jumpPressed = Math.random() < dt * sk.wriggle;
     return out;
   }
@@ -230,6 +236,14 @@ FP.Bots = (function () {
     if (!(mode && mode.botThink && mode.botThink(c, chars, dt, input, tools))) fight(c, chars, dt, input);
     return humanize(c, b, input, dt);
   }
+
+  // a bot that knocks someone out sometimes celebrates with an emote
+  FP.bus.on('knockOut', (c) => {
+    const by = c && c.lastHitBy;
+    if (!by || !by.isBot || by === c || !brains.has(by)) return;
+    const b = brains.get(by);
+    if (Math.random() < (b.personality === 'goofy' ? 0.8 : 0.35)) b.tauntT = 0.5 + Math.random() * 0.5;
+  });
 
   function reset() { brains.clear(); }
 

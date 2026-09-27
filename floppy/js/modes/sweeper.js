@@ -155,7 +155,7 @@ FP.Modes.sweeper = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><ellipse cx="60" cy="52" rx="48" ry="20" fill="#7ad35e" stroke="#2a2140" stroke-width="2.5"/><path d="M18 58l84-14" stroke="#ff9a3c" stroke-width="7" stroke-linecap="round"/><path d="M18 58l84-14" stroke="#2a2140" stroke-width="1.5" stroke-dasharray="5 7" opacity=".5"/><rect x="55" y="34" width="10" height="18" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><circle cx="60" cy="32" r="6" fill="#ffcf33" stroke="#2a2140" stroke-width="2"/><ellipse cx="34" cy="38" rx="5" ry="6" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><circle cx="34" cy="29" r="4" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><path d="M28 46q6 4 12 0" stroke="#2a2140" stroke-width="1.5" fill="none" opacity=".5"/></svg>';
 
   return {
-    id: 'sweeper', name: 'Spin Sweeper', roundsToWin: 3, minTotal: 2, removeOut: 1.5, song: 'tense', minZoom: 16, art: ART,
+    id: 'sweeper', name: 'Spin Sweeper', roundsToWin: 3, minTotal: 2, removeOut: 1.5, song: 'race', minZoom: 16, art: ART,
     desc: 'A giant bar spins around the platform. Jump over it, and push others into it!',
     build, spawn, update, beforeStep, botThink, hud,
     netState: () => bars.map((b) => [Math.round(b.angle * 100) / 100, b.on ? 1 : 0]),

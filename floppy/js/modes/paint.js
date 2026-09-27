@@ -124,7 +124,7 @@ FP.Modes.paint = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><path d="M12 50l48-16 48 16-48 18z" fill="#f4efe6" stroke="#2a2140" stroke-width="2"/><path d="M24 50l20-7 18 6-20 8z" fill="#ff5a5f"/><path d="M62 49l20-6 14 5-20 7z" fill="#4aa8ff"/><path d="M50 60l16-5 14 5-16 6z" fill="#ffcf33"/><circle cx="46" cy="34" r="5" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><ellipse cx="46" cy="43" rx="5" ry="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><g fill="#4aa8ff"><circle cx="84" cy="30" r="3"/><circle cx="92" cy="26" r="2"/><circle cx="78" cy="24" r="2"/></g></svg>';
 
   self = {
-    id: 'paint', name: 'Paint Party', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 3, song: 'party', minZoom: 16, art: ART,
+    id: 'paint', name: 'Paint Party', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 3, song: 'chill', minZoom: 16, art: ART,
     desc: 'Walk around to paint the floor in your color. Jump for a big splat! Most paint wins.',
     build, spawn: (i, n) => FP.Kit.ring(i, n, 4, 3, 0.8), update, botThink, hud,
     scoreLabel: (s) => `${s}`,

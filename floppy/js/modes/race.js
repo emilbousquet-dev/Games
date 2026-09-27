@@ -226,7 +226,7 @@ FP.Modes.race = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><path d="M8 70l22-16h26l-8 16z" fill="#7ad35e" stroke="#2a2140" stroke-width="2"/><rect x="50" y="50" width="14" height="5" fill="#fff1b8" stroke="#2a2140" stroke-width="2"/><rect x="68" y="42" width="14" height="5" fill="#ffd6e7" stroke="#2a2140" stroke-width="2"/><path d="M84 36h28v10H84z" fill="#ffe08a" stroke="#2a2140" stroke-width="2"/><path d="M90 36V14M108 36V14" stroke="#2a2140" stroke-width="2.5"/><path d="M90 14h18v7H90z" fill="#fff" stroke="#2a2140" stroke-width="2"/><path d="M90 14h4v3.5h-4zM98 14h4v3.5h-4zM94 17.5h4V21h-4zM102 17.5h4V21h-4z" fill="#2a2140"/><path d="M16 60l26-6" stroke="#ff9a3c" stroke-width="4" stroke-linecap="round"/><ellipse cx="34" cy="48" rx="4" ry="5" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><circle cx="34" cy="41" r="3.5" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/></svg>';
 
   self = {
-    id: 'race', name: 'Obstacle Race', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 3, song: 'party', minZoom: 14, art: ART,
+    id: 'race', name: 'Obstacle Race', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 3, song: 'race', minZoom: 14, art: ART,
     desc: 'Spinning bars, jumping pads, moving platforms and pushers. First over the finish line wins!',
     build, spawn, update, beforeStep, botThink, hud, focus,
     scoreLabel: (s) => `${s} pts`,

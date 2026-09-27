@@ -6,7 +6,7 @@
 window.FP = window.FP || {};
 
 FP.Settings = (function () {
-  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: 'high', tags: true };
+  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: FP.Touch && FP.Touch.available ? 'low' : 'high', tags: true };
   const s = Object.assign({}, DEFAULTS);
   try { Object.assign(s, JSON.parse(localStorage.getItem('floppy-settings') || '{}')); } catch (e) { /* no saving */ }
   function save() { try { localStorage.setItem('floppy-settings', JSON.stringify(s)); } catch (e) { /* no saving */ } }

@@ -63,6 +63,7 @@ FP.UI = (function () {
       <tr><td>Jump</td><td>Space</td><td>/</td><td>A</td></tr>
       <tr><td>Punch</td><td>F</td><td>.</td><td>X or B</td></tr>
       <tr><td>Grab (hold)</td><td>G</td><td>,</td><td>RT or RB</td></tr>
+      <tr><td>Emotes: wave / dance / cheer</td><td>1 / 2 / 3</td><td>8 / 9 / 0</td><td>L-stick (dance)</td></tr>
       <tr><td>Color / hat / outfit (lobby)</td><td>Z / X / C</td><td>K / L / J</td><td>Back / Y / R-stick</td></tr>
     </table>
     <ul>

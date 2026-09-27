@@ -243,7 +243,7 @@ FP.Modes.soccer = (function () {
   }
 
   return {
-    id: 'soccer', name: 'Ragdoll Soccer', roundsToWin: 3, single: true, teams: true, minTotal: 2, song: 'party', minZoom: 17,
+    id: 'soccer', name: 'Ragdoll Soccer', roundsToWin: 3, single: true, teams: true, minTotal: 2, song: 'race', minZoom: 17,
     art: '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#7ad866"/><rect x="0" y="0" width="30" height="80" fill="#66c455"/><rect x="60" y="0" width="30" height="80" fill="#66c455"/><path d="M60 0v80" stroke="#fff" stroke-width="2.5"/><circle cx="60" cy="40" r="14" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M104 26h12v28h-12" fill="#c2e0ff" stroke="#fff" stroke-width="3"/><circle cx="72" cy="46" r="11" fill="#fff" stroke="#2a2140" stroke-width="2.5"/><path d="M72 40l5 4-2 6h-6l-2-6z" fill="#2a2140"/><ellipse cx="40" cy="44" rx="7" ry="9" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/><circle cx="40" cy="31" r="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/></svg>',
     desc: 'Red vs Blue! Push, punch and headbutt the giant ball into the other goal. First to 3!',
     build, spawn, update, botThink, hud, visual,

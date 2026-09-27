@@ -21,6 +21,7 @@ FP.Game = (function () {
   let state = 'title', mode = null, scores = {}, round = 0, timer = 0, count = 0;
   let paused = false, botCount = {}, nextId = 1, lobbyPanel = null, outTimers = [];
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
+  const VERSION = '1.0';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
   let tourOpts = { games: 5, bots: null };
   try { botSkill = FP.Bots.SKILLS[localStorage.getItem('floppy-skill')] ? localStorage.getItem('floppy-skill') : 'normal'; } catch (e) { /* no saving */ }
@@ -122,11 +123,13 @@ FP.Game = (function () {
   //  TITLE SCREEN (4 bots goofing around behind the menu)
   // ------------------------------------------------------------
   function titleScreen() {
+    const splash = document.getElementById('splash');
+    if (splash && !splash.classList.contains('gone')) { splash.classList.add('gone'); setTimeout(() => splash.remove(), 600); }
     state = 'title';
     paused = false;
     mode = null;
     matchBots = [];
-    FP.Audio.setSong('party');
+    FP.Audio.setSong('menu');
     FP.UI.setHud('');
     FP.UI.help.hidden = true;
     if (lobbyPanel) lobbyPanel.hidden = true;
@@ -149,10 +152,26 @@ FP.Game = (function () {
         { label: `${ICON.trophy} Achievements`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
         { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
         { label: `${ICON.help} How to play`, action: () => { FP.UI.help.hidden = false; }, small: true },
+        { label: `${ICON.star} Credits`, action: credits, small: true },
       ],
     });
     const card = document.querySelector('.screen.title .card');
     if (card) card.insertAdjacentHTML('beforeend', `<p class="title-coins">${FP.Profile.coinLine()}</p>`);
+  }
+
+  function credits() {
+    FP.UI.screen({
+      cls: 'credits',
+      title: 'Credits',
+      html: `<div class="credit-list">
+        <p><small>Game director and ideas</small><b>Emil</b></p>
+        <p><small>Programming, art and music</small><b>Emil and Claude</b></p>
+        <p><small>Made with</small><b>three.js, cannon-es and PeerJS</b></p>
+        <p><small>All sounds and music</small><b>made with code</b></p>
+      </div><p class="small">Thanks for playing Floppy Party!</p><p class="small version">Version ${VERSION}</p>`,
+      buttons: [{ label: `${ICON.back} Back`, action: titleScreen }],
+      back: titleScreen,
+    });
   }
 
   // ------------------------------------------------------------
@@ -178,7 +197,7 @@ FP.Game = (function () {
     FP.Camera.setLift(1.6);
     buildLobbyIsland();
     clearChars();
-    if (!players.length) players.push({ id: nextId++, source: { kind: 'keys', map: 0 }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: 'Player 1' });
+    if (!players.length) players.push({ id: nextId++, source: FP.Touch.available ? { kind: 'touch' } : { kind: 'keys', map: 0 }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: 'Player 1' });
     players.forEach((p) => spawnInLobby(p));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     showLobbyPanel();
@@ -234,6 +253,7 @@ FP.Game = (function () {
     const k = p.source.kind;
     if (k === 'keys') return p.source.map === 0 ? 'Keyboard: W A S D' : 'Keyboard: arrows';
     if (k === 'pad') return `Controller ${p.source.index + 1}`;
+    if (k === 'touch') return 'Touch screen';
     if (k === 'remote') return 'Online';
     if (k === 'me') return 'You (online)';
     if (k === 'host') return 'Host computer';
@@ -243,6 +263,7 @@ FP.Game = (function () {
     const k = p.source.kind;
     if (k === 'keys') return p.source.map === 0 ? '<kbd>Z</kbd> color <kbd>X</kbd> hat <kbd>C</kbd> outfit' : '<kbd>K</kbd> color <kbd>L</kbd> hat <kbd>J</kbd> outfit';
     if (k === 'pad') return '<kbd>Back</kbd> color <kbd>Y</kbd> hat';
+    if (k === 'touch') return 'Tap the arrows to change';
     if (k === 'me') return '<kbd>Z</kbd> color <kbd>X</kbd> hat <kbd>C</kbd> outfit';
     return '&nbsp;';
   }
@@ -332,6 +353,7 @@ FP.Game = (function () {
   // someone pressed jump on a keyboard side or controller that isn't playing yet: they join!
   function lobbyJoins() {
     const sources = [{ kind: 'keys', map: 0 }, { kind: 'keys', map: 1 }];
+    if (FP.Touch.available) sources.push({ kind: 'touch' });
     FP.Input.getPads().forEach((gp, i) => { if (gp) sources.push({ kind: 'pad', index: i }); });
     for (const src of sources) {
       const input = FP.Input.read(src, 'join-' + src.kind + (src.map ?? src.index));
@@ -620,6 +642,12 @@ FP.Game = (function () {
   function endRound(res) {
     state = 'roundOver';
     timer = 0;
+    // the final knockout happens in slow motion, with the camera zooming in
+    if (!mode.single && res.winners && res.winners.length === 1 && chars.some((c) => !c.alive)) {
+      slowmo = 1.2;
+      FP.Camera.zoomTo(0.7);
+      FP.Audio.play('whoosh');
+    }
     let text = 'Nobody wins!';
     const center = new THREE.Vector3();
     if (mode.teams && res.team !== undefined) {
@@ -923,16 +951,21 @@ FP.Game = (function () {
     const src = p.source;
     const canMove = ['play', 'lobby', 'roundOver', 'title'].includes(state);
     if (!canMove || paused) return idle;
-    if (src.kind === 'bot') return state === 'lobby' ? idle : FP.Bots.think(c, chars, FP.Physics.STEP, state === 'play' ? mode : null);
+    if (src.kind === 'bot') return state === 'lobby' || state === 'title' || (c.emote && c.emote.t < 2) ? idle : FP.Bots.think(c, chars, FP.Physics.STEP, state === 'play' ? mode : null);
     if (src.kind === 'remote') return FP.Net ? FP.Net.inputOf(p.id) : idle;
     return FP.Input.read(src, p.id);
   }
 
-  let acc = 0;
+  let acc = 0, titleT = 0, slowmo = 0;
   function update(dt) {
     FP.UI.update(dt);
     FP.Fun.update(dt, FP.Net && FP.Net.isClient() ? 'client' : state);
+    titleT += dt;
+    FP.Camera.setOrbit(state === 'title' ? Math.sin(titleT * 0.12) * 0.45 : 0);
+    FP.Camera.setShift(state === 'title' && innerWidth > 800 ? 3.2 : 0);
     FP.Props.animate(dt);
+    const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
+    FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));
     if (FP.Net && FP.Net.isClient()) {
       FP.Net.clientFrame(dt);
       FP.UI.nameTags(FP.Game.chars, FP.Camera.camera, state === 'lobby' || state === 'client');
@@ -940,6 +973,8 @@ FP.Game = (function () {
     }
     if (paused) return;
     if (state === 'lobby') lobbyJoins();
+    if (slowmo > 0) { slowmo -= dt; dt *= 0.3; if (slowmo <= 0) FP.Camera.zoomTo(1); }
+    else if (state !== 'roundOver') FP.Camera.zoomTo(1);
 
     // physics runs in fixed little steps (60 per second)
     acc += dt;
@@ -978,8 +1013,11 @@ FP.Game = (function () {
       if (mode.update) mode.update(0, chars, api, true);
       introFrame(dt);
     } else if (state === 'results') {
-      // winners on the podium hop with joy
-      for (const c of chars) if (c.podiumWinner && c.grounded && Math.random() < dt * 0.9) for (const b of c.bodies) b.velocity.y += 6.5;
+      // winners on the podium dance and cheer
+      for (const c of chars) if (c.podiumWinner && !c.emote && c.grounded && Math.random() < dt * 1.5) c.emote = { k: 2 + Math.floor(Math.random() * 2), t: 0, hop: 0.3 };
+    } else if (state === 'title') {
+      // the characters on the title screen show off their moves
+      if (chars.length && Math.random() < dt * 1.6) { const c = chars[Math.floor(Math.random() * chars.length)]; if (!c.emote && c.ko <= 0) c.emote = { k: 1 + Math.floor(Math.random() * 3), t: 0, hop: 0.3 }; }
     }
 
     for (const c of chars) FP.Ragdoll.sync(c, dt);

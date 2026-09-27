@@ -6,8 +6,9 @@ window.FP = window.FP || {};
 FP.Camera = (function () {
   const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 400);
   const target = new THREE.Vector3(0, 0, 0);
-  let zoom = 14, shake = 0, lift = 0;
+  let zoom = 14, shake = 0, lift = 0, shiftX = 0, orbit = 0, zoomMul = 1, zoomMulWant = 1;
   const offset = new THREE.Vector3(0, 0.62, 0.9).normalize();
+  const turned = new THREE.Vector3();
   let fixed = null; // a mode can pin the camera to look at the whole arena
 
   function update(points, dt, minZoom = 12) {
@@ -21,12 +22,15 @@ FP.Camera = (function () {
       box.getSize(size);
       spread = Math.max(size.x, size.z * 1.4, size.y * 1.5); // height counts too (for climbing games)
       want.y -= lift; // look a bit lower, so the characters show higher on the screen
+      want.x -= shiftX; // look a bit to the left, so the characters show on the right
     }
-    const wantZoom = Math.max(minZoom, spread * 1.05 + 7);
+    const wantZoom = Math.max(minZoom, spread * 1.05 + 7) * zoomMul;
+    zoomMul += (zoomMulWant - zoomMul) * Math.min(1, dt * 4);
     const k = Math.min(1, 3 * dt);
     zoom += (wantZoom - zoom) * k;
     target.lerp(want, k);
-    camera.position.copy(target).addScaledVector(offset, zoom);
+    turned.copy(offset).applyAxisAngle(THREE.Object3D.DEFAULT_UP, orbit); // orbit: swing the camera around
+    camera.position.copy(target).addScaledVector(turned, zoom);
     camera.lookAt(target);
     if (shake > 0) {
       shake = Math.max(0, shake - dt * 2.5);
@@ -49,6 +53,9 @@ FP.Camera = (function () {
     fix(center, size) { fixed = center ? { center: center.clone(), size } : null; },
     setAngle(y, z) { offset.set(0, y, z).normalize(); },
     setLift(v) { lift = v; },
+    setOrbit(a) { orbit = a; },
+    setShift(x) { shiftX = x; },
+    zoomTo(m) { zoomMulWant = m; },
     resize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); },
   };
 })();
