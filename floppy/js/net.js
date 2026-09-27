@@ -168,6 +168,7 @@ FP.Net = (function () {
     if (hud !== lastHud) { msg.hud = hud; lastHud = hud; }
     const mode = FP.Game.mode;
     if (mode && mode.netState && FP.Game.state !== 'lobby') msg.x = mode.netState();
+    if (FP.Fun) msg.f = FP.Fun.netState();
     events = [];
     broadcast(msg);
   }
@@ -214,7 +215,7 @@ FP.Net = (function () {
       g.players = msg.players.map(fromList);
       FP.UI.closeScreen();
       g.clientRound(clientMode);
-    } else if (msg.t === 's') { snap = msg; if (msg.hud !== undefined) FP.UI.setHud(msg.hud); applyEvents(msg.ev || []); if (msg.x && clientMode && clientMode.applyNetState) clientMode.applyNetState(msg.x); }
+    } else if (msg.t === 's') { snap = msg; if (msg.f !== undefined && FP.Fun) FP.Fun.applyNet(msg.f); if (msg.hud !== undefined) FP.UI.setHud(msg.hud); applyEvents(msg.ev || []); if (msg.x && clientMode && clientMode.applyNetState) clientMode.applyNetState(msg.x); }
     else if (msg.t === 'banner') FP.UI.big(msg.text, msg.text === 'GO!' ? 0.8 : 2.6, msg.sub);
     else if (msg.t === 'results') {
       FP.UI.setHud('');
@@ -295,6 +296,7 @@ FP.Net = (function () {
   function leave() {
     if (peer) { try { peer.destroy(); } catch (e) { /* already closed */ } }
     peer = null; role = null; hostConn = null; conns.clear(); myId = null; snap = null; clientState = 'lobby'; clientMode = null;
+    if (FP.Fun) FP.Fun.clearNet();
   }
 
   function status() {

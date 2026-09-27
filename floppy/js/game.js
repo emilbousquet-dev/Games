@@ -21,6 +21,8 @@ FP.Game = (function () {
   let state = 'title', mode = null, scores = {}, round = 0, timer = 0, count = 0;
   let paused = false, botCount = {}, nextId = 1, lobbyPanel = null, outTimers = [];
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
+  let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
+  let tourOpts = { games: 5, bots: null };
   try { botSkill = FP.Bots.SKILLS[localStorage.getItem('floppy-skill')] ? localStorage.getItem('floppy-skill') : 'normal'; } catch (e) { /* no saving */ }
   const idle = { x: 0, z: 0 };
 
@@ -157,6 +159,7 @@ FP.Game = (function () {
   }
 
   function lobby() {
+    tour = null;
     FP.UI.closeScreen();
     FP.UI.help.hidden = true;
     state = 'lobby';
@@ -340,18 +343,67 @@ FP.Game = (function () {
     if (FP.Net && FP.Net.isClient()) { FP.UI.toast('The host picks the mini-game'); return; }
     state = 'select';
     lobbyPanel.hidden = true;
+    const nFun = FP.Fun.list().length;
     FP.UI.screen({
       cls: 'modes',
       title: 'Pick a mini-game',
-      columns: 3,
+      columns: 4,
+      start: 4,
       buttons: [
+        { label: `${ICON.trophy} Party Tour`, action: tourSetup, cls: 'extra tour' },
+        { label: `${ICON.dice} Surprise me!`, action: surprise, cls: 'extra' },
+        { label: `${ICON.sparkle} Fun options${nFun ? ` (${nFun})` : ''}`, action: () => funScreen(backToPicker), cls: 'extra' },
+        { label: `${ICON.back} Lobby`, action: backToLobby, cls: 'extra' },
         ...MODES().map((m) => ({ label: `<span class="art">${m.art || ''}</span><b>${m.name}</b><small>${m.desc}</small>`, action: () => setupMatch(m), cls: 'mode' })),
-        { label: `${ICON.back} Back to the lobby`, action: backToLobby, small: true, cls: 'wide' },
       ],
       back: backToLobby,
     });
     if (FP.Net) FP.Net.playersChanged();
   }
+  function backToPicker() { FP.UI.closeScreen(); state = 'lobby'; chooseMode(); }
+
+  // Surprise me: a spinning wheel of mini-games that stops on a random one
+  function surprise() {
+    const list = MODES();
+    let k = Math.floor(Math.random() * list.length), ticks = 0;
+    const total = 16 + Math.floor(Math.random() * list.length);
+    const card = FP.UI.screen({ cls: 'setup roulette', title: 'Surprise!', html: '<div class="setup-art" data-art></div><h2 data-name></h2>' });
+    const art = card.querySelector('[data-art]'), name = card.querySelector('[data-name]');
+    const tick = () => {
+      if (!document.body.contains(art)) return; // the screen was closed
+      const m = list[k % list.length];
+      art.innerHTML = m.art || ''; name.textContent = m.name;
+      k++; ticks++;
+      if (ticks < total) { FP.Audio.play('menu'); setTimeout(tick, 45 + ticks * ticks * 0.9); } else {
+        FP.Audio.play('win');
+        setTimeout(() => { if (document.body.contains(art)) setupMatch(m); }, 900);
+      }
+    };
+    tick();
+  }
+
+  // the fun options screen (switch silly rules on and off)
+  function funScreen(back, sel = 0) {
+    const opts = FP.Fun.OPTIONS;
+    FP.UI.screen({
+      cls: 'fun',
+      title: 'Fun options',
+      html: '<p>Silly rules for every mini-game. Switch on as many as you like!</p>',
+      columns: 2,
+      start: sel,
+      buttons: [
+        ...opts.map((o, i) => ({
+          label: `<span class="check${FP.Fun.isOn(o.id) ? ' on' : ''}">${FP.Fun.isOn(o.id) ? ICON.check : ''}</span><span class="txt"><b>${o.name}</b><small>${o.desc}</small></span>`,
+          cls: 'opt',
+          action: () => { FP.Fun.toggle(o.id); funScreen(back, i); },
+        })),
+        { label: `${ICON.play} Done`, action: back, cls: 'go wide' },
+      ],
+      back,
+    });
+  }
+  const funLine = () => { const l = FP.Fun.list(); return l.length ? `<p class="funline">${ICON.sparkle} Fun: ${l.map((o) => o.name).join(', ')}</p>` : ''; };
+
   function backToLobby() { FP.UI.closeScreen(); state = 'lobby'; showLobbyPanel(); refreshLobby(); if (FP.Net) FP.Net.playersChanged(); }
 
   function botLimits(m) {
@@ -398,12 +450,16 @@ FP.Game = (function () {
           <button class="round" data-bots="1" ${n >= max ? 'disabled' : ''} title="More bots">${ICON.plus}</button>
         </div>
         ${n > 0 ? `<div class="skill"><span class="lbl">Bot skill</span>${FP.Bots.SKILL_ORDER.map((id) => `<button class="chip${id === botSkill ? ' on' : ''}" data-skill="${id}">${skillStars(id)}${FP.Bots.SKILLS[id].name}</button>`).join('')}</div>` : ''}
-        ${why}<div class="who">${who}</div><p class="small">${total} player${total > 1 ? 's' : ''} in total. Left and right: number of bots.${n > 0 ? ' Up and down: bot skill.' : ''}</p>`;
+        ${why}<div class="who">${who}</div>${funLine()}<p class="small">${total} player${total > 1 ? 's' : ''} in total. Left and right: number of bots.${n > 0 ? ' Up and down: bot skill.' : ''}</p>`;
       const card = FP.UI.screen({
         cls: 'setup',
         title: m.name,
         html,
-        buttons: [{ label: `${ICON.play} Start`, action: () => startMatch(m), cls: 'go' }, { label: `${ICON.back} Pick another game`, action: () => { FP.UI.closeScreen(); state = 'lobby'; chooseMode(); }, small: true }],
+        buttons: [
+          { label: `${ICON.play} Start`, action: () => startMatch(m), cls: 'go' },
+          { label: `${ICON.sparkle} Fun options`, action: () => funScreen(() => setupMatch(m)), small: true },
+          { label: `${ICON.back} Pick another game`, action: backToPicker, small: true },
+        ],
         back: () => { FP.UI.closeScreen(); state = 'lobby'; chooseMode(); },
         onKey: (code) => {
           if (code === 'left') { change(-1); return true; }
@@ -433,7 +489,7 @@ FP.Game = (function () {
     mode = m;
     const { min, max } = botLimits(m);
     const n = Math.min(max, Math.max(min, botCount[m.id] !== undefined ? botCount[m.id] : min));
-    makeBots(n);
+    if (tour) { if (!tour.bots) { makeBots(tour.botCount); tour.bots = matchBots; } matchBots = tour.bots; tour.awarded = false; } else makeBots(n);
     const list = everyone();
     list.forEach((p, i) => { p.team = m.teams ? i % 2 : undefined; });
     scores = {};
@@ -518,10 +574,11 @@ FP.Game = (function () {
     } else {
       const sorted = list.slice().sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
       const label = (s) => (mode.scoreLabel ? mode.scoreLabel(s) : s);
-      const places = ['1st', '2nd', '3rd', '4th'];
+      const places = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
       html = (mode.resultText ? `<p class="winner">${mode.resultText()}</p>` : '') +
-        `<div class="podium big">${sorted.map((p, i) => `<div class="place p${i}"><span class="medal m${i}">${places[i]}</span>${FP.UI.playerPill(p)}<b>${label(scores[p.id] || 0)}</b></div>`).join('')}</div>`;
+        `<div class="podium">${sorted.map((p, i) => `<div class="place p${i}"><span class="medal m${i}">${places[i]}</span>${FP.UI.playerPill(p)}<b>${label(scores[p.id] || 0)}</b></div>`).join('')}</div>`;
     }
+    if (tour) { tourResults(html); return; }
     FP.UI.screen({
       title: `${mode.name}: results`,
       html,
@@ -548,8 +605,118 @@ FP.Game = (function () {
         return FP.UI.playerPill(p, `${score}${c && c.alive === false ? ` <span class="outmark">${ICON.out}</span>` : ''}`);
       }).join('');
     }
-    const goal = mode.roundsToWin > 1 && !mode.single ? ` <small>first to ${mode.roundsToWin}</small>` : '';
+    const goal = (mode.roundsToWin > 1 && !mode.single ? ` <small>first to ${mode.roundsToWin}</small>` : '') + (tour ? ` <small>Party Tour ${tour.index + 1} of ${tour.games.length}</small>` : '');
     return `<div class="modename">${mode.name}${goal}</div><div class="pills">${pills}</div>${extra ? `<div class="extra">${extra}</div>` : ''}`;
+  }
+
+  // ------------------------------------------------------------
+  //  PARTY TOUR: a few random mini-games in a row. Every game
+  //  gives party points (4 for 1st, 3 for 2nd...). Most points wins!
+  // ------------------------------------------------------------
+  function tourSetup() {
+    const h = humans().length;
+    const min = Math.max(0, 2 - h), max = Math.max(min, MAX_PLAYERS - h);
+    if (tourOpts.bots === null) tourOpts.bots = max;
+    tourOpts.bots = Math.min(max, Math.max(min, tourOpts.bots));
+    const change = (d) => { const v = Math.min(max, Math.max(min, tourOpts.bots + d)); if (v !== tourOpts.bots) { tourOpts.bots = v; FP.Audio.play('menu'); draw(); } };
+    const moveSkill = (d) => { const o = FP.Bots.SKILL_ORDER; const id = o[Math.min(o.length - 1, Math.max(0, o.indexOf(botSkill) + d))]; if (id !== botSkill) { botSkill = id; try { localStorage.setItem('floppy-skill', id); } catch (e) { /* no saving */ } FP.Audio.play('menu'); draw(); } };
+    const draw = () => {
+      const n = tourOpts.bots;
+      const html = `<div class="champ">${ICON.trophy}</div><p>Play <b>${tourOpts.games}</b> random mini-games in a row. Win games to earn party points. Most points at the end is the <b>Party Champion</b>!</p>
+        <div class="skill"><span class="lbl">Games</span>${[3, 5, 7].map((g) => `<button class="chip${g === tourOpts.games ? ' on' : ''}" data-games="${g}">${g}</button>`).join('')}</div>
+        <div class="counter"><span class="lbl">Bots</span>
+          <button class="round" data-bots="-1" ${n <= min ? 'disabled' : ''} title="Fewer bots">${ICON.minus}</button><b class="count">${n}</b>
+          <button class="round" data-bots="1" ${n >= max ? 'disabled' : ''} title="More bots">${ICON.plus}</button></div>
+        ${n > 0 ? `<div class="skill"><span class="lbl">Bot skill</span>${FP.Bots.SKILL_ORDER.map((id) => `<button class="chip${id === botSkill ? ' on' : ''}" data-skill="${id}">${skillStars(id)}${FP.Bots.SKILLS[id].name}</button>`).join('')}</div>` : ''}
+        ${funLine()}<p class="small">Left and right: number of bots.${n > 0 ? ' Up and down: bot skill.' : ''}</p>`;
+      const card = FP.UI.screen({
+        cls: 'setup', title: 'Party Tour', html,
+        buttons: [
+          { label: `${ICON.play} Start the tour`, action: startTour, cls: 'go' },
+          { label: `${ICON.sparkle} Fun options`, action: () => funScreen(tourSetup), small: true },
+          { label: `${ICON.back} Back`, action: backToPicker, small: true },
+        ],
+        back: backToPicker,
+        onKey: (code) => {
+          if (code === 'left') { change(-1); return true; }
+          if (code === 'right') { change(1); return true; }
+          if (tourOpts.bots > 0 && code === 'up') { moveSkill(1); return true; }
+          if (tourOpts.bots > 0 && code === 'down') { moveSkill(-1); return true; }
+          return false;
+        },
+      });
+      card.querySelectorAll('[data-bots]').forEach((b) => b.addEventListener('click', () => change(+b.dataset.bots)));
+      card.querySelectorAll('[data-games]').forEach((b) => b.addEventListener('click', () => { tourOpts.games = +b.dataset.games; FP.Audio.play('menu'); draw(); }));
+      card.querySelectorAll('[data-skill]').forEach((b) => b.addEventListener('click', () => { botSkill = b.dataset.skill; try { localStorage.setItem('floppy-skill', botSkill); } catch (e) { /* no saving */ } FP.Audio.play('menu'); draw(); }));
+    };
+    draw();
+  }
+
+  function startTour() {
+    const ids = MODES().map((m) => m.id);
+    for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
+    tour = { games: ids.slice(0, tourOpts.games), index: 0, points: {}, bots: null, botCount: tourOpts.bots, awarded: false };
+    startMatch(FP.Modes[tour.games[0]]);
+  }
+
+  // party points for this game: 4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else (ties get the same)
+  function tourAward() {
+    const list = everyone(), got = {};
+    if (mode.teams) {
+      const t0 = scores.team0, t1 = scores.team1;
+      list.forEach((p) => { got[p.id] = t0 === t1 ? 2 : ((p.team === 0) === (t0 > t1) ? 4 : 1); });
+    } else {
+      const sorted = list.slice().sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+      let place = 0;
+      sorted.forEach((p, i) => { if (i > 0 && (scores[p.id] || 0) < (scores[sorted[i - 1].id] || 0)) place = i; got[p.id] = [4, 3, 2, 1][place] || 1; });
+    }
+    list.forEach((p) => { tour.points[p.id] = (tour.points[p.id] || 0) + got[p.id]; });
+    return got;
+  }
+
+  function tourTable(got) {
+    const list = everyone().slice().sort((a, b) => (tour.points[b.id] || 0) - (tour.points[a.id] || 0));
+    return `<div class="tour-table">${list.map((p, i) => `<div class="tour-row"><span class="medal m${i}">${['1st', '2nd', '3rd'][i] || `${i + 1}th`}</span>${FP.UI.playerPill(p)}<b>${tour.points[p.id] || 0}</b>${got ? `<span class="plus">+${got[p.id]}</span>` : ''}</div>`).join('')}</div>`;
+  }
+  const tourList = () => `<div class="tour-list">${tour.games.map((id, i) => `<span class="${i < tour.index ? 'done' : i === tour.index ? 'now' : ''}">${FP.Modes[id].name}</span>`).join('')}</div>`;
+
+  function tourResults(gameHtml) {
+    const got = tour.awarded ? null : tourAward();
+    tour.awarded = true;
+    const last = tour.index >= tour.games.length - 1;
+    const html = `${gameHtml}<h2>Party points</h2>${tourTable(got)}${tourList()}`;
+    FP.UI.screen({
+      title: `${mode.name}: results`,
+      html,
+      buttons: [
+        last ? { label: `${ICON.trophy} Who is the champion?`, action: tourFinal, cls: 'go' }
+          : { label: `${ICON.play} Next game: ${FP.Modes[tour.games[tour.index + 1]].name}`, action: () => { tour.index++; startMatch(FP.Modes[tour.games[tour.index]]); }, cls: 'go' },
+        { label: `${ICON.home} Stop the tour`, action: () => lobby(), small: true },
+      ],
+    });
+    if (FP.Net) FP.Net.results(html);
+  }
+
+  function tourFinal() {
+    const list = everyone().slice().sort((a, b) => (tour.points[b.id] || 0) - (tour.points[a.id] || 0));
+    const top = tour.points[list[0].id] || 0;
+    const champs = list.filter((p) => (tour.points[p.id] || 0) === top);
+    const text = champs.length === 1 ? `${esc(champs[0].name)} is the Party Champion!`
+      : champs.length === list.length ? 'It\'s a tie! You are all Party Champions!'
+        : `It's a tie! ${champs.map((p) => esc(p.name)).join(' and ')} are the Party Champions!`;
+    const html = `<div class="champ">${ICON.trophy}</div><p class="winner">${text}</p>${tourTable(null)}`;
+    FP.Audio.play('win'); FP.Audio.play('cheer');
+    FP.FX.confetti(FP.Camera.target.clone());
+    for (const c of chars) if (champs.includes(c.player)) { c.cheer = 6; c.expression = 'happy'; c.exprTimer = 6; }
+    FP.UI.screen({
+      title: 'Party Tour: the end!',
+      html,
+      buttons: [
+        { label: `${ICON.again} New tour`, action: () => { lobby(); chooseMode(); tourSetup(); }, cls: 'go' },
+        { label: `${ICON.home} Back to the lobby`, action: () => lobby(), small: true },
+      ],
+    });
+    if (FP.Net) FP.Net.results(html);
   }
 
   // ------------------------------------------------------------
@@ -592,6 +759,7 @@ FP.Game = (function () {
   let acc = 0;
   function update(dt) {
     FP.UI.update(dt);
+    FP.Fun.update(dt, FP.Net && FP.Net.isClient() ? 'client' : state);
     if (FP.Net && FP.Net.isClient()) {
       FP.Net.clientFrame(dt);
       FP.UI.nameTags(FP.Game.chars, FP.Camera.camera, state === 'lobby' || state === 'client');
@@ -654,6 +822,7 @@ FP.Game = (function () {
     clientLobby, clientRound, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
+    get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,
     manual: false,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) update(1 / 60); },
   };

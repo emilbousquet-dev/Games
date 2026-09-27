@@ -18,7 +18,6 @@ FP.Ragdoll = (function () {
   const JUMP = 8.8;
   const MASS = { torso: 4, head: 1, arm: 0.35, leg: 0.5 };
   const TOTAL = MASS.torso + MASS.head + MASS.arm * 2 + MASS.leg * 2;
-  const G = 25;
   const SHOULDER = [new Vec3(-0.41, 0.17, 0), new Vec3(0.41, 0.17, 0)];
   const HIP = [new Vec3(-0.17, -0.4, 0), new Vec3(0.17, -0.4, 0)];
   const ARM_TOP = new Vec3(0, 0.23, 0), HAND = new Vec3(0, -0.25, 0);
@@ -218,7 +217,7 @@ FP.Ragdoll = (function () {
       if (g && g.dist < STAND + 0.45 && upright > 0.3) {
         const err = STAND - g.dist;
         const vy = t.velocity.y - groundVel.y;
-        let f = TOTAL * G * 0.92 + err * TOTAL * 160 - vy * TOTAL * 14;
+        let f = TOTAL * -P.world.gravity.y * 0.92 + err * TOTAL * 160 - vy * TOTAL * 14;
         f = Math.max(0, Math.min(TOTAL * 90, f));
         t.applyForce(new Vec3(0, f * tall, 0), new Vec3(0, 0, 0));
       }
@@ -241,10 +240,10 @@ FP.Ragdoll = (function () {
       orient(c.parts.head, yawQ, 9, 0.5, tall * 0.8);
 
       // walking force
-      const speed = SPEED * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
+      const speed = SPEED * ((FP.Fun && FP.Fun.speed) || 1) * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
       const wantX = input.x * speed + groundVel.x, wantZ = input.z * speed + groundVel.z;
       c.stagger = Math.max(0, (c.stagger || 0) - dt);
-      const accel = (c.grounded ? 14 : 3.5) * (c.stagger > 0 ? 0.15 : 1);
+      const accel = (c.grounded ? (FP.Fun && FP.Fun.slip ? 1.6 : 14) : 3.5) * (c.stagger > 0 ? 0.15 : 1);
       t.applyForce(new Vec3((wantX - t.velocity.x) * TOTAL * accel * tall, 0, (wantZ - t.velocity.z) * TOTAL * accel * tall), new Vec3(0, 0, 0));
 
       // jump
@@ -350,7 +349,7 @@ FP.Ragdoll = (function () {
     // a punch landing
     if (c.punchT < 0.25 && c.punchArm === i && !c.punchHit && victim && victim !== c) {
       c.punchHit = true;
-      hit(victim, forward(c), c.punchPower || 1, c);
+      hit(victim, forward(c), (c.punchPower || 1) * ((FP.Fun && FP.Fun.punch) || 1), c);
       if (c.isGuard && !victim.isGuard) knockOut(victim, 3); // guards knock you out in one hit!
       FP.bus.emit('punchHit', { by: c, victim, pos: c.parts.arms[i].position.clone() });
       return;
@@ -473,6 +472,10 @@ FP.Ragdoll = (function () {
     const copy = (mesh, body) => { mesh.position.copy(body.position); mesh.quaternion.copy(body.quaternion); };
     copy(c.meshes.torso, c.parts.torso);
     copy(c.meshes.head, c.parts.head);
+    // fun option: BIG HEADS
+    const hs = FP.Fun && FP.Fun.bighead ? 1.75 : 1;
+    if (c.meshes.head.scale.x !== hs) c.meshes.head.scale.setScalar(hs);
+    if (hs > 1) c.meshes.head.position.y += 0.28;
     c.meshes.arms.forEach((m, i) => copy(m, c.parts.arms[i]));
     c.meshes.legs.forEach((m, i) => copy(m, c.parts.legs[i]));
 

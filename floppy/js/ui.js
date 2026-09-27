@@ -45,6 +45,10 @@ FP.UI = (function () {
     minus: svg('<path d="M5 12h14" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>'),
     plus: svg('<path d="M5 12h14M12 5v14" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"/>'),
     left: svg('<path d="M14.5 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
+    trophy: svg('<path d="M7 3h10v5a5 5 0 0 1-10 0z" fill="#ffcf33" stroke="#2a2140" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 5H4v1.5A3.5 3.5 0 0 0 7.5 10M17 5h3v1.5a3.5 3.5 0 0 1-3.5 3.5" fill="none" stroke="#2a2140" stroke-width="1.8"/><path d="M12 13v4M8 21h8l-1-4H9z" fill="#ffcf33" stroke="#2a2140" stroke-width="1.8" stroke-linejoin="round"/>'),
+    dice: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="#fff" stroke="#2a2140" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.6" fill="#2a2140"/><circle cx="15.5" cy="15.5" r="1.6" fill="#2a2140"/><circle cx="12" cy="12" r="1.6" fill="#2a2140"/><circle cx="15.5" cy="8.5" r="1.6" fill="#2a2140"/><circle cx="8.5" cy="15.5" r="1.6" fill="#2a2140"/>'),
+    sparkle: svg('<path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2z" fill="#ff7eb6" stroke="#2a2140" stroke-width="1.6" stroke-linejoin="round"/><circle cx="19" cy="4" r="1.6" fill="#ffcf33"/><circle cx="5" cy="19" r="1.3" fill="#4aa8ff"/>'),
+    check: svg('<path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'),
     right: svg('<path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
 
@@ -75,7 +79,7 @@ FP.UI = (function () {
 
   // ---------------- menu screens ----------------
   // buttons: [{ label, action, small, cls }]. grid: how many buttons per row (for arrow keys)
-  function screen({ title = '', html = '', buttons = [], back = null, cls = '', columns = 1, onKey = null }) {
+  function screen({ title = '', html = '', buttons = [], back = null, cls = '', columns = 1, onKey = null, start = 0 }) {
     screenBox.innerHTML = '';
     screenBox.className = 'screen ' + cls;
     const card = el('div', 'card');
@@ -94,7 +98,7 @@ FP.UI = (function () {
     screenBox.append(card);
     screenBox.hidden = false;
     backFn = back; keyFn = onKey; grid = columns;
-    select(0);
+    select(start);
     return card;
   }
   function closeScreen() { screenBox.hidden = true; screenBox.innerHTML = ''; items = []; backFn = null; keyFn = null; }
@@ -103,6 +107,7 @@ FP.UI = (function () {
     if (!items.length) return;
     sel = Math.max(0, Math.min(items.length - 1, i));
     items.forEach((it, k) => it.btn.classList.toggle('on', k === sel));
+    if (items[sel].btn.scrollIntoView && !screenBox.hidden) items[sel].btn.scrollIntoView({ block: 'nearest' });
   }
   function move(d) { if (items.length) { select(sel + d); FP.Audio.play('menu'); } }
   function choose() { const it = items[sel]; if (it) { FP.Audio.play('select'); it.action(); } }

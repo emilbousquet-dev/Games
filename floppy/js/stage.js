@@ -17,7 +17,8 @@ FP.Stage = (function () {
   scene.background = FP.Look.skyTexture();
   scene.fog = new THREE.Fog(0xcfe9ff, 60, 160);
 
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x9fc4ff, 1.5));
+  const hemi = new THREE.HemisphereLight(0xffffff, 0x9fc4ff, 1.5);
+  scene.add(hemi);
   const sun = new THREE.DirectionalLight(0xfff4e0, 2.2);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -99,5 +100,5 @@ FP.Stage = (function () {
   function render(camera) { renderer.render(scene, camera); }
   function resize() { renderer.setSize(window.innerWidth, window.innerHeight); }
 
-  return { renderer, scene, sun, add, island, block, prop, update, clear, onClear, render, resize, movers, bodies };
+  return { renderer, scene, sun, hemi, add, island, block, prop, update, clear, onClear, render, resize, movers, bodies };
 })();
