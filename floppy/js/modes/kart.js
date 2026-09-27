@@ -177,7 +177,7 @@ FP.Modes.kart = (function () {
     fans.position.set(p0.x + p0.tz * -(WALL + 1.5), 0, p0.z - p0.tx * -(WALL + 1.5));
     fans.rotation.y = p0.h - Math.PI / 2;
     S.add(fans);
-    for (let k = 0; k < 40; k++) {
+    for (let k = 0; k < 30; k++) {
       const i = (k * 37) % N, p = path[i], side = k % 2 ? 1 : -1, dist = WALL + 2 + (k % 5) * 1.6;
       const x = p.x + p.tz * side * dist, z = p.z - p.tx * side * dist;
       if (Math.abs(x) > 53 * SCALE || Math.abs(z) > 45 * SCALE) continue;
@@ -201,7 +201,12 @@ FP.Modes.kart = (function () {
     document.body.append(hudBox);
     mini = makeMiniMap();
     document.body.append(mini.el);
-    S.onClear(() => { if (hudBox) hudBox.remove(); if (mini) mini.el.remove(); hudBox = null; mini = null; });
+    S.onClear(() => {
+      if (hudBox) hudBox.remove(); if (mini) mini.el.remove(); hudBox = null; mini = null;
+      FP.Audio.engine(0);
+      // drivers get their normal bodies back (so they can stand on the podium)
+      for (const k of karts) for (const b of k.c.bodies) b.collisionFilterMask = FP.Physics.ALL & ~k.c.group;
+    });
     FP.Camera.setAngle(0.8, 0.6);
   }
 
@@ -269,7 +274,7 @@ FP.Modes.kart = (function () {
       if (input.jumpPressed && k.hop <= 0) k.hop = 0.28;
       const grip = Math.min(1, Math.abs(k.v) / 6) * Math.sign(k.v || 1);
       const turn = k.driftDir ? (k.driftDir * 0.75 + k.steer * 0.55) * 2.3 : k.steer * 2.1;
-      k.h += turn * grip * dt;
+      k.h -= turn * grip * dt; // steering right turns the kart to the driver's right
       // use the item
       if (input.punchPressed && k.item) useItem(k);
     }
@@ -431,10 +436,10 @@ FP.Modes.kart = (function () {
       const m = k.mesh;
       const hopY = k.hop > 0 ? Math.sin((k.hop / 0.28) * Math.PI) * 0.35 : 0;
       m.position.set(k.x, hopY, k.z);
-      m.rotation.set(0, k.h + (k.driftDir ? k.driftDir * 0.35 : 0), k.steer * -0.04);
+      m.rotation.set(0, k.h - (k.driftDir ? k.driftDir * 0.35 : 0), k.steer * 0.04);
       const u = m.userData;
       u.wheels.forEach((w) => { w.rotation.x += k.v * dt * 3; });
-      u.wheel.rotation.z = -k.steer * 0.8;
+      u.wheel.rotation.z = k.steer * 0.8;
       u.flame.visible = k.boost > 0;
       if (u.flame.visible) u.flame.scale.set(1, 0.8 + Math.random() * 0.6, 1);
       const sparkCol = k.drift > 1.8 ? 0xff9a3c : k.drift > 0.8 ? 0x5ab8ff : 0xffffff;
@@ -468,6 +473,11 @@ FP.Modes.kart = (function () {
     if (!vs.length) { renderer.render(scene, FP.Camera.camera); return; }
     const rects = vs.length === 1 ? [[0, 0, W, H]] : vs.length === 2 ? [[0, H / 2, W, H / 2], [0, 0, W, H / 2]] : [[0, H / 2, W / 2, H / 2], [W / 2, H / 2, W / 2, H / 2], [0, 0, W / 2, H / 2], [W / 2, 0, W / 2, H / 2]];
     renderer.setScissorTest(vs.length > 1);
+    // the sunlight (and its shadows) follows the first player's kart; shadows are drawn once, not once per screen
+    const sun = FP.Stage.sun, k0 = vs[0];
+    sun.position.set(k0.x + 12, 25, k0.z + 14); sun.target.position.set(k0.x, 0, k0.z); sun.target.updateMatrixWorld();
+    renderer.shadowMap.autoUpdate = false;
+    renderer.shadowMap.needsUpdate = true;
     vs.forEach((k, i) => {
       if (!cams[i]) { cams[i] = new THREE.PerspectiveCamera(68, 1, 0.1, 400); cams[i].userData.pos = new THREE.Vector3(k.x, 4, k.z); }
       const cam = cams[i];
@@ -490,6 +500,10 @@ FP.Modes.kart = (function () {
     });
     renderer.setScissorTest(false);
     renderer.setViewport(0, 0, W, H);
+    renderer.shadowMap.autoUpdate = true;
+    // engine sound for the first player's kart
+    const playing = (FP.Game.state === 'play' || FP.Game.state === 'client' || FP.Game.state === 'countdown') && !FP.UI.open();
+    FP.Audio.engine(playing ? Math.max(3, Math.abs(k0.v)) : 0);
   }
 
   // ---------------- on-screen info ----------------
@@ -556,13 +570,13 @@ FP.Modes.kart = (function () {
     // steer around bananas on the road ahead
     for (const bn of bananas) {
       const d = Math.hypot(bn.x - k.x, bn.z - k.z);
-      if (d < 9 && d > 1) { const side = (bn.x - k.x) * Math.cos(k.h) - (bn.z - k.z) * Math.sin(k.h); if (Math.abs(side) < 1.6) { tx -= Math.cos(k.h) * Math.sign(side || 1) * 2.5; tz += Math.sin(k.h) * Math.sign(side || 1) * 2.5; } }
+      if (d < 9 && d > 1) { const side = (bn.x - k.x) * Math.cos(k.h) - (bn.z - k.z) * Math.sin(k.h); if (Math.abs(side) < 1.6) { tx -= Math.cos(k.h) * Math.sign(side || 1) * 2.5; tz += Math.sin(k.h) * Math.sign(side || 1) * 2.5; } } // move to the other side of it
     }
     const want = Math.atan2(tx - k.x, tz - k.z);
     let diff = want - k.h;
     while (diff > Math.PI) diff -= Math.PI * 2;
     while (diff < -Math.PI) diff += Math.PI * 2;
-    input.x = Math.max(-1, Math.min(1, diff * 2.2));
+    input.x = Math.max(-1, Math.min(1, -diff * 2.2));
     input.z = 0;
     // drift through big turns (better bots do this more)
     const sharp = Math.abs(diff) > 0.45 && k.v > 10;

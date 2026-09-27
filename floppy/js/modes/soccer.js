@@ -51,18 +51,15 @@ FP.Modes.soccer = (function () {
       for (const sz of [-1, 1]) ballWall(sx * (L / 2 + 0.5), 4, sz * (GOAL_W / 2 + sideLen / 2), 1, 8, sideLen);
       ballWall(sx * (L / 2 + 0.5), GOAL_H + 2.8, 0, 1, 5, GOAL_W); // above the goal
     }
-    // crowd stands
-    for (const sz of [-1, 1]) {
-      const stand = FP.Look.boxMesh(L + 4, 2.5, 3, FP.Look.toon(0xb8a6e0));
-      stand.position.set(0, 0.5, sz * (W / 2 + 3));
-      FP.Stage.add(stand);
-      for (let i = 0; i < 26; i++) {
-        const fan = FP.Look.mesh(new THREE.SphereGeometry(0.35, 10, 8), FP.Look.toon(FP.Look.COLORS[i % 8].body), 0.03);
-        fan.position.set(-L / 2 + i * (L / 25), 2.1, sz * (W / 2 + 2.7));
-        fan.userData.fan = i;
-        FP.Stage.add(fan);
-        fans.push(fan);
-      }
+    // cheering fans on the far side (the near side stays low so it doesn't block the view)
+    const crowd = FP.Props.crowd(3, 18, 1.5);
+    crowd.position.set(0, 0, -(W / 2 + 2.2));
+    FP.Stage.add(crowd);
+    const boards = [0xff5a5f, 0xffcf33, 0x4aa8ff, 0x5cc44a];
+    for (let i = 0; i < 4; i++) {
+      const b = FP.Look.boxMesh((L + 4) / 4 - 0.2, 0.6, 0.2, FP.Look.toon(boards[i]), 0.03);
+      b.position.set(-L / 2 - 2 + (i + 0.5) * ((L + 4) / 4), 0.3, W / 2 + 1.6);
+      FP.Stage.add(b);
     }
     // the ball
     ball = makeBall();

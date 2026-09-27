@@ -9,16 +9,17 @@ window.FP = window.FP || {};
 FP.Modes = FP.Modes || {};
 
 FP.Modes.sumo = (function () {
-  const RING = 4.2, TOP = 0.6, PLAT = 10;
-  let self = null;
+  const RING = 4.2, TOP = 0.6, PLAT = 10, SHRINK_AT = 25;
+  let self = null, ringR = RING, time = 0, rope = null, warned = false;
 
   function build() {
+    ringR = RING; time = 0; warned = false;
     const S = FP.Stage;
     // sand floor, and the raised clay platform (the dohyo)
     S.island(0, -1, 0, 22, 2, 22, { grass: 0xe8d5a3, dirt: 0xc9a27e });
     S.block(0, TOP / 2, 0, PLAT, TOP, PLAT, 0xd9a86c);
     // the straw rope circle
-    const rope = FP.Look.mesh(new THREE.TorusGeometry(RING, 0.12, 8, 64), FP.Look.toon(0xf2e2a0), 0.02);
+    rope = FP.Look.mesh(new THREE.TorusGeometry(RING, 0.12, 8, 64), FP.Look.toon(0xf2e2a0), 0.02);
     rope.rotation.x = Math.PI / 2; rope.position.y = TOP + 0.05;
     S.add(rope);
     // two white start lines in the middle
@@ -76,6 +77,12 @@ FP.Modes.sumo = (function () {
 
   function update(dt, chars, game, roundOver) {
     if (dt > 0 && !roundOver) {
+      // after a while the ring shrinks, so somebody has to get pushed out
+      time += dt;
+      if (time > SHRINK_AT) {
+        if (!warned) { warned = true; FP.UI.big('SHRINK!', 1, 'The ring is getting smaller!'); if (FP.Net) FP.Net.banner('SHRINK!', 'The ring is getting smaller!'); FP.Audio.play('beep'); }
+        ringR = Math.max(1.6, RING - (time - SHRINK_AT) * 0.08);
+      }
       // belly charges bump people away
       for (const c of chars) {
         if (!(c.dashT > 0) || !c.alive) continue;
@@ -94,12 +101,13 @@ FP.Modes.sumo = (function () {
         }
       }
     }
+    if (rope) rope.scale.setScalar(ringR / RING);
     if (roundOver || dt === 0) return null;
     // outside the rope (or off the platform)? OUT!
     for (const c of chars) {
       if (!c.alive) continue;
       const p = c.parts.torso.position;
-      const out = Math.hypot(p.x, p.z) > RING + 0.2 && (c.grounded || p.y < TOP + 0.4);
+      const out = Math.hypot(p.x, p.z) > ringR + 0.2 && (c.grounded || p.y < TOP + 0.4);
       if (out || p.y < -3) { FP.FX.word(p, 'OUT!', '#ff5a5f', 1.3); game.eliminate(c, 'stepped out of the ring!'); }
     }
     return FP.Kit.lastStanding(chars);
@@ -111,7 +119,7 @@ FP.Modes.sumo = (function () {
     const r = Math.hypot(p.x, p.z);
     let tgt = null, td = Infinity;
     for (const o of chars) { if (o === c || !o.alive) continue; const d = o.parts.torso.position.distanceTo(p); if (d < td) { td = d; tgt = o; } }
-    if (r > RING - 1.1) {
+    if (r > ringR - 1.1) {
       // too close to the rope: get back to the middle
       input.x = -p.x / (r || 1); input.z = -p.z / (r || 1);
     } else if (tgt) {
@@ -130,7 +138,7 @@ FP.Modes.sumo = (function () {
     return true;
   }
 
-  function hud() { return 'Push everyone out of the ring! JUMP = belly charge'; }
+  function hud() { return `Push everyone out of the ring! JUMP = belly charge${ringR < RING ? ' &nbsp; The ring is shrinking!' : ''}`; }
 
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#ffe0c2"/><path d="M10 58l50-16 50 16-50 18z" fill="#d9a86c" stroke="#2a2140" stroke-width="2"/><ellipse cx="60" cy="58" rx="34" ry="11" fill="none" stroke="#f2e2a0" stroke-width="3"/><ellipse cx="44" cy="46" rx="11" ry="12" fill="#ff9a3c" stroke="#2a2140" stroke-width="2"/><circle cx="44" cy="30" r="7" fill="#ff9a3c" stroke="#2a2140" stroke-width="2"/><path d="M34 50h20" stroke="#2a2140" stroke-width="4"/><ellipse cx="76" cy="46" rx="11" ry="12" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><circle cx="76" cy="30" r="7" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><path d="M66 50h20" stroke="#2a2140" stroke-width="4"/><path d="M56 42h8M55 36l4 2M55 48l4-2" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/></svg>';
 
@@ -138,7 +146,9 @@ FP.Modes.sumo = (function () {
     id: 'sumo', name: 'Sumo Wrestling', roundsToWin: 3, minTotal: 2, removeOut: 1.5, song: 'tense', minZoom: 13, art: ART,
     desc: 'Push everyone out of the ring! JUMP does a big belly charge. Last one in the ring wins.',
     build, spawn, update, control, botThink, hud,
-    visual: (dt, chars) => { for (const c of chars || []) dress(c); }, // online friends see the belts too
+    visual: (dt, chars) => { for (const c of chars || []) dress(c); if (rope) rope.scale.setScalar(ringR / RING); }, // online friends see the belts too
+    netState: () => ({ r: Math.round(ringR * 100) / 100 }),
+    applyNetState: (st) => { ringR = st.r; },
   };
   return self;
 })();

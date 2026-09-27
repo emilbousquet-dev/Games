@@ -147,6 +147,24 @@ FP.Audio = (function () {
     }
   }
 
+  // a go-kart engine hum: higher when you go faster (0 = off)
+  let eng = null;
+  function engine(speed) {
+    if (!ctx) return;
+    if (!eng && speed > 0) {
+      const o = ctx.createOscillator(), o2 = ctx.createOscillator(), f = ctx.createBiquadFilter(), g = ctx.createGain();
+      o.type = 'sawtooth'; o2.type = 'square'; f.type = 'lowpass'; f.frequency.value = 500; g.gain.value = 0;
+      o.connect(f); o2.connect(f); f.connect(g); g.connect(sfxGain || master);
+      o.start(); o2.start();
+      eng = { o, o2, g };
+    }
+    if (!eng) return;
+    const t = ctx.currentTime, on = speed > 0;
+    eng.o.frequency.setTargetAtTime(45 + speed * 6, t, 0.08);
+    eng.o2.frequency.setTargetAtTime(22 + speed * 3, t, 0.08);
+    eng.g.gain.setTargetAtTime(on ? 0.05 + Math.min(1, speed / 20) * 0.05 : 0, t, 0.1);
+  }
+
   // react to things happening
   const bus = FP.bus;
   bus.on('jump', () => play('jump'));
@@ -164,5 +182,6 @@ FP.Audio = (function () {
     toggleMusic() { musicOn = !musicOn; return musicOn; },
     setSong(name) { song = name; },
     setVolumes,
+    engine,
   };
 })();

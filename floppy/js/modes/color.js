@@ -142,7 +142,7 @@ FP.Modes.color = (function () {
   function hud() {
     if (phase === 'warn' || phase === 'drop') {
       const col = PALETTE[target];
-      return `Find <b style="color:${col.css};-webkit-text-stroke:1px #2a2140">${col.name}</b> ${phase === 'warn' ? `<span class="fuse"><i style="width:${Math.round((timer / warnTime()) * 100)}%"></i></span>` : ''}`;
+      return `Find <b class="swatch" style="background:${col.css}">${col.name}</b> ${phase === 'warn' ? `<span class="fuse"><i style="width:${Math.round((timer / warnTime()) * 100)}%"></i></span>` : ''}`;
     }
     return 'Get ready...';
   }
