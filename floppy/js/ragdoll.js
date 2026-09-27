@@ -165,6 +165,9 @@ FP.Ragdoll = (function () {
     const t = c.parts.torso;
     c.jumpCool -= dt;
     c.punchT += dt;
+    // a button press is remembered for a moment, so pressing a tiny bit early still works
+    c.jumpBuf = input.jumpPressed ? 0.2 : Math.max(0, (c.jumpBuf || 0) - dt);
+    c.punchBuf = input.punchPressed ? 0.25 : Math.max(0, (c.punchBuf || 0) - dt);
     c.dizzy = Math.max(0, c.dizzy - dt * 0.45);
 
     // knocked out? count down, then get up slowly
@@ -178,12 +181,17 @@ FP.Ragdoll = (function () {
     } else c.strength = 1;
     const s = c.strength;
 
+    // which hands are grabbing: arm 0 is the right hand, arm 1 the left. Bots (and touch) use both
+    const split = input.grabL !== undefined || input.grabR !== undefined;
+    c.hands = split ? [!!input.grabR, !!input.grabL] : [!!input.grab, !!input.grab];
+    const grabbing = c.hands[0] || c.hands[1];
+
     // emotes: 1 wave, 2 dance, 3 cheer. Moving, punching or grabbing stops them
     if (input.emote && s > 0.9 && !c.grabbedBy) { c.emote = { k: input.emote, t: 0, hop: 0.2 }; FP.bus.emit('emote', c); }
     if (c.emote) {
       c.emote.t += dt;
       const moving = Math.hypot(input.x || 0, input.z || 0) > 0.3;
-      if (c.emote.t > 2.6 || c.ko > 0 || c.grabbedBy || input.punchPressed || input.grab || (moving && c.emote.t > 0.3)) c.emote = null;
+      if (c.emote.t > 2.6 || c.ko > 0 || c.grabbedBy || input.punchPressed || grabbing || (moving && c.emote.t > 0.3)) c.emote = null;
     }
 
     // being carried: mash jump to wriggle free!
@@ -199,10 +207,12 @@ FP.Ragdoll = (function () {
     for (const gr of c.grab) if (gr) for (const b of (gr.victim ? gr.victim.bodies : [gr.body])) if (!held.includes(b)) held.push(b);
     const heldGroups = held.map((b) => b.collisionFilterGroup);
     held.forEach((b) => { b.collisionFilterGroup = 0; });
-    let g = P.groundBelow(t.position, STAND + 0.6, c.group);
+    // small light things (balls, chickens, pins) aren't floor either: standing on them could bounce you into the sky
+    const floorAt = (pos) => { const hit = P.groundBelow(pos, STAND + 0.6, c.group); return hit && hit.body && hit.body.mass > 0 && hit.body.mass < 1 ? null : hit; };
+    let g = floorAt(t.position);
     if (!g) {
       for (const [ox, oz] of [[0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]]) {
-        g = P.groundBelow(new Vec3(t.position.x + ox, t.position.y, t.position.z + oz), STAND + 0.6, c.group);
+        g = floorAt(new Vec3(t.position.x + ox, t.position.y, t.position.z + oz));
         if (g) break;
       }
     }
@@ -211,6 +221,7 @@ FP.Ragdoll = (function () {
     c.grounded = !!g && g.dist < STAND + 0.2 && upright > 0.5 && g.normal.y > 0.5;
     c.groundBody = c.grounded ? g.body : null;
     c.airTime = c.grounded ? 0 : c.airTime + dt;
+    c.coyote = c.grounded ? 0.12 : Math.max(0, (c.coyote || 0) - dt); // you can still jump just after stepping off an edge
     const groundVel = c.groundBody ? c.groundBody.velocity : new Vec3();
     const tall = c.grabbedBy ? 0 : s;
     // just got thrown: flying through the air, can't steer much until landing
@@ -224,7 +235,7 @@ FP.Ragdoll = (function () {
       // float at standing height (this is what "legs" do)
       if (g && g.dist < STAND + 0.45 && upright > 0.3) {
         const err = STAND - g.dist;
-        const vy = t.velocity.y - groundVel.y;
+        const vy = t.velocity.y - Math.max(-3, Math.min(3, groundVel.y)); // a jumpy floor can't fling you
         let f = TOTAL * -P.world.gravity.y * 0.92 + err * TOTAL * 160 - vy * TOTAL * 14;
         f = Math.max(0, Math.min(TOTAL * 90, f));
         t.applyForce(new Vec3(0, f * tall, 0), new Vec3(0, 0, 0));
@@ -241,7 +252,7 @@ FP.Ragdoll = (function () {
       // lean a little in the direction you're walking
       const yawQ = new Quaternion().setFromAxisAngle(UP, c.yaw);
       // reaching to grab something (but not holding anything yet)? bend forward to reach low things
-      const reaching = input.grab && !c.grab[0] && !c.grab[1];
+      const reaching = grabbing && !c.grab[0] && !c.grab[1];
       const leanQ = new Quaternion().setFromAxisAngle(new Vec3(1, 0, 0), reaching ? 0.45 : 0.12 * Math.min(1, dir));
       const target = yawQ.mult(leanQ);
       orient(t, target, 13, 0.75, tall);
@@ -255,14 +266,16 @@ FP.Ragdoll = (function () {
       t.applyForce(new Vec3((wantX - t.velocity.x) * TOTAL * accel * tall, 0, (wantZ - t.velocity.z) * TOTAL * accel * tall), new Vec3(0, 0, 0));
 
       // jump
-      if (input.jumpPressed && c.grounded && c.jumpCool <= 0) {
+      if (c.jumpBuf > 0 && (c.grounded || c.coyote > 0) && c.jumpCool <= 0 && !c.grabbedBy) {
+        c.jumpBuf = 0; c.coyote = 0;
         for (const b of c.bodies) b.velocity.y = Math.max(b.velocity.y, Math.min(groundVel.y, 4)) + JUMP * ((FP.Fun && FP.Fun.jump) || 1);
         c.jumpCool = 0.35;
         FP.bus.emit('jump', c);
       }
 
       if (c.emote && c.emote.k === 2) c.yaw += Math.sin(c.emote.t * 5) * dt * 2.5; // dance: wiggle side to side
-      if (c.emote && c.emote.k !== 1 && c.grounded && (c.emote.hop -= dt) <= 0) { c.emote.hop = c.emote.k === 3 ? 0.65 : 0.5; for (const b of c.bodies) b.velocity.y += c.emote.k === 3 ? 5 : 3; }
+      if (c.emote && c.emote.k === 4) { c.expression = 'happy'; c.exprTimer = 0.2; }
+      if (c.emote && c.emote.k !== 1 && c.emote.k !== 4 && c.grounded && (c.emote.hop -= dt) <= 0) { c.emote.hop = c.emote.k === 3 ? 0.65 : 0.5; for (const b of c.bodies) b.velocity.y += c.emote.k === 3 ? 5 : 3; }
       legs(c, dt, s, groundVel);
       arms(c, input, dt, s);
     } else {
@@ -270,7 +283,8 @@ FP.Ragdoll = (function () {
     }
 
     // punching
-    if (input.punchPressed && s > 0.9 && c.punchT > 0.32) {
+    if (c.punchBuf > 0 && s > 0.9 && c.punchT > 0.3) {
+      c.punchBuf = 0;
       c.punchT = 0; c.punchHit = false; c.punchArm = 1 - c.punchArm;
       const arm = c.parts.arms[c.punchArm];
       const f = forward(c);
@@ -280,11 +294,12 @@ FP.Ragdoll = (function () {
     }
 
     // grabbing
-    c.grabHeld = input.grab && s > 0.9 ? c.grabHeld + dt : 0;
-    if (!input.grab && (c.grab[0] || c.grab[1])) {
+    c.grabHeld = grabbing && s > 0.9 ? c.grabHeld + dt : 0;
+    if (!grabbing && (c.grab[0] || c.grab[1])) {
+      // let go with every hand: whatever you held goes flying
       const thrown = releaseGrab(c, true);
       if (thrown) FP.bus.emit('throw', { by: c, who: thrown });
-    }
+    } else for (let i = 0; i < 2; i++) if (!c.hands[i] && c.grab[i]) dropHand(c, i); // let go with just one hand (the other keeps holding)
     // let go if the grab got stretched too far (you pulled free)
     for (let i = 0; i < 2; i++) {
       const gr = c.grab[i];
@@ -329,7 +344,15 @@ FP.Ragdoll = (function () {
       const out = new Vec3(sh.x - t.position.x, 0, sh.z - t.position.z);
       out.normalize();
       const em = c.emote;
-      if (em && !input.grab && !(c.punchT < 0.22 && c.punchArm === i) && (em.k !== 1 || i === 1)) {
+      // which arms the emote uses: wave = left arm, touch your nose = right arm, the others = both
+      const emoteArm = em && (em.k === 1 ? i === 1 : em.k === 4 ? i === 0 : true);
+      if (em && em.k === 4 && emoteArm && !(c.hands && (c.hands[0] || c.hands[1])) && !(c.punchT < 0.22 && c.punchArm === i)) {
+        const hp = c.parts.head.position;
+        const target = new Vec3(hp.x + f.x * 0.42, hp.y - 0.02, hp.z + f.z * 0.42);
+        pull(arm, HAND, target, 20, 0.6, s, t.velocity);
+        continue;
+      }
+      if (em && em.k !== 4 && !(c.hands && (c.hands[0] || c.hands[1])) && !(c.punchT < 0.22 && c.punchArm === i) && emoteArm) {
         const up = em.k === 1 ? 0.5 : em.k === 2 ? 0.15 + 0.35 * (0.5 + 0.5 * Math.sin(em.t * 9 + i * Math.PI)) : 0.55 + 0.08 * Math.sin(em.t * 18 + i);
         const side = em.k === 1 ? 0.25 + Math.sin(em.t * 16) * 0.16 : em.k === 2 ? 0.35 : 0.15;
         const fwd = em.k === 3 ? 0 : 0.12;
@@ -340,7 +363,7 @@ FP.Ragdoll = (function () {
       if (c.punchT < 0.22 && c.punchArm === i) {
         const target = new Vec3(sh.x + f.x * 0.8 - out.x * 0.2, sh.y + 0.05, sh.z + f.z * 0.8 - out.z * 0.2);
         pull(arm, HAND, target, 34, 0.5, s, t.velocity);
-      } else if (input.grab) {
+      } else if (c.hands && c.hands[i]) {
         const holding = c.grab[0] || c.grab[1];
         // hands sweep up and down while reaching, so they can catch things on the floor too
         const sweep = holding ? 0.35 : 0.1 - 0.8 * (0.5 + 0.5 * Math.sin(c.grabHeld * 7));
@@ -381,7 +404,7 @@ FP.Ragdoll = (function () {
       return;
     }
     // grabbing
-    if (c.grabHeld > 0 && !c.grab[i] && c.strength > 0.9) {
+    if (c.grabHeld > 0 && (!c.hands || c.hands[i]) && !c.grab[i] && c.strength > 0.9) {
       if (victim === c) return;
       if (c.isBot && other.mass === 0) return; // bots don't hang on walls (players can!)
       const handWorld = c.parts.arms[i].pointToWorldFrame(HAND, new Vec3());

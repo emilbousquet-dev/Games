@@ -65,6 +65,10 @@ FP.Audio = (function () {
     alarm: () => { for (let i = 0; i < 4; i++) tone('sawtooth', i % 2 ? 600 : 800, i % 2 ? 600 : 800, 0.18, 0.06, i * 0.2); },
     menu: () => tone('square', 660, 880, 0.05, 0.07),
     select: () => { tone('square', 880, 880, 0.05, 0.08); tone('square', 1320, 1320, 0.08, 0.08, 0.05); },
+    boing: () => { tone('sine', rnd(180, 220), rnd(600, 700), 0.18, 0.22); tone('triangle', 400, 1200, 0.1, 0.08, 0.04); },
+    cluck: () => { for (let i = 0; i < 2; i++) tone('square', rnd(500, 650), rnd(900, 1100), 0.05, 0.05, i * 0.09); },
+    splat: () => { noise(0.18, 0.35, rnd(300, 500)); tone('sine', 200, 70, 0.15, 0.2); },
+    plop: () => { tone('sine', 900, 200, 0.18, 0.2); tone('sine', 400, 120, 0.3, 0.12, 0.1); },
     voice: () => { for (let i = 0; i < 3; i++) { const f = rnd(350, 800); tone('triangle', f, f * rnd(0.8, 1.4), 0.08, 0.08, i * 0.08); } },
   };
   function play(name) { if (ctx && S[name]) S[name](); }

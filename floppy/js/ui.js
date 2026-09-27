@@ -62,8 +62,9 @@ FP.UI = (function () {
       <tr><td>Move</td><td>W A S D</td><td>Arrows</td><td>Left stick</td></tr>
       <tr><td>Jump</td><td>Space</td><td>/</td><td>A</td></tr>
       <tr><td>Punch</td><td>F</td><td>.</td><td>X or B</td></tr>
-      <tr><td>Grab (hold)</td><td>G</td><td>,</td><td>RT or RB</td></tr>
-      <tr><td>Emotes: wave / dance / cheer</td><td>1 / 2 / 3</td><td>8 / 9 / 0</td><td>L-stick (dance)</td></tr>
+      <tr><td>Grab with both hands (hold)</td><td>G</td><td>,</td><td>LB + RB</td></tr>
+      <tr><td>Left hand / right hand</td><td>Q / E</td><td>; / '</td><td>LB or LT / RB or RT</td></tr>
+      <tr><td>Emotes: wave / dance / cheer / nose</td><td>1 / 2 / 3 / 4</td><td>8 / 9 / 0 / -</td><td>Back / L-stick / Y / R-stick</td></tr>
       <tr><td>Color / hat / outfit (lobby)</td><td>Z / X / C</td><td>K / L / J</td><td>Back / Y / R-stick</td></tr>
     </table>
     <ul>
@@ -71,6 +72,7 @@ FP.UI = (function () {
       <li><b>Hold grab</b> to grab someone or something. Walk, then <b>let go to throw</b>.</li>
       <li>Grabbed? <b>Mash jump</b> to wriggle free.</li>
       <li>You can grab edges and walls to hang on.</li>
+      <li>Grab with <b>just one hand</b> (Q or E, or one bumper) and keep the other hand free. Let go of one hand and the other keeps holding.</li>
     </ul>
     <p class="small">Player 1 can use a controller: press A on it to start (on the title screen, or in the lobby).</p>
     <p class="small">H: show or hide this &nbsp; Esc or Start: pause &nbsp; M: music on or off</p>
@@ -186,7 +188,9 @@ FP.UI = (function () {
     toastBox.classList.add('show');
     toastTimer = seconds;
   }
-  function setHud(html) { if (hud.innerHTML !== html) hud.innerHTML = html; hud.hidden = !html; }
+  // only touch the page when the scoreboard really changed (rebuilding it every frame made the game slower)
+  let lastHud = null;
+  function setHud(html) { if (html === lastHud) return; lastHud = html; hud.innerHTML = html; hud.hidden = !html; }
 
   // a colored name label for a player (no emojis: a color dot instead)
   function playerPill(p, extra = '') {

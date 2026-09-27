@@ -7,7 +7,7 @@ window.FP = window.FP || {};
 
 FP.Stage = (function () {
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -43,7 +43,7 @@ FP.Stage = (function () {
   const bodies = [];   // physics bodies the level added
   const movers = [];   // [mesh, body] pairs that need syncing every frame
 
-  function add(obj) { scene.add(obj); things.push(obj); return obj; }
+  function add(...objs) { for (const o of objs) { scene.add(o); things.push(o); } return objs[0]; }
 
   // a solid block that looks like a floating grassy island piece
   function island(x, y, z, w, h, d, opts = {}) {

@@ -19,8 +19,9 @@ FP.Look = (function () {
   function toon(color, opts = {}) {
     const key = color + JSON.stringify(opts);
     if (!opts.unique && cache.has(key)) return cache.get(key);
-    const m = new THREE.MeshToonMaterial(Object.assign({ color, gradientMap: gradient }, opts));
-    delete m.unique;
+    const o = Object.assign({ color, gradientMap: gradient }, opts);
+    delete o.unique; // our own flag, not a three.js setting
+    const m = new THREE.MeshToonMaterial(o);
     if (!opts.unique) cache.set(key, m);
     return m;
   }

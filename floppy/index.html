@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Floppy Party - wobbly ragdoll party game</title>
-  <meta name="description" content="A wobbly ragdoll party game with 18 silly mini-games for 1 to 4 players. Play on one computer or online with friends.">
+  <meta name="description" content="A wobbly ragdoll party game with 31 silly mini-games for 1 to 4 players. Play on one computer or online with friends.">
   <meta name="theme-color" content="#ffcf33">
   <meta property="og:title" content="Floppy Party">
-  <meta property="og:description" content="Punch, grab and throw your friends in 18 silly ragdoll mini-games. Free, in your browser, online with friends.">
+  <meta property="og:description" content="Punch, grab and throw your friends in 31 silly ragdoll mini-games. Free, in your browser, online with friends.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://emilbousquet-dev.github.io/Games/floppy/preview.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -36,6 +36,8 @@
     .tag { position: absolute; left: 0; top: 0; background: var(--c); color: #fff; font-weight: 800; font-size: 14px; padding: 0 9px; border-radius: 999px; border: 2px solid #fff; white-space: nowrap; text-shadow: 0 1px 0 rgba(0,0,0,.3); box-shadow: 0 2px 0 rgba(0,0,0,.18); }
 
     /* score bar */
+    .fps { position: fixed; left: 10px; bottom: 10px; z-index: 50; font: 800 13px/1 system-ui, sans-serif; color: #2a2140; background: #ffffffcc; padding: 5px 8px; border-radius: 8px; pointer-events: none; }
+    .fps.bad { background: #ff5a5f; color: #fff; }
     .hud { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: calc(100% - 24px); }
     .modename { background: var(--paper); padding: 2px 16px; border-radius: 999px; font-weight: 800; font-size: 17px; box-shadow: var(--shadow); }
     .modename small { font-weight: 700; opacity: .6; margin-left: 4px; }
@@ -361,6 +363,13 @@
   <script src="js/modes/hoops.js"></script>
   <script src="js/modes/meteor.js"></script>
   <script src="js/modes/conveyor.js"></script>
+  <script src="js/modes/wall.js"></script>
+  <script src="js/modes/simon.js"></script>
+  <script src="js/modes/moles.js"></script>
+  <script src="js/modes/chickens.js"></script>
+  <script src="js/modes/golf.js"></script>
+  <script src="js/modes/bumpers.js"></script>
+  <script src="js/modes/fruit.js"></script>
   <script src="js/net.js"></script>
   <script src="js/game.js"></script>
 </body>

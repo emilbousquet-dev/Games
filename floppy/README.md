@@ -1,7 +1,7 @@
 # FLOPPY PARTY
 
 A **wobbly ragdoll party game** for 1 to 4 players, in a cute cartoon style.
-Punch, grab and throw your friends around in 24 silly mini-games!
+Punch, grab and throw your friends around in 31 silly mini-games!
 Play on **one computer** (2 players on the keyboard, plus controllers and bots) or **online** with a room code.
 
 ## How to play
@@ -19,11 +19,14 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 | Move | `W` `A` `S` `D` | Arrows | Left stick |
 | Jump | `Space` | `/` | A |
 | Punch | `F` | `.` | X or B |
-| Grab (hold) | `G` | `,` | RT or RB |
-| Emotes: wave / dance / cheer | `1` / `2` / `3` | `8` / `9` / `0` | Left stick click (dance) |
+| Grab with both hands (hold) | `G` | `,` | LB + RB |
+| Left hand / right hand (hold) | `Q` / `E` | `;` / `'` | LB or LT / RB or RT |
+| Emotes: wave / dance / cheer / touch your nose | `1` / `2` / `3` / `4` | `8` / `9` / `0` / `-` | Back / left stick click / Y / right stick click |
 | Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / left stick click |
 
 `H` help, `Esc` pause (or **Start** on a controller), `M` music on or off.
+
+**Buttons feel late?** That usually means the computer is drawing the game slowly. The game switches to Fast graphics by itself when that happens. You can also pick *Graphics: Fast* in Settings, and turn on *Show speed (FPS)* to see how fast it runs (60 is perfect, under 30 feels laggy).
 
 **Player 1 with a controller:** press **A** on the controller to pick *Play on this computer*, and Player 1 uses the controller.
 Or, in the lobby, press **A** on the controller before touching the keyboard.
@@ -35,6 +38,7 @@ In the lobby you can also click the arrows on your player card to change your co
 - **Hold grab** to grab someone (or something). Walk, then **let go to throw**. YEET! Thrown people only get knocked out if they smack into a wall.
 - Grabbed? **Mash jump** to wriggle free.
 - You can grab **edges and walls** to hang on.
+- Like Gang Beasts, each hand has its own button: grab with **just one hand** and keep the other free. Let go with one hand and the other keeps holding. Let go with both to throw.
 - Holding grab also makes you lean forward and sweep your arms, so you can pick things up off the floor.
 
 ## Mini-games
@@ -65,6 +69,13 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Basketball** | Red vs Blue. Grab the ball and let go near the other team's hoop to shoot (2 or 3 points). Punch the carrier to steal. First to 10. | 2 to 4 |
 | **Meteor Shower** | Meteors fall from the sky. Red circles show where. Get out of the way! First to 3. | 2 to 4 |
 | **Conveyor Brawl** | The floor is moving belts that push you toward the edge and keep getting faster. First to 2. | 2 to 4 |
+| **Hole in the Wall** | A wall slides across the platform. Stand in a gap or get pushed off! The walls get faster and the gaps smaller. First to 2. | 2 to 4 |
+| **Floppy Says** | Do what Floppy says: jump, punch, wave, dance, cheer, touch your nose, grab with one hand, spin, run, hug a friend, freeze. Only if it starts with "Floppy says" (watch out for "Flappy says"!). It gets faster, with two moves at once near the end. 20 orders. | 1 to 4 |
+| **Bop the Moles** | Punch the moles popping out of the holes. Golden moles are worth 3. Never punch a mole with a bomb! 60 seconds. | 1 to 4 |
+| **Chicken Round-up** | Grab the running chickens and carry them to the pen in your color. The golden chicken is worth 3. 90 seconds. | 1 to 4 |
+| **Floppy Golf** | Walk behind your ball, face the hole and punch it (your caddy picks how hard). First in the hole gets the most points. 3 holes, one with a spinner. | 1 to 4 |
+| **Bumper Bash** | A pinball table full of bumpers. Touch one and BOING, you fly! After a while the bumpers get super bouncy and shockwaves push everyone out. First to 2. | 2 to 4 |
+| **Fruit Frenzy** | Fruit falls from a giant tree. Watch the shadows and catch it with your head. Golden fruit is worth 3, rotten fruit knocks you out. 60 seconds. | 1 to 4 |
 
 After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race, Kart Racing, Bowling)
 can be played alone with no bots. The other games need at least 2 players, so if you play alone you get at least 1 bot.

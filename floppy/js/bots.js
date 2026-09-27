@@ -174,10 +174,12 @@ FP.Bots = (function () {
       held = e;
       if (e.jumpPressed) out.jumpPressed = true;
       if (e.punchPressed) out.punchPressed = true;
+      if (e.emote) out.emote = e.emote;
     }
     if (b.queue.length > 60) b.queue.splice(0, b.queue.length - 60);
     b.held = held;
     out.x = held.x; out.z = held.z; out.grab = held.grab; out.jump = held.jump;
+    if (held.grabL !== undefined || held.grabR !== undefined) { out.grabL = !!held.grabL; out.grabR = !!held.grabR; out.grab = out.grabL || out.grabR; } // one hand
 
     // 2. wobbly aim: nobody walks in a perfectly straight line
     const n = Math.sin(b.clock * 0.9 + b.seed) * 0.6 + Math.sin(b.clock * 2.3 + b.seed * 2) * 0.4;

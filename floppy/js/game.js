@@ -9,7 +9,7 @@ window.FP = window.FP || {};
 FP.Game = (function () {
   const scene = FP.Stage.scene;
   const MAX_PLAYERS = 4;
-  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor'];
+  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit'];
   const MODES = () => MODE_ORDER.map((id) => FP.Modes[id]).filter(Boolean);
   const BOT_NAMES = ['Wobbles', 'Noodle', 'Biscuit', 'Pickle', 'Jellybean', 'Mr. Flop', 'Sprout', 'Bonkers'];
   const ICON = FP.UI.ICON;
@@ -566,7 +566,7 @@ FP.Game = (function () {
   function goCountdown() {
     state = 'countdown';
     count = 3.99;
-    FP.UI.big(mode.roundsToWin > 1 && !mode.single ? `Round ${round}` : mode.name, 1.2, mode.desc);
+    FP.UI.big(mode.rounds ? `${mode.roundName || 'Round'} ${round}` : mode.roundsToWin > 1 && !mode.single ? `Round ${round}` : mode.name, 1.2, mode.desc);
   }
 
   // ------------------------------------------------------------
@@ -598,6 +598,13 @@ FP.Game = (function () {
     hoops: ['Grab the ball and run to the other team\'s hoop', 'Let go near the hoop to shoot', 'Punch the ball carrier to make them drop it'],
     meteor: ['Red circles show where meteors land', 'Get out of the circles!', 'Push others into them'],
     conveyor: ['The floor moves! Walk against it', 'Belts push you toward the edge', 'Last one on the platform wins'],
+    wall: ['A wall is coming!', 'Stand in a gap in the wall', 'Push others out of your gap'],
+    simon: ['Only do it if it starts with "Floppy says" (not "Flappy says")', 'Wave 1, dance 2, cheer 3, touch your nose 4, one hand Q or E', 'It gets faster and trickier as it goes'],
+    moles: ['Punch the moles when they pop up', 'Golden moles are worth 3', 'Never punch a mole with a bomb!'],
+    chickens: ['Grab a chicken (hold grab)', 'Carry it to the pen in your color', 'Golden chicken = 3 points'],
+    golf: ['Stand behind your ball and face the hole', 'Punch to hit it (the caddy picks how hard)', 'First in the hole gets the most points'],
+    bumpers: ['Touching a bumper sends you flying', 'Punch others into the bumpers', 'Last one on the table wins'],
+    fruit: ['Watch the shadows on the ground', 'Catch fruit with your head', 'Dodge the rotten fruit!'],
   };
   const INTRO_TIME = 15;
   let ready = new Set(), introT = 0;
@@ -606,7 +613,7 @@ FP.Game = (function () {
     const left = Math.max(0, Math.ceil(INTRO_TIME - introT));
     const who = humans().map((p) => `<span class="ready-pill${ready.has(p.id) ? ' ok' : ''}">${FP.UI.playerPill(p)}${ready.has(p.id) ? ICON.check : '<small>press jump</small>'}</span>`).join('');
     return `<div class="intro-grid"><div class="setup-art">${mode.art || ''}</div><div class="intro-text"><p class="goal">${mode.desc}</p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul></div></div>
-      <div class="keys-row"><span><kbd>W A S D</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> grab</span><span class="small">(player 2: arrows / . ,)</span></div>
+      <div class="keys-row"><span><kbd>W A S D</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> grab</span><span><kbd>Q</kbd><kbd>E</kbd> one hand</span><span class="small">(player 2: arrows / . ,)</span></div>
       <div class="ready-row">${who}</div>
       <p class="small">Press <b>JUMP</b> when you're ready! Starting in <b class="intro-timer">${left}</b>...</p>
       ${withButton ? `<button class="btn go" data-start>${ICON.play} Start now</button>` : ''}`;
@@ -671,7 +678,7 @@ FP.Game = (function () {
       scores['team' + res.team] += res.points ?? 1;
       text = `${res.team === 0 ? 'Red' : 'Blue'} team wins!`;
     } else if (res.winners && res.winners.length) {
-      res.winners.forEach((c) => { if (!mode.single) scores[c.player.id] = (scores[c.player.id] || 0) + 1; c.cheer = 3.5; c.expression = 'happy'; c.exprTimer = 3.5; });
+      res.winners.forEach((c) => { if (!mode.single && !mode.rounds) scores[c.player.id] = (scores[c.player.id] || 0) + 1; c.cheer = 3.5; c.expression = 'happy'; c.exprTimer = 3.5; });
       text = res.winners.length === 1 ? `${res.winners[0].name} wins${mode.roundsToWin > 1 ? ' the round' : ''}!` : 'Winners!';
       const t = res.winners[0].parts.torso.position;
       center.set(t.x, t.y, t.z);
@@ -685,6 +692,7 @@ FP.Game = (function () {
   }
 
   function matchOver() {
+    if (mode.rounds) return round >= mode.rounds; // a set number of rounds (like 3 golf holes)
     if (mode.single) return true;
     if (mode.teams) return scores.team0 >= mode.roundsToWin || scores.team1 >= mode.roundsToWin;
     return Object.values(scores).some((s) => s >= mode.roundsToWin);
@@ -816,7 +824,7 @@ FP.Game = (function () {
         return FP.UI.playerPill(p, `${score}${c && c.alive === false ? ` <span class="outmark">${ICON.out}</span>` : ''}`);
       }).join('');
     }
-    const goal = (mode.roundsToWin > 1 && !mode.single ? ` <small>first to ${mode.roundsToWin}</small>` : '') + (tour ? ` <small>Party Tour ${tour.index + 1} of ${tour.games.length}</small>` : '');
+    const goal = (mode.rounds ? ` <small>${mode.roundName || 'Round'} ${round} of ${mode.rounds}</small>` : mode.roundsToWin > 1 && !mode.single ? ` <small>first to ${mode.roundsToWin}</small>` : '') + (tour ? ` <small>Party Tour ${tour.index + 1} of ${tour.games.length}</small>` : '');
     return `<div class="modename">${mode.name}${goal}</div><div class="pills">${pills}</div>${extra ? `<div class="extra">${extra}</div>` : ''}`;
   }
 
@@ -1011,7 +1019,7 @@ FP.Game = (function () {
     // physics runs in fixed little steps (60 per second)
     acc += dt;
     let steps = 0;
-    while (acc >= FP.Physics.STEP && steps < 4) {
+    while (acc >= FP.Physics.STEP && steps < 6) {
       const modeControls = mode && mode.control && ['intro', 'countdown', 'play', 'roundOver'].includes(state);
       for (const c of chars) { const inp = inputFor(c); if (modeControls) mode.control(c, inp, FP.Physics.STEP, state === 'play'); else FP.Ragdoll.control(c, inp, FP.Physics.STEP); }
       if (mode && mode.beforeStep && ['countdown', 'play', 'roundOver'].includes(state)) mode.beforeStep(FP.Physics.STEP, chars);
@@ -1019,7 +1027,7 @@ FP.Game = (function () {
       acc -= FP.Physics.STEP;
       steps++;
     }
-    if (steps === 4) acc = 0;
+    if (steps === 6) acc = 0;
 
     // fell off the island? pop back on
     if (state === 'lobby' || state === 'title' || state === 'select') {
@@ -1066,7 +1074,7 @@ FP.Game = (function () {
 
   const api = {
     get players() { return players; }, set players(v) { players = v; },
-    get chars() { return chars; }, get state() { return state; }, get mode() { return mode; }, get scores() { return scores; },
+    get chars() { return chars; }, get state() { return state; }, get round() { return round; }, set round(v) { round = v; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
     clientLobby, clientRound, clientPodium, skipIntro: false, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
@@ -1082,9 +1090,31 @@ FP.Game = (function () {
   window.addEventListener('resize', () => { FP.Stage.resize(); FP.Camera.resize(); });
   setTimeout(titleScreen, 0);
   let last = performance.now();
+  // watch how fast the game runs: if it's slow while playing, switch to Fast graphics (slow = buttons feel late)
+  const slow = { t: 0, n: 0 };
+  function watchSpeed(raw) {
+    if (raw > 0.25 || document.hidden || !['countdown', 'play', 'roundOver', 'client'].includes(state)) return;
+    slow.t += raw; slow.n++;
+    if (slow.t >= 3 && slow.n >= 20) { // check every 3 seconds
+      if (slow.t / slow.n > 1 / 30) FP.Settings.autoFast();
+      slow.t = 0; slow.n = 0;
+    }
+  }
+  // "Show speed (FPS)" in Settings: frames per second in the corner (60 is perfect, under 30 feels laggy)
+  let fpsEl = null, fpsN = 0, fpsT = 0;
+  function showFps(raw) {
+    const on = FP.Settings.get('fps');
+    if (!on) { if (fpsEl) fpsEl.hidden = true; return; }
+    if (!fpsEl) { fpsEl = document.createElement('div'); fpsEl.className = 'fps'; document.body.append(fpsEl); }
+    fpsEl.hidden = false;
+    fpsN++; fpsT += raw;
+    if (fpsT >= 0.5) { const f = Math.round(fpsN / fpsT); fpsEl.textContent = `${f} FPS`; fpsEl.classList.toggle('bad', f < 30); fpsN = 0; fpsT = 0; }
+  }
   function frame(now) {
-    const dt = Math.min(0.05, (now - last) / 1000);
+    const raw = (now - last) / 1000;
+    const dt = Math.min(0.1, raw); // a slow computer still runs the game at full speed (up to 6 physics steps a frame)
     last = now;
+    if (!api.manual) { watchSpeed(raw); showFps(raw); }
     if (!api.manual) update(dt);
     // some mini-games draw their own cameras (like the kart race with split screen)
     if (mode && mode.render && ['intro', 'countdown', 'play', 'roundOver', 'client'].includes(state)) mode.render(FP.Stage.renderer, FP.Stage.scene, dt);
