@@ -70,10 +70,12 @@ FP.Audio = (function () {
   // a bouncy party tune
   const SONGS = {
     party: { bass: [131, 131, 196, 196, 175, 175, 147, 196], mel: [523, 0, 659, 784, 0, 784, 880, 784, 659, 0, 587, 659, 523, 0, 392, 0] },
+    circus: { bass: [147, 220, 147, 220, 131, 196, 131, 196], mel: [587, 554, 587, 0, 880, 0, 784, 740, 784, 0, 659, 0, 587, 659, 740, 0] },
     tense: { bass: [110, 110, 131, 110, 98, 98, 117, 98], mel: [440, 0, 523, 0, 494, 0, 440, 415, 0, 0, 440, 0, 523, 587, 523, 0] },
   };
   function tick() {
     if (!ctx || !musicOn || ctx.state !== 'running') return;
+    if (song === 'silent') return; // the music stopped (musical seats!)
     const s = SONGS[song] || SONGS.party;
     const b = s.bass[(step >> 1) % s.bass.length];
     if (step % 2 === 0) tone('triangle', b, b, 0.28, 0.55, 0, musicGain);

@@ -240,7 +240,7 @@ FP.Ragdoll = (function () {
       orient(c.parts.head, yawQ, 9, 0.5, tall * 0.8);
 
       // walking force
-      const speed = SPEED * ((FP.Fun && FP.Fun.speed) || 1) * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
+      const speed = SPEED * ((FP.Fun && FP.Fun.speed) || 1) * (c.speedMul || 1) * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
       const wantX = input.x * speed + groundVel.x, wantZ = input.z * speed + groundVel.z;
       c.stagger = Math.max(0, (c.stagger || 0) - dt);
       const accel = (c.grounded ? (FP.Fun && FP.Fun.slip ? 1.6 : 14) : 3.5) * (c.stagger > 0 ? 0.15 : 1);

@@ -1,7 +1,7 @@
 # FLOPPY PARTY
 
 A **wobbly ragdoll party game** for 1 to 4 players, in a cute cartoon style.
-Punch, grab and throw your friends around in 6 silly mini-games!
+Punch, grab and throw your friends around in 18 silly mini-games!
 Play on **one computer** (2 players on the keyboard, plus controllers and bots) or **online** with a room code.
 
 ## How to play
@@ -9,7 +9,8 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 1. Open **`index.html`** in Chrome, Edge or Firefox.
 2. Click **Play on this computer**, or **Play online with friends**.
 3. In the lobby, more players join by pressing their **jump** button. Everyone can walk around and goof off.
-4. Press **Enter** to pick a mini-game, then choose **how many bots** play with you, and **Start**.
+4. Press **Enter** to pick a mini-game, then choose **how many bots** play with you and **how good they are**, and **Start**.
+   Or try the **Party Tour** (several random mini-games in a row) or **Surprise me!** (a spinning wheel picks a game).
 
 ## Controls
 
@@ -19,13 +20,13 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 | Jump | `Space` | `/` | A |
 | Punch | `F` | `.` | X or B |
 | Grab (hold) | `G` | `,` | RT or RB |
-| Color / hat (lobby) | `Z` / `X` | `K` / `L` | Back / Y |
+| Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / left stick click |
 
 `H` help, `Esc` pause, `M` music on or off.
-In the lobby you can also click the arrows on your player card to change color and hat.
+In the lobby you can also click the arrows on your player card to change your color, hat and outfit.
 
 - **Punch** someone 3 times quickly to **knock them out**. They go completely floppy!
-- **Hold grab** to grab someone (or something). Walk, then **let go to throw**. Thrown people fly and flop!
+- **Hold grab** to grab someone (or something). Walk, then **let go to throw**. YEET! Thrown people only get knocked out if they smack into a wall.
 - Grabbed? **Mash jump** to wriggle free.
 - You can grab **edges and walls** to hang on.
 - Holding grab also makes you lean forward and sweep your arms, so you can pick things up off the floor.
@@ -40,9 +41,39 @@ In the lobby you can also click the arrows on your player card to change color a
 | **Bomb Tag** | One player carries a ticking bomb. Bump into or punch someone to pass it. If it explodes on you, you're out. First to 3. | 2 to 4 |
 | **King of the Hill** | Stand on top of the hill alone to earn points. If someone else is up there, nobody scores. First to 25. | 2 to 4 |
 | **Lava Rising** | The lava keeps rising! Jump up the spiral platforms around the tower. Last one out of the lava wins. First to 2. | 2 to 4 |
+| **Tile Drop** | Two floors of tiles. Every tile you step on wobbles and falls, so keep moving! Fall through both floors and you're out. First to 3. | 2 to 4 |
+| **Color Panic** | A color is called out: get on a tile of that color before all the other tiles drop away. It gets faster and faster. First to 3. | 2 to 4 |
+| **Spin Sweeper** | A giant bar spins around the platform. Jump over it! Later a second bar joins in. Last one standing wins. First to 3. | 2 to 4 |
+| **Coin Grab** | Grab the most coins in 75 seconds. Knock someone out and they drop coins. Watch for the big coin worth 5. | 1 to 4 |
+| **Dodgeball** | Grab a ball, run and let go to throw it. BONK someone to score. First to 5 hits. | 2 to 4 |
+| **Paint Party** | Walk around to paint the floor your color. Jump and land for a big splat. Most paint after 60 seconds wins. | 1 to 4 |
+| **Crown Keeper** | Wear the crown to earn points. Punch whoever has it to knock it off their head. First to 30. | 2 to 4 |
+| **Obstacle Race** | Spinning bars, jumping pads, moving platforms, pushers and stairs. First over the finish line wins! Fall off and you go back to the last checkpoint. | 1 to 4 |
+| **Balloon Pop** | Everyone has 3 balloons tied to their back. Sneak behind people and punch their balloons. Protect yours! First to 2. | 2 to 4 |
+| **Musical Seats** | Walk around while the music plays. When it stops, stand on a seat. There is always one seat too few! First to 2. | 2 to 4 |
+| **Zombie Tag** | One zombie turns everyone it touches into a zombie. Survivors score a point every second. The last survivor gets a bonus. | 2 to 4 |
+| **Boulder Dodge** | Giant boulders roll across the island. Red arrows show where they come from. Dodge! First to 3. | 2 to 4 |
 
-After picking a mini-game you choose the number of bots. The Heist can be played alone with no bots.
-The other games need at least 2 players, so if you play alone you get at least 1 bot.
+After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race)
+can be played alone with no bots. The other games need at least 2 players, so if you play alone you get at least 1 bot.
+
+## Bots
+
+Bots can be **Easy** (1 star), **Normal** (2 stars) or **Hard** (3 stars). Pick with the up and down keys, or click, on the setup screen.
+Bots try to play like real people: they react a little late, don't walk in perfectly straight lines, take short pauses,
+step back after punching, and get revenge on whoever hit them. Every bot also has a personality: brave, careful or goofy.
+
+## Party Tour and Surprise me
+
+- **Party Tour**: play 3, 5 or 7 random mini-games in a row. Every game gives party points (4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else).
+  Most points at the end is the **Party Champion**!
+- **Surprise me!**: a spinning wheel of mini-games stops on a random one.
+
+## Fun options
+
+Silly rules you can switch on for any mini-game (from the mini-game picker or the setup screen):
+**Moon gravity**, **Turbo speed**, **Big heads**, **Super punches**, **Slippery floor**, **Disco party**,
+and **Surprise events** (every 20 seconds, one of the others switches on by itself for a few seconds).
 
 ## Playing online
 
@@ -72,7 +103,8 @@ All sounds and music are made with code.
 | `js/game.js` | Title, lobby, picking mini-games and bots, rounds, scores, results |
 | `js/ragdoll.js` | The floppy characters: 6 physics pieces plus "muscles", punching, grabbing, knockouts |
 | `js/look.js` | The cartoon look: toon shading, outlines, characters, hats, trees, clouds |
-| `js/modes/*.js` | The mini-games |
+| `js/modes/*.js` | The mini-games (`kit.js` has helpers they share) |
+| `js/fun.js` | The fun options (moon gravity, big heads, disco...) |
 | `js/bots.js` | Computer players |
 | `js/net.js` | Online play with room codes |
 | `js/physics.js` | The physics world |
