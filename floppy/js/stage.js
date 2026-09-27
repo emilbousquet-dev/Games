@@ -85,7 +85,12 @@ FP.Stage = (function () {
     }
   }
 
+  // things to do when the level is cleared (like removing guards)
+  const onClearList = [];
+  function onClear(f) { onClearList.push(f); }
+
   function clear() {
+    while (onClearList.length) onClearList.shift()();
     for (const o of things) scene.remove(o);
     for (const b of bodies) if (FP.Physics.world.bodies.includes(b)) FP.Physics.world.removeBody(b);
     things.length = 0; bodies.length = 0; movers.length = 0;
@@ -94,5 +99,5 @@ FP.Stage = (function () {
   function render(camera) { renderer.render(scene, camera); }
   function resize() { renderer.setSize(window.innerWidth, window.innerHeight); }
 
-  return { renderer, scene, sun, add, island, block, prop, update, clear, render, resize, movers, bodies };
+  return { renderer, scene, sun, add, island, block, prop, update, clear, onClear, render, resize, movers, bodies };
 })();

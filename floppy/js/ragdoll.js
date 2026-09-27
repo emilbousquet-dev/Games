@@ -214,7 +214,9 @@ FP.Ragdoll = (function () {
       }
       // lean a little in the direction you're walking
       const yawQ = new Quaternion().setFromAxisAngle(UP, c.yaw);
-      const leanQ = new Quaternion().setFromAxisAngle(new Vec3(1, 0, 0), 0.12 * Math.min(1, dir));
+      // reaching to grab something (but not holding anything yet)? bend forward to reach low things
+      const reaching = input.grab && !c.grab[0] && !c.grab[1];
+      const leanQ = new Quaternion().setFromAxisAngle(new Vec3(1, 0, 0), reaching ? 0.45 : 0.12 * Math.min(1, dir));
       const target = yawQ.mult(leanQ);
       orient(t, target, 13, 0.75, tall);
       orient(c.parts.head, yawQ, 9, 0.5, tall * 0.8);
@@ -303,7 +305,9 @@ FP.Ragdoll = (function () {
         pull(arm, HAND, target, 34, 0.5, s, t.velocity);
       } else if (input.grab) {
         const holding = c.grab[0] || c.grab[1];
-        const target = new Vec3(sh.x + f.x * 0.62 - out.x * 0.16, sh.y + (holding ? 0.35 : 0.1), sh.z + f.z * 0.62 - out.z * 0.16);
+        // hands sweep up and down while reaching, so they can catch things on the floor too
+        const sweep = holding ? 0.35 : 0.1 - 0.8 * (0.5 + 0.5 * Math.sin(c.grabHeld * 7));
+        const target = new Vec3(sh.x + f.x * 0.62 - out.x * 0.16, sh.y + sweep, sh.z + f.z * 0.62 - out.z * 0.16);
         pull(arm, HAND, target, holding ? 14 : 24, 0.6, s, t.velocity);
       } else {
         const swing = Math.sin(c.walkPhase + (i ? 0 : Math.PI)) * 0.2;
@@ -327,7 +331,8 @@ FP.Ragdoll = (function () {
     // a punch landing
     if (c.punchT < 0.25 && c.punchArm === i && !c.punchHit && victim && victim !== c) {
       c.punchHit = true;
-      hit(victim, forward(c), 1, c);
+      hit(victim, forward(c), c.punchPower || 1, c);
+      if (c.isGuard && !victim.isGuard) knockOut(victim, 3); // guards knock you out in one hit!
       FP.bus.emit('punchHit', { by: c, victim, pos: c.parts.arms[i].position.clone() });
       return;
     }
@@ -341,6 +346,7 @@ FP.Ragdoll = (function () {
     // grabbing
     if (c.grabHeld > 0 && !c.grab[i] && c.strength > 0.9) {
       if (victim === c) return;
+      if (c.isBot && other.mass === 0) return; // bots don't hang on walls (players can!)
       const handWorld = c.parts.arms[i].pointToWorldFrame(HAND, new Vec3());
       const pivot = other.pointToLocalFrame(handWorld, new Vec3());
       const con = new PointToPointConstraint(c.parts.arms[i], HAND, other, pivot, 400);

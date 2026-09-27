@@ -212,6 +212,16 @@ FP.Look = (function () {
         g.add(ear);
       }
       g.position.y = r * 0.5;
+    } else if (kind === 'police') {
+      const cap = mesh(new THREE.CylinderGeometry(r * 0.6, r * 0.5, r * 0.4, 18), toon(0x23305e));
+      cap.position.y = r * 0.1;
+      const top = mesh(new THREE.CylinderGeometry(r * 0.72, r * 0.6, r * 0.15, 18), toon(0x23305e));
+      top.position.y = r * 0.35;
+      const visor = mesh(new THREE.CylinderGeometry(r * 0.5, r * 0.5, r * 0.05, 16, 1, false, -Math.PI / 2, Math.PI), toon(0x111111), 0.01);
+      visor.position.set(0, -r * 0.05, r * 0.2);
+      const badge = mesh(new THREE.OctahedronGeometry(r * 0.12), toon(0xffcf33), 0);
+      badge.position.set(0, r * 0.15, r * 0.6);
+      g.add(cap, top, visor, badge);
     } else if (kind === 'chef') {
       const band = mesh(new THREE.CylinderGeometry(r * 0.52, r * 0.52, r * 0.35, 18), toon(0xffffff));
       band.position.y = r * 0.1;

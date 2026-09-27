@@ -7,8 +7,9 @@ Play **alone** or with a **friend** in split screen, using the keyboard or contr
 > Two survivors wake up from stasis. Something escaped from Containment.
 > Find the keycard. Find the 3 fuses. Power the generator. Reach the surface lift — **together**.
 
-> 🤖 **Also in this folder:** [**Spare Parts**](spare-parts/README.md), a funny co-op game where two silly robots
-> throw and swap their arms and legs. Open `spare-parts/index.html` to play.
+> 🎉 **Also in this folder:**
+> - [**Floppy Party**](floppy/README.md): a wobbly ragdoll party game with mini-games, for up to 4 players, also online. Open `floppy/index.html`.
+> - [**Spare Parts**](spare-parts/README.md): a funny co-op game where two silly robots throw and swap their arms and legs. Open `spare-parts/index.html`.
 
 ## How to play
 

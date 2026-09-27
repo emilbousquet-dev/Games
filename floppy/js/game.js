@@ -142,6 +142,34 @@ FP.Game = (function () {
     refreshLobby();
   }
 
+  // ---- online friends (clients) build the same world the host has ----
+  function clientLobby() {
+    state = 'lobby';
+    mode = null;
+    FP.UI.closeScreen();
+    FP.UI.setHud('');
+    buildLobbyIsland();
+    clearChars();
+    players.forEach((p, i) => makeChar(p, i, { x: -4.5 + i * 3, z: 1.5, yaw: 0 }));
+    FP.Camera.snap(chars.map(FP.Ragdoll.center));
+    if (!lobbyBar) { lobbyBar = FP.UI.el('div', 'lobby'); document.querySelector('.ui').append(lobbyBar); }
+    lobbyBar.hidden = false;
+    refreshLobby();
+  }
+  function clientRound(m) {
+    state = 'client';
+    mode = m;
+    if (lobbyBar) lobbyBar.hidden = true;
+    FP.Audio.setSong(m.song || 'party');
+    FP.Stage.clear();
+    FP.FX.clear();
+    clearChars();
+    FP.Camera.fix(null);
+    m.build(players);
+    players.forEach((p, i) => makeChar(p, i, m.spawn(i, players.length, p)));
+    FP.Camera.snap(chars.map(FP.Ragdoll.center));
+  }
+
   function spawnInLobby(p) {
     const old = chars.find((c) => c.player === p);
     const i = players.indexOf(p);
@@ -154,26 +182,28 @@ FP.Game = (function () {
     if (!lobbyBar || state !== 'lobby') return;
     const hex = FP.UI.hex;
     const cards = [];
+    const client = FP.Net && FP.Net.isClient();
     for (let i = 0; i < MAX_PLAYERS; i++) {
       const p = players[i];
+      if (!p && client) { cards.push('<div class="pcard empty"><b>Empty</b><span>Waiting for friends...</span></div>'); continue; }
       if (!p) {
         cards.push(`<div class="pcard empty"><b>Empty</b><span>Player 2: press <kbd>/</kbd><br>Controller: press <kbd>A</kbd></span><button class="mini" data-act="bot">+ Add bot</button></div>`);
         continue;
       }
       const col = FP.Look.COLORS[p.colorIndex];
-      const how = { keys: p.source.map === 0 ? 'Keyboard left' : 'Keyboard right', pad: 'Controller ' + (p.source.index + 1), bot: 'Bot 🤖', remote: 'Online 🌍' }[p.source.kind];
+      const how = { keys: p.source.map === 0 ? 'Keyboard left' : 'Keyboard right', pad: 'Controller ' + (p.source.index + 1), bot: 'Bot 🤖', remote: 'Online 🌍', me: 'You! 🌍', host: 'At the host 🏠' }[p.source.kind] || 'Host';
       const keysHelp = p.source.kind === 'keys' ? (p.source.map === 0 ? '<kbd>Z</kbd> color <kbd>X</kbd> hat' : '<kbd>K</kbd> color <kbd>L</kbd> hat') : p.source.kind === 'pad' ? '<kbd>Back</kbd> color <kbd>Y</kbd> hat' : '';
       cards.push(`<div class="pcard" style="--c:${hex(col.body)};--l:${hex(col.light)}">
         <div class="swatch">${FP.UI.HAT_ICONS[p.hat]}</div>
         <b>${p.name}</b><span>${how}</span>
         <div class="row"><button class="mini" data-act="color" data-i="${i}">🎨 ${col.name}</button><button class="mini" data-act="hat" data-i="${i}">${FP.UI.HAT_ICONS[p.hat]} hat</button></div>
         <span class="keys">${keysHelp}</span>
-        ${i > 0 ? `<button class="x" data-act="remove" data-i="${i}" title="Remove">✕</button>` : ''}
+        ${i > 0 && !client ? `<button class="x" data-act="remove" data-i="${i}" title="Remove">✕</button>` : ''}
       </div>`);
     }
     const online = FP.Net && FP.Net.status() ? `<div class="online">${FP.Net.status()}</div>` : '';
     lobbyBar.innerHTML = `${online}<div class="cards">${cards.join('')}</div>
-      <div class="lobby-buttons"><button class="btn" data-act="back">← Title</button><button class="btn go" data-act="start">▶ Choose a mini-game <kbd>Enter</kbd></button></div>
+      <div class="lobby-buttons"><button class="btn" data-act="back">${client ? '← Leave the party' : '← Title'}</button>${client ? '' : '<button class="btn go" data-act="start">▶ Choose a mini-game <kbd>Enter</kbd></button>'}</div>
       <p class="tip">Try it out: walk, jump, punch and grab each other on the island!</p>`;
     lobbyBar.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => lobbyAction(b.dataset.act, +b.dataset.i)));
   }
@@ -181,6 +211,7 @@ FP.Game = (function () {
   function lobbyAction(act, i) {
     FP.Audio.play('select');
     const p = players[i];
+    if (FP.Net && FP.Net.isClient() && (act === 'color' || act === 'hat')) { FP.Net.send({ t: act }); return; }
     if (act === 'bot') addPlayer({ kind: 'bot' });
     else if (act === 'color' && p) cycleColor(p);
     else if (act === 'hat' && p) cycleHat(p);
@@ -295,7 +326,7 @@ FP.Game = (function () {
     timer = 0;
     let text = 'Nobody wins!', center = new THREE.Vector3();
     if (mode.teams && res.team !== undefined) {
-      scores['team' + res.team] += res.points || 1;
+      scores['team' + res.team] += res.points ?? 1;
       text = `${res.team === 0 ? 'Red' : 'Blue'} team wins!`;
     } else if (res.winners && res.winners.length) {
       res.winners.forEach((c) => { scores[c.player.id] = (scores[c.player.id] || 0) + 1; c.expression = 'smile'; });
@@ -311,6 +342,7 @@ FP.Game = (function () {
   }
 
   function matchOver() {
+    if (mode.single) return true;
     if (mode.teams) return scores.team0 >= mode.roundsToWin || scores.team1 >= mode.roundsToWin || mode.roundsToWin === 1;
     return Object.values(scores).some((s) => s >= mode.roundsToWin);
   }
@@ -326,7 +358,8 @@ FP.Game = (function () {
         `<div class="podium">${players.map((p) => FP.UI.playerPill(p, p.team === 0 ? ' 🔴' : ' 🔵')).join('')}</div>`;
     } else {
       const sorted = players.slice().sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
-      html = `<div class="podium big">${sorted.map((p, i) => `<div class="place p${i}">${['🥇', '🥈', '🥉', '🎈'][i]} ${FP.UI.playerPill(p)} <b>${scores[p.id] || 0}</b></div>`).join('')}</div>`;
+      const label = (s) => (mode.scoreLabel ? mode.scoreLabel(s) : s);
+      html = `<div class="podium big">${sorted.map((p, i) => `<div class="place p${i}">${['🥇', '🥈', '🥉', '🎈'][i]} ${FP.UI.playerPill(p)} <b>${label(scores[p.id] || 0)}</b></div>`).join('')}</div>`;
       if (mode.id === 'heist') html = `<p class="winner">${mode.resultText ? mode.resultText() : ''}</p>` + html;
     }
     FP.UI.screen({
@@ -350,7 +383,7 @@ FP.Game = (function () {
     } else {
       pills = players.map((p) => {
         const c = chars.find((ch) => ch.player === p);
-        const crowns = '👑'.repeat(scores[p.id] || 0);
+        const crowns = mode.scoreLabel ? mode.scoreLabel(scores[p.id] || 0) : '👑'.repeat(scores[p.id] || 0);
         return FP.UI.playerPill(p, ` ${crowns}${c && !c.alive ? ' 💫' : ''}`);
       }).join('');
     }
@@ -447,6 +480,7 @@ FP.Game = (function () {
     get players() { return players; }, set players(v) { players = v; },
     get chars() { return chars; }, get state() { return state; }, get mode() { return mode; }, get scores() { return scores; },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, refreshLobby, hudHtml, update,
+    clientLobby, clientRound, cycle: (p, what) => (what === 'color' ? cycleColor(p) : cycleHat(p)),
     manual: false,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) update(1 / 60); },
   };
