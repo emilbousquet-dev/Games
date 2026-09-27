@@ -23,7 +23,10 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 | Emotes: wave / dance / cheer | `1` / `2` / `3` | `8` / `9` / `0` | Left stick click (dance) |
 | Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / left stick click |
 
-`H` help, `Esc` pause, `M` music on or off.
+`H` help, `Esc` pause (or **Start** on a controller), `M` music on or off.
+
+**Player 1 with a controller:** press **A** on the controller to pick *Play on this computer*, and Player 1 uses the controller.
+Or, in the lobby, press **A** on the controller before touching the keyboard.
 
 **Phones and tablets:** a joystick appears on the left, and Jump, Punch, Grab and Emote buttons on the right. The pause button is at the top right.
 In the lobby you can also click the arrows on your player card to change your color, hat and outfit.

@@ -197,7 +197,9 @@ FP.Game = (function () {
     FP.Camera.setLift(1.6);
     buildLobbyIsland();
     clearChars();
-    if (!players.length) players.push({ id: nextId++, source: FP.Touch.available ? { kind: 'touch' } : { kind: 'keys', map: 0 }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: 'Player 1' });
+    // Player 1 uses whatever picked "Play on this computer": the keyboard, a controller or the touch screen
+    const dev = FP.UI.lastDevice();
+    if (!players.length) players.push({ id: nextId++, source: FP.Touch.available && dev.kind !== 'pad' ? { kind: 'touch' } : { ...dev }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: 'Player 1' });
     players.forEach((p) => spawnInLobby(p));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     showLobbyPanel();
@@ -359,7 +361,16 @@ FP.Game = (function () {
       const input = FP.Input.read(src, 'join-' + src.kind + (src.map ?? src.index));
       if (FP.UI.open()) continue;
       const p = players.find((q) => sameSource(q.source, src));
-      if (!p && input.jumpPressed) { if (addPlayer(src)) FP.UI.toast('A new player joined!'); }
+      if (!p && input.jumpPressed) {
+        // only Player 1 so far, and they never touched the keyboard? Then this controller becomes Player 1
+        const p1 = players[0];
+        if (src.kind === 'pad' && players.length === 1 && p1.source.kind === 'keys' && !p1.used) {
+          p1.source = { ...src };
+          FP.UI.toast('Player 1 is using the controller!');
+          refreshLobby();
+          if (FP.Net) FP.Net.playersChanged();
+        } else if (addPlayer(src)) FP.UI.toast('A new player joined!');
+      }
       if (p && input.colorPressed) cycleColor(p, 1);
       if (p && input.hatPressed) cycleHat(p, 1);
       if (p && input.outfitPressed) cycleOutfit(p, 1);
@@ -953,7 +964,20 @@ FP.Game = (function () {
     if (!canMove || paused) return idle;
     if (src.kind === 'bot') return state === 'lobby' || state === 'title' || (c.emote && c.emote.t < 2) ? idle : FP.Bots.think(c, chars, FP.Physics.STEP, state === 'play' ? mode : null);
     if (src.kind === 'remote') return FP.Net ? FP.Net.inputOf(p.id) : idle;
-    return FP.Input.read(src, p.id);
+    const input = FP.Input.read(src, p.id);
+    if (!p.used && (Math.abs(input.x) > 0.3 || Math.abs(input.z) > 0.3 || input.jumpPressed || input.punchPressed || input.grab)) p.used = true;
+    return input;
+  }
+
+  // Start on any controller pauses the game
+  const padStart = {};
+  function padPause() {
+    FP.Input.getPads().forEach((gp, i) => {
+      if (!gp) return;
+      const down = !!(gp.buttons[9] && gp.buttons[9].pressed);
+      if (down && !padStart[i] && ['countdown', 'play', 'roundOver'].includes(state) && !paused && !FP.UI.open()) pause();
+      padStart[i] = down;
+    });
   }
 
   let acc = 0, titleT = 0, slowmo = 0;
@@ -971,6 +995,7 @@ FP.Game = (function () {
       FP.UI.nameTags(FP.Game.chars, FP.Camera.camera, state === 'lobby' || state === 'client');
       return;
     }
+    padPause();
     if (paused) return;
     if (state === 'lobby') lobbyJoins();
     if (slowmo > 0) { slowmo -= dt; dt *= 0.3; if (slowmo <= 0) FP.Camera.zoomTo(1); }

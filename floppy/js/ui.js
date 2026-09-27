@@ -72,7 +72,8 @@ FP.UI = (function () {
       <li>Grabbed? <b>Mash jump</b> to wriggle free.</li>
       <li>You can grab edges and walls to hang on.</li>
     </ul>
-    <p class="small">H: show or hide this &nbsp; Esc: pause &nbsp; M: music on or off</p>
+    <p class="small">Player 1 can use a controller: press A on it to start (on the title screen, or in the lobby).</p>
+    <p class="small">H: show or hide this &nbsp; Esc or Start: pause &nbsp; M: music on or off</p>
     <button class="btn small" type="button" data-close>Close</button>`;
   help.querySelector('[data-close]').addEventListener('click', () => { help.hidden = true; });
 
@@ -155,13 +156,17 @@ FP.UI = (function () {
 
   // controllers can use menus: stick or d-pad to pick, A or Start to choose, B to go back
   const padPrev = {};
+  // which device used the menus last (so "Play on this computer" gives Player 1 that device)
+  let lastDevice = { kind: 'keys', map: 0 };
+  window.addEventListener('keydown', () => { lastDevice = { kind: 'keys', map: 0 }; });
+  window.addEventListener('pointerdown', () => { lastDevice = { kind: 'keys', map: 0 }; });
   function pollPads() {
     for (const gp of FP.Input.getPads()) {
       if (!gp) continue;
       const b = (n) => gp.buttons[n] && gp.buttons[n].pressed;
       const now = { up: b(12) || gp.axes[1] < -0.6, down: b(13) || gp.axes[1] > 0.6, left: b(14) || gp.axes[0] < -0.6, right: b(15) || gp.axes[0] > 0.6, ok: b(0) || b(9), back: b(1) };
       const was = padPrev[gp.index] || {};
-      if (open()) for (const k of Object.keys(now)) if (now[k] && !was[k]) menuKey(k);
+      if (open()) for (const k of Object.keys(now)) if (now[k] && !was[k]) { lastDevice = { kind: 'pad', index: gp.index }; menuKey(k); }
       padPrev[gp.index] = now;
     }
   }
@@ -224,5 +229,5 @@ FP.UI = (function () {
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) toastBox.classList.remove('show'); }
   }
 
-  return { screen, closeScreen, open, wipe, selected: () => sel, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
+  return { screen, closeScreen, open, wipe, selected: () => sel, lastDevice: () => lastDevice, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
 })();
