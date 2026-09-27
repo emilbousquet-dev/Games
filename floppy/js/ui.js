@@ -16,7 +16,8 @@ FP.UI = (function () {
   const screenBox = el('div', 'screen');
   const help = el('div', 'help');
   const corner = el('div', 'corner', 'H help &nbsp; Esc pause &nbsp; M music');
-  root.append(tags, hud, bigText, sub, toastBox, screenBox, help, corner);
+  const wipeBox = el('div', 'wipe');
+  root.append(tags, hud, bigText, sub, toastBox, screenBox, help, corner, wipeBox);
   screenBox.hidden = true; help.hidden = true; bigText.hidden = true; sub.hidden = true;
   let items = [], sel = 0, backFn = null, keyFn = null, bigTimer = 0, toastTimer = 0, grid = 1;
 
@@ -52,7 +53,7 @@ FP.UI = (function () {
     right: svg('<path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
 
-  const HAT_NAMES = { party: 'Party hat', beanie: 'Beanie', crown: 'Crown', cowboy: 'Cowboy hat', tophat: 'Top hat', propeller: 'Propeller', bunny: 'Bunny ears', chef: 'Chef hat', none: 'No hat' };
+  const HAT_NAMES = { party: 'Party hat', beanie: 'Beanie', crown: 'Crown', cowboy: 'Cowboy hat', tophat: 'Top hat', propeller: 'Propeller', bunny: 'Bunny ears', chef: 'Chef hat', headphones: 'Headphones', flowers: 'Flower crown', wizard: 'Wizard hat', antlers: 'Antlers', pirate: 'Pirate hat', viking: 'Viking helmet', halo: 'Halo', astronaut: 'Space helmet', none: 'No hat' };
 
   help.innerHTML = `
     <h2>How to play</h2>
@@ -76,6 +77,21 @@ FP.UI = (function () {
 
   // buttons never take keyboard focus (so pressing Space to jump can't "click" them)
   document.addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
+
+  // ---------------- screen wipe (a colorful circle covers the screen, things change, and it opens again) ----------------
+  let wiping = false;
+  function wipe(fn) {
+    if ((FP.Game && FP.Game.manual) || wiping) { fn(); return; }
+    wiping = true;
+    wipeBox.className = 'wipe closing';
+    FP.Audio.play('whoosh');
+    setTimeout(() => {
+      try { fn(); } finally {
+        wipeBox.className = 'wipe opening';
+        setTimeout(() => { wipeBox.className = 'wipe'; wiping = false; }, 480);
+      }
+    }, 380);
+  }
 
   // ---------------- menu screens ----------------
   // buttons: [{ label, action, small, cls }]. grid: how many buttons per row (for arrow keys)
@@ -177,6 +193,7 @@ FP.UI = (function () {
   const tagEls = new Map();
   const tmp = new THREE.Vector3();
   function nameTags(chars, camera, show) {
+    if (FP.Settings && !FP.Settings.get('tags')) show = false;
     const seen = new Set();
     if (show) {
       for (const c of chars) {
@@ -206,5 +223,5 @@ FP.UI = (function () {
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) toastBox.classList.remove('show'); }
   }
 
-  return { screen, closeScreen, open, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
+  return { screen, closeScreen, open, wipe, selected: () => sel, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
 })();

@@ -65,6 +65,13 @@ FP.Modes.race = (function () {
     const line = new THREE.Mesh(new THREE.PlaneGeometry(8, 0.5), new THREE.MeshBasicMaterial({ map: tex }));
     line.rotation.x = -Math.PI / 2; line.position.set(0, 1.23, FINISH_Z);
     S.add(line);
+    // the start arch, signs and fans at the finish
+    const start = FP.Props.arch('START', 8.4); start.position.set(0, 0, -5.4); S.add(start);
+    const signs = [['JUMP!', '#ff9a3c', 4.2, -19.6], ['HOP ON!', '#4aa8ff', 3.6, -37.6], ['WATCH OUT!', '#ff5a5f', 3.6, -51.6]];
+    for (const [text, col, x, z] of signs) { const sg = FP.Props.arrowSign(text, col); sg.position.set(x, 0, z); sg.rotation.y = Math.PI / 2 + 0.3; S.add(sg); }
+    const fans = FP.Props.crowd(2, 8, 1.1); fans.position.set(0, 1.2, -76.9); S.add(fans);
+    S.add(FP.Props.bunting(-4, 3.2, -71, -4.8, 2.5, -77.5, 8));
+    S.add(FP.Props.bunting(4, 3.2, -71, 4.8, 2.5, -77.5, 8));
     // checkpoint flags
     for (const cp of CHECKPOINTS.slice(1)) {
       const flag = FP.Look.mesh(new THREE.BoxGeometry(0.7, 0.45, 0.05), FP.Look.toon(0x5cc44a), 0.02);
@@ -126,6 +133,7 @@ FP.Modes.race = (function () {
           FP.FX.word(c.parts.head.position, ['1st!', '2nd!', '3rd!', '4th!'][place - 1] || 'Done!', '#ffcf33', 1.6);
           FP.FX.confetti(new THREE.Vector3(p.x, p.y + 1, p.z));
           FP.Audio.play(place === 1 ? 'win' : 'coin');
+          FP.Props.hype();
           if (place === 1) { firstT = time; FP.UI.big(`${c.name} wins!`, 1.4, `${AFTER_FIRST} seconds left for everyone else!`); if (FP.Net) FP.Net.banner(`${c.name} wins!`, `${AFTER_FIRST} seconds left for everyone else!`); }
         }
       }

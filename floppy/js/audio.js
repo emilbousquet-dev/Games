@@ -4,7 +4,7 @@
 window.FP = window.FP || {};
 
 FP.Audio = (function () {
-  let ctx = null, master = null, musicGain = null, musicOn = true, song = 'party', step = 0;
+  let ctx = null, master = null, musicGain = null, sfxGain = null, vols = [0.8, 0.6, 0.8], musicOn = true, song = 'party', step = 0;
 
   function start() {
     if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
@@ -12,6 +12,8 @@ FP.Audio = (function () {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination);
       musicGain = ctx.createGain(); musicGain.gain.value = 0.16; musicGain.connect(master);
+      sfxGain = ctx.createGain(); sfxGain.gain.value = 1; sfxGain.connect(master);
+      setVolumes(...vols);
       setInterval(tick, 150);
     } catch (e) { ctx = null; }
   }
@@ -25,7 +27,7 @@ FP.Audio = (function () {
     o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), t + dur);
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g); g.connect(dest || master);
+    o.connect(g); g.connect(dest || sfxGain || master);
     o.start(t); o.stop(t + dur + 0.02);
   }
 
@@ -38,7 +40,7 @@ FP.Audio = (function () {
     const src = ctx.createBufferSource(); src.buffer = buf;
     const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq; f.Q.value = q;
     const g = ctx.createGain(); g.gain.value = vol;
-    src.connect(f); f.connect(g); g.connect(dest || master);
+    src.connect(f); f.connect(g); g.connect(dest || sfxGain || master);
     src.start(t);
   }
 
@@ -66,6 +68,15 @@ FP.Audio = (function () {
     voice: () => { for (let i = 0; i < 3; i++) { const f = rnd(350, 800); tone('triangle', f, f * rnd(0.8, 1.4), 0.08, 0.08, i * 0.08); } },
   };
   function play(name) { if (ctx && S[name]) S[name](); }
+
+  // volumes from 0 to 1 (the settings screen changes these)
+  function setVolumes(m, mu, fx) {
+    vols = [m, mu, fx];
+    if (!ctx) return;
+    master.gain.value = 0.62 * m;
+    musicGain.gain.value = 0.27 * mu;
+    sfxGain.gain.value = fx;
+  }
 
   // a bouncy party tune
   const SONGS = {
@@ -102,5 +113,6 @@ FP.Audio = (function () {
     start, play,
     toggleMusic() { musicOn = !musicOn; return musicOn; },
     setSong(name) { song = name; },
+    setVolumes,
   };
 })();

@@ -12,7 +12,7 @@ FP.Modes.zombie = (function () {
   let zombies = new Set(), marks = new Map(), time = 0, started = false, self = null;
 
   function build() {
-    zombies = new Set(); marks = new Map(); time = 0; started = false; respawn.clear();
+    zombies = new Set(); marks = new Map(); time = 0; started = false; respawn.clear(); self.lastSurvivor = null;
     const S = FP.Stage;
     // a spooky-ish graveyard island
     S.island(0, -1, 0, 22, 2, 15, { grass: 0x7fb069, dirt: 0x7a5a48 });
@@ -113,6 +113,7 @@ FP.Modes.zombie = (function () {
     if ((chars.length > 1 && survivors.length <= 1) || time > TIME) {
       if (survivors.length === 1 && chars.length > 1) {
         game.scores[survivors[0].player.id] += BONUS;
+        self.lastSurvivor = survivors[0].player;
         FP.FX.word(survivors[0].parts.head.position, `+${BONUS}!`, '#ffcf33', 1.5);
       }
       const w = FP.Kit.mostPoints(chars, game.scores);

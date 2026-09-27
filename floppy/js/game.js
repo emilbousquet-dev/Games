@@ -46,7 +46,7 @@ FP.Game = (function () {
     const p = {
       id: opts.id || nextId++, source,
       colorIndex: opts.colorIndex !== undefined ? opts.colorIndex : freeColor(),
-      hat: opts.hat || FP.Look.HATS[(players.length * 3 + 1) % (FP.Look.HATS.length - 1)],
+      hat: opts.hat || FP.Look.FREE_HATS[(players.length * 3 + 1) % FP.Look.FREE_HATS.length],
       outfit: opts.outfit || FP.Look.OUTFITS[(players.length + 1) % FP.Look.OUTFITS.length],
       name: opts.name || nextPlayerName(),
     };
@@ -145,9 +145,14 @@ FP.Game = (function () {
       buttons: [
         { label: `${ICON.people} Play on this computer`, action: () => lobby() },
         { label: `${ICON.online} Play online with friends`, action: () => FP.Net.menu() },
+        { label: `${ICON.crown} Hat Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
+        { label: `${ICON.trophy} Achievements`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
+        { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
         { label: `${ICON.help} How to play`, action: () => { FP.UI.help.hidden = false; }, small: true },
       ],
     });
+    const card = document.querySelector('.screen.title .card');
+    if (card) card.insertAdjacentHTML('beforeend', `<p class="title-coins">${FP.Profile.coinLine()}</p>`);
   }
 
   // ------------------------------------------------------------
@@ -277,8 +282,9 @@ FP.Game = (function () {
       <div class="slots">${slots.join('')}</div>
       <div class="lobby-actions">
         <button class="btn" data-act="back">${ICON.back} ${client ? 'Leave the party' : 'Title'}</button>
-        ${client ? '' : `<button class="btn go" data-act="start">${ICON.play} Pick a mini-game <kbd>Enter</kbd></button>`}
-      </div>`;
+        ${client ? '' : `<button class="btn" data-act="shop">${ICON.crown} Hat Shop</button><button class="btn go" data-act="start">${ICON.play} Pick a mini-game <kbd>Enter</kbd></button>`}
+      </div>
+      ${client ? '' : `<div class="lobby-coins">${FP.Profile.coinLine()}</div>`}`;
     lobbyPanel.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => lobbyAction(b.dataset.act, +b.dataset.i, +b.dataset.dir || 1)));
   }
 
@@ -295,6 +301,7 @@ FP.Game = (function () {
     else if (act === 'outfit' && p) cycleOutfit(p, dir);
     else if (act === 'remove' && p) removePlayer(p);
     else if (act === 'start') chooseMode();
+    else if (act === 'shop') { lobbyPanel.hidden = true; FP.Profile.shopScreen(() => { FP.UI.closeScreen(); showLobbyPanel(); refreshLobby(); }); }
     else if (act === 'back') { if (FP.Net) FP.Net.leave(); titleScreen(); }
   }
   function cycleColor(p, dir = 1) {
@@ -306,8 +313,11 @@ FP.Game = (function () {
     if (FP.Net) FP.Net.playersChanged();
   }
   function cycleHat(p, dir = 1) {
-    const n = FP.Look.HATS.length;
-    p.hat = FP.Look.HATS[(FP.Look.HATS.indexOf(p.hat) + dir + n) % n];
+    // only hats you have (the others are in the Hat Shop)
+    const H = FP.Look.HATS, n = H.length;
+    let i = H.indexOf(p.hat);
+    for (let k = 0; k < n; k++) { i = (i + dir + n) % n; if (FP.Profile.owns(H[i])) break; }
+    p.hat = H[i];
     spawnInLobby(p); refreshLobby();
     if (FP.Net) FP.Net.playersChanged();
   }
@@ -456,7 +466,7 @@ FP.Game = (function () {
         title: m.name,
         html,
         buttons: [
-          { label: `${ICON.play} Start`, action: () => startMatch(m), cls: 'go' },
+          { label: `${ICON.play} Start`, action: () => FP.UI.wipe(() => startMatch(m)), cls: 'go' },
           { label: `${ICON.sparkle} Fun options`, action: () => funScreen(() => setupMatch(m)), small: true },
           { label: `${ICON.back} Pick another game`, action: backToPicker, small: true },
         ],
@@ -514,11 +524,85 @@ FP.Game = (function () {
     mode.build(list);
     list.forEach((p, i) => makeChar(p, mode.spawn(i, list.length, p)));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
+    timer = 0;
+    if (FP.Net) FP.Net.roundStarted();
+    if (round === 1 && humans().length && !api.skipIntro) showIntro();
+    else goCountdown();
+  }
+
+  function goCountdown() {
     state = 'countdown';
     count = 3.99;
     FP.UI.big(mode.roundsToWin > 1 && !mode.single ? `Round ${round}` : mode.name, 1.2, mode.desc);
-    timer = 0;
-    if (FP.Net) FP.Net.roundStarted();
+  }
+
+  // ------------------------------------------------------------
+  //  HOW TO PLAY (before each mini-game): tips, controls, and
+  //  everyone presses JUMP when they're ready
+  // ------------------------------------------------------------
+  const TIPS = {
+    arena: ['Punch 3 times fast to knock someone out', 'Hold grab, walk to the edge, let go to throw', 'The tiles start falling after 12 seconds'],
+    soccer: ['Run into the ball, or punch it', 'Headbutts work too!', 'First team to 3 goals wins'],
+    heist: ['Hold grab to pick up treasure', 'Carry it to the getaway van', 'Guards knock you out with one hit'],
+    bomb: ['Bump into someone to pass the bomb', 'It blinks faster just before it explodes', 'Run away from whoever has it!'],
+    hill: ['Stand on top of the hill alone to score', 'Push everyone else off', 'First to 25 points'],
+    lava: ['Jump up the platforms around the tower', 'The lava rises faster and faster', 'Push others down!'],
+    tiles: ['Tiles fall after you step on them', 'Keep moving!', 'There is a second floor below'],
+    color: ['Watch the billboard for the color', 'Stand on that color before time runs out', 'Push others off the good tiles'],
+    sweeper: ['Jump over the spinning bar', 'It gets faster and faster', 'A second bar joins in later'],
+    coins: ['Walk into coins to grab them', 'Knock people out to make them drop coins', 'The big coin is worth 5'],
+    dodge: ['Hold grab next to a ball to pick it up', 'Run and let go to throw it', 'Every hit is a point'],
+    paint: ['Walk around to paint the floor', 'Jump and land for a big splat', 'Paint over other colors!'],
+    crown: ['Touch the crown to wear it', 'Wearing it earns points', 'Punch the wearer to knock it off'],
+    race: ['Jump over the spinning bars', 'Wait for the moving platforms', 'Fall off? Back to the last checkpoint'],
+    balloons: ['Your balloons are on your back', 'Sneak behind people and punch', 'Turn around to protect yours!'],
+    seats: ['Keep walking while the music plays', 'When it stops, jump onto a chair', 'No chair? You are out!'],
+    zombie: ['Run from the zombies!', 'Punch a zombie to stun it', 'Zombies are slower than you'],
+    boulder: ['Red arrows show where boulders come from', 'Step out of the way', 'They get faster!'],
+  };
+  const INTRO_TIME = 15;
+  let ready = new Set(), introT = 0;
+  function introHtml(withButton) {
+    const tips = TIPS[mode.id] || [];
+    const left = Math.max(0, Math.ceil(INTRO_TIME - introT));
+    const who = humans().map((p) => `<span class="ready-pill${ready.has(p.id) ? ' ok' : ''}">${FP.UI.playerPill(p)}${ready.has(p.id) ? ICON.check : '<small>press jump</small>'}</span>`).join('');
+    return `<div class="intro-grid"><div class="setup-art">${mode.art || ''}</div><div class="intro-text"><p class="goal">${mode.desc}</p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul></div></div>
+      <div class="keys-row"><span><kbd>W A S D</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> grab</span><span class="small">(player 2: arrows / . ,)</span></div>
+      <div class="ready-row">${who}</div>
+      <p class="small">Press <b>JUMP</b> when you're ready! Starting in <b class="intro-timer">${left}</b>...</p>
+      ${withButton ? `<button class="btn go" data-start>${ICON.play} Start now</button>` : ''}`;
+  }
+  function drawIntro() {
+    const card = FP.UI.screen({ cls: 'intro', title: mode.name, html: introHtml(true) });
+    const b = card.querySelector('[data-start]');
+    if (b) b.addEventListener('click', introDone);
+    if (FP.Net) FP.Net.intro(introHtml(false));
+  }
+  function showIntro() {
+    state = 'intro'; ready = new Set(); introT = 0;
+    drawIntro();
+  }
+  function introDone() {
+    if (state !== 'intro') return;
+    FP.UI.closeScreen();
+    if (FP.Net) FP.Net.introEnd();
+    goCountdown();
+  }
+  function introFrame(dt) {
+    introT += dt;
+    let changed = false;
+    for (const p of humans()) {
+      if (ready.has(p.id)) continue;
+      const src = p.source;
+      let pressed = false;
+      if (src.kind === 'remote') pressed = FP.Net ? FP.Net.inputOf(p.id).jumpPressed : false;
+      else if (src.kind === 'keys' || src.kind === 'pad') pressed = FP.Input.read(src, p.id).jumpPressed;
+      if (pressed) { ready.add(p.id); changed = true; FP.Audio.play('select'); }
+    }
+    if (changed) drawIntro();
+    const t = document.querySelector('.intro-timer');
+    if (t) t.textContent = String(Math.max(0, Math.ceil(INTRO_TIME - introT)));
+    if (introT > INTRO_TIME || humans().every((p) => ready.has(p.id))) introDone();
   }
 
   // a character is out of this round
@@ -561,34 +645,115 @@ FP.Game = (function () {
     return Object.values(scores).some((s) => s >= mode.roundsToWin);
   }
 
+  // who came 1st, 2nd, 3rd (ties share a place): [[1st...], [2nd...], [3rd...], [everyone else]]
+  function placesOf(list) {
+    if (mode.teams) {
+      const t0 = scores.team0, t1 = scores.team1;
+      if (t0 === t1) return [list];
+      const w = t0 > t1 ? 0 : 1;
+      return [list.filter((p) => p.team === w), [], [], list.filter((p) => p.team !== w)];
+    }
+    const sorted = list.slice().sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
+    const groups = [];
+    let last = null;
+    for (const p of sorted) { const v = scores[p.id] || 0; if (last !== null && v === last) groups[groups.length - 1].push(p); else groups.push([p]); last = v; }
+    const out = groups.slice(0, 3);
+    if (groups.length > 3) out.push(groups.slice(3).flat());
+    return out;
+  }
+
+  // the winners' podium: a little stage with 1st, 2nd and 3rd blocks (also built by online friends)
+  function buildPodium(places) {
+    FP.Stage.clear();
+    FP.FX.clear();
+    FP.Camera.fix(null);
+    const S = FP.Stage;
+    S.island(0, -1, 0, 16, 2, 10, { grass: 0x9bd46e });
+    const blocks = [{ x: 0, h: 1.5, col: 0xffcf33, t: '1' }, { x: -2.7, h: 1.0, col: 0xd8dde6, t: '2' }, { x: 2.7, h: 0.6, col: 0xf0b27a, t: '3' }];
+    const spots = new Map();
+    blocks.forEach((b, i) => {
+      const grp = places[i] || [];
+      if (i > 0 && !grp.length) return;
+      const w = Math.max(2.2, grp.length * 1.15);
+      S.block(b.x, b.h / 2, 0, w, b.h, 2, b.col);
+      const num = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 0.7), new THREE.MeshBasicMaterial({ map: FP.Props.textTexture(b.t, '#ffffff', '#2a2140', 128, 128), transparent: true }));
+      num.position.set(b.x, b.h / 2, 1.01);
+      S.add(num);
+      grp.forEach((p, k) => spots.set(p.id, { x: b.x + (k - (grp.length - 1) / 2) * 1.1, y: b.h, z: 0 }));
+    });
+    (places[3] || []).forEach((p, k, arr) => spots.set(p.id, { x: (k - (arr.length - 1) / 2) * 1.4, y: 0, z: 2.6 }));
+    const fans = FP.Props.crowd(2, 10, 1.2); fans.position.set(0, 0, -3); S.add(fans);
+    fans.userData.hype = 1;
+    S.add(FP.Props.bunting(-6, 3.2, -1.2, 6, 3.2, -1.2, 16));
+    for (const [x, z] of [[-6.5, 1], [6.5, 1.5]]) { const t = FP.Look.tree(1.1); t.position.set(x, 0, z); S.add(t); }
+    FP.Camera.fix(new THREE.Vector3(innerWidth > 800 ? 2.2 : 0, 1.3, 0.6), 3);
+    FP.Camera.setAngle(0.34, 0.94);
+    FP.FX.confetti(new THREE.Vector3(0, 3, 0), 160, 6);
+    return spots;
+  }
+  function clientPodium(placeIds) {
+    const byId = (id) => players.find((p) => p.id === id) || { id };
+    buildPodium((placeIds || []).map((g) => g.map(byId)));
+    FP.Camera.snap(chars.map(FP.Ragdoll.center));
+  }
+
   function results() {
     state = 'results';
     FP.UI.setHud('');
     const list = everyone();
+    const places = placesOf(list);
+    // party coins and achievements (for players on this computer)
+    const got = FP.Profile.matchEnded({ mode, places, skill: botSkill, funCount: FP.Fun.list().length, bots: matchBots.length, online: !!(FP.Net && FP.Net.isHost()), extra: { survivor: mode.lastSurvivor } });
+    const placeOf = (p) => places.findIndex((g) => g.includes(p));
+    const makeHtml = (coins) => {
+    const earn = (p) => (coins && got[p.id] ? ` <span class="earn">${ICON.coin}+${got[p.id]}</span>` : '');
     let html;
     if (mode.teams) {
       const t0 = scores.team0, t1 = scores.team1;
       const win = t0 === t1 ? 'It\'s a tie!' : (t0 > t1 ? 'Red team wins!' : 'Blue team wins!');
       html = `<div class="final"><div class="team t0">Red<b>${t0}</b></div><div class="team t1">Blue<b>${t1}</b></div></div><p class="winner">${win}</p>` +
-        `<div class="podium">${list.map((p) => FP.UI.playerPill(p, p.team === 0 ? ' <small>(Red)</small>' : ' <small>(Blue)</small>')).join('')}</div>`;
+        `<div class="podium">${list.map((p) => FP.UI.playerPill(p, (p.team === 0 ? ' <small>(Red)</small>' : ' <small>(Blue)</small>') + earn(p))).join('')}</div>`;
     } else {
       const sorted = list.slice().sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0));
-      const label = (s) => (mode.scoreLabel ? mode.scoreLabel(s) : s);
-      const places = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
+      const label = (v) => (mode.scoreLabel ? mode.scoreLabel(v) : v);
+      const medals = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
       html = (mode.resultText ? `<p class="winner">${mode.resultText()}</p>` : '') +
-        `<div class="podium">${sorted.map((p, i) => `<div class="place p${i}"><span class="medal m${i}">${places[i]}</span>${FP.UI.playerPill(p)}<b>${label(scores[p.id] || 0)}</b></div>`).join('')}</div>`;
+        `<div class="podium">${sorted.map((p) => { const i = placeOf(p) < 3 ? placeOf(p) : sorted.indexOf(p); return `<div class="place p${i}"><span class="medal m${i}">${medals[i]}</span>${FP.UI.playerPill(p)}<b>${label(scores[p.id] || 0)}</b>${earn(p)}</div>`; }).join('')}</div>`;
     }
-    if (tour) { tourResults(html); return; }
-    FP.UI.screen({
-      title: `${mode.name}: results`,
-      html,
-      buttons: [
-        { label: `${ICON.again} Play again`, action: () => startMatch(mode) },
-        { label: `${ICON.grid} Another mini-game`, action: () => { lobby(); chooseMode(); } },
-        { label: `${ICON.home} Back to the lobby`, action: () => lobby(), small: true },
-      ],
+    if (coins && Object.keys(got).length) html += `<p class="small">${FP.Profile.coinLine()}</p>`;
+    return html;
+    };
+    const html = makeHtml(true), netHtml = makeHtml(false);
+    FP.UI.wipe(() => {
+      // everyone goes to the podium
+      const spots = buildPodium(places);
+      for (const p of list) {
+        let c = chars.find((ch) => ch.player === p);
+        const sp = spots.get(p.id);
+        if (!sp) continue;
+        if (!c) c = makeChar(p, { x: sp.x, y: sp.y, z: sp.z, yaw: 0 });
+        c.alive = true; c.ko = 0; c.getUp = 0; c.grabbedBy = null; c.thrownT = 0;
+        FP.Ragdoll.releaseGrab(c);
+        FP.Ragdoll.teleport(c, sp.x, sp.y + 0.05, sp.z, 0);
+        const win = places[0].includes(p) && places.length > 1;
+        c.podiumWinner = win;
+        c.cheer = win ? 30 : 0; c.expression = win ? 'happy' : 'oh'; c.exprTimer = win ? 30 : 2;
+      }
+      FP.Camera.snap(chars.map(FP.Ragdoll.center));
+      if (FP.Net) FP.Net.podium(places.map((g) => g.map((p) => p.id)));
+      if (tour) { tourResults(html, netHtml); return; }
+      FP.UI.screen({
+        cls: 'results',
+        title: `${mode.name}: results`,
+        html,
+        buttons: [
+          { label: `${ICON.again} Play again`, action: () => FP.UI.wipe(() => startMatch(mode)) },
+          { label: `${ICON.grid} Another mini-game`, action: () => FP.UI.wipe(() => { lobby(); chooseMode(); }) },
+          { label: `${ICON.home} Back to the lobby`, action: () => FP.UI.wipe(() => lobby()), small: true },
+        ],
+      });
+      if (FP.Net) FP.Net.results(netHtml);
     });
-    if (FP.Net) FP.Net.results(html);
   }
 
   function hudHtml() {
@@ -656,7 +821,7 @@ FP.Game = (function () {
     const ids = MODES().map((m) => m.id);
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     tour = { games: ids.slice(0, tourOpts.games), index: 0, points: {}, bots: null, botCount: tourOpts.bots, awarded: false };
-    startMatch(FP.Modes[tour.games[0]]);
+    FP.UI.wipe(() => startMatch(FP.Modes[tour.games[0]]));
   }
 
   // party points for this game: 4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else (ties get the same)
@@ -680,21 +845,22 @@ FP.Game = (function () {
   }
   const tourList = () => `<div class="tour-list">${tour.games.map((id, i) => `<span class="${i < tour.index ? 'done' : i === tour.index ? 'now' : ''}">${FP.Modes[id].name}</span>`).join('')}</div>`;
 
-  function tourResults(gameHtml) {
+  function tourResults(gameHtml, netGameHtml = gameHtml) {
     const got = tour.awarded ? null : tourAward();
     tour.awarded = true;
     const last = tour.index >= tour.games.length - 1;
     const html = `${gameHtml}<h2>Party points</h2>${tourTable(got)}${tourList()}`;
     FP.UI.screen({
+      cls: 'results',
       title: `${mode.name}: results`,
       html,
       buttons: [
         last ? { label: `${ICON.trophy} Who is the champion?`, action: tourFinal, cls: 'go' }
-          : { label: `${ICON.play} Next game: ${FP.Modes[tour.games[tour.index + 1]].name}`, action: () => { tour.index++; startMatch(FP.Modes[tour.games[tour.index]]); }, cls: 'go' },
+          : { label: `${ICON.play} Next game: ${FP.Modes[tour.games[tour.index + 1]].name}`, action: () => FP.UI.wipe(() => { tour.index++; startMatch(FP.Modes[tour.games[tour.index]]); }), cls: 'go' },
         { label: `${ICON.home} Stop the tour`, action: () => lobby(), small: true },
       ],
     });
-    if (FP.Net) FP.Net.results(html);
+    if (FP.Net) FP.Net.results(`${netGameHtml}<h2>Party points</h2>${tourTable(got)}${tourList()}`);
   }
 
   function tourFinal() {
@@ -708,7 +874,9 @@ FP.Game = (function () {
     FP.Audio.play('win'); FP.Audio.play('cheer');
     FP.FX.confetti(FP.Camera.target.clone());
     for (const c of chars) if (champs.includes(c.player)) { c.cheer = 6; c.expression = 'happy'; c.exprTimer = 6; }
+    if (champs.some((p) => p.source.kind === 'keys' || p.source.kind === 'pad')) { FP.Profile.unlock('champion'); FP.Profile.earn(100); FP.UI.toast('Party Champion bonus: +100 coins!', 3); }
     FP.UI.screen({
+      cls: 'results',
       title: 'Party Tour: the end!',
       html,
       buttons: [
@@ -725,12 +893,16 @@ FP.Game = (function () {
   function pause() {
     if (!['countdown', 'play', 'roundOver'].includes(state) || paused || FP.UI.open()) return;
     paused = true;
+    pauseMenu();
+  }
+  function pauseMenu() {
     FP.UI.screen({
       title: 'Paused',
       buttons: [
         { label: `${ICON.play} Keep playing`, action: resume },
-        { label: `${ICON.again} Restart this game`, action: () => { paused = false; startMatch(mode); } },
-        { label: `${ICON.home} Back to the lobby`, action: () => { paused = false; lobby(); } },
+        { label: `${ICON.again} Restart this game`, action: () => { paused = false; FP.UI.wipe(() => startMatch(mode)); } },
+        { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(pauseMenu), small: true },
+        { label: `${ICON.home} Back to the lobby`, action: () => { paused = false; FP.UI.wipe(() => lobby()); } },
       ],
       back: resume,
     });
@@ -802,6 +974,12 @@ FP.Game = (function () {
       timer += dt;
       if (mode.update) mode.update(dt, chars, api, true);
       if (timer > 3.2) { if (matchOver()) results(); else startRound(); }
+    } else if (state === 'intro') {
+      if (mode.update) mode.update(0, chars, api, true);
+      introFrame(dt);
+    } else if (state === 'results') {
+      // winners on the podium hop with joy
+      for (const c of chars) if (c.podiumWinner && c.grounded && Math.random() < dt * 0.9) for (const b of c.bodies) b.velocity.y += 6.5;
     }
 
     for (const c of chars) FP.Ragdoll.sync(c, dt);
@@ -810,7 +988,7 @@ FP.Game = (function () {
     FP.Stage.update(dt, timer, FP.Camera.target);
     const playing = mode && ['countdown', 'play', 'roundOver'].includes(state);
     const focus = playing && mode.focus ? mode.focus(chars) : chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
-    FP.Camera.update(focus.length ? focus : chars.map(FP.Ragdoll.center), dt, mode && state !== 'lobby' ? (mode.minZoom || 12) : 11);
+    FP.Camera.update(focus.length ? focus : chars.map(FP.Ragdoll.center), dt, state === 'results' ? 7 : mode && state !== 'lobby' ? (mode.minZoom || 12) : 11);
     FP.UI.nameTags(chars, FP.Camera.camera, ['lobby', 'countdown', 'play', 'roundOver'].includes(state));
     if (FP.Net) FP.Net.hostFrame(dt);
   }
@@ -820,7 +998,7 @@ FP.Game = (function () {
     get chars() { return chars; }, get state() { return state; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
-    clientLobby, clientRound, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
+    clientLobby, clientRound, clientPodium, skipIntro: false, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
     get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,
@@ -829,6 +1007,7 @@ FP.Game = (function () {
   };
 
   FP.Input.init();
+  FP.Settings.apply();
   window.addEventListener('resize', () => { FP.Stage.resize(); FP.Camera.resize(); });
   setTimeout(titleScreen, 0);
   let last = performance.now();

@@ -28,7 +28,7 @@ FP.Modes.crown = (function () {
     S.add(FP.Props.bunting(-4, 3.3, 3.5, 4, 3.3, 3, 14));
     S.block(0, 0.3, 0, 3, 0.6, 3, 0xffe8a3); // a little stage in the middle
     // the crown
-    crown = FP.Look.makeHat('crown');
+    crown = FP.Look.makeHat('crown', 0.34);
     crown.scale.setScalar(1.6);
     S.add(crown);
     FP.Camera.setAngle(0.82, 0.78);

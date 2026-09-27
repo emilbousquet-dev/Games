@@ -30,8 +30,9 @@ FP.Stage = (function () {
   const sky = new THREE.Group();
   for (let i = 0; i < 26; i++) {
     const c = FP.Look.cloud(1.5 + Math.random() * 2.5);
-    const a = Math.random() * Math.PI * 2, r = 25 + Math.random() * 60;
-    c.position.set(Math.cos(a) * r, -18 - Math.random() * 20 + (i % 4 === 0 ? 30 : 0), Math.sin(a) * r - 10);
+    // far away and well below (or high above) the action, so they never float in front of the camera
+    const a = Math.random() * Math.PI * 2, r = 50 + Math.random() * 60;
+    c.position.set(Math.cos(a) * r, i % 4 === 0 ? 30 + Math.random() * 12 : -16 - Math.random() * 22, Math.sin(a) * r - 10);
     c.userData.speed = 0.3 + Math.random() * 0.6;
     sky.add(c);
   }

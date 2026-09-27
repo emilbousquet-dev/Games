@@ -517,6 +517,7 @@ FP.Ragdoll = (function () {
     c.eyeY = (c.eyeY || 0) + (ly - (c.eyeY || 0)) * Math.min(1, dt * 8);
     FP.Look.setFace(c.face, e, c.eyeX, c.eyeY, blinking);
     if (c.face.hat && c.face.hat.userData.spin) c.face.hat.userData.spin.rotation.y += dt * (c.grounded ? 4 : 30);
+    if (c.face.hat && c.face.hat.userData.bob) c.face.hat.userData.bob.position.y = 0.3 + Math.sin(performance.now() / 300 + c.index) * 0.03;
 
     // stars when knocked out
     c.stars.visible = c.ko > 0;

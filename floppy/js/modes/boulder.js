@@ -15,7 +15,14 @@ FP.Modes.boulder = (function () {
   function build() {
     rocks = []; warns = []; time = 0; next = 2.5;
     const S = FP.Stage;
-    S.island(0, -1, 0, W, 2, D, { grass: 0xa8d86e });
+    // a desert island: sand, cacti and rocks around the edge
+    S.island(0, -1, 0, W, 2, D, { grass: 0xf2d38a, dirt: 0xc98b58 });
+    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const ix = x * (W / 2 + 2.2), iz = z * (D / 2 + 1.6);
+      S.island(ix, -1.8, iz, 3, 2, 3, { grass: 0xf2d38a, dirt: 0xc98b58 });
+      const c = FP.Props.cactus(1 + (x + z === 0 ? 0.2 : 0)); c.position.set(ix, -0.8, iz); c.rotation.y = x * z; S.add(c);
+      const r = FP.Props.rock(0.9, 0xc9a27e); r.position.set(ix + 0.9, -0.8, iz - 0.7); S.add(r);
+    }
     for (let i = 0; i < POOL; i++) {
       const mesh = FP.Look.mesh(new THREE.DodecahedronGeometry(R, 1), new THREE.MeshToonMaterial({ color: 0x9a8f86, flatShading: true, gradientMap: FP.Look.toon(0xffffff).gradientMap }), 0.05);
       const body = new CANNON.Body({ mass: 40, material: FP.Physics.mats.prop, linearDamping: 0.05, angularDamping: 0.05, collisionFilterGroup: FP.Physics.GROUP.PROP, collisionFilterMask: FP.Physics.ALL });

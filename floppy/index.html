@@ -104,6 +104,74 @@
     .roulette .setup-art svg { width: 280px; }
     .roulette h2 { font-size: 34px; margin: 8px 0 0; }
     .card .body h2 { margin: 12px 0 2px; font-size: 24px; }
+
+    /* screen wipe */
+    .wipe { position: fixed; inset: 0; z-index: 9; pointer-events: none; visibility: hidden;
+      background: radial-gradient(circle at 25% 25%, rgba(255,255,255,.35) 0 7%, transparent 8%) 0 0 / 90px 90px, radial-gradient(circle at 75% 75%, rgba(155,107,255,.35) 0 7%, transparent 8%) 0 0 / 90px 90px, var(--yellow);
+      clip-path: circle(0% at 50% 50%); }
+    .wipe.closing { visibility: visible; animation: wipe-in .38s ease-in forwards; }
+    .wipe.opening { visibility: visible; animation: wipe-out .48s ease-out forwards; }
+    @keyframes wipe-in { from { clip-path: circle(0% at 50% 50%); } to { clip-path: circle(75% at 50% 50%); } }
+    @keyframes wipe-out { from { clip-path: circle(75% at 50% 50%); } to { clip-path: circle(0% at 50% 50%); } }
+
+    /* how to play (before each mini-game) */
+    .intro .card { width: min(760px, 100%); }
+    .intro-grid { display: grid; grid-template-columns: 240px 1fr; gap: 16px; align-items: center; text-align: left; }
+    .intro-grid .setup-art svg { width: 240px; }
+    .intro .goal { font-weight: 800; font-size: 19px; margin: 0 0 6px; }
+    .tips { margin: 0; padding-left: 20px; font-size: 16.5px; line-height: 1.45; }
+    .tips li::marker { color: #ff5a8a; }
+    .keys-row { display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center; margin: 12px 0 4px; font-size: 15px; font-weight: 700; }
+    .keys-row kbd { font-size: 13px; }
+    .ready-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 8px 0; }
+    .ready-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--paper2); border-radius: 999px; padding: 3px 10px 3px 3px; }
+    .ready-pill small { font-weight: 700; opacity: .6; }
+    .ready-pill.ok { background: #c9f2b8; }
+    .ready-pill .ico { color: #3a9a2a; width: 20px; height: 20px; }
+    @media (max-width: 620px) { .intro-grid { grid-template-columns: 1fr; text-align: center; } .intro-grid .setup-art svg { width: 200px; } }
+
+    /* results next to the 3D podium */
+    .screen.results { background: none; justify-content: flex-end; padding-right: 3vw; }
+    .screen.results .card { width: min(440px, 100%); padding: 16px 20px 18px; background: rgba(255, 250, 243, .94); }
+    .screen.results .card h1 { font-size: 28px; }
+    @media (max-width: 800px) { .screen.results { justify-content: center; align-items: flex-end; padding: 0 16px 12px; } .screen.results .card { max-height: 58%; } }
+    .earn { color: #b07a00; font-weight: 800; font-size: 15px; display: inline-flex; align-items: center; gap: 2px; }
+    .earn .ico { width: 1em; height: 1em; }
+
+    /* coins, shop, achievements, settings */
+    .coins { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+    .coins .ico { width: 1.3em; height: 1.3em; }
+    .title-coins { margin: 10px 0 0; font-size: 17px; }
+    .screen.title .buttons { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+    .screen.title .btn:not(.small) { flex-basis: 100%; }
+    .lobby-coins { position: fixed; right: 16px; top: 12px; background: rgba(255,255,255,.9); border-radius: 999px; padding: 4px 12px; box-shadow: var(--shadow); font-size: 16px; }
+    .shop .card { width: min(820px, 100%); }
+    .shop .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .btn.hat { flex-direction: column; gap: 0; padding: 6px 6px 10px; font-size: 16px; }
+    .btn.hat img { width: 110px; height: 110px; display: block; }
+    .btn.hat small { font-weight: 800; display: inline-flex; align-items: center; gap: 4px; font-size: 15px; }
+    .btn.hat small .ico { width: 1.1em; height: 1.1em; }
+    .btn.hat:not(.owned):not(.afford) { opacity: .6; }
+    .btn.hat.owned small { color: #3a9a2a; }
+    @media (max-width: 620px) { .shop .buttons { grid-template-columns: repeat(2, 1fr); } }
+    .achievements .card { width: min(720px, 100%); }
+    .ach-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; text-align: left; margin-top: 8px; }
+    .ach { display: flex; gap: 10px; align-items: center; background: var(--paper2); border-radius: 14px; padding: 8px 10px; opacity: .75; }
+    .ach.done { background: #fff1b8; opacity: 1; }
+    .ach .medal-ico .ico { width: 34px; height: 34px; }
+    .ach .txt { display: flex; flex-direction: column; font-size: 15px; min-width: 0; }
+    .ach small { font-weight: 600; font-size: 13px; }
+    .prog { display: block; height: 8px; border-radius: 4px; background: #e0d6ea; margin-top: 3px; overflow: hidden; }
+    .prog i { display: block; height: 100%; background: var(--green); }
+    @media (max-width: 620px) { .ach-list { grid-template-columns: 1fr; } }
+    .settings .card { width: min(560px, 100%); }
+    .btn.set { justify-content: space-between; font-size: 18px; }
+    .set-val { display: inline-flex; align-items: center; gap: 6px; }
+    .set-val .ico { width: 1em; height: 1em; opacity: .6; }
+    .vol { display: inline-flex; gap: 3px; }
+    .vol i { width: 9px; height: 18px; border-radius: 3px; background: #e0d6ea; }
+    .vol i.on { background: var(--green); }
+    .parties { display: flex; flex-direction: column; gap: 6px; align-items: center; margin: 6px 0; }
     .tour-table { display: flex; flex-direction: column; gap: 5px; align-items: center; margin: 8px 0; }
     .tour-row { display: flex; align-items: center; gap: 8px; font-size: 19px; }
     .tour-row b { font-size: 22px; min-width: 2.2em; text-align: left; }
@@ -197,6 +265,8 @@
   <script src="js/bots.js"></script>
   <script src="js/fun.js"></script>
   <script src="js/props.js"></script>
+  <script src="js/settings.js"></script>
+  <script src="js/profile.js"></script>
   <script src="js/modes/kit.js"></script>
   <script src="js/modes/arena.js"></script>
   <script src="js/modes/soccer.js"></script>

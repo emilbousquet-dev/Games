@@ -8,11 +8,11 @@ window.FP = window.FP || {};
 FP.Modes = FP.Modes || {};
 
 FP.Modes.balloons = (function () {
-  const LIVES = 3;
-  let data = new Map(), self = null;
+  const LIVES = 3, TIME = 70;
+  let data = new Map(), time = 0, self = null;
 
   function build() {
-    data = new Map();
+    data = new Map(); time = 0;
     const S = FP.Stage;
     S.island(0, -1, 0, 16, 2, 12, { grass: 0x9bd46e });
     S.island(0, -1, 0, 12, 2, 16, { grass: 0x9bd46e });
@@ -121,7 +121,15 @@ FP.Modes.balloons = (function () {
         if (Math.hypot(fist.x - b.x, fist.y - b.y, fist.z - b.z) < 0.6) { pop(c, d, o, game); break; }
       }
     }
+    time += dt;
     FP.Kit.fallOut(chars, game, -5);
+    if (time >= TIME) {
+      // time is up: whoever has the most balloons left wins
+      const alive = chars.filter((c) => c.alive);
+      const most = Math.max(0, ...alive.map((c) => get(c).left));
+      const w = alive.filter((c) => get(c).left === most);
+      return { winners: w, text: w.length === 1 ? `Time! ${w[0].name} has the most balloons!` : 'Time! It\'s a tie!' };
+    }
     return FP.Kit.lastStanding(chars);
   }
 
@@ -133,11 +141,16 @@ FP.Modes.balloons = (function () {
     for (const o of chars) {
       if (o === c || !o.alive || o.ko > 0) continue;
       const op = o.parts.torso.position, dx = op.x - p.x, dz = op.z - p.z, d = Math.hypot(dx, dz);
-      if (d < 1.8 && (dx * fx + dz * fz) / (d || 1) < -0.2 && Math.random() < 0.9) {
-        input.x = dx / d; input.z = dz / d; // turn to face them
-        if (Math.random() < dt * 3) input.punchPressed = true;
-        tools.unstick(input);
-        return true;
+      if (d < 1.8 && (dx * fx + dz * fz) / (d || 1) < -0.2) {
+        b.guard = (b.guard || 0) + dt;
+        if (b.guard < 1.2) {
+          // turn to face them, and push them away
+          input.x = dx / d; input.z = dz / d;
+          if (Math.random() < dt * 3) input.punchPressed = true;
+          tools.unstick(input);
+          return true;
+        }
+        if (b.guard > 3) b.guard = 0; // then go back to sneaking around them
       }
     }
     b.think = (b.think || 0) - dt;
@@ -170,7 +183,7 @@ FP.Modes.balloons = (function () {
     return true;
   }
 
-  function hud() { return 'Punch the balloons on their backs! Protect yours!'; }
+  function hud() { return `Punch the balloons on their backs! Protect yours! &nbsp; ${FP.UI.ICON.clock} ${FP.Kit.clock(TIME - time)}`; }
 
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><ellipse cx="60" cy="66" rx="52" ry="10" fill="#9bd46e" stroke="#2a2140" stroke-width="2"/><ellipse cx="44" cy="52" rx="7" ry="9" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><circle cx="44" cy="39" r="6" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><g stroke="#2a2140" stroke-width="2"><path d="M44 52l-14-14M44 52l-8-20M44 52l-18-6" fill="none" stroke-width="1"/><ellipse cx="28" cy="32" rx="6" ry="7" fill="#4aa8ff"/><ellipse cx="36" cy="24" rx="6" ry="7" fill="#4aa8ff"/><ellipse cx="22" cy="42" rx="6" ry="7" fill="#4aa8ff"/></g><ellipse cx="80" cy="52" rx="7" ry="9" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><circle cx="76" cy="40" r="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><circle cx="64" cy="44" r="4" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><path d="M54 34l-4-4M52 40h-6M56 28v-5" stroke="#ff9a3c" stroke-width="2.5" stroke-linecap="round"/></svg>';
 

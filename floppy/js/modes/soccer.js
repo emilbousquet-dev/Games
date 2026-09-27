@@ -185,6 +185,7 @@ FP.Modes.soccer = (function () {
       const who = lastTouch && lastTouch.team === scoringTeam ? `${lastTouch.name} scores!` : lastTouch ? `Oops! ${lastTouch.name} scored for the other team!` : '';
       FP.UI.big('GOAL!', 2.4, who);
       FP.Audio.play('goal');
+      FP.Props.hype();
       FP.FX.confetti(new THREE.Vector3(b.x, 0, 0), 150, 6);
       FP.Camera.shake(0.6);
       if (FP.Net) FP.Net.banner('GOAL!', who);

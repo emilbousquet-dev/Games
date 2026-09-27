@@ -45,7 +45,7 @@ FP.Camera = (function () {
 
   return {
     camera, update, snap, target,
-    shake(amount) { shake = Math.min(1, Math.max(shake, amount)); },
+    shake(amount) { if (FP.Settings && !FP.Settings.get('shake')) return; shake = Math.min(1, Math.max(shake, amount)); },
     fix(center, size) { fixed = center ? { center: center.clone(), size } : null; },
     setAngle(y, z) { offset.set(0, y, z).normalize(); },
     setLift(v) { lift = v; },

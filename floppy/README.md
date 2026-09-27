@@ -49,9 +49,9 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Paint Party** | Walk around to paint the floor your color. Jump and land for a big splat. Most paint after 60 seconds wins. | 1 to 4 |
 | **Crown Keeper** | Wear the crown to earn points. Punch whoever has it to knock it off their head. First to 30. | 2 to 4 |
 | **Obstacle Race** | Spinning bars, jumping pads, moving platforms, pushers and stairs. First over the finish line wins! Fall off and you go back to the last checkpoint. | 1 to 4 |
-| **Balloon Pop** | Everyone has 3 balloons tied to their back. Sneak behind people and punch their balloons. Protect yours! First to 2. | 2 to 4 |
-| **Musical Seats** | Walk around while the music plays. When it stops, stand on a seat. There is always one seat too few! First to 2. | 2 to 4 |
-| **Zombie Tag** | One zombie turns everyone it touches into a zombie. Survivors score a point every second. The last survivor gets a bonus. | 2 to 4 |
+| **Balloon Pop** | Everyone has 3 balloons tied to their back. Sneak behind people and punch their balloons. Protect yours! After 70 seconds, most balloons wins. First to 2. | 2 to 4 |
+| **Musical Seats** | Walk around the jukebox while the music plays. When it stops, jump onto a chair. There is always one chair too few! First to 2. | 2 to 4 |
+| **Zombie Tag** | Zombies turn everyone they touch into zombies. Zombies are slower, and a punch stuns them. Survivors score a point every second, and the last survivor gets a bonus. | 2 to 4 |
 | **Boulder Dodge** | Giant boulders roll across the island. Red arrows show where they come from. Dodge! First to 3. | 2 to 4 |
 
 After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race)
@@ -69,6 +69,20 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
   Most points at the end is the **Party Champion**!
 - **Surprise me!**: a spinning wheel of mini-games stops on a random one.
 
+## Party coins, Hat Shop and achievements
+
+- After every mini-game, players on this computer earn **party coins**: 40 for 1st place, 25 for 2nd, 15 for 3rd, 10 for everyone else.
+- Spend them in the **Hat Shop** (on the title screen or in the lobby) on 8 new hats: Headphones, Flower crown, Wizard hat, Antlers,
+  Pirate hat, Viking helmet, Halo and Space helmet. Hats you own show up in the lobby.
+- **Achievements** (14 of them) give 50 bonus coins each, like "Yeet Master" (throw 10 people) or "Party Champion" (win a Party Tour).
+- Coins, hats and achievements are saved on this computer.
+
+## Other nice things
+
+- Before each mini-game there is a **how to play** card with tips and controls. Everyone presses **jump** when they're ready.
+- At the end, the winners stand on a **3D podium** (1st, 2nd and 3rd) while the crowd cheers.
+- **Settings** (title screen or pause menu): volume, music, sound effects, screen shake, graphics (Pretty or Fast), name tags, fullscreen.
+
 ## Fun options
 
 Silly rules you can switch on for any mini-game (from the mini-game picker or the setup screen):
@@ -77,20 +91,24 @@ and **Surprise events** (every 20 seconds, one of the others switches on by itse
 
 ## Playing online
 
-One person clicks **Play online**, then **Host a party**, and gets a **4-letter room code**.
+**In the claude.ai play link:** the owner of the page invites friends with the **Share** button at the top of the page
+(friends need a claude.ai account). Everyone opens the page and clicks **Play online**.
+The owner clicks **Host a party**; friends see the party in the list and click **Join** (or type the 4-letter code).
+Only the owner (or people who can edit the page) can host.
+
+**On a website** (like GitHub Pages): one person clicks **Play online**, then **Host a party**, and gets a **4-letter room code**.
 Friends open the game, click **Play online**, type their name and the code, and click **Join**.
-The host's computer runs the game. Friends send their button presses and see everything live.
+This uses the free [PeerJS](https://peerjs.com/) connection service.
+
+Either way, the host's computer runs the game. Friends send their button presses and see everything live.
 Up to 4 players in total (the host can also have a friend on the same keyboard), plus bots.
 
-Online play needs the game on a real website. The free way is **GitHub Pages**
-(the repository owner does this once):
+To put the game on GitHub Pages (the repository owner does this once):
 
 1. On GitHub, open the repository, then **Settings**, then **Pages**.
 2. Under **Build and deployment**, pick **Deploy from a branch**, choose the branch (for example `main`) and the `/ (root)` folder, and click **Save**.
 3. After a minute, the game is at `https://<your-user-name>.github.io/<repository-name>/floppy/`.
 4. Send that link to your friends.
-
-Online play uses the free [PeerJS](https://peerjs.com/) connection service to find each other.
 
 ## Made with
 
@@ -105,8 +123,11 @@ All sounds and music are made with code.
 | `js/look.js` | The cartoon look: toon shading, outlines, characters, hats, trees, clouds |
 | `js/modes/*.js` | The mini-games (`kit.js` has helpers they share) |
 | `js/fun.js` | The fun options (moon gravity, big heads, disco...) |
+| `js/props.js` | Models for the mini-games: chairs, jukebox, billboard, gravestones, towers, crowds... |
+| `js/profile.js` | Party coins, the Hat Shop and achievements |
+| `js/settings.js` | The settings screen |
 | `js/bots.js` | Computer players |
-| `js/net.js` | Online play with room codes |
+| `js/net.js` | Online play (the claude.ai room, or PeerJS with room codes) |
 | `js/physics.js` | The physics world |
 | `js/stage.js` | Sky, sunshine, clouds, building levels |
 | `js/fx.js` | POW! pop-ups, stars, dust, confetti |

@@ -20,6 +20,11 @@ FP.Modes.coins = (function () {
     const plats = [[-5, -3.5, 3, 1, 3, 0xffd6e7], [5, 3.5, 3, 1, 3, 0xcfe8ff], [5, -4, 2.6, 0.8, 2.6, 0xd4f5c4], [-5, 4, 2.6, 0.8, 2.6, 0xfff1b8], [0, 0, 3.2, 0.7, 3.2, 0xe6d9ff]];
     for (const [x, z, w, h, d, col] of plats) S.block(x, h / 2, z, w, h, d, col);
     for (const [x, z] of [[-8, 0], [8, 0]]) { const t = FP.Look.tree(1); t.position.set(x, 0, z); S.add(t); FP.Stage.bodies.push(FP.Physics.staticBox(x, 0.8, z, 0.5, 1.6, 0.5)); }
+    // a treasure chest full of gold, and party flags
+    const ch = FP.Props.chest(); ch.position.set(0, 0, -7.4); S.add(ch);
+    S.bodies.push(FP.Physics.staticBox(0, 0.45, -7.4, 1.3, 0.9, 0.9));
+    S.add(FP.Props.bunting(-8, 2.6, 0, 8, 2.6, 0, 18));
+    for (const [x, z] of [[-5.5, 7.6], [5.5, 7.6]]) { const r = FP.Props.rock(0.8); r.position.set(x, 0, z); S.add(r); }
     // places where coins can appear: all over the ground, and on top of each platform
     for (let x = -7; x <= 7; x += 1.75) for (let z = -5.5; z <= 5.5; z += 1.75) {
       if (Math.abs(x) > 6 && Math.abs(z) > 4.5) continue;

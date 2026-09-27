@@ -83,7 +83,9 @@ FP.Look = (function () {
     { name: 'Orange', body: 0xff9a3c, light: 0xffd3a8 },
     { name: 'Mint', body: 0x3fd6c1, light: 0xb4f2e9 },
   ];
-  const HATS = ['party', 'beanie', 'crown', 'cowboy', 'tophat', 'propeller', 'bunny', 'chef', 'none'];
+  const FREE_HATS = ['party', 'beanie', 'crown', 'cowboy', 'tophat', 'propeller', 'bunny', 'chef'];
+  const SHOP_HATS = ['headphones', 'flowers', 'wizard', 'antlers', 'pirate', 'viking', 'halo', 'astronaut']; // bought with party coins
+  const HATS = [...FREE_HATS, ...SHOP_HATS, 'none'];
 
   const OUTFITS = ['none', 'overalls', 'bowtie', 'scarf', 'cape', 'belt'];
   const OUTFIT_NAMES = { none: 'Nothing', overalls: 'Overalls', bowtie: 'Bow tie', scarf: 'Scarf', cape: 'Cape', belt: 'Belt' };
@@ -383,6 +385,89 @@ FP.Look = (function () {
       puff.scale.y = 0.75;
       puff.position.y = r * 0.55;
       g.add(band, puff);
+    } else if (kind === 'wizard') {
+      const brim = mesh(new THREE.CylinderGeometry(r * 0.85, r * 0.85, r * 0.05, 24), toon(0x5b3fa8));
+      const cone = mesh(new THREE.ConeGeometry(r * 0.5, r * 1.5, 18), toon(0x6a4cc4));
+      cone.position.set(0, r * 0.72, 0); cone.rotation.z = -0.18;
+      g.add(brim, cone);
+      for (let i = 0; i < 4; i++) {
+        const st = mesh(new THREE.OctahedronGeometry(r * 0.07), toon(0xffcf33), 0);
+        st.position.set(Math.sin(i * 1.7) * r * 0.3 + r * 0.06 * i, r * (0.25 + i * 0.28), Math.cos(i * 1.7) * r * 0.3);
+        g.add(st);
+      }
+    } else if (kind === 'viking') {
+      const dome = mesh(new THREE.SphereGeometry(r * 0.74, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon(0x9aa3b5));
+      dome.position.y = -r * 0.12;
+      const band = mesh(new THREE.TorusGeometry(r * 0.72, r * 0.07, 8, 24), toon(0xd9a52b), 0.01);
+      band.rotation.x = Math.PI / 2; band.position.y = -r * 0.1;
+      g.add(dome, band);
+      for (const side of [-1, 1]) {
+        const horn = mesh(new THREE.ConeGeometry(r * 0.14, r * 0.7, 10), toon(0xfff1d6));
+        horn.position.set(side * r * 0.78, r * 0.25, 0);
+        horn.rotation.z = -side * 0.9;
+        g.add(horn);
+      }
+    } else if (kind === 'halo') {
+      const ring = mesh(new THREE.TorusGeometry(r * 0.45, r * 0.07, 10, 28), new THREE.MeshBasicMaterial({ color: 0xffe066 }), 0.015);
+      ring.rotation.x = Math.PI / 2; ring.position.y = r * 0.55;
+      g.add(ring);
+      g.userData.bob = ring;
+    } else if (kind === 'pirate') {
+      const brim = mesh(new THREE.CylinderGeometry(r * 0.85, r * 0.85, r * 0.08, 3), toon(0x2a2438));
+      brim.rotation.y = Math.PI / 6;
+      const top = mesh(new THREE.SphereGeometry(r * 0.55, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon(0x2a2438));
+      top.scale.y = 0.9;
+      const trim = mesh(new THREE.TorusGeometry(r * 0.56, r * 0.04, 6, 24), toon(0xd9a52b), 0);
+      trim.rotation.x = Math.PI / 2; trim.position.y = r * 0.03;
+      const skull = mesh(new THREE.SphereGeometry(r * 0.12, 10, 8), toon(0xffffff), 0.01);
+      skull.position.set(0, r * 0.25, r * 0.5);
+      g.add(brim, top, trim, skull);
+    } else if (kind === 'antlers') {
+      const brown = toon(0x8a5a3a);
+      for (const side of [-1, 1]) {
+        const main = mesh(new THREE.CylinderGeometry(r * 0.05, r * 0.07, r * 0.8, 6), brown, 0.015);
+        main.position.set(side * r * 0.35, r * 0.3, 0); main.rotation.z = -side * 0.35;
+        g.add(main);
+        for (const [y, len, tilt] of [[0.35, 0.4, 1.1], [0.55, 0.35, 0.6]]) {
+          const tine = mesh(new THREE.CylinderGeometry(r * 0.035, r * 0.05, r * len, 6), brown, 0.012);
+          tine.position.set(side * r * (0.4 + len * 0.25), r * y, 0); tine.rotation.z = -side * tilt;
+          g.add(tine);
+        }
+      }
+    } else if (kind === 'headphones') {
+      const band = mesh(new THREE.TorusGeometry(r * 0.78, r * 0.07, 8, 24, Math.PI), toon(0x3dd6c4), 0.015);
+      band.position.y = -r * 0.25;
+      g.add(band);
+      for (const side of [-1, 1]) {
+        const cup = mesh(new THREE.CylinderGeometry(r * 0.24, r * 0.24, r * 0.18, 16), toon(0xff7eb6), 0.02);
+        cup.rotation.z = Math.PI / 2; cup.position.set(side * r * 0.8, -r * 0.3, 0);
+        g.add(cup);
+      }
+    } else if (kind === 'flowers') {
+      const ring = mesh(new THREE.TorusGeometry(r * 0.6, r * 0.06, 8, 24), toon(0x3faa55), 0.01);
+      ring.rotation.x = Math.PI / 2; ring.position.y = -r * 0.1;
+      g.add(ring);
+      const cols = [0xff7eb6, 0xffcf33, 0xffffff, 0x9b6bff, 0xff5a5f, 0x4aa8ff];
+      for (let i = 0; i < 6; i++) {
+        const a = (i / 6) * Math.PI * 2;
+        const f = mesh(new THREE.SphereGeometry(r * 0.14, 10, 8), toon(cols[i]), 0.012);
+        f.scale.y = 0.6;
+        f.position.set(Math.cos(a) * r * 0.6, -r * 0.05, Math.sin(a) * r * 0.6);
+        const mid = mesh(new THREE.SphereGeometry(r * 0.06, 8, 6), toon(0xffcf33), 0);
+        mid.position.y = r * 0.06;
+        f.add(mid);
+        g.add(f);
+      }
+    } else if (kind === 'astronaut') {
+      const bubble = new THREE.Mesh(new THREE.SphereGeometry(r * 0.98, 24, 18), new THREE.MeshPhongMaterial({ color: 0xcfe8ff, transparent: true, opacity: 0.28, shininess: 120, depthWrite: false }));
+      bubble.position.y = -r * 0.62;
+      const collar = mesh(new THREE.TorusGeometry(r * 0.72, r * 0.12, 10, 24), toon(0xffffff), 0.02);
+      collar.rotation.x = Math.PI / 2; collar.position.y = -r * 1.3;
+      const antenna = mesh(new THREE.CylinderGeometry(r * 0.02, r * 0.02, r * 0.4, 5), toon(0x8a8fa0), 0);
+      antenna.position.set(r * 0.35, r * 0.4, 0);
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(r * 0.06, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3a3a }));
+      tip.position.set(r * 0.35, r * 0.62, 0);
+      g.add(bubble, collar, antenna, tip);
     } else {
       return null;
     }
@@ -485,5 +570,5 @@ FP.Look = (function () {
     return g;
   }
 
-  return { toon, charToon, mesh, boxMesh, COLORS, HATS, OUTFITS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
+  return { toon, charToon, mesh, boxMesh, COLORS, HATS, FREE_HATS, SHOP_HATS, OUTFITS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
 })();

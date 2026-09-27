@@ -257,7 +257,9 @@ FP.Net = (function () {
   function roundStarted() { if (isHost()) { roundNo++; broadcast({ t: 'round', n: roundNo, mode: FP.Game.mode.id, players: playerList(), state: 'countdown' }); } }
   function banner(text, sub) { if (isHost()) broadcast({ t: 'banner', text, sub }); }
   function results(html) { if (isHost()) { resultsNo++; resultsHtml = html; broadcast({ t: 'results', n: resultsNo, html }); } }
-  function podium() { if (isHost()) broadcast({ t: 'podium', players: playerList() }); }
+  function podium(places) { if (isHost()) broadcast({ t: 'podium', places, players: playerList() }); }
+  function intro(html) { if (isHost()) broadcast({ t: 'intro', html }); }
+  function introEnd() { if (isHost()) broadcast({ t: 'introEnd' }); }
 
   // remember things that happened (punches, jumps...) so clients can show effects and play sounds
   const EVENT_NAMES = ['punchHit', 'knockOut', 'jump', 'throw', 'grab', 'bump', 'punch', 'breakFree', 'wakeUp'];
@@ -423,7 +425,9 @@ FP.Net = (function () {
       applyEvents(msg.ev || []);
       if (msg.x && clientMode && clientMode.applyNetState) clientMode.applyNetState(msg.x);
     } else if (msg.t === 'banner') FP.UI.big(String(msg.text), msg.text === 'GO!' ? 0.8 : 2.6, String(msg.sub || ''));
-    else if (msg.t === 'podium') { if (g.clientPodium) { g.players = msg.players.map(fromList); clientState = 'results'; g.clientPodium(); } }
+    else if (msg.t === 'podium') { if (g.clientPodium) { g.players = msg.players.map(fromList); clientState = 'results'; g.clientPodium(msg.places); } }
+    else if (msg.t === 'intro') FP.UI.screen({ cls: 'intro', title: clientMode ? clientMode.name : 'Get ready', html: String(msg.html || '') });
+    else if (msg.t === 'introEnd') FP.UI.closeScreen();
     else if (msg.t === 'results') {
       if (msg.n !== undefined && msg.n === clientResultsNo) return;
       clientResultsNo = msg.n;
@@ -537,5 +541,5 @@ FP.Net = (function () {
     if (hostConn && hostConn.open) hostConn.send(msg);
   }
 
-  return { menu, host, join, leave, status, send, isHost, isClient, inputOf, playersChanged, matchStarted, roundStarted, banner, results, podium, update: () => {}, hostFrame, clientFrame, get myId() { return myId; }, get code() { return code; }, get kind() { return kind; } };
+  return { menu, host, join, leave, status, send, isHost, isClient, inputOf, playersChanged, matchStarted, roundStarted, banner, results, podium, intro, introEnd, update: () => {}, hostFrame, clientFrame, get myId() { return myId; }, get code() { return code; }, get kind() { return kind; } };
 })();

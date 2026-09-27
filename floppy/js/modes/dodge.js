@@ -34,6 +34,11 @@ FP.Modes.dodge = (function () {
       FP.Physics.world.addBody(b);
       S.bodies.push(b);
     }
+    // fans on bleachers behind the court (they go wild when someone gets bonked)
+    S.island(0, -1, -D / 2 - 2.3, W + 2, 2, 3.2, { grass: 0x8fd46e });
+    const fans = FP.Props.crowd(2, 12, 1.4);
+    fans.position.set(0, 0, -D / 2 - 1.6);
+    S.add(fans);
     for (let i = 0; i < NBALLS; i++) {
       const k = FP.Kit.ball(0.36, BALL_COLORS[i].concat(BALL_COLORS[i]), 0.5);
       const h = ballHome(i);
@@ -65,6 +70,7 @@ FP.Modes.dodge = (function () {
     if (by && by.player) FP.Game.scores[by.player.id] = (FP.Game.scores[by.player.id] || 0) + 1;
     FP.FX.word(victim.parts.head.position, 'BONK!', '#ff5a5f', 1.4);
     FP.FX.stars(victim.parts.head.position, 6);
+    FP.Props.hype();
     FP.Camera.shake(0.35);
     FP.Audio.play('bonk');
   }
