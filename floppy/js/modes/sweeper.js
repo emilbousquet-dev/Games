@@ -31,12 +31,28 @@ FP.Modes.sweeper = (function () {
     S.island(0, -1, 0, R * 2, 2, R * 1.1);
     S.island(0, -1, 0, R * 1.1, 2, R * 2);
     S.island(0, -1, 0, R * 1.6, 2, R * 1.6);
-    // the middle pole
-    const pole = S.block(0, 0.9, 0, 0.9, 1.8, 0.9, 0xff5a5f);
-    void pole;
-    const cap = FP.Look.mesh(new THREE.SphereGeometry(0.6, 16, 12), FP.Look.toon(0xffcf33), 0.03);
-    cap.position.y = 2;
-    S.add(cap);
+    // the machine in the middle that spins the bars
+    S.bodies.push(FP.Physics.staticBox(0, 0.9, 0, 0.9, 1.8, 0.9));
+    const machine = new THREE.Group();
+    const base = FP.Look.mesh(new THREE.CylinderGeometry(0.75, 0.9, 0.5, 20), FP.Look.toon(0x6a4c93), 0.04);
+    base.position.y = 0.25;
+    const col = FP.Look.mesh(new THREE.CylinderGeometry(0.45, 0.5, 1.4, 16), FP.Look.toon(0xff5a5f), 0.04);
+    col.position.y = 1.1;
+    for (let i = 0; i < 3; i++) { const stripe = FP.Look.mesh(new THREE.CylinderGeometry(0.47 + i * 0.01, 0.48 + i * 0.01, 0.12, 16), FP.Look.toon(0xffffff), 0); stripe.position.y = 0.7 + i * 0.4; machine.add(stripe); }
+    const dome = FP.Look.mesh(new THREE.SphereGeometry(0.55, 18, 12, 0, Math.PI * 2, 0, Math.PI / 2), FP.Look.toon(0xffcf33), 0.03);
+    dome.position.y = 1.8;
+    const light = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff3a3a }));
+    light.position.y = 2.38;
+    machine.add(base, col, dome, light);
+    S.add(machine);
+    FP.Props.wiggle(machine, (t) => { light.material.color.setHex(Math.floor(t * 4) % 2 ? 0xff3a3a : 0xffcf33); dome.rotation.y = t * 3; });
+    // bunting on posts around the edge
+    for (let i = 0; i < 4; i++) {
+      const a = (i / 4) * Math.PI * 2 + Math.PI / 4, b = ((i + 1) / 4) * Math.PI * 2 + Math.PI / 4;
+      S.add(FP.Props.bunting(Math.cos(a) * 9.5, 2.5, Math.sin(a) * 9.5, Math.cos(b) * 9.5, 2.5, Math.sin(b) * 9.5, 10));
+      const l = FP.Props.lamp(); l.position.set(Math.cos(a) * 9.5, -2.5, Math.sin(a) * 9.5); l.scale.y = 2; S.add(l);
+      S.island(Math.cos(a) * 9.5, -3, Math.sin(a) * 9.5, 1.3, 1, 1.3);
+    }
     bars = [makeBar(0xff9a3c, R * 2 - 0.4), makeBar(0x9b6bff, R * 1.4)];
     bars[1].mesh.position.y = -40;
     bars[0].on = true; bars[0].speed = 1.1;

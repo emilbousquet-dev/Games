@@ -10,29 +10,35 @@ FP.Modes = FP.Modes || {};
 FP.Modes.seats = (function () {
   const MAX = 3, SEAT_R = 0.75;
   const COLORS = [0xff5a5f, 0x4aa8ff, 0xffcf33];
-  let seats = [], phase = 'music', timer = 0, self = null;
+  let seats = [], phase = 'music', timer = 0, box = null, self = null;
 
   function build() {
     seats = []; phase = 'music'; timer = 4 + Math.random() * 3;
     const S = FP.Stage;
     S.island(0, -1, 0, 15, 2, 11, { grass: 0x9bd46e });
     S.island(0, -1, 0, 11, 2, 15, { grass: 0x9bd46e });
-    // a music box in the middle
-    S.block(0, 0.45, 0, 1.3, 0.9, 1.3, 0xffb8d1);
-    const note = FP.Look.mesh(new THREE.SphereGeometry(0.22, 12, 10), FP.Look.toon(0x2a2140), 0.02);
-    note.position.set(0, 1.3, 0);
-    S.add(note);
+    // a jukebox in the middle (it lights up while the music plays)
+    box = FP.Props.jukebox();
+    box.position.set(0, 0, 0);
+    box.rotation.y = 0.4;
+    S.add(box);
+    S.bodies.push(FP.Physics.staticBox(0, 0.9, 0, 1.3, 1.8, 1.3));
+    // lamps and flowers around the edge
+    for (const [x, z] of [[-6.5, -4.5], [6.5, 4.5], [-6.5, 4.5], [6.5, -4.5]]) { const l = FP.Props.lamp(); l.position.set(x, 0, z); S.add(l); }
+    S.add(FP.Props.bunting(-6.5, 2.5, -4.5, 6.5, 2.5, -4.5));
+    // the chairs (a real chair to climb on, and a ring on the floor that shows who has it)
     for (let i = 0; i < MAX; i++) {
       const g = new THREE.Group();
-      const cushion = FP.Look.mesh(new THREE.CylinderGeometry(SEAT_R, SEAT_R, 0.18, 24), FP.Look.toon(COLORS[i]), 0.03);
-      cushion.position.y = 0.09;
-      const ring = new THREE.Mesh(new THREE.RingGeometry(SEAT_R + 0.05, SEAT_R + 0.2, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
-      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.02;
-      g.add(cushion, ring);
-      g.userData.ring = ring;
+      const ch = FP.Props.chair(COLORS[i]);
+      const ring = new THREE.Mesh(new THREE.RingGeometry(SEAT_R + 0.1, SEAT_R + 0.28, 28), new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, transparent: true, opacity: 0.9 }));
+      ring.rotation.x = -Math.PI / 2; ring.position.y = 0.03;
+      g.add(ch, ring);
+      g.userData.ring = ring; g.userData.chair = ch;
       g.position.set(0, -50, 0);
       S.add(g);
-      seats.push({ mesh: g, x: 0, z: 0, on: false, owner: null, pop: 0 });
+      const body = FP.Physics.staticBox(0, -50, 0, 1.0, 0.5, 1.0);
+      S.bodies.push(body);
+      seats.push({ mesh: g, body, x: 0, z: 0, on: false, owner: null, pop: 0 });
     }
     FP.Camera.setAngle(0.85, 0.75);
   }
@@ -53,11 +59,15 @@ FP.Modes.seats = (function () {
   function visual(dt) {
     for (const s of seats) {
       s.pop = Math.min(1, s.pop + dt * 5);
-      if (!s.on) { s.mesh.position.y = -50; continue; }
+      if (!s.on) { s.mesh.position.y = -50; if (s.body) s.body.position.set(0, -50 - seats.indexOf(s) * 3, 0); continue; }
       s.mesh.position.set(s.x, 0, s.z);
-      s.mesh.scale.setScalar(0.3 + 0.7 * s.pop);
+      s.mesh.rotation.y = Math.atan2(-s.x, -s.z); // chairs face the jukebox
+      s.mesh.userData.chair.scale.setScalar(0.3 + 0.7 * s.pop);
+      s.mesh.userData.chair.position.y = (1 - s.pop) * 0.8;
       s.mesh.userData.ring.material.color.setHex(s.owner ? s.owner.color.body : 0xffffff);
+      if (s.body) s.body.position.set(s.x, 0.25, s.z);
     }
+    if (box) box.userData.playing = phase === 'music';
     FP.Audio.setSong(phase === 'music' ? 'circus' : 'silent');
   }
 
@@ -86,7 +96,7 @@ FP.Modes.seats = (function () {
             for (const c of alive) {
               if (c.ko > 0 || seats.some((o) => o.owner === c)) continue;
               const p = c.parts.torso.position;
-              if (Math.hypot(p.x - s.x, p.z - s.z) < SEAT_R && p.y < 2.5) { s.owner = c; FP.Audio.play('coin'); break; }
+              if (Math.hypot(p.x - s.x, p.z - s.z) < SEAT_R && p.y < 3) { s.owner = c; FP.Audio.play('coin'); break; }
             }
           }
         }
@@ -115,7 +125,7 @@ FP.Modes.seats = (function () {
       const mine = seats.find((s) => s.on && s.owner === c);
       if (mine) {
         const d = Math.hypot(mine.x - p.x, mine.z - p.z);
-        if (d > 0.3) { tools.steer(c, mine.x, mine.z, input); input.x *= 0.5; input.z *= 0.5; }
+        if (d > 0.3) { input.x = (mine.x - p.x) / d; input.z = (mine.z - p.z) / d; input.x *= 0.5; input.z *= 0.5; }
         FP.Kit.punchNearby(c, chars, dt, input, tools, 1.3, 3);
         if (d < 0.3) { input.x *= 0.2; input.z *= 0.2; }
         return true;
@@ -129,7 +139,10 @@ FP.Modes.seats = (function () {
         if (sc < bs) { bs = sc; best = s; }
       }
       if (best) {
-        tools.steer(c, best.x, best.z, input);
+        const bd = Math.hypot(best.x - p.x, best.z - p.z) || 1;
+        input.x = (best.x - p.x) / bd; input.z = (best.z - p.z) / bd;
+        // hop up onto the chair
+        if (bd < 1.4 && c.grounded && p.y - FP.Ragdoll.STAND < 0.3 && Math.random() < dt * 6) input.jumpPressed = true;
         if (best.owner && Math.hypot(best.x - p.x, best.z - p.z) < 1.4 && Math.random() < dt * 4) input.punchPressed = true; // push them off!
       }
     } else {

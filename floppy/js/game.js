@@ -760,6 +760,7 @@ FP.Game = (function () {
   function update(dt) {
     FP.UI.update(dt);
     FP.Fun.update(dt, FP.Net && FP.Net.isClient() ? 'client' : state);
+    FP.Props.animate(dt);
     if (FP.Net && FP.Net.isClient()) {
       FP.Net.clientFrame(dt);
       FP.UI.nameTags(FP.Game.chars, FP.Camera.camera, state === 'lobby' || state === 'client');

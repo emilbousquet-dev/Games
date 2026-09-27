@@ -40,15 +40,19 @@ FP.Modes.color = (function () {
     }
     tiles.forEach((t, i) => { t.c = (i * 3 + Math.floor(i / N)) % PALETTE.length; });
     paint();
-    // a big sign that shows the color to find
-    const g = new THREE.Group();
-    const board = FP.Look.boxMesh(3.2, 1.6, 0.25, FP.Look.toon(0xffffff, { unique: true }));
-    const post = FP.Look.mesh(new THREE.CylinderGeometry(0.1, 0.1, 5, 8), FP.Look.toon(0xb9a38a), 0.02);
-    post.position.y = -2.4;
-    g.add(board, post);
-    g.position.set(0, 3.6, -N * SIZE / 2 - 1.8);
+    // a big light-up billboard that shows the color to find
+    const g = FP.Props.billboard(3.6, 1.9);
+    g.position.set(0, 3.2, -N * SIZE / 2 - 2);
     FP.Stage.add(g);
-    sign = board;
+    FP.Stage.island(0, -1.6, -N * SIZE / 2 - 2, 5, 1.6, 2, { grass: 0x9bd46e });
+    sign = g.userData.panel;
+    // lamps in the corners
+    for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const l = FP.Props.lamp(0xfff1b8);
+      l.position.set(x * (N * SIZE / 2 + 1.2), -2.2, z * (N * SIZE / 2 + 1.2));
+      FP.Stage.add(l);
+      FP.Stage.island(x * (N * SIZE / 2 + 1.2), -2.8, z * (N * SIZE / 2 + 1.2), 1.4, 1.2, 1.4, { grass: 0x9bd46e });
+    }
     FP.Camera.setAngle(0.8, 0.75);
   }
 
@@ -74,7 +78,7 @@ FP.Modes.color = (function () {
   function visual(dt) {
     const show = phase === 'warn' || phase === 'drop';
     sign.material.color.setHex(show ? PALETTE[target].hex : 0xffffff);
-    sign.parent.rotation.y = show ? Math.sin(performance.now() / 120) * 0.05 : 0;
+    sign.parent.rotation.z = show ? Math.sin(performance.now() / 120) * 0.02 : 0;
   }
 
   function update(dt, chars, game, roundOver) {

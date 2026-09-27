@@ -8,7 +8,7 @@ window.FP = window.FP || {};
 FP.Modes = FP.Modes || {};
 
 FP.Modes.zombie = (function () {
-  const TIME = 75, BONUS = 10;
+  const TIME = 90, BONUS = 10;
   let zombies = new Set(), marks = new Map(), time = 0, started = false, self = null;
 
   function build() {
@@ -18,12 +18,20 @@ FP.Modes.zombie = (function () {
     S.island(0, -1, 0, 22, 2, 15, { grass: 0x7fb069, dirt: 0x7a5a48 });
     S.island(0, -1, 0, 15, 2, 20, { grass: 0x7fb069, dirt: 0x7a5a48 });
     const stones = [[-4, -3], [4, 3], [-4, 3.5], [4, -3.5], [0, -5.5], [0, 5.5], [-7, 0], [7, 0]];
-    for (const [x, z] of stones) {
-      S.block(x, 0.5, z, 0.9, 1, 0.35, 0xb8b4c8);
-      const top = FP.Look.mesh(new THREE.CylinderGeometry(0.45, 0.45, 0.35, 16, 1, false, 0, Math.PI), FP.Look.toon(0xb8b4c8), 0.03);
-      top.rotation.set(Math.PI / 2, 0, Math.PI / 2); top.position.set(x, 1, z);
-      S.add(top);
-    }
+    stones.forEach(([x, z], i) => {
+      const t = FP.Props.tombstone(i % 3 === 2 ? 1 : 0);
+      t.position.set(x, 0, z); t.rotation.y = (i % 2 ? 0.2 : -0.15);
+      S.add(t);
+      S.bodies.push(FP.Physics.staticBox(x, 0.55, z, 0.85, 1.1, 0.35));
+    });
+    // spooky stuff around the edge
+    for (const [x, z, sc] of [[-9.5, -5.5, 1.1], [9.5, 5.5, 1], [9, -6, 0.9], [-9, 6.5, 0.8]]) { const t = FP.Props.deadTree(sc); t.position.set(x, 0, z); S.add(t); }
+    for (const [x, z] of [[-2, -6.8], [2.5, 7.2], [-10, 2], [10, -2], [6, 6.5], [-6, -6.3]]) { const p = FP.Props.pumpkin(); p.position.set(x, 0, z); p.rotation.y = Math.atan2(-x, -z); S.add(p); }
+    for (const [x, z, rot] of [[-7.5, -7.3, 0], [7.5, 7.3, 0], [-10.3, -3, Math.PI / 2], [10.3, 3, Math.PI / 2]]) { const f = FP.Props.fence(4); f.position.set(x, 0, z); f.rotation.y = rot; S.add(f); }
+    for (const [x, z] of [[-10.3, 6.5], [10.3, -6.5]]) { const l = FP.Props.lamp(0xb6ff8a); l.position.set(x, 0, z); S.add(l); }
+    // dusk: purple light
+    S.hemi.color.setHex(0xc9b6ff); S.hemi.groundColor.setHex(0x6a5a9a); S.sun.color.setHex(0xffd0a8);
+    S.onClear(() => { S.hemi.color.setHex(0xffffff); S.hemi.groundColor.setHex(0x9fc4ff); S.sun.color.setHex(0xfff4e0); });
     FP.Camera.setAngle(0.82, 0.78);
   }
 
@@ -45,8 +53,8 @@ FP.Modes.zombie = (function () {
 
   function infect(c, by) {
     zombies.add(c);
-    c.speedMul = 0.85; // zombies are a little slower than survivors
-    FP.Ragdoll.knockOut(c, by ? 1.6 : 3); // flop over... and rise again as a ZOMBIE
+    c.speedMul = 0.62; // zombies are slower than survivors (they shamble)
+    FP.Ragdoll.knockOut(c, by ? 2.6 : 3.5); // flop over... and rise again as a ZOMBIE
     c.expression = 'angry'; c.exprTimer = 1;
     FP.FX.word(c.parts.head.position, by ? 'GOTCHA!' : 'ZOMBIE!', '#5cc44a', 1.3);
     FP.FX.puffs(c.parts.torso.position, 12, 0x7dff5a, 3, 1.2);
@@ -67,6 +75,13 @@ FP.Modes.zombie = (function () {
     }
   }
 
+  // punch a zombie and it gets dizzy for a moment (survivors can fight back!)
+  FP.bus.on('punchHit', (d) => {
+    if (!FP.Kit.live(self) || !d || !d.victim || !zombies.has(d.victim) || d.victim.ko > 0) return;
+    FP.Ragdoll.knockOut(d.victim, 1.4);
+    FP.FX.word(d.victim.parts.head.position, 'BONK!', '#5cc44a', 1);
+  });
+
   const respawn = FP.Kit.respawner(() => { const a = Math.random() * Math.PI * 2; return { x: Math.cos(a) * 5, z: Math.sin(a) * 4, yaw: a + Math.PI }; });
 
   function update(dt, chars, game, roundOver) {
@@ -81,12 +96,13 @@ FP.Modes.zombie = (function () {
         if (FP.Net) FP.Net.banner('ZOMBIE!', `${first.name} is the first zombie. RUN!`);
       }
       for (const c of chars) {
+        if (!zombies.has(c)) c.speedMul = 1.08; // survivors run a little faster than normal
         if (zombies.has(c)) { if (c.ko <= 0) { c.expression = 'angry'; c.exprTimer = 0.3; } continue; }
         if (started) game.scores[c.player.id] = (game.scores[c.player.id] || 0) + dt; // survivors score
         // a zombie touch turns you!
         for (const z of zombies) {
           if (z.ko > 0) continue;
-          const touch = [z.parts.torso, z.parts.head, ...z.parts.arms].some((b) => b.position.distanceTo(c.parts.torso.position) < 0.95);
+          const touch = [z.parts.torso, ...z.parts.arms].some((b) => b.position.distanceTo(c.parts.torso.position) < 0.85);
           if (touch) { infect(c, z); break; }
         }
       }
@@ -145,7 +161,7 @@ FP.Modes.zombie = (function () {
 
   self = {
     id: 'zombie', name: 'Zombie Tag', roundsToWin: 1, single: true, minTotal: 2, song: 'tense', minZoom: 16, art: ART,
-    desc: 'One zombie turns everyone it touches into a zombie! Survive to score points.',
+    desc: 'Zombies turn everyone they touch into zombies! Punch them to stun them. Survive to score.',
     build, spawn, update, botThink, hud, visual,
     scoreLabel: (s) => `${Math.floor(s)}`,
     netState: () => ({ z: [...zombies].filter((c) => c.player).map((c) => c.player.id), s: started ? 1 : 0, t: Math.round(time) }),

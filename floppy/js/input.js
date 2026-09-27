@@ -15,6 +15,7 @@ FP.bus = (function () {
 
 FP.Input = (function () {
   const keys = new Set();
+  const tapAt = {}; // when each key was last pressed down (so a quick tap between two frames is never lost)
   const KEYMAP = [
     { // PLAYER 1 (left side)
       up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
@@ -32,7 +33,7 @@ FP.Input = (function () {
   function init() {
     window.addEventListener('keydown', (e) => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Slash', 'Quote', 'Tab'].includes(e.code)) e.preventDefault();
-      if (!keys.has(e.code)) listeners.forEach((f) => f(e.code));
+      if (!keys.has(e.code)) { tapAt[e.code] = performance.now(); listeners.forEach((f) => f(e.code)); }
       keys.add(e.code);
     });
     window.addEventListener('keyup', (e) => keys.delete(e.code));
@@ -73,13 +74,23 @@ FP.Input = (function () {
     const len = Math.hypot(s.x, s.z);
     if (len > 1) { s.x /= len; s.z /= len; }
     const p = prev[id] || {};
-    s.jumpPressed = s.jump && !p.jump;
-    s.punchPressed = s.punch && !p.punch;
-    s.startPressed = s.start && !p.start;
-    s.colorPressed = s.color && !p.color;
-    s.hatPressed = s.hat && !p.hat;
-    s.outfitPressed = s.outfit && !p.outfit;
-    prev[id] = { jump: s.jump, punch: s.punch, start: s.start, color: s.color, hat: s.hat, outfit: s.outfit };
+    const now = performance.now();
+    if (source.kind === 'keys') {
+      // pressed since the last time we looked (even if already let go again)
+      const k = KEYMAP[source.map], since = p.t || now;
+      const tapped = (list) => list.some((c) => (tapAt[c] || 0) > since);
+      s.jumpPressed = tapped(k.jump); s.punchPressed = tapped(k.punch);
+      s.colorPressed = tapped(k.color); s.hatPressed = tapped(k.hat); s.outfitPressed = tapped(k.outfit);
+      s.startPressed = false;
+    } else {
+      s.jumpPressed = s.jump && !p.jump;
+      s.punchPressed = s.punch && !p.punch;
+      s.startPressed = s.start && !p.start;
+      s.colorPressed = s.color && !p.color;
+      s.hatPressed = s.hat && !p.hat;
+      s.outfitPressed = s.outfit && !p.outfit;
+    }
+    prev[id] = { jump: s.jump, punch: s.punch, start: s.start, color: s.color, hat: s.hat, outfit: s.outfit, t: now };
     return s;
   }
 

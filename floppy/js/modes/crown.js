@@ -17,12 +17,15 @@ FP.Modes.crown = (function () {
     S.island(0, -1, 0, 18, 2, 12);
     S.island(0, -1, 0, 12, 2, 17);
     // castle-ish blocks to run around
-    for (const [x, z] of [[-4, -3], [4, 3], [-4, 3.5], [4, -3.5]]) {
-      S.block(x, 0.7, z, 1.4, 1.4, 1.4, 0xd9c8b0);
-      const top = FP.Look.mesh(new THREE.ConeGeometry(0.95, 1, 4), FP.Look.toon(0xff5a5f), 0.03);
-      top.position.set(x, 1.9, z); top.rotation.y = Math.PI / 4;
-      S.add(top);
-    }
+    const roofs = [0xff5a5f, 0x4aa8ff, 0x9b6bff, 0x5cc44a];
+    [[-4, -3], [4, 3], [-4, 3.5], [4, -3.5]].forEach(([x, z], i) => {
+      const t = FP.Props.tower(0xe8dcc6, roofs[i], 1.5);
+      t.position.set(x, 0, z); t.rotation.y = Math.atan2(-x, -z);
+      S.add(t);
+      S.bodies.push(FP.Physics.staticBox(x, 0.9, z, 1.3, 1.8, 1.3));
+    });
+    S.add(FP.Props.bunting(-4, 3.3, -3, 4, 3.3, -3.5, 14));
+    S.add(FP.Props.bunting(-4, 3.3, 3.5, 4, 3.3, 3, 14));
     S.block(0, 0.3, 0, 3, 0.6, 3, 0xffe8a3); // a little stage in the middle
     // the crown
     crown = FP.Look.makeHat('crown');
