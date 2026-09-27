@@ -278,7 +278,7 @@ FP.Ragdoll = (function () {
       // dances: spins, robot turns, and hops (how often, how high)
       if (c.emote && c.emote.k === 8) c.yaw += dt * 9;
       if (c.emote && c.emote.k === 6 && Math.floor(c.emote.t * 2) !== Math.floor((c.emote.t - dt) * 2)) c.yaw += (Math.floor(c.emote.t * 2) % 2 ? 0.6 : -0.6);
-      const HOP = { 2: [0.5, 3], 3: [0.65, 5], 5: [0.5, 2.5], 6: [0.9, 1], 7: [1.1, 7.5], 8: [0.8, 2], 9: [0.4, 2], 10: [0.35, 2.5] };
+      const HOP = { 2: [0.5, 3], 3: [0.65, 5], 5: [0.5, 2.5], 6: [0.9, 1], 7: [1.1, 7.5], 8: [0.8, 2], 9: [0.4, 2], 10: [0.35, 2.5], 11: [0.45, 4] };
       if (c.emote && HOP[c.emote.k] && c.grounded && (c.emote.hop -= dt) <= 0) {
         c.emote.hop = HOP[c.emote.k][0];
         for (const b of c.bodies) b.velocity.y += HOP[c.emote.k][1];
@@ -377,6 +377,7 @@ FP.Ragdoll = (function () {
         else if (em.k === 7) { oy = 0.65; ox = out.x * 0.12; oz = out.z * 0.12; } // backflip: arms up
         else if (em.k === 8) { oy = 0.1; ox = out.x * 0.6; oz = out.z * 0.6; } // spin: arms out wide
         else if (em.k === 9) { const sw = Math.sin(tt * 10); ox = rx * sw * 0.45 + f.x * (i ? 0.18 : -0.18); oz = rz * sw * 0.45 + f.z * (i ? 0.18 : -0.18); oy = -0.3; } // floss
+        else if (em.k === 11) { const pump = 0.5 + 0.5 * Math.sin(tt * 9 + i * Math.PI); oy = 0.45 + pump * 0.35; ox = out.x * 0.2; oz = out.z * 0.2; } // champion: fists pumping in the air
         else { const flap = Math.abs(Math.sin(tt * 12)); ox = out.x * (0.2 + flap * 0.25); oz = out.z * (0.2 + flap * 0.25); oy = 0.02; } // chicken dance
         pull(arm, HAND, new Vec3(sh.x + ox, sh.y + oy, sh.z + oz), 18, 0.6, s, t.velocity);
         continue;

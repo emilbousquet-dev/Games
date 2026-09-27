@@ -169,7 +169,32 @@
     .btn.hat small .ico { width: 1.1em; height: 1.1em; }
     .btn.hat:not(.owned):not(.afford) { opacity: .6; }
     .btn.hat.owned small { color: #3a9a2a; }
+    .btn.hat.prize:not(.owned) { opacity: .75; background: #f3ecff; }
+    .btn.hat.prize:not(.owned) small { color: #7a4ad0; }
     @media (max-width: 620px) { .shop .btn.hat { grid-column: span 10; } .shop .btn.tab { font-size: 13px; } }
+    .story .card { width: min(900px, 100%); }
+    .story .buttons { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .story .btn.wide { grid-column: 1 / -1; }
+    .story-stars { font-size: 18px; margin: 4px 0; }
+    .story-stars .ico { width: 1.1em; height: 1.1em; vertical-align: -2px; }
+    .prizes { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 6px 0 2px; font-size: 13px; }
+    .prizes .prize { background: var(--paper2); border-radius: 999px; padding: 3px 10px; display: inline-flex; align-items: center; gap: 4px; }
+    .prizes .prize.got { background: #d8f5cf; }
+    .prizes .ico { width: 1.1em; height: 1.1em; }
+    .world-title { grid-column: 1 / -1; text-align: left; font-weight: 900; font-size: 17px; padding: 4px 12px; border-radius: 12px; margin-top: 4px; color: var(--ink); }
+    .w0 { --wc: #bdeaa8; } .w1 { --wc: #ffe7a3; } .w2 { --wc: #d6efff; } .w3 { --wc: #ffc9b3; } .w4 { --wc: #dde2ea; }
+    .world-title, .btn.level { background: var(--wc); }
+    .btn.level { flex-direction: column; gap: 1px; padding: 6px 6px 8px; font-size: 14px; position: relative; }
+    .btn.level .lv-num { position: absolute; left: 8px; top: 5px; font-size: 12px; font-weight: 900; opacity: .6; }
+    .btn.level .lv-art svg { width: 84px; height: 56px; display: block; border-radius: 8px; }
+    .btn.level .lv-lock .ico { width: 40px; height: 56px; }
+    .btn.level .stars .ico { width: 16px; height: 16px; }
+    .btn.level.locked { opacity: .55; }
+    .btn.level small { font-size: 11px; opacity: .7; }
+    .btn.level.boss:not(.locked) { box-shadow: 0 0 0 3px #ff5a5f, var(--shadow); }
+    .prize-won { font-size: 18px; color: #7a4ad0; }
+    .prize-won .ico { width: 1.2em; height: 1.2em; vertical-align: -3px; }
+    @media (max-width: 620px) { .story .buttons { grid-template-columns: repeat(2, 1fr); } }
     .achievements .card { width: min(720px, 100%); }
     .ach-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; text-align: left; margin-top: 8px; }
     .ach { display: flex; gap: 10px; align-items: center; background: var(--paper2); border-radius: 14px; padding: 8px 10px; opacity: .75; }
@@ -214,6 +239,10 @@
     .tug-bar.speed { background: linear-gradient(90deg, #fff, #ffcf33 50%, #5cc44a); }
     .tug-bar i { position: absolute; top: -5px; width: 8px; height: 20px; margin-left: -4px; background: #ffcf33; border: 2px solid #2a2140; border-radius: 3px; }
     .extra:has(.hud-tip) { flex-direction: column; gap: 2px; padding: 4px 16px; border-radius: 16px; }
+    .boss-bar { display: inline-flex; align-items: center; gap: 8px; }
+    .boss-bar .bar { position: relative; display: inline-block; width: 220px; height: 16px; border-radius: 999px; background: #3a3350; box-shadow: 0 0 0 2px var(--ink); overflow: hidden; }
+    .boss-bar .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(#ff7a7a, #e0303a); transition: width .2s; }
+    .boss-bar .bar em { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,.7); }
     .hud-tip { font-size: 12px; opacity: .85; font-weight: 700; }
     .extra:has(.bowl-card) { flex-direction: column; background: none; padding: 0; }
     .bowl-card { border-collapse: separate; border-spacing: 2px; background: #2a2140e6; border-radius: 10px; padding: 4px; font: 800 12px/1 system-ui, sans-serif; color: #2a2140; }
@@ -421,6 +450,7 @@
   <script src="js/modes/cooking.js"></script>
   <script src="js/modes/hideseek.js"></script>
   <script src="js/modes/water.js"></script>
+  <script src="js/modes/boss.js"></script>
   <script src="js/net.js"></script>
   <script src="js/game.js"></script>
 </body>

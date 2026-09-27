@@ -86,12 +86,14 @@ FP.Look = (function () {
   ];
   const FREE_HATS = ['party', 'beanie', 'crown', 'cowboy', 'tophat', 'propeller', 'bunny', 'chef'];
   const SHOP_HATS = ['headphones', 'flowers', 'wizard', 'antlers', 'pirate', 'viking', 'halo', 'astronaut']; // bought with party coins
-  const HATS = [...FREE_HATS, ...SHOP_HATS, 'none'];
+  const TOUR_HATS = ['robot']; // won in the World Tour
+  const HATS = [...FREE_HATS, ...SHOP_HATS, ...TOUR_HATS, 'none'];
 
   const FREE_OUTFITS = ['none', 'overalls', 'bowtie', 'scarf', 'cape', 'belt'];
   const SHOP_OUTFITS = ['tutu', 'tuxedo', 'hero', 'spacesuit', 'hoodie', 'jersey']; // bought with party coins
-  const OUTFITS = [...FREE_OUTFITS, ...SHOP_OUTFITS];
-  const OUTFIT_NAMES = { none: 'Nothing', overalls: 'Overalls', bowtie: 'Bow tie', scarf: 'Scarf', cape: 'Cape', belt: 'Belt', tutu: 'Tutu', tuxedo: 'Tuxedo', hero: 'Superhero', spacesuit: 'Space suit', hoodie: 'Hoodie', jersey: 'Jersey' };
+  const TOUR_OUTFITS = ['knight']; // won in the World Tour
+  const OUTFITS = [...FREE_OUTFITS, ...SHOP_OUTFITS, ...TOUR_OUTFITS];
+  const OUTFIT_NAMES = { none: 'Nothing', overalls: 'Overalls', bowtie: 'Bow tie', scarf: 'Scarf', cape: 'Cape', belt: 'Belt', tutu: 'Tutu', tuxedo: 'Tuxedo', hero: 'Superhero', spacesuit: 'Space suit', hoodie: 'Hoodie', jersey: 'Jersey', knight: 'Knight armor' };
 
   // a shiny spot that makes things look glossy
   function shine(w, h) {
@@ -213,6 +215,16 @@ FP.Look = (function () {
       const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
       for (const z of [1, -1]) { const num = new THREE.Mesh(new THREE.PlaneGeometry(R * 0.9, R * 0.9), new THREE.MeshBasicMaterial({ map: tex, transparent: true })); num.position.set(0, R * 0.1, z * R * 1.06); if (z < 0) num.rotation.y = Math.PI; g.add(num); }
       for (const side of [-1, 1]) { const stripe = mesh(new THREE.BoxGeometry(0.05, R * 1.2, 0.05), dark(0xffffff), 0); stripe.position.set(side * R * 1.02, R * 0.15, 0); g.add(stripe); }
+    } else if (outfit === 'knight') {
+      const plate = mesh(new THREE.CapsuleGeometry(R * 1.05, dims.torsoH * 0.55, 10, 20), toon(0xc9d1db), 0.025); plate.position.y = R * 0.15; g.add(plate);
+      const shine2 = mesh(new THREE.BoxGeometry(R * 0.12, R * 1.1, 0.05), dark(0xffffff), 0); shine2.position.set(-R * 0.5, R * 0.3, R * 0.98); shine2.rotation.z = 0.2; g.add(shine2);
+      const crossV = mesh(new THREE.BoxGeometry(R * 0.22, R * 0.9, 0.06), dark(0xd9a52b), 0.01); crossV.position.set(0, R * 0.25, R * 1.06); g.add(crossV);
+      const crossH = mesh(new THREE.BoxGeometry(R * 0.7, R * 0.22, 0.06), dark(0xd9a52b), 0.01); crossH.position.set(0, R * 0.4, R * 1.06); g.add(crossH);
+      for (const side of [-1, 1]) {
+        const pad = mesh(new THREE.SphereGeometry(R * 0.42, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), toon(0xaab4c0), 0.02);
+        pad.position.set(side * R * 0.85, R * 0.75, 0); pad.rotation.z = -side * 0.5; g.add(pad);
+      }
+      const belt = mesh(new THREE.TorusGeometry(R * 1.02, 0.05, 8, 24), dark(0x6a4c3a), 0.01); belt.rotation.x = Math.PI / 2; belt.position.y = -R * 0.3; g.add(belt);
     }
     return g;
   }
@@ -513,6 +525,24 @@ FP.Look = (function () {
       const tip = new THREE.Mesh(new THREE.SphereGeometry(r * 0.06, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3a3a }));
       tip.position.set(r * 0.35, r * 0.62, 0);
       g.add(bubble, collar, antenna, tip);
+    } else if (kind === 'robot') {
+      // a little copy of the Robot Boss's head
+      const box = mesh(new THREE.BoxGeometry(r * 1.2, r * 0.75, r * 1.1), toon(0xb8c2cc), 0.02);
+      box.position.y = r * 0.12;
+      const visor = mesh(new THREE.BoxGeometry(r * 1.0, r * 0.28, 0.02), toon(0x2a2140), 0);
+      visor.position.set(0, r * 0.14, r * 0.56);
+      g.add(box, visor);
+      for (const side of [-1, 1]) {
+        const eye = new THREE.Mesh(new THREE.BoxGeometry(r * 0.26, r * 0.13, 0.02), new THREE.MeshBasicMaterial({ color: 0xff3a3a }));
+        eye.position.set(side * r * 0.24, r * 0.15, r * 0.575); g.add(eye);
+        const bolt = mesh(new THREE.CylinderGeometry(r * 0.1, r * 0.1, r * 0.12, 10), toon(0xff9a3c), 0.01);
+        bolt.rotation.z = Math.PI / 2; bolt.position.set(side * r * 0.65, r * 0.1, 0); g.add(bolt);
+      }
+      const antenna = mesh(new THREE.CylinderGeometry(r * 0.03, r * 0.03, r * 0.45, 5), toon(0x5a6270), 0);
+      antenna.position.y = r * 0.7;
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(r * 0.1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3a3a }));
+      tip.position.y = r * 0.95;
+      g.add(antenna, tip);
     } else {
       return null;
     }
@@ -615,5 +645,5 @@ FP.Look = (function () {
     return g;
   }
 
-  return { toon, charToon, mesh, boxMesh, COLORS, HATS, FREE_HATS, SHOP_HATS, OUTFITS, FREE_OUTFITS, SHOP_OUTFITS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
+  return { toon, charToon, mesh, boxMesh, COLORS, HATS, FREE_HATS, SHOP_HATS, OUTFITS, FREE_OUTFITS, SHOP_OUTFITS, TOUR_OUTFITS, TOUR_HATS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
 })();

@@ -53,7 +53,7 @@ FP.UI = (function () {
     right: svg('<path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
 
-  const HAT_NAMES = { party: 'Party hat', beanie: 'Beanie', crown: 'Crown', cowboy: 'Cowboy hat', tophat: 'Top hat', propeller: 'Propeller', bunny: 'Bunny ears', chef: 'Chef hat', headphones: 'Headphones', flowers: 'Flower crown', wizard: 'Wizard hat', antlers: 'Antlers', pirate: 'Pirate hat', viking: 'Viking helmet', halo: 'Halo', astronaut: 'Space helmet', none: 'No hat' };
+  const HAT_NAMES = { party: 'Party hat', beanie: 'Beanie', crown: 'Crown', cowboy: 'Cowboy hat', tophat: 'Top hat', propeller: 'Propeller', bunny: 'Bunny ears', chef: 'Chef hat', headphones: 'Headphones', flowers: 'Flower crown', wizard: 'Wizard hat', antlers: 'Antlers', pirate: 'Pirate hat', viking: 'Viking helmet', halo: 'Halo', astronaut: 'Space helmet', robot: 'Robot helmet', none: 'No hat' };
 
   help.innerHTML = `
     <h2>How to play</h2>

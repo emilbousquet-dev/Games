@@ -102,12 +102,20 @@ FP.Profile = (function () {
   // ---------------- the shop ----------------
   // hats use their plain name ("wizard"); everything else has its kind in front ("outfit:tutu", "dance:robot")
   const KINDS = [
-    { id: 'hat', tab: 'Hats', list: () => FP.Look.SHOP_HATS, free: () => FP.Look.FREE_HATS, names: () => FP.UI.HAT_NAMES, where: 'Pick it in the lobby.' },
-    { id: 'outfit', tab: 'Outfits', list: () => FP.Look.SHOP_OUTFITS, free: () => FP.Look.FREE_OUTFITS, names: () => FP.Look.OUTFIT_NAMES, where: 'Pick it in the lobby.' },
-    { id: 'face', tab: 'Face paint', list: () => FP.Style.FACES.filter((f) => !FP.Style.FREE_FACES.includes(f)), free: () => FP.Style.FREE_FACES, names: () => FP.Style.FACE_NAMES, where: 'Pick it in the lobby.' },
-    { id: 'dance', tab: 'Dances', list: () => FP.Style.DANCES.filter((f) => !FP.Style.FREE_DANCES.includes(f)), free: () => FP.Style.FREE_DANCES, names: () => FP.Style.DANCE_NAMES, where: 'Win a game to show it off!' },
-    { id: 'trail', tab: 'Trails', list: () => FP.Style.TRAILS.filter((f) => !FP.Style.FREE_TRAILS.includes(f)), free: () => FP.Style.FREE_TRAILS, names: () => FP.Style.TRAIL_NAMES, where: 'Pick it in the lobby.' },
+    { id: 'hat', tab: 'Hats', list: () => FP.Look.SHOP_HATS, prizes: () => FP.Look.TOUR_HATS, free: () => FP.Look.FREE_HATS, names: () => FP.UI.HAT_NAMES, where: 'Pick it in the lobby.' },
+    { id: 'outfit', tab: 'Outfits', list: () => FP.Look.SHOP_OUTFITS, prizes: () => FP.Look.TOUR_OUTFITS, free: () => FP.Look.FREE_OUTFITS, names: () => FP.Look.OUTFIT_NAMES, where: 'Pick it in the lobby.' },
+    { id: 'face', tab: 'Face paint', ...styleKind('FACES', 'FREE_FACES'), names: () => FP.Style.FACE_NAMES, where: 'Pick it in the lobby.' },
+    { id: 'dance', tab: 'Dances', ...styleKind('DANCES', 'FREE_DANCES'), names: () => FP.Style.DANCE_NAMES, where: 'Win a game to show it off!' },
+    { id: 'trail', tab: 'Trails', ...styleKind('TRAILS', 'FREE_TRAILS'), names: () => FP.Style.TRAIL_NAMES, where: 'Pick it in the lobby.' },
   ];
+  // face paint, dances and trails: the shop sells the ones that aren't free and aren't World Tour prizes
+  function styleKind(all, free) {
+    return {
+      list: () => FP.Style[all].filter((f) => !FP.Style[free].includes(f) && !FP.Style.TOUR_ONLY.includes(f)),
+      prizes: () => FP.Style[all].filter((f) => FP.Style.TOUR_ONLY.includes(f)),
+      free: () => FP.Style[free],
+    };
+  }
   Object.assign(PRICES, {
     'outfit:hoodie': 120, 'outfit:jersey': 120, 'outfit:tutu': 150, 'outfit:tuxedo': 200, 'outfit:hero': 200, 'outfit:spacesuit': 250,
     'face:whiskers': 80, 'face:stars': 80, 'face:tiger': 100, 'face:clown': 100, 'face:shades': 120,
@@ -123,6 +131,13 @@ FP.Profile = (function () {
     if (!kind || item === 'none' || item == null) return true;
     if (kind.free().includes(item)) return true;
     return data.owned.includes(kid === 'hat' ? item : kid + ':' + item);
+  }
+  // a World Tour prize: yours for free
+  function grant(id) {
+    if (owns(id)) return false;
+    data.owned.push(id);
+    save();
+    return true;
   }
   function itemName(id) { const [kid, item] = splitId(id); const kind = kindOf(kid); return (kind && kind.names()[item]) || item; }
   function buy(id) {
@@ -227,6 +242,15 @@ FP.Profile = (function () {
         action: () => { if (!own && buy(id)) shopScreen(back, T + i, tab); else if (own) FP.UI.toast(`You have this one! ${kind.where}`); },
       };
     });
+    for (const it of kind.prizes()) {
+      const id = kind.id === 'hat' ? it : kind.id + ':' + it;
+      const own = owns(id);
+      goods.push({
+        label: `${thumbFor(kind.id, it)}<b>${kind.names()[it]}</b><small>${own ? `${ICON().check} Yours!` : `${ICON().trophy} World Tour prize`}</small>`,
+        cls: 'hat prize' + (own ? ' owned' : ''),
+        action: () => FP.UI.toast(own ? `You have this one! ${kind.where}` : 'Win it in Story Mode: the Floppy World Tour!', 2.5),
+      });
+    }
     const last = T + goods.length; // the Back button
     FP.UI.screen({
       cls: 'shop',
@@ -264,5 +288,5 @@ FP.Profile = (function () {
     });
   }
 
-  return { PRICES, ACH, KINDS, owns, buy, itemName, earn, unlock, matchEnded, shopScreen, achievementsScreen, hatThumb, coinLine, get coins() { return data.coins; }, get data() { return data; }, isLocal };
+  return { PRICES, ACH, KINDS, owns, buy, grant, itemName, earn, unlock, matchEnded, shopScreen, achievementsScreen, hatThumb, coinLine, get coins() { return data.coins; }, get data() { return data; }, isLocal };
 })();

@@ -78,7 +78,16 @@ FP.Game = (function () {
       const names = BOT_NAMES.filter((nm) => !used.has(nm));
       const name = names[Math.floor(Math.random() * names.length)] || `Bot ${i + 1}`;
       used.add(name);
-      matchBots.push({ id: nextId++, source: { kind: 'bot' }, name, colorIndex: freeColor(), hat: FP.Look.HATS[Math.floor(Math.random() * (FP.Look.HATS.length - 1))], outfit: FP.Look.OUTFITS[Math.floor(Math.random() * FP.Look.OUTFITS.length)], face: Math.random() < 0.3 ? FP.Style.FACES[1 + Math.floor(Math.random() * (FP.Style.FACES.length - 1))] : 'none', dance: FP.Style.DANCES[Math.floor(Math.random() * FP.Style.DANCES.length)], trail: 'none' });
+      // bots dress up too (but never in World Tour prizes: those are special)
+      const pick = (list) => list[Math.floor(Math.random() * list.length)];
+      const notPrize = (x) => !FP.Style.TOUR_ONLY.includes(x);
+      matchBots.push({
+        id: nextId++, source: { kind: 'bot' }, name, colorIndex: freeColor(),
+        hat: pick(FP.Look.HATS.filter((h) => h !== 'none' && !FP.Look.TOUR_HATS.includes(h))),
+        outfit: pick(FP.Look.OUTFITS.filter((o) => !FP.Look.TOUR_OUTFITS.includes(o))),
+        face: Math.random() < 0.3 ? pick(FP.Style.FACES.filter((f) => f !== 'none' && notPrize(f))) : 'none',
+        dance: pick(FP.Style.DANCES.filter(notPrize)), trail: 'none',
+      });
     }
   }
 
@@ -133,6 +142,7 @@ FP.Game = (function () {
     const splash = document.getElementById('splash');
     if (splash && !splash.classList.contains('gone')) { splash.classList.add('gone'); setTimeout(() => splash.remove(), 600); }
     endDaily();
+    endStory();
     state = 'title';
     paused = false;
     mode = null;
@@ -156,6 +166,7 @@ FP.Game = (function () {
       buttons: [
         { label: `${ICON.people} Play on this computer`, action: () => lobby() },
         { label: `${ICON.online} Play online with friends`, action: () => FP.Net.menu() },
+        { label: `${ICON.flag} Story Mode: World Tour`, action: () => storyMap(), cls: 'story-btn' },
         { label: `${ICON.star} Daily Challenge${dailyDone() ? ' (done!)' : ''}`, action: dailyScreen, cls: 'daily-btn' },
         { label: `${ICON.crown} Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
         { label: `${ICON.trophy} Achievements`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
@@ -193,6 +204,7 @@ FP.Game = (function () {
 
   function lobby() {
     endDaily();
+    endStory();
     tour = null;
     FP.UI.closeScreen();
     FP.UI.help.hidden = true;
@@ -647,6 +659,7 @@ FP.Game = (function () {
     skydive: ['Steer through the rings while you fall', 'Press JUMP to open your parachute', 'Land in the middle of the target for +5'],
     cooking: ['Run into a crate to pick up food, run into a pot to put it in', '3 of the same or 3 different = soup', 'Bring soups to the SERVE window before they burn!'],
     hideseek: ['Hiders: GRAB next to furniture to hide inside it', 'Seeker: PUNCH furniture to look inside', 'Hidden furniture wiggles sometimes!'],
+    boss: ['JUMP over the rings and the laser', 'Red circle? Missiles! Get out', 'When the robot sits down, PUNCH its glowing core'],
     water: ['PUNCH to lob a water balloon', 'Out? Refill at your team\'s water tap', 'Getting wet makes you slippery!'],
   };
   const INTRO_TIME = 15;
@@ -803,6 +816,7 @@ FP.Game = (function () {
     // party coins and achievements (for players on this computer)
     const got = FP.Profile.matchEnded({ mode, places, skill: botSkill, funCount: FP.Fun.list().length, bots: matchBots.length, online: !!(FP.Net && FP.Net.isHost()), extra: { survivor: mode.lastSurvivor } });
     dailyFinished(places);
+    storyFinished(places);
     const placeOf = (p) => places.findIndex((g) => g.includes(p));
     const makeHtml = (coins) => {
     const earn = (p) => (coins && got[p.id] ? ` <span class="earn">${ICON.coin}+${got[p.id]}</span>` : '');
@@ -841,6 +855,7 @@ FP.Game = (function () {
       FP.Camera.snap(chars.map(FP.Ragdoll.center));
       if (FP.Net) FP.Net.podium(places.map((g) => g.map((p) => p.id)));
       if (tour) { tourResults(html, netHtml); return; }
+      if (story) { storyResults(html); return; }
       FP.UI.screen({
         cls: 'results',
         title: `${mode.name}: results`,
@@ -1071,6 +1086,136 @@ FP.Game = (function () {
       FP.Profile.earn(reward);
       setTimeout(() => FP.UI.toast(`Daily Challenge complete! +${reward} coins. Streak: ${streak}`, 4), 1200);
     } else setTimeout(() => FP.UI.toast('So close! Try the Daily Challenge again', 3), 1200);
+  }
+
+  // ------------------------------------------------------------
+  //  STORY MODE: THE FLOPPY WORLD TOUR
+  //  5 worlds with 4 levels each. Win a level to open the next one.
+  //  Stars: win on Easy = 1, on Normal = 2, on Hard = 3.
+  //  Stars win prizes. The very last level is the Robot Boss!
+  // ------------------------------------------------------------
+  const WORLDS = [
+    { name: 'Sunny Meadow', levels: ['arena', 'coins', 'race', 'hill'] },
+    { name: 'Sandy Beach', levels: ['volley', 'fruit', 'balloons', 'sumo'] },
+    { name: 'Snowy Peaks', levels: ['snowball', 'hockey', 'tiles', 'penalty'] },
+    { name: 'Lava Land', levels: ['lava', 'meteor', 'bomb', 'boxing'] },
+    { name: 'Robot Factory', levels: ['conveyor', 'sweeper', 'kart', 'boss'] },
+  ];
+  const STORY_PRIZES = [
+    { stars: 10, id: 'face:mask' }, { stars: 20, id: 'trail:gold' }, { stars: 30, id: 'outfit:knight' }, { stars: 45, id: 'dance:champ' }, { boss: true, id: 'robot' },
+  ];
+  const STAR_SKILL = { easy: 1, normal: 2, hard: 3 };
+  const LOCK = '<svg viewBox="0 0 24 24" class="ico"><rect x="5" y="10" width="14" height="11" rx="3" fill="#8a8fa0" stroke="#2a2140" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#2a2140" stroke-width="2.2"/></svg>';
+  let story = null; // the level being played: { w, l, skill, prevSkill, result }
+  function storyData() {
+    try { const d = JSON.parse(localStorage.getItem('floppy-story') || '{}') || {}; d.stars = d.stars || {}; return d; } catch (e) { return { stars: {} }; }
+  }
+  function saveStory(d) { try { localStorage.setItem('floppy-story', JSON.stringify(d)); } catch (e) { /* no saving */ } }
+  const levelKey = (w, l) => w + '-' + l;
+  const totalStars = (d) => Object.values(d.stars).reduce((a, b) => a + (b | 0), 0);
+  const MAX_STARS = WORLDS.length * 4 * 3;
+  function levelOpen(d, w, l) {
+    if (w === 0 && l === 0) return true;
+    const pw = l > 0 ? w : w - 1, pl = l > 0 ? l - 1 : WORLDS[w - 1].levels.length - 1;
+    return (d.stars[levelKey(pw, pl)] | 0) > 0;
+  }
+  const starRow = (n) => `<span class="stars">${[1, 2, 3].map((k) => (k <= n ? ICON.star : ICON.starEmpty)).join('')}</span>`;
+
+  function storyMap(sel) {
+    endStory();
+    const d = storyData(), total = totalStars(d);
+    if (sel === undefined) {
+      // start on the first level that isn't beaten yet
+      sel = 0;
+      outer: for (let w = 0; w < WORLDS.length; w++) for (let l = 0; l < 4; l++) if (levelOpen(d, w, l) && !(d.stars[levelKey(w, l)] | 0)) { sel = w * 4 + l; break outer; }
+    }
+    const prizes = STORY_PRIZES.map((p) => `<span class="prize${FP.Profile.owns(p.id) ? ' got' : ''}">${FP.Profile.owns(p.id) ? ICON.check : p.boss ? ICON.trophy : ICON.star} ${p.boss ? 'Beat the boss' : p.stars}: <b>${FP.Profile.itemName(p.id)}</b></span>`).join('');
+    const buttons = [];
+    WORLDS.forEach((W, w) => W.levels.forEach((id, l) => {
+      const m = FP.Modes[id], open = levelOpen(d, w, l), st = d.stars[levelKey(w, l)] | 0;
+      buttons.push({
+        label: `<span class="lv-num">${w + 1}-${l + 1}</span>${open ? `<span class="lv-art">${m.art || ''}</span><b>${m.name}</b>${starRow(st)}` : `<span class="lv-lock">${LOCK}</span><b>Locked</b><small>Beat ${l > 0 ? `${w + 1}-${l}` : `${w}-4`} first</small>`}`,
+        cls: `level w${w}${open ? '' : ' locked'}${id === 'boss' ? ' boss' : ''}`,
+        action: () => (open ? storyLevel(w, l) : FP.UI.toast('Win the level before this one to open it!', 2.2)),
+      });
+    }));
+    buttons.push({ label: `${ICON.back} Back`, action: titleScreen, small: true, cls: 'wide' });
+    const card = FP.UI.screen({
+      cls: 'story', title: 'Floppy World Tour',
+      html: `<p>Travel the world and beat every mini-game! At the end waits the <b>Robot Boss</b>.</p>
+        <p class="story-stars">${ICON.star} <b>${total}</b> of ${MAX_STARS} stars &nbsp; <span class="small">(win on Easy = 1 star, Normal = 2, Hard = 3)</span></p>
+        <div class="prizes">${prizes}</div>`,
+      columns: 4, start: sel, buttons, back: titleScreen,
+    });
+    // a colored title above each world's levels
+    const row = card && card.querySelector('.buttons');
+    if (row) WORLDS.forEach((W, w) => { const first = row.children[w * 4 + w]; const h = FP.UI.el('div', `world-title w${w}`, `World ${w + 1}: ${W.name}`); row.insertBefore(h, first); });
+  }
+
+  function storyLevel(w, l) {
+    const d = storyData(), id = WORLDS[w].levels[l], m = FP.Modes[id], st = d.stars[levelKey(w, l)] | 0;
+    const back = () => storyMap(w * 4 + l);
+    const boss = id === 'boss';
+    const html = `<div class="setup-art">${m.art || ''}</div><h2>${w + 1}-${l + 1} ${esc(WORLDS[w].name)}: ${m.name}</h2><p>${m.desc}</p>
+      <p>${boss ? 'Everyone on this computer plays together against the robot (with a bot friend if you are alone).' : 'Come 1st to clear the level and open the next one!'}</p>
+      <p>Your best: ${starRow(st)} &nbsp; <span class="small">Easy = 1 star, Normal = 2, Hard = 3</span></p>`;
+    FP.UI.screen({
+      cls: 'setup story-level', title: 'Floppy World Tour', html,
+      buttons: [
+        ...FP.Bots.SKILL_ORDER.map((sk) => ({ label: `${skillStars(sk)} Play on ${FP.Bots.SKILLS[sk].name}`, action: () => startStory(w, l, sk), cls: sk === 'normal' ? 'go' : '' })),
+        { label: `${ICON.back} World Tour map`, action: back, small: true },
+      ],
+      start: st >= 2 ? 2 : st >= 1 ? 1 : 0, back,
+    });
+  }
+
+  function startStory(w, l, skill) {
+    const m = FP.Modes[WORLDS[w].levels[l]];
+    if (!m) return;
+    lobby(); // makes sure Player 1 is here
+    story = { w, l, skill, prevSkill: botSkill, result: null };
+    botSkill = m.id === 'boss' ? 'hard' : skill; // (bots are your friends in the boss fight: they try their best)
+    if (m.id === 'boss') m.level = skill; // the robot is tougher on Hard
+    const { min, max } = botLimits(m);
+    botCount[m.id] = Math.min(max, Math.max(min, m.id === 'boss' ? 1 : 3));
+    FP.UI.wipe(() => startMatch(m));
+  }
+  function endStory() { if (!story) return; botSkill = story.prevSkill; story = null; if (FP.Modes.boss) FP.Modes.boss.level = null; }
+
+  // after a story level: stars, coins and prizes
+  function storyFinished(places) {
+    if (!story) return;
+    const local = (p) => ['keys', 'pad', 'touch'].includes(p.source.kind);
+    const won = mode.id === 'boss' ? !!mode.beaten : places.length > 1 && places[0].some(local);
+    const res = { won, newStars: 0, coins: 0, prizes: [] };
+    if (won) {
+      const d = storyData(), key = levelKey(story.w, story.l), before = d.stars[key] | 0;
+      const got = STAR_SKILL[story.skill] || 1;
+      if (got > before) { d.stars[key] = got; res.newStars = got - before; }
+      res.coins = (before ? 0 : 50) + res.newStars * 25;
+      if (mode.id === 'boss') d.boss = true;
+      saveStory(d);
+      const total = totalStars(d);
+      for (const p of STORY_PRIZES) if ((p.boss ? d.boss : total >= p.stars) && FP.Profile.grant(p.id)) res.prizes.push(p.id);
+      if (res.coins) FP.Profile.earn(res.coins);
+    }
+    story.result = res;
+  }
+
+  function storyResults(gameHtml) {
+    const r = story.result || { won: false, prizes: [] }, { w, l, skill } = story;
+    const lastLevel = w === WORLDS.length - 1 && l === WORLDS[w].levels.length - 1;
+    const nw = l + 1 < WORLDS[w].levels.length ? w : w + 1, nl = l + 1 < WORLDS[w].levels.length ? l + 1 : 0;
+    let msg = r.won ? `<p class="winner">Level cleared!${r.newStars ? ` +${r.newStars} star${r.newStars > 1 ? 's' : ''}` : ''}</p>` : '<p class="winner">Not this time... try again!</p>';
+    if (r.coins) msg += `<p>${ICON.coin} +${r.coins} World Tour bonus coins</p>`;
+    for (const id of r.prizes) msg += `<p class="prize-won">${ICON.trophy} New prize: <b>${FP.Profile.itemName(id)}</b>! Pick it in the lobby.</p>`;
+    if (r.won && lastLevel) msg += '<p><b>You beat the Robot Boss and finished the Floppy World Tour! You are the champions!</b></p>';
+    if (r.prizes.length) { FP.Audio.play('cheer'); FP.FX.confetti(FP.Camera.target.clone()); }
+    const buttons = [];
+    if (r.won && !lastLevel) buttons.push({ label: `${ICON.play} Next level: ${FP.Modes[WORLDS[nw].levels[nl]].name}`, action: () => storyLevel(nw, nl), cls: 'go' });
+    buttons.push({ label: `${ICON.again} ${r.won ? 'Play again' : 'Try again'}`, action: () => startStory(w, l, skill), cls: r.won ? '' : 'go' });
+    buttons.push({ label: `${ICON.grid} World Tour map`, action: () => storyMap(w * 4 + l), small: true });
+    FP.UI.screen({ cls: 'results', title: `${mode.name}: results`, html: msg + gameHtml, buttons });
   }
 
   // ------------------------------------------------------------
@@ -1338,7 +1483,7 @@ FP.Game = (function () {
     get chars() { return chars; }, get state() { return state; }, get round() { return round; }, set round(v) { round = v; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
-    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
+    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, storyMap, startStory, get story() { return story; }, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
     get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,
