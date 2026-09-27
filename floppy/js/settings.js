@@ -6,7 +6,7 @@
 window.FP = window.FP || {};
 
 FP.Settings = (function () {
-  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: FP.Touch && FP.Touch.available ? 'low' : 'high', tags: true, fps: false };
+  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: FP.Touch && FP.Touch.available ? 'low' : 'high', tags: true, fps: false, replays: true };
   const s = Object.assign({}, DEFAULTS);
   try { Object.assign(s, JSON.parse(localStorage.getItem('floppy-settings') || '{}')); } catch (e) { /* no saving */ }
   function save() { try { localStorage.setItem('floppy-settings', JSON.stringify(s)); } catch (e) { /* no saving */ } }
@@ -43,6 +43,7 @@ FP.Settings = (function () {
     { key: 'shake', name: 'Screen shake', kind: 'bool' },
     { key: 'quality', name: 'Graphics', kind: 'pick', options: ['high', 'low'], labels: { high: 'Pretty', low: 'Fast' } },
     { key: 'tags', name: 'Name tags', kind: 'bool' },
+    { key: 'replays', name: 'Knockout replays', kind: 'bool' },
     { key: 'fps', name: 'Show speed (FPS)', kind: 'bool' },
   ];
   function change(row, dir) {

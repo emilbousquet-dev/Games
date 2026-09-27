@@ -99,9 +99,11 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
 
 ## Party Tour and Surprise me
 
-- **Party Tour**: play 3, 5 or 7 random mini-games in a row. Every game gives party points (4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else).
+- **Party Tour**: play 3, 5 or 7 random mini-games in a row, or **your own playlist** (press *Pick my playlist* and click the games you want, in order; it's saved).
+  Every game gives party points(4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else).
   Most points at the end is the **Party Champion**!
 - **Surprise me!**: a spinning wheel of mini-games stops on a random one.
+- **Daily Challenge** (title screen): a new mini-game with a twist every day, like *Moon Gravity Bowling* or *Disco Soccer*, sometimes against hard bots. Win it for 150 or 200 bonus coins and keep your streak going.
 
 ## Party coins, Hat Shop and achievements
 
@@ -115,7 +117,8 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
 
 - **Emotes:** wave, dance and cheer at your friends. Bots sometimes show off after knocking someone out.
 - **Music:** 7 songs made with code (party, tense, race, chill, spooky, circus and the menu song), with drums and chords.
-- **Slow motion** on the final knockout of a round.
+- **Slow motion** on the final knockout of a round, then a **replay** of the last moment from a moving camera (press jump to skip, or switch replays off in Settings).
+- **Photo mode** (in the pause menu): move the camera around, pick a filter (black and white, old photo, super colors, dreamy) and take a picture you can save.
 
 - Before each mini-game there is a **how to play** card with tips and controls. Everyone presses **jump** when they're ready.
 - At the end, the winners stand on a **3D podium** (1st, 2nd and 3rd) while the crowd cheers.

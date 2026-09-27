@@ -23,6 +23,7 @@ FP.Fun = (function () {
   const chosen = {};
   try { Object.assign(chosen, JSON.parse(localStorage.getItem('floppy-fun') || '{}')); } catch (e) { /* no saving */ }
   let temp = null, tempT = 0, chaosT = 20, inMatch = false, t = 0, discoBall = null, net = null;
+  let forced = {}; // rules switched on just for one game (like the Daily Challenge), without changing your settings
 
   const api = { speed: 1, jump: 1, punch: 1, slip: false, bighead: false, disco: false };
 
@@ -35,7 +36,7 @@ FP.Fun = (function () {
 
   // which rules are switched on right now?
   function recompute() {
-    const on = (id) => inMatch && (chosen[id] || temp === id);
+    const on = (id) => inMatch && (chosen[id] || forced[id] || temp === id);
     api.speed = on('turbo') ? 1.7 : 1;
     api.jump = 1;
     api.punch = on('superpunch') ? 2.2 : 1;
@@ -60,12 +61,12 @@ FP.Fun = (function () {
   function update(dt, state) {
     t += dt;
     inMatch = ['countdown', 'play', 'roundOver'].includes(state) || state === 'client';
-    if (state === 'play' && chosen.chaos) {
+    if (state === 'play' && (chosen.chaos || forced.chaos)) {
       if (temp) { tempT -= dt; if (tempT <= 0) temp = null; }
       chaosT -= dt;
       if (chaosT <= 0) {
         chaosT = 18 + Math.random() * 6;
-        const choices = EVENTS.filter((e) => !chosen[e]);
+        const choices = EVENTS.filter((e) => !chosen[e] && !forced[e]);
         if (choices.length) {
           temp = choices[Math.floor(Math.random() * choices.length)];
           tempT = 9;
@@ -101,5 +102,10 @@ FP.Fun = (function () {
   function applyNet(v) { net = { b: !!(v & 1), d: !!(v & 2) }; }
   function clearNet() { net = null; }
 
-  return Object.assign(api, { OPTIONS, isOn, toggle, list, update, netState, applyNet, clearNet });
+  function force(ids) { forced = {}; for (const id of ids || []) forced[id] = true; }
+  function unforce() { forced = {}; }
+
+  Object.assign(api, { OPTIONS, isOn, toggle, list, update, netState, applyNet, clearNet, force, unforce });
+  Object.defineProperty(api, 'forced', { get: () => Object.keys(forced) });
+  return api;
 })();

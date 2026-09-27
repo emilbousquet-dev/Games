@@ -188,6 +188,22 @@
     /* kart racing */
     .hs-curtain { position: fixed; inset: 0; z-index: 40; background: #1d1a2f; display: flex; align-items: center; justify-content: center; text-align: center; color: #fff; }
     .hs-curtain b { display: block; font: 900 42px/1.2 system-ui, sans-serif; } .hs-curtain small { font: 700 20px system-ui, sans-serif; opacity: .8; }
+    .replay-bars { position: fixed; inset: 0; pointer-events: none; z-index: 30; }
+    .replay-bars i { position: absolute; left: 0; right: 0; height: 9vh; background: #000; }
+    .replay-bars i.top { top: 0; } .replay-bars i.bot { bottom: 0; }
+    .replay-bars b { position: absolute; top: 2vh; left: 24px; color: #ff5a5f; font: 900 30px system-ui, sans-serif; animation: blink 1s steps(2) infinite; }
+    .replay-bars small { position: absolute; bottom: 3vh; right: 24px; color: #fff; font: 700 15px system-ui, sans-serif; opacity: .8; }
+    @keyframes blink { 50% { opacity: .3; } }
+    body.photo-mode .hud, body.photo-mode .tags, body.photo-mode .fps, body.photo-mode .touch { display: none !important; }
+    .photo-ui { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; z-index: 30; pointer-events: none; }
+    .photo-help { background: #2a2140dd; color: #fff; padding: 8px 16px; border-radius: 999px; font: 700 14px system-ui, sans-serif; max-width: calc(100% - 32px); text-align: center; }
+    .photo-flash { position: fixed; inset: 0; background: #fff; z-index: 60; animation: flash .4s ease-out forwards; pointer-events: none; }
+    @keyframes flash { to { opacity: 0; } }
+    .photo-preview { position: fixed; top: 16px; right: 16px; z-index: 61; background: #fff; padding: 10px; border-radius: 14px; box-shadow: 0 6px 0 #2a2140; width: min(360px, calc(100% - 32px)); text-align: center; }
+    .photo-preview img { width: 100%; border-radius: 8px; display: block; margin-bottom: 8px; }
+    .btn.mode.picked { outline: 4px solid #5cc44a; }
+    .pl-num { position: absolute; top: 6px; right: 8px; background: #5cc44a; color: #fff; border-radius: 999px; min-width: 26px; height: 26px; font: 900 15px/26px system-ui, sans-serif; text-align: center; box-shadow: 0 2px 0 #2a2140; }
+    .btn.mode { position: relative; }
     .extra:has(.tug-bar) { flex-direction: column; gap: 4px; padding: 4px 16px; border-radius: 16px; }
     .tug-bar { position: relative; width: 240px; height: 14px; border-radius: 99px; background: linear-gradient(90deg, #ff5a5f 0 50%, #4aa8ff 50% 100%); border: 2px solid #fff; }
     .tug-bar.speed { background: linear-gradient(90deg, #fff, #ffcf33 50%, #5cc44a); }

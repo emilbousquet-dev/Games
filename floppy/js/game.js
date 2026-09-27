@@ -23,7 +23,12 @@ FP.Game = (function () {
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
   const VERSION = '1.0';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
-  let tourOpts = { games: 5, bots: null };
+  let tourOpts = { games: 5, bots: null, list: false };
+  let playlist = [];         // your own list of games for a Party Tour (saved on this computer)
+  try { playlist = JSON.parse(localStorage.getItem('floppy-playlist') || '[]'); } catch (e) { /* no saving */ }
+  let daily = null;          // the Daily Challenge being played right now
+  let replayBuf = [], replay = null, replayPending = false; // the slow-motion replay of the last moment of a round
+  let photo = null, photoShot = false; // photo mode
   try { botSkill = FP.Bots.SKILLS[localStorage.getItem('floppy-skill')] ? localStorage.getItem('floppy-skill') : 'normal'; } catch (e) { /* no saving */ }
   const idle = { x: 0, z: 0 };
 
@@ -125,6 +130,7 @@ FP.Game = (function () {
   function titleScreen() {
     const splash = document.getElementById('splash');
     if (splash && !splash.classList.contains('gone')) { splash.classList.add('gone'); setTimeout(() => splash.remove(), 600); }
+    endDaily();
     state = 'title';
     paused = false;
     mode = null;
@@ -148,6 +154,7 @@ FP.Game = (function () {
       buttons: [
         { label: `${ICON.people} Play on this computer`, action: () => lobby() },
         { label: `${ICON.online} Play online with friends`, action: () => FP.Net.menu() },
+        { label: `${ICON.star} Daily Challenge${dailyDone() ? ' (done!)' : ''}`, action: dailyScreen, cls: 'daily-btn' },
         { label: `${ICON.crown} Hat Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
         { label: `${ICON.trophy} Achievements`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
         { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
@@ -183,6 +190,7 @@ FP.Game = (function () {
   }
 
   function lobby() {
+    endDaily();
     tour = null;
     FP.UI.closeScreen();
     FP.UI.help.hidden = true;
@@ -546,6 +554,7 @@ FP.Game = (function () {
   }
 
   function startRound() {
+    replayBuf = []; replayPending = false;
     round++;
     FP.Stage.clear();
     FP.FX.clear();
@@ -679,6 +688,7 @@ FP.Game = (function () {
     timer = 0;
     // the final knockout happens in slow motion, with the camera zooming in
     if (!mode.single && res.winners && res.winners.length === 1 && chars.some((c) => !c.alive)) {
+      if (!mode.render && FP.Settings.get('replays') !== false && replayBuf.length > 60) replayPending = true;
       slowmo = 1.2;
       FP.Camera.zoomTo(0.7);
       FP.Audio.play('whoosh');
@@ -769,6 +779,7 @@ FP.Game = (function () {
     const places = placesOf(list);
     // party coins and achievements (for players on this computer)
     const got = FP.Profile.matchEnded({ mode, places, skill: botSkill, funCount: FP.Fun.list().length, bots: matchBots.length, online: !!(FP.Net && FP.Net.isHost()), extra: { survivor: mode.lastSurvivor } });
+    dailyFinished(places);
     const placeOf = (p) => places.findIndex((g) => g.includes(p));
     const makeHtml = (coins) => {
     const earn = (p) => (coins && got[p.id] ? ` <span class="earn">${ICON.coin}+${got[p.id]}</span>` : '');
@@ -852,8 +863,8 @@ FP.Game = (function () {
     const moveSkill = (d) => { const o = FP.Bots.SKILL_ORDER; const id = o[Math.min(o.length - 1, Math.max(0, o.indexOf(botSkill) + d))]; if (id !== botSkill) { botSkill = id; try { localStorage.setItem('floppy-skill', id); } catch (e) { /* no saving */ } FP.Audio.play('menu'); draw(); } };
     const draw = () => {
       const n = tourOpts.bots;
-      const html = `<div class="champ">${ICON.trophy}</div><p>Play <b>${tourOpts.games}</b> random mini-games in a row. Win games to earn party points. Most points at the end is the <b>Party Champion</b>!</p>
-        <div class="skill"><span class="lbl">Games</span>${[3, 5, 7].map((g) => `<button class="chip${g === tourOpts.games ? ' on' : ''}" data-games="${g}">${g}</button>`).join('')}</div>
+      const html = `<div class="champ">${ICON.trophy}</div><p>Play ${tourOpts.list ? `<b>your playlist</b> (${cleanPlaylist().length} games)` : `<b>${tourOpts.games}</b> random mini-games`} in a row. Win games to earn party points. Most points at the end is the <b>Party Champion</b>!</p>
+        <div class="skill"><span class="lbl">Games</span>${[3, 5, 7].map((g) => `<button class="chip${g === tourOpts.games && !tourOpts.list ? ' on' : ''}" data-games="${g}">${g}</button>`).join('')}<button class="chip${tourOpts.list ? ' on' : ''}" data-list>My playlist (${cleanPlaylist().length})</button></div>
         <div class="counter"><span class="lbl">Bots</span>
           <button class="round" data-bots="-1" ${n <= min ? 'disabled' : ''} title="Fewer bots">${ICON.minus}</button><b class="count">${n}</b>
           <button class="round" data-bots="1" ${n >= max ? 'disabled' : ''} title="More bots">${ICON.plus}</button></div>
@@ -863,6 +874,7 @@ FP.Game = (function () {
         cls: 'setup', title: 'Party Tour', html,
         buttons: [
           { label: `${ICON.play} Start the tour`, action: startTour, cls: 'go' },
+          { label: `${ICON.grid} Pick my playlist`, action: () => playlistScreen(), small: true },
           { label: `${ICON.sparkle} Fun options`, action: () => funScreen(tourSetup), small: true },
           { label: `${ICON.back} Back`, action: backToPicker, small: true },
         ],
@@ -876,7 +888,8 @@ FP.Game = (function () {
         },
       });
       card.querySelectorAll('[data-bots]').forEach((b) => b.addEventListener('click', () => change(+b.dataset.bots)));
-      card.querySelectorAll('[data-games]').forEach((b) => b.addEventListener('click', () => { tourOpts.games = +b.dataset.games; FP.Audio.play('menu'); draw(); }));
+      card.querySelectorAll('[data-games]').forEach((b) => b.addEventListener('click', () => { tourOpts.games = +b.dataset.games; tourOpts.list = false; FP.Audio.play('menu'); draw(); }));
+      card.querySelectorAll('[data-list]').forEach((b) => b.addEventListener('click', () => { FP.Audio.play('menu'); if (!cleanPlaylist().length) playlistScreen(); else { tourOpts.list = true; draw(); } }));
       card.querySelectorAll('[data-skill]').forEach((b) => b.addEventListener('click', () => { botSkill = b.dataset.skill; try { localStorage.setItem('floppy-skill', botSkill); } catch (e) { /* no saving */ } FP.Audio.play('menu'); draw(); }));
     };
     draw();
@@ -885,7 +898,8 @@ FP.Game = (function () {
   function startTour() {
     const ids = MODES().map((m) => m.id);
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
-    tour = { games: ids.slice(0, tourOpts.games), index: 0, points: {}, bots: null, botCount: tourOpts.bots, awarded: false };
+    const games = tourOpts.list && cleanPlaylist().length ? cleanPlaylist() : ids.slice(0, tourOpts.games);
+    tour = { games, index: 0, points: {}, bots: null, botCount: tourOpts.bots, awarded: false };
     FP.UI.wipe(() => startMatch(FP.Modes[tour.games[0]]));
   }
 
@@ -953,6 +967,191 @@ FP.Game = (function () {
   }
 
   // ------------------------------------------------------------
+  //  MY PLAYLIST (your own list of games for a Party Tour)
+  // ------------------------------------------------------------
+  function cleanPlaylist() { return playlist.filter((id) => FP.Modes[id]); }
+  function savePlaylist() { try { localStorage.setItem('floppy-playlist', JSON.stringify(playlist)); } catch (e) { /* no saving */ } }
+  function playlistScreen(sel = 0) {
+    const all = MODES();
+    const n = cleanPlaylist().length;
+    FP.UI.screen({
+      cls: 'modes playlist',
+      title: 'My playlist',
+      html: `<p class="small">Click the games you want, in the order you want them. Click again to take one out. ${n ? `<b>${n}</b> picked.` : 'Nothing picked yet.'}</p>`,
+      columns: 4,
+      start: sel,
+      buttons: [
+        { label: `${ICON.check} Done`, action: () => { savePlaylist(); tourOpts.list = cleanPlaylist().length > 0; tourSetup(); }, cls: 'extra tour' },
+        { label: `${ICON.dice} Random 5`, action: () => { playlist = all.map((m) => m.id).sort(() => Math.random() - 0.5).slice(0, 5); savePlaylist(); FP.Audio.play('menu'); playlistScreen(1); }, cls: 'extra' },
+        { label: `${ICON.minus} Clear`, action: () => { playlist = []; savePlaylist(); FP.Audio.play('menu'); playlistScreen(2); }, cls: 'extra' },
+        { label: `${ICON.back} Back`, action: () => { savePlaylist(); tourSetup(); }, cls: 'extra' },
+        ...all.map((m, i) => {
+          const k = playlist.indexOf(m.id);
+          return {
+            label: `<span class="art">${m.art || ''}</span><b>${m.name}</b>${k >= 0 ? `<span class="pl-num">${k + 1}</span>` : ''}`,
+            cls: 'mode' + (k >= 0 ? ' picked' : ''),
+            action: () => { if (k >= 0) playlist.splice(k, 1); else playlist.push(m.id); savePlaylist(); FP.Audio.play(k >= 0 ? 'menu' : 'select'); playlistScreen(i + 4); },
+          };
+        }),
+      ],
+      back: () => { savePlaylist(); tourSetup(); },
+    });
+  }
+
+  // ------------------------------------------------------------
+  //  DAILY CHALLENGE (a mini-game with a twist, new every day)
+  // ------------------------------------------------------------
+  const TWISTS = { moon: ['Moon Gravity', 'Everyone floats and jumps super high.'], turbo: ['Turbo', 'Everyone runs super fast.'], bighead: ['Big Head', 'Giant heads for everyone.'], superpunch: ['Super Punch', 'Punches send people flying.'], ice: ['Slippery', 'Everything is as slippery as ice.'], disco: ['Disco', 'A disco party with flashing lights.'], chaos: ['Surprise', 'Something silly happens every 20 seconds!'] };
+  const dayKey = (d) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  function dailyInfo() {
+    const now = new Date(), key = dayKey(now);
+    let s = key % 2147483647;
+    const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    rnd(); rnd();
+    const list = MODES().filter((m) => m.id !== 'heist'); // (everyone is on one team in the heist)
+    const m = list[Math.floor(rnd() * list.length)];
+    const ids = Object.keys(TWISTS);
+    const twist = ids[Math.floor(rnd() * ids.length)];
+    const hard = rnd() < 0.35;
+    return { key, yesterday: dayKey(new Date(now.getTime() - 86400000)), mode: m, twist, hard, name: `${TWISTS[twist][0]} ${m.name}`, reward: hard ? 200 : 150 };
+  }
+  function dailyState() { try { return JSON.parse(localStorage.getItem('floppy-daily') || '{}') || {}; } catch (e) { return {}; } }
+  function dailyDone() { return dailyState().last === dailyInfo().key; }
+  function dailyScreen() {
+    const ch = dailyInfo(), st = dailyState(), done = st.last === ch.key;
+    const streak = st.last === ch.key || st.last === ch.yesterday ? st.streak || 0 : 0;
+    const html = `<div class="setup-art">${ch.mode.art || ''}</div><h2>${esc(ch.name)}</h2><p>${ch.mode.desc}</p>
+      <p><b>Today's twist:</b> ${TWISTS[ch.twist][1]}${ch.hard ? ' And the bots are on HARD!' : ''}</p>
+      <p>${done ? `${ICON.check} You beat today's challenge! Come back tomorrow for a new one.` : `Win it for <b>${ICON.coin} ${ch.reward}</b> bonus party coins!`}</p>
+      <p class="small">Your streak: <b>${streak}</b> day${streak === 1 ? '' : 's'} in a row.</p>`;
+    FP.UI.screen({ cls: 'setup daily', title: 'Daily Challenge', html, buttons: [{ label: `${ICON.play} Play`, action: () => startDaily(ch), cls: 'go' }, { label: `${ICON.back} Back`, action: titleScreen, small: true }], back: titleScreen });
+  }
+  function startDaily(ch) {
+    lobby(); // makes sure Player 1 is here
+    daily = { ...ch, prevSkill: botSkill };
+    if (ch.hard) botSkill = 'hard';
+    FP.Fun.force([ch.twist]);
+    const { min, max } = botLimits(ch.mode);
+    botCount[ch.mode.id] = Math.min(max, Math.max(min, ch.mode.defaultBots !== undefined ? ch.mode.defaultBots : 3));
+    FP.UI.wipe(() => startMatch(ch.mode));
+  }
+  function endDaily() { if (!daily) return; botSkill = daily.prevSkill; daily = null; FP.Fun.unforce(); }
+  function dailyFinished(places) {
+    if (!daily) return;
+    const local = (p) => ['keys', 'pad', 'touch'].includes(p.source.kind);
+    const won = places.length > 1 && places[0].some(local);
+    const st = dailyState(), reward = daily.reward;
+    if (st.last === daily.key) return; // already done today
+    if (won) {
+      const streak = st.last === daily.yesterday ? (st.streak || 0) + 1 : 1;
+      try { localStorage.setItem('floppy-daily', JSON.stringify({ last: daily.key, streak })); } catch (e) { /* no saving */ }
+      FP.Profile.earn(reward);
+      setTimeout(() => FP.UI.toast(`Daily Challenge complete! +${reward} coins. Streak: ${streak}`, 4), 1200);
+    } else setTimeout(() => FP.UI.toast('So close! Try the Daily Challenge again', 3), 1200);
+  }
+
+  // ------------------------------------------------------------
+  //  REPLAY: the last moment of a round, again, in slow motion
+  // ------------------------------------------------------------
+  let replayEl = null;
+  function recordFrame() {
+    const pose = (b) => [b.position.x, b.position.y, b.position.z, b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w];
+    replayBuf.push({ c: chars.map((c) => c.bodies.map(pose)), m: FP.Stage.movers.map(([, b]) => pose(b)) });
+    if (replayBuf.length > 200) replayBuf.shift();
+  }
+  function applyFrame(f) {
+    const set = (b, v) => { b.position.set(v[0], v[1], v[2]); b.quaternion.set(v[3], v[4], v[5], v[6]); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); };
+    chars.forEach((c, i) => { const cf = f.c[i]; if (cf) c.bodies.forEach((b, k) => { if (cf[k]) set(b, cf[k]); }); });
+    FP.Stage.movers.forEach(([, b], i) => { if (f.m[i]) set(b, f.m[i]); });
+  }
+  function startReplay() {
+    replayPending = false;
+    state = 'replay';
+    // start the replay about 3 seconds before the end (the last frames are just the celebration)
+    replay = { frames: replayBuf.slice(0, Math.max(60, replayBuf.length - 60)), t: 0 };
+    FP.UI.setHud('');
+    if (!replayEl) { replayEl = document.createElement('div'); replayEl.className = 'replay-bars'; replayEl.innerHTML = '<i class="top"></i><i class="bot"></i><b>REPLAY</b><small>Press jump to skip</small>'; document.body.append(replayEl); }
+    replayEl.hidden = false;
+    if (FP.Net) FP.Net.banner('REPLAY', '');
+    FP.Camera.zoomTo(0.75);
+  }
+  function replayFrame(dt) {
+    if (!replay) { endReplay(); return; }
+    replay.t += dt * 0.45;
+    const i = Math.floor(replay.t * 60);
+    const skip = humans().some((p) => p.source.kind !== 'remote' && FP.Input.read(p.source, 'replay' + p.id).jumpPressed);
+    if (i >= replay.frames.length || skip) { endReplay(); return; }
+    applyFrame(replay.frames[i]);
+  }
+  function endReplay() {
+    replay = null;
+    if (replayEl) replayEl.hidden = true;
+    FP.Camera.zoomTo(1);
+    if (matchOver()) results(); else startRound();
+  }
+
+  // ------------------------------------------------------------
+  //  PHOTO MODE: pause, move the camera around, take a picture
+  // ------------------------------------------------------------
+  const FILTERS = [['Normal', 'none'], ['Black and white', 'grayscale(1)'], ['Old photo', 'sepia(0.85)'], ['Super colors', 'saturate(1.9) contrast(1.1)'], ['Dreamy', 'hue-rotate(160deg) saturate(1.3)']];
+  let photoEl = null;
+  function startPhoto() {
+    FP.UI.closeScreen();
+    const cam = FP.Camera.camera, t = FP.Camera.target;
+    const d = cam.position.clone().sub(t), len = d.length() || 10;
+    photo = { yaw: Math.atan2(d.x, d.z), pitch: Math.asin(Math.max(-1, Math.min(1, d.y / len))), dist: len, target: t.clone(), filter: 0, src: (humans().find((p) => p.source.kind !== 'remote') || {}).source };
+    if (!photoEl) { photoEl = document.createElement('div'); photoEl.className = 'photo-ui'; document.body.append(photoEl); }
+    photoEl.hidden = false;
+    document.body.classList.add('photo-mode');
+    drawPhotoUi();
+  }
+  function drawPhotoUi() { if (photoEl && photo) photoEl.innerHTML = `<div class="photo-help"><b>Photo mode</b> &nbsp; Move: turn the camera, up and down: zoom &nbsp; <kbd>Space</kbd> or A: take a picture &nbsp; <kbd>F</kbd> or X: filter (${FILTERS[photo.filter][0]}) &nbsp; <kbd>Esc</kbd> or Start: back</div>`; }
+  function photoFrame(dt) {
+    const inp = photo.src ? FP.Input.read(photo.src, 'photo') : { x: 0, z: 0 };
+    photo.yaw -= (inp.x || 0) * dt * 1.6;
+    photo.dist = Math.max(3, Math.min(45, photo.dist * (1 + (inp.z || 0) * dt * 1.2)));
+    if (inp.jumpPressed) photoShot = true;
+    if (inp.punchPressed) nextFilter();
+    if (inp.startPressed) { endPhoto(); return; }
+    const cam = FP.Camera.camera, t = photo.target, cp = Math.cos(photo.pitch);
+    cam.position.set(t.x + Math.sin(photo.yaw) * cp * photo.dist, t.y + Math.sin(photo.pitch) * photo.dist, t.z + Math.cos(photo.yaw) * cp * photo.dist);
+    cam.lookAt(t);
+  }
+  function nextFilter() { if (!photo) return; photo.filter = (photo.filter + 1) % FILTERS.length; FP.Stage.renderer.domElement.style.filter = FILTERS[photo.filter][1] === 'none' ? '' : FILTERS[photo.filter][1]; drawPhotoUi(); FP.Audio.play('menu'); }
+  function photoKey(e) {
+    if (e.code === 'Escape') { e.preventDefault(); endPhoto(); }
+    else if (e.code === 'KeyF') nextFilter();
+  }
+  function capturePhoto() {
+    const src = FP.Stage.renderer.domElement;
+    const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
+    const g = cv.getContext('2d');
+    g.filter = FILTERS[photo ? photo.filter : 0][1];
+    g.drawImage(src, 0, 0);
+    g.filter = 'none';
+    g.font = `900 ${Math.round(cv.height * 0.04)}px Fredoka, Arial, sans-serif`; g.fillStyle = 'rgba(255,255,255,0.9)'; g.textAlign = 'right';
+    g.fillText('Floppy Party', cv.width - 20, cv.height - 20);
+    let url = '';
+    try { url = cv.toDataURL('image/png'); } catch (e) { FP.UI.toast('Could not take the picture here'); return; }
+    FP.Audio.play('coin');
+    const flash = document.createElement('div'); flash.className = 'photo-flash'; document.body.append(flash); setTimeout(() => flash.remove(), 400);
+    document.querySelectorAll('.photo-preview').forEach((el) => el.remove());
+    const prev = document.createElement('div'); prev.className = 'photo-preview';
+    prev.innerHTML = `<img src="${url}" alt="Your photo"><div><a class="btn small" download="floppy-party-photo.png" href="${url}">Save picture</a> <button class="btn small" data-close>Keep going</button></div>`;
+    document.body.append(prev);
+    prev.querySelector('[data-close]').addEventListener('click', () => prev.remove());
+  }
+  function endPhoto() {
+    if (!photo) return;
+    photo = null;
+    FP.Stage.renderer.domElement.style.filter = '';
+    if (photoEl) photoEl.hidden = true;
+    document.body.classList.remove('photo-mode');
+    document.querySelectorAll('.photo-preview').forEach((el) => el.remove());
+    pauseMenu();
+  }
+
+  // ------------------------------------------------------------
   //  PAUSE
   // ------------------------------------------------------------
   function pause() {
@@ -966,6 +1165,7 @@ FP.Game = (function () {
       buttons: [
         { label: `${ICON.play} Keep playing`, action: resume },
         { label: `${ICON.again} Restart this game`, action: () => { paused = false; FP.UI.wipe(() => startMatch(mode)); } },
+        { label: `${ICON.sparkle} Photo mode`, action: startPhoto, small: true },
         { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(pauseMenu), small: true },
         { label: `${ICON.home} Back to the lobby`, action: () => { paused = false; FP.UI.wipe(() => lobby()); } },
       ],
@@ -975,6 +1175,7 @@ FP.Game = (function () {
   function resume() { paused = false; FP.UI.closeScreen(); }
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
+    if (photo) { photoKey(e); return; }
     if ((e.code === 'Escape' || e.code === 'KeyP') && !FP.UI.open()) pause();
     if ((e.code === 'Enter' || e.code === 'NumpadEnter') && state === 'lobby' && !FP.UI.open()) { e.preventDefault(); chooseMode(); }
   });
@@ -1011,7 +1212,7 @@ FP.Game = (function () {
     FP.UI.update(dt);
     FP.Fun.update(dt, FP.Net && FP.Net.isClient() ? 'client' : state);
     titleT += dt;
-    FP.Camera.setOrbit(state === 'title' ? Math.sin(titleT * 0.12) * 0.45 : 0);
+    FP.Camera.setOrbit(state === 'title' ? Math.sin(titleT * 0.12) * 0.45 : state === 'replay' && replay ? Math.sin(replay.t * 1.4) * 0.7 : 0);
     FP.Camera.setShift(state === 'title' && innerWidth > 800 ? 3.2 : 0);
     FP.Props.animate(dt);
     const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
@@ -1022,7 +1223,7 @@ FP.Game = (function () {
       return;
     }
     padPause();
-    if (paused) return;
+    if (paused) { if (photo) photoFrame(dt); return; }
     if (state === 'lobby') lobbyJoins();
     if (slowmo > 0) { slowmo -= dt; dt *= 0.3; if (slowmo <= 0) FP.Camera.zoomTo(1); }
     else if (state !== 'roundOver') FP.Camera.zoomTo(1);
@@ -1030,6 +1231,7 @@ FP.Game = (function () {
     // physics runs in fixed little steps (60 per second)
     acc += dt;
     let steps = 0;
+    if (state === 'replay') acc = 0; // the replay moves everything by itself
     while (acc >= FP.Physics.STEP && steps < 6) {
       const modeControls = mode && mode.control && ['intro', 'countdown', 'play', 'roundOver'].includes(state);
       for (const c of chars) { const inp = inputFor(c); if (modeControls) mode.control(c, inp, FP.Physics.STEP, state === 'play'); else FP.Ragdoll.control(c, inp, FP.Physics.STEP); }
@@ -1039,6 +1241,7 @@ FP.Game = (function () {
       steps++;
     }
     if (steps === 6) acc = 0;
+    if (state === 'play' || state === 'roundOver') recordFrame();
 
     // fell off the island? pop back on
     if (state === 'lobby' || state === 'title' || state === 'select') {
@@ -1060,7 +1263,9 @@ FP.Game = (function () {
     } else if (state === 'roundOver') {
       timer += dt;
       if (mode.update) mode.update(dt, chars, api, true);
-      if (timer > 3.2) { if (matchOver()) results(); else startRound(); }
+      if (timer > 3.2) { if (replayPending) startReplay(); else if (matchOver()) results(); else startRound(); }
+    } else if (state === 'replay') {
+      replayFrame(dt);
     } else if (state === 'intro') {
       if (mode.update) mode.update(0, chars, api, true);
       introFrame(dt);
@@ -1077,7 +1282,7 @@ FP.Game = (function () {
     FP.FX.update(dt);
     FP.Stage.update(dt, timer, FP.Camera.target);
     const playing = mode && ['countdown', 'play', 'roundOver'].includes(state);
-    const focus = playing && mode.focus ? mode.focus(chars) : chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
+    const focus = state === 'replay' ? chars.filter((c) => c.parts.torso.position.y > -4).map(FP.Ragdoll.center) : playing && mode.focus ? mode.focus(chars) : chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
     FP.Camera.update(focus.length ? focus : chars.map(FP.Ragdoll.center), dt, state === 'results' ? 7 : mode && state !== 'lobby' ? (mode.minZoom || 12) : 11);
     FP.UI.nameTags(chars, FP.Camera.camera, ['lobby', 'countdown', 'play', 'roundOver'].includes(state) && !(mode && mode.noTags && state !== 'lobby'));
     if (FP.Net) FP.Net.hostFrame(dt);
@@ -1088,7 +1293,7 @@ FP.Game = (function () {
     get chars() { return chars; }, get state() { return state; }, get round() { return round; }, set round(v) { round = v; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
-    clientLobby, clientRound, clientPodium, skipIntro: false, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
+    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
     get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,
@@ -1128,8 +1333,9 @@ FP.Game = (function () {
     if (!api.manual) { watchSpeed(raw); showFps(raw); }
     if (!api.manual) update(dt);
     // some mini-games draw their own cameras (like the kart race with split screen)
-    if (mode && mode.render && ['intro', 'countdown', 'play', 'roundOver', 'client'].includes(state)) mode.render(FP.Stage.renderer, FP.Stage.scene, dt);
+    if (!photo && mode && mode.render && ['intro', 'countdown', 'play', 'roundOver', 'client'].includes(state)) mode.render(FP.Stage.renderer, FP.Stage.scene, dt);
     else FP.Stage.render(FP.Camera.camera);
+    if (photoShot) { photoShot = false; capturePhoto(); }
     requestAnimationFrame(frame);
   }
   requestAnimationFrame(frame);
