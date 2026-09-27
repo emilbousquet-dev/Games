@@ -131,7 +131,7 @@ AT.Diver = (function () {
     AT.Audio.ouch();
     AT.Input.rumble(0.7, 220);
     AT.Game.shake(8);
-    if (!D.tipHurt) { D.tipHurt = true; AT.Game.toast('Ouch! Stun creatures with your harpoon: Space', '#ffe08a'); }
+    if (!D.tipHurt) { D.tipHurt = true; AT.Game.toast('Ouch! Stun creatures with your harpoon: ' + AT.Input.say('fire'), '#ffe08a'); }
     return true;
   }
 

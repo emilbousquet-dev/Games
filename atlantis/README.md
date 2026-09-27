@@ -22,6 +22,16 @@ sell it, buy better gear, and go deeper, all the way to the **Trident of Poseido
 | Journal | `Q` | Y |
 | Pause | `Esc` or `P` | Start |
 
+### 📱 On a phone or tablet
+
+It works on phones too, held upright or sideways!
+
+- **Swim:** touch the left side of the screen and slide your thumb. A joystick appears under it.
+- **🔱 Harpoon** and **⚡ Boost** are the big buttons on the right.
+- **✋ Shop** appears when you're next to the boat.
+- The small buttons open the **🗺️ map**, the **📖 journal**, **⏸ pause** and **⛶ full screen**.
+- Phones start on **Graphics: LOW** so the game runs smoothly. You can switch to HIGH on the title screen.
+
 ## The five zones
 
 | Depth | Zone | What's there |

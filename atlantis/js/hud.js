@@ -43,7 +43,7 @@ AT.HUD = (function () {
   }
 
   function draw(g, W, H, t, cam, scale) {
-    const u = Math.min(W / 1280, H / 720) * 1.05;
+    const u = AT.ui(W, H), css = W / Math.max(1, window.innerWidth);
     const D = AT.Diver.D, S = AT.Shop.S;
     const air = Math.max(0, D.air), maxA = AT.Diver.maxAir(), k = air / maxA;
     const depth = AT.Diver.depth();
@@ -119,8 +119,12 @@ AT.HUD = (function () {
     g.fillText(`Tablets ${S.tablets.length}/12  ·  Creatures ${S.journal.length}/${Object.keys(AT.Creatures.INFO).length}`, W - 30 * u, 78 * u);
 
     // ----- bag -----
-    const n = AT.Shop.val('bag'), sz = 40 * u, gap = 6 * u;
-    const bw = n * sz + (n - 1) * gap, bx = W / 2 - bw / 2, by = H - sz - 22 * u;
+    // (on a touch screen the bag sits above the buttons)
+    const n = AT.Shop.val('bag'), gap = 6 * u;
+    const lift = AT.Input.usingTouch ? (W < H ? 150 : 20) * css : 0;
+    const maxW = AT.Input.usingTouch && W >= H ? W - 460 * css : W - 40 * u;
+    const sz = Math.min(40 * u, (maxW - (n - 1) * gap) / n);
+    const bw = n * sz + (n - 1) * gap, bx = W / 2 - bw / 2, by = H - sz - 22 * u - lift;
     g.fillStyle = 'rgba(0,15,30,0.45)'; U.rr(g, bx - 12 * u, by - 26 * u, bw + 24 * u, sz + 38 * u, 14 * u); g.fill();
     g.font = `800 ${12 * u}px ${FONT}`; g.textAlign = 'center'; g.fillStyle = D.bag.length >= n ? '#ff9a9a' : 'rgba(220,240,255,0.85)';
     const bagVal = D.bag.reduce((s, b) => s + b.value, 0);
@@ -162,21 +166,23 @@ AT.HUD = (function () {
     // ----- prompt (near the boat) -----
     const prompt = AT.Game.prompt;
     if (prompt) {
-      g.font = `800 ${17 * u}px ${FONT}`; g.textAlign = 'center';
+      g.font = `800 ${fit(g, prompt, 800, 17 * u, FONT, W * 0.88)}px ${FONT}`; g.textAlign = 'center';
       const w = g.measureText(prompt).width + 40 * u, y = by - 64 * u;
       g.fillStyle = 'rgba(0,20,40,0.6)'; U.rr(g, W / 2 - w / 2, y - 22 * u, w, 34 * u, 17 * u); g.fill();
       g.fillStyle = '#fff'; g.fillText(prompt, W / 2, y + 1 * u);
     }
 
     // ----- toasts -----
+    // (on an upright phone the buttons are on the right, so messages move a little to the left)
+    const side = AT.Input.usingTouch && W < H, tcx = side ? (W - 64 * css) / 2 : W / 2;
     toasts.forEach((tt, i) => {
       const a = Math.min(1, tt.t * 4, (3.4 - tt.t) * 2);
       g.globalAlpha = a;
-      g.font = `800 ${19 * u}px ${FONT}`; g.textAlign = 'center';
+      g.font = `800 ${fit(g, tt.text, 800, 19 * u, FONT, side ? W - 64 * css - 70 * u : W * 0.9)}px ${FONT}`; g.textAlign = 'center';
       const w = g.measureText(tt.text).width + 44 * u, y = (banner ? H * 0.24 + 70 * u : 150 * u) + i * 46 * u - (1 - Math.min(1, tt.t * 4)) * 10 * u;
-      g.fillStyle = 'rgba(4,24,48,0.72)'; U.rr(g, W / 2 - w / 2, y - 26 * u, w, 38 * u, 19 * u); g.fill();
+      g.fillStyle = 'rgba(4,24,48,0.72)'; U.rr(g, tcx - w / 2, y - 26 * u, w, 38 * u, 19 * u); g.fill();
       g.strokeStyle = 'rgba(255,224,138,0.5)'; g.lineWidth = 1.5 * u; g.stroke();
-      g.fillStyle = tt.color; g.fillText(tt.text, W / 2, y);
+      g.fillStyle = tt.color; g.fillText(tt.text, tcx, y);
       g.globalAlpha = 1;
     });
     if (low && !AT.Game.rescuing) {
@@ -194,7 +200,7 @@ AT.HUD = (function () {
       g.save(); g.globalAlpha = Math.max(0, a); g.textAlign = 'center';
       g.font = `700 ${16 * u}px ${TITLE}`; g.fillStyle = '#bff6ff';
       g.fillText(`— ${banner.depth} METERS —`, W / 2, y - 44 * u);
-      g.font = `900 ${58 * u}px ${TITLE}`;
+      g.font = `900 ${fit(g, banner.name.toUpperCase(), 900, 58 * u, TITLE, W * 0.92)}px ${TITLE}`;
       g.shadowColor = 'rgba(255,200,90,0.6)'; g.shadowBlur = 24 * u;
       const gr = g.createLinearGradient(0, y - 50 * u, 0, y + 6 * u);
       gr.addColorStop(0, '#fff6cf'); gr.addColorStop(0.5, '#ffd966'); gr.addColorStop(1, '#c98a1c');
@@ -215,6 +221,13 @@ AT.HUD = (function () {
       const x = U.lerp(sx, ex, k2), y = U.lerp(sy, ey, k2) - Math.sin(k2 * Math.PI) * 120 * u;
       coin(g, x, y, 9 * u);
     }
+  }
+
+  // a font size that makes the text fit in maxW
+  function fit(g, text, weight, size, family, maxW) {
+    g.font = `${weight} ${size}px ${family}`;
+    const w = g.measureText(text).width;
+    return w > maxW ? size * (maxW / w) : size;
   }
 
   function coin(g, x, y, r) {
@@ -246,11 +259,11 @@ AT.HUD = (function () {
   }
   function drawMap(g, W, H, t) {
     if (!mapImg) buildMap();
-    const u = Math.min(W / 1280, H / 720);
+    const u = AT.ui(W, H);
     g.fillStyle = 'rgba(2,10,24,0.88)'; g.fillRect(0, 0, W, H);
-    const px = Math.floor((H - 120 * u) / AT.World.rows * 10) / 10;
+    const px = Math.floor(Math.min((H - 120 * u) / AT.World.rows, (W * 0.5) / AT.World.cols) * 10) / 10;
     const mw = AT.World.cols * px, mh = AT.World.rows * px;
-    const mx = W / 2 - mw / 2, my = 70 * u;
+    const mx = Math.min(W / 2 - mw / 2, W - mw - 175 * u), my = 70 * u;
     g.font = `700 ${30 * u}px ${TITLE}`; g.textAlign = 'center'; g.fillStyle = '#ffe08a';
     g.fillText('MAP OF ATLANTIS', W / 2, 48 * u);
     g.fillStyle = 'rgba(40,90,140,0.25)'; g.fillRect(mx - 4, my - 4, mw + 8, mh + 8);
@@ -284,7 +297,9 @@ AT.HUD = (function () {
     g.fillStyle = '#ff8a3d'; g.beginPath(); g.arc(dx, dy, 4 + Math.sin(t * 6) * 1.5, 0, Math.PI * 2); g.fill();
     g.strokeStyle = '#fff'; g.lineWidth = 1.5; g.stroke();
     g.textAlign = 'center'; g.font = `700 ${14 * u}px ${FONT}`; g.fillStyle = 'rgba(220,240,255,0.8)';
-    g.fillText('You only see places you have explored  ·  press M or Esc to close', W / 2, H - 18 * u);
+    const close = AT.Input.usingTouch ? 'tap to close' : 'press M or Esc to close';
+    g.font = `700 ${fit(g, 'You only see places you have explored  ·  ' + close, 700, 14 * u, FONT, W * 0.94)}px ${FONT}`;
+    g.fillText('You only see places you have explored  ·  ' + close, W / 2, H - 18 * u);
   }
 
   return { update, draw, toast, zoneBanner, fly, itemIcon, buildMap, drawMap, coin, resetMap() { mapImg = null; }, get shownGold() { return shownGold; }, set shownGold(v) { shownGold = v; } };

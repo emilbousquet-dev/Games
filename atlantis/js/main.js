@@ -49,7 +49,8 @@ AT.Game = (function () {
     const dpr = Math.min(window.devicePixelRatio || 1, AT.lowGfx ? 1 : 1.5);
     W = canvas.width = Math.floor(window.innerWidth * dpr);
     H = canvas.height = Math.floor(window.innerHeight * dpr);
-    scale = Math.max(H / AT.VIEW_H, W / AT.World.W);
+    // phones held upright see a tall view; everyone sees at least 640 pixels of the sea across
+    scale = Math.max(Math.min(H / AT.VIEW_H, W / 640), W / AT.World.W);
     cam.w = W / scale; cam.h = H / scale;
     AT.World.setRes(Math.min(2, Math.ceil(scale * 4) / 4));
     AT.Render.resize(W, H);
@@ -118,7 +119,7 @@ AT.Game = (function () {
     snapCamera();
     AT.Audio.splash();
     if (!AT.Shop.S.dives) {
-      setTimeout(() => AT.HUD.toast('Swim down with W A S D or the arrow keys!', '#fff'), 600);
+      setTimeout(() => AT.HUD.toast(AT.Input.usingTouch ? 'Touch the left side of the screen to swim!' : 'Swim down with W A S D or the arrow keys!', '#fff'), 600);
       setTimeout(() => AT.HUD.toast('Grab treasure, then come back to the boat to sell it.', '#ffe08a'), 4200);
     }
   }
@@ -176,6 +177,10 @@ AT.Game = (function () {
       if (state !== 'title') AT.Creatures.update(dt, t);
     }
     AT.HUD.update(dt);
+    // tell the page what's happening (shows the touch buttons only while swimming)
+    if (document.body.dataset.state !== state) document.body.dataset.state = state;
+    const canUse = state === 'play' && prompt.includes('shop');
+    if (canUse !== document.body.classList.contains('canuse')) document.body.classList.toggle('canuse', canUse);
     shakeAmt = Math.max(0, shakeAmt - dt * 30);
     draw();
     requestAnimationFrame(frame);
@@ -218,7 +223,7 @@ AT.Game = (function () {
     const nearBoat = D.atSurface && Math.abs(D.x - BOAT_X) < 190;
     if (nearBoat) {
       if (D.bag.length) sell();
-      prompt = (AT.Input.usingPad ? 'Press A' : 'Press E') + ' to open the shop';
+      prompt = AT.Input.say('use') + ' to open the shop';
       if (s.useP) { setState('shop'); AT.Shop.open(); AT.Audio.tick(); return; }
     } else if (D.atSurface && D.bag.length) {
       prompt = 'Swim to the boat to sell your treasure';
@@ -290,7 +295,7 @@ AT.Game = (function () {
     el.querySelector('.num').textContent = `TABLET ${['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'][i]} OF XII`;
     el.querySelector('h2').textContent = title;
     el.querySelector('p').textContent = text;
-    el.querySelector('.hint').textContent = (AT.Input.usingPad ? 'Press A' : 'Press E') + ' to continue';
+    el.querySelector('.hint').textContent = AT.Input.say('cont') + ' to continue';
     setState('tablet');
   }
 
@@ -321,7 +326,7 @@ AT.Game = (function () {
     const S = AT.Shop.S;
     if (S.journal.includes(type)) return;
     S.journal.push(type);
-    AT.HUD.toast(`New creature: ${AT.Creatures.INFO[type].name}!  (Q = journal)`, '#9ff7ff');
+    AT.HUD.toast(`New creature: ${AT.Creatures.INFO[type].name}!  (${AT.Input.say('journal')} = journal)`, '#9ff7ff');
     AT.Audio.discover();
     AT.Shop.save();
   }

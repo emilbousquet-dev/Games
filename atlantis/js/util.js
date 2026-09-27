@@ -8,7 +8,18 @@ AT.PX_PER_M = 12;         // 12 pixels = 1 meter of depth
 AT.VIEW_H = 720;          // how many world pixels fit in the screen height
 
 // graphics quality (LOW = faster on old computers)
-AT.lowGfx = (() => { try { return localStorage.getItem('atlantis.gfx') === 'low' || location.search.includes('low'); } catch (e) { return false; } })();
+// phones and tablets start on LOW (you can switch to HIGH on the title screen)
+AT.lowGfx = (() => {
+  if (location.search.includes('low')) return true;
+  try { const saved = localStorage.getItem('atlantis.gfx'); if (saved) return saved === 'low'; } catch (e) { /* */ }
+  try { return matchMedia('(pointer: coarse)').matches; } catch (e) { return false; }
+})();
+
+// how big the HUD and text should be (same on big screens, never too tiny on phones)
+AT.ui = (W, H) => {
+  const cw = Math.max(1, window.innerWidth), ch = Math.max(1, window.innerHeight);
+  return (W / cw) * Math.max(0.68, Math.min(1.5, Math.min(cw / 1280, ch / 720) * 1.05));
+};
 
 // ?depth=300 starts at that depth, ?gold=5000 gives gold, ?max gives all upgrades (for testing)
 AT.params = (() => { try { return new URLSearchParams(location.search); } catch (e) { return new Map(); } })();
