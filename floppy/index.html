@@ -195,6 +195,21 @@
     .prize-won { font-size: 18px; color: #7a4ad0; }
     .prize-won .ico { width: 1.2em; height: 1.2em; vertical-align: -3px; }
     @media (max-width: 620px) { .story .buttons { grid-template-columns: repeat(2, 1fr); } }
+    .editor { position: fixed; right: 16px; top: 12px; bottom: 12px; display: flex; align-items: center; z-index: 5; pointer-events: none; }
+    .ed-card { pointer-events: auto; background: var(--paper); border-radius: 20px; box-shadow: var(--shadow); padding: 12px 14px; width: 460px; max-height: 100%; overflow: auto; text-align: center; }
+    .ed-card h2 { margin: 0 0 6px; }
+    .ed-card canvas { width: 100%; max-width: 420px; aspect-ratio: 1; border-radius: 10px; box-shadow: 0 0 0 3px var(--ink); touch-action: none; cursor: crosshair; display: block; margin: 8px auto; }
+    .ed-slots { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+    .ed-tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
+    .ed-tool { font: inherit; font-size: 13px; font-weight: 800; border: 0; border-radius: 10px; background: var(--paper2); padding: 5px 4px; display: flex; align-items: center; gap: 5px; cursor: pointer; color: var(--ink); }
+    .ed-tool i { width: 16px; height: 16px; border-radius: 5px; box-shadow: 0 0 0 2px var(--ink); flex: none; }
+    .ed-tool.on { background: var(--yellow); box-shadow: inset 0 0 0 3px var(--ink); }
+    .ed-name { margin: 8px 0 4px; font-weight: 800; }
+    .ed-name input { font: inherit; border: 2px solid var(--ink); border-radius: 8px; padding: 2px 8px; width: 150px; }
+    .ed-buttons { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 6px; }
+    .ed-buttons .btn.go { flex-basis: 100%; }
+    .ed-help { margin: 6px 0 0; }
+    @media (max-width: 900px) { .editor { left: 8px; right: 8px; top: auto; bottom: 8px; justify-content: center; } .ed-card { width: 100%; max-height: 62vh; } }
     .achievements .card { width: min(720px, 100%); }
     .ach-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; text-align: left; margin-top: 8px; }
     .ach { display: flex; gap: 10px; align-items: center; background: var(--paper2); border-radius: 14px; padding: 8px 10px; opacity: .75; }
@@ -451,7 +466,9 @@
   <script src="js/modes/hideseek.js"></script>
   <script src="js/modes/water.js"></script>
   <script src="js/modes/boss.js"></script>
+  <script src="js/modes/custom.js"></script>
   <script src="js/net.js"></script>
+  <script src="js/editor.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

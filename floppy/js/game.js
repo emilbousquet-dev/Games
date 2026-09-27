@@ -9,7 +9,7 @@ window.FP = window.FP || {};
 FP.Game = (function () {
   const scene = FP.Stage.scene;
   const MAX_PLAYERS = 4;
-  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit', 'tug', 'volley', 'hurdles', 'penalty', 'hockey', 'snowball', 'boxing', 'skydive', 'cooking', 'hideseek', 'water'];
+  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit', 'tug', 'volley', 'hurdles', 'penalty', 'hockey', 'snowball', 'boxing', 'skydive', 'cooking', 'hideseek', 'water', 'custom'];
   const MODES = () => MODE_ORDER.map((id) => FP.Modes[id]).filter(Boolean);
   const BOT_NAMES = ['Wobbles', 'Noodle', 'Biscuit', 'Pickle', 'Jellybean', 'Mr. Flop', 'Sprout', 'Bonkers'];
   const ICON = FP.UI.ICON;
@@ -170,6 +170,7 @@ FP.Game = (function () {
         { label: `${ICON.star} Daily Challenge${dailyDone() ? ' (done!)' : ''}`, action: dailyScreen, cls: 'daily-btn' },
         { label: `${ICON.crown} Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
         { label: `${ICON.trophy} Achievements`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
+        { label: `${ICON.grid} Level Editor`, action: () => editor(), small: true },
         { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
         { label: `${ICON.help} How to play`, action: () => { FP.UI.help.hidden = false; }, small: true },
         { label: `${ICON.star} Credits`, action: credits, small: true },
@@ -177,6 +178,29 @@ FP.Game = (function () {
     });
     const card = document.querySelector('.screen.title .card');
     if (card) card.insertAdjacentHTML('beforeend', `<p class="title-coins">${FP.Profile.coinLine()}</p>`);
+  }
+
+  // ------------------------------------------------------------
+  //  LEVEL EDITOR (build your own arenas; the editor is in editor.js)
+  // ------------------------------------------------------------
+  function editor() {
+    const fromGame = players.length > 0 && state !== 'title';
+    endDaily(); endStory(); tour = null;
+    FP.UI.closeScreen();
+    FP.UI.help.hidden = true;
+    if (lobbyPanel) lobbyPanel.hidden = true;
+    if (FP.Net && (FP.Net.isHost() || FP.Net.isClient())) { FP.UI.toast('The Level Editor works when you are not online'); if (fromGame) lobby(); else titleScreen(); return; }
+    state = 'editor';
+    paused = false;
+    mode = null;
+    FP.UI.setHud('');
+    FP.Audio.setSong('menu');
+    clearChars();
+    FP.Camera.setLift(0);
+    FP.Editor.open({
+      back: () => (fromGame ? lobby() : titleScreen()),
+      play: () => { lobby(); FP.UI.closeScreen(); state = 'select'; if (lobbyPanel) lobbyPanel.hidden = true; setupMatch(FP.Modes.custom); },
+    });
   }
 
   function credits() {
@@ -529,7 +553,7 @@ FP.Game = (function () {
       let who = humans().map((p) => FP.UI.playerPill(p)).join('') + Array.from({ length: n }, (_, i) => `<span class="pill bot">Bot ${i + 1}</span>`).join('');
       if (m.teams) who += `<p class="small">Teams are split up automatically: Red and Blue.</p>`;
       const why = min > 0 ? `<p class="small">This game needs at least ${m.minTotal || 2} players, so you need at least ${min} bot${min > 1 ? 's' : ''}.</p>` : '<p class="small">You can play with no bots at all.</p>';
-      const html = `<div class="setup-art">${m.art || ''}</div><p>${m.desc}</p>
+      const html = `<div class="setup-art">${m.art || ''}</div><p>${m.desc}</p>${m.setupHtml ? m.setupHtml() : ''}
         <div class="counter"><span class="lbl">Bots</span>
           <button class="round" data-bots="-1" ${n <= min ? 'disabled' : ''} title="Fewer bots">${ICON.minus}</button>
           <b class="count">${n}</b>
@@ -556,6 +580,7 @@ FP.Game = (function () {
         },
       });
       card.querySelectorAll('[data-bots]').forEach((b) => b.addEventListener('click', () => change(+b.dataset.bots)));
+      if (m.setupWire) m.setupWire(card, draw);
       card.querySelectorAll('[data-skill]').forEach((b) => {
         b.addEventListener('mousedown', (e) => e.preventDefault());
         b.addEventListener('click', () => setSkill(b.dataset.skill));
@@ -660,6 +685,7 @@ FP.Game = (function () {
     cooking: ['Run into a crate to pick up food, run into a pot to put it in', '3 of the same or 3 different = soup', 'Bring soups to the SERVE window before they burn!'],
     hideseek: ['Hiders: GRAB next to furniture to hide inside it', 'Seeker: PUNCH furniture to look inside', 'Hidden furniture wiggles sometimes!'],
     boss: ['JUMP over the rings and the laser', 'Red circle? Missiles! Get out', 'When the robot sits down, PUNCH its glowing core'],
+    custom: ['Build arenas in the Level Editor', 'Jump pads launch you high', 'Lava and falling off = out!'],
     water: ['PUNCH to lob a water balloon', 'Out? Refill at your team\'s water tap', 'Getting wet makes you slippery!'],
   };
   const INTRO_TIME = 15;
@@ -934,7 +960,7 @@ FP.Game = (function () {
   }
 
   function startTour() {
-    const ids = MODES().map((m) => m.id);
+    const ids = MODES().map((m) => m.id).filter((id) => id !== 'custom'); // (your own arenas are played on purpose)
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     const games = tourOpts.list && cleanPlaylist().length ? cleanPlaylist() : ids.slice(0, tourOpts.games);
     tour = { games, index: 0, points: {}, bots: null, botCount: tourOpts.bots, awarded: false };
@@ -1046,7 +1072,7 @@ FP.Game = (function () {
     let s = key % 2147483647;
     const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647;
     rnd(); rnd();
-    const list = MODES().filter((m) => m.id !== 'heist'); // (everyone is on one team in the heist)
+    const list = MODES().filter((m) => m.id !== 'heist' && m.id !== 'custom'); // (everyone is on one team in the heist)
     const m = list[Math.floor(rnd() * list.length)];
     const ids = Object.keys(TWISTS);
     const twist = ids[Math.floor(rnd() * ids.length)];
@@ -1410,6 +1436,7 @@ FP.Game = (function () {
     padPause();
     if (paused) { if (photo) photoFrame(dt); return; }
     if (state === 'lobby') lobbyJoins();
+    if (state === 'editor') FP.Editor.update(dt);
     if (slowmo > 0) { slowmo -= dt; dt *= 0.3; if (slowmo <= 0) FP.Camera.zoomTo(1); }
     else if (state !== 'roundOver') FP.Camera.zoomTo(1);
 
@@ -1483,7 +1510,7 @@ FP.Game = (function () {
     get chars() { return chars; }, get state() { return state; }, get round() { return round; }, set round(v) { round = v; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
-    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, storyMap, startStory, get story() { return story; }, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
+    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, editor, storyMap, startStory, get story() { return story; }, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
     get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,
