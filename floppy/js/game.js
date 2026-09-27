@@ -20,6 +20,8 @@ FP.Game = (function () {
   let chars = [];       // ragdolls in the world right now
   let state = 'title', mode = null, scores = {}, round = 0, timer = 0, count = 0;
   let paused = false, botCount = {}, nextId = 1, lobbyPanel = null, outTimers = [];
+  let botSkill = 'normal'; // how good the bots are: easy, normal or hard
+  try { botSkill = FP.Bots.SKILLS[localStorage.getItem('floppy-skill')] ? localStorage.getItem('floppy-skill') : 'normal'; } catch (e) { /* no saving */ }
   const idle = { x: 0, z: 0 };
 
   // ------------------------------------------------------------
@@ -43,6 +45,7 @@ FP.Game = (function () {
       id: opts.id || nextId++, source,
       colorIndex: opts.colorIndex !== undefined ? opts.colorIndex : freeColor(),
       hat: opts.hat || FP.Look.HATS[(players.length * 3 + 1) % (FP.Look.HATS.length - 1)],
+      outfit: opts.outfit || FP.Look.OUTFITS[(players.length + 1) % FP.Look.OUTFITS.length],
       name: opts.name || nextPlayerName(),
     };
     players.push(p);
@@ -66,7 +69,7 @@ FP.Game = (function () {
       const names = BOT_NAMES.filter((nm) => !used.has(nm));
       const name = names[Math.floor(Math.random() * names.length)] || `Bot ${i + 1}`;
       used.add(name);
-      matchBots.push({ id: nextId++, source: { kind: 'bot' }, name, colorIndex: freeColor(), hat: FP.Look.HATS[Math.floor(Math.random() * (FP.Look.HATS.length - 1))] });
+      matchBots.push({ id: nextId++, source: { kind: 'bot' }, name, colorIndex: freeColor(), hat: FP.Look.HATS[Math.floor(Math.random() * (FP.Look.HATS.length - 1))], outfit: FP.Look.OUTFITS[Math.floor(Math.random() * FP.Look.OUTFITS.length)] });
     }
   }
 
@@ -75,9 +78,10 @@ FP.Game = (function () {
     const used = new Set(FP.Ragdoll.all.map((ch) => ch.index));
     let idx = 0;
     while (used.has(idx)) idx++;
-    const c = FP.Ragdoll.create(scene, { index: idx, colorIndex: p.colorIndex, hat: p.hat, name: p.name, x: spot.x, y: spot.y || 0, z: spot.z, yaw: spot.yaw || 0, isBot: p.source.kind === 'bot' });
+    const c = FP.Ragdoll.create(scene, { index: idx, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, name: p.name, x: spot.x, y: spot.y || 0, z: spot.z, yaw: spot.yaw || 0, isBot: p.source.kind === 'bot' });
     c.player = p;
     c.team = p.team;
+    if (c.isBot) c.botSkill = botSkill;
     chars.push(c);
     return c;
   }
@@ -128,7 +132,7 @@ FP.Game = (function () {
     buildLobbyIsland();
     clearChars();
     for (let i = 0; i < 4; i++) {
-      const fake = { id: -1 - i, name: BOT_NAMES[i], colorIndex: [0, 1, 3, 4][i], hat: ['party', 'crown', 'propeller', 'bunny'][i], source: { kind: 'bot' } };
+      const fake = { id: -1 - i, name: BOT_NAMES[i], colorIndex: [0, 1, 3, 4][i], hat: ['party', 'crown', 'propeller', 'bunny'][i], outfit: ['overalls', 'cape', 'bowtie', 'scarf'][i], source: { kind: 'bot' } };
       makeChar(fake, { x: -3 + i * 2, z: 1, yaw: 0 });
     }
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
@@ -166,7 +170,7 @@ FP.Game = (function () {
     FP.Camera.setLift(1.6);
     buildLobbyIsland();
     clearChars();
-    if (!players.length) players.push({ id: nextId++, source: { kind: 'keys', map: 0 }, colorIndex: 0, hat: 'party', name: 'Player 1' });
+    if (!players.length) players.push({ id: nextId++, source: { kind: 'keys', map: 0 }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: 'Player 1' });
     players.forEach((p) => spawnInLobby(p));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     showLobbyPanel();
@@ -229,9 +233,9 @@ FP.Game = (function () {
   }
   function colorKeys(p) {
     const k = p.source.kind;
-    if (k === 'keys') return p.source.map === 0 ? '<kbd>Z</kbd> color &nbsp; <kbd>X</kbd> hat' : '<kbd>K</kbd> color &nbsp; <kbd>L</kbd> hat';
-    if (k === 'pad') return '<kbd>Back</kbd> color &nbsp; <kbd>Y</kbd> hat';
-    if (k === 'me') return '<kbd>Z</kbd> color &nbsp; <kbd>X</kbd> hat';
+    if (k === 'keys') return p.source.map === 0 ? '<kbd>Z</kbd> color <kbd>X</kbd> hat <kbd>C</kbd> outfit' : '<kbd>K</kbd> color <kbd>L</kbd> hat <kbd>J</kbd> outfit';
+    if (k === 'pad') return '<kbd>Back</kbd> color <kbd>Y</kbd> hat';
+    if (k === 'me') return '<kbd>Z</kbd> color <kbd>X</kbd> hat <kbd>C</kbd> outfit';
     return '&nbsp;';
   }
 
@@ -255,11 +259,12 @@ FP.Game = (function () {
       const col = FP.Look.COLORS[p.colorIndex];
       const mine = !client || p.source.kind === 'me';
       const arrows = (act) => (mine ? [`<button class="arrow" data-act="${act}" data-dir="-1" data-i="${i}" title="Previous">${ICON.left}</button>`, `<button class="arrow" data-act="${act}" data-dir="1" data-i="${i}" title="Next">${ICON.right}</button>`] : ['', '']);
-      const [cl, cr] = arrows('color'), [hl, hr] = arrows('hat');
+      const [cl, cr] = arrows('color'), [hl, hr] = arrows('hat'), [ol, or] = arrows('outfit');
       slots.push(`<div class="slot" style="--c:${hex(col.body)};--l:${hex(col.light)}">
         <div class="slot-head"><span class="slot-num">P${i + 1}</span><b>${esc(p.name)}</b>${i > 0 && !client ? `<button class="leave" data-act="remove" data-i="${i}" title="Remove this player">Leave</button>` : ''}</div>
         <div class="slot-row"><span class="lbl">Color</span>${cl}<span class="val"><i class="dot"></i>${col.name}</span>${cr}</div>
         <div class="slot-row"><span class="lbl">Hat</span>${hl}<span class="val">${FP.UI.HAT_NAMES[p.hat]}</span>${hr}</div>
+        <div class="slot-row"><span class="lbl">Outfit</span>${ol}<span class="val">${FP.Look.OUTFIT_NAMES[p.outfit || 'none']}</span>${or}</div>
         <div class="slot-foot">${controlsText(p)}<br><span class="keys">${colorKeys(p)}</span></div>
       </div>`);
     }
@@ -278,12 +283,13 @@ FP.Game = (function () {
     FP.Audio.play('select');
     const p = players[i];
     if (FP.Net && FP.Net.isClient()) {
-      if (act === 'color' || act === 'hat') FP.Net.send({ t: act, dir });
+      if (act === 'color' || act === 'hat' || act === 'outfit') FP.Net.send({ t: act, dir });
       else if (act === 'back') { FP.Net.leave(); titleScreen(); }
       return;
     }
     if (act === 'color' && p) cycleColor(p, dir);
     else if (act === 'hat' && p) cycleHat(p, dir);
+    else if (act === 'outfit' && p) cycleOutfit(p, dir);
     else if (act === 'remove' && p) removePlayer(p);
     else if (act === 'start') chooseMode();
     else if (act === 'back') { if (FP.Net) FP.Net.leave(); titleScreen(); }
@@ -303,6 +309,13 @@ FP.Game = (function () {
     if (FP.Net) FP.Net.playersChanged();
   }
 
+  function cycleOutfit(p, dir = 1) {
+    const n = FP.Look.OUTFITS.length;
+    p.outfit = FP.Look.OUTFITS[(FP.Look.OUTFITS.indexOf(p.outfit || 'none') + dir + n) % n];
+    spawnInLobby(p); refreshLobby();
+    if (FP.Net) FP.Net.playersChanged();
+  }
+
   // someone pressed jump on a keyboard side or controller that isn't playing yet: they join!
   function lobbyJoins() {
     const sources = [{ kind: 'keys', map: 0 }, { kind: 'keys', map: 1 }];
@@ -314,6 +327,7 @@ FP.Game = (function () {
       if (!p && input.jumpPressed) { if (addPlayer(src)) FP.UI.toast('A new player joined!'); }
       if (p && input.colorPressed) cycleColor(p, 1);
       if (p && input.hatPressed) cycleHat(p, 1);
+      if (p && input.outfitPressed) cycleOutfit(p, 1);
       if (p && input.startPressed) chooseMode();
     }
   }
@@ -347,6 +361,12 @@ FP.Game = (function () {
     return { min, max };
   }
 
+  // 1, 2 or 3 little stars for the skill buttons
+  function skillStars(id) {
+    const k = FP.Bots.SKILL_ORDER.indexOf(id) + 1;
+    return `<span class="stars">${Array.from({ length: 3 }, (_, i) => (i < k ? ICON.star : ICON.starEmpty)).join('')}</span>`;
+  }
+
   function setupMatch(m) {
     const { min, max } = botLimits(m);
     if (botCount[m.id] === undefined) botCount[m.id] = Math.min(max, Math.max(min, m.defaultBots !== undefined ? m.defaultBots : MAX_PLAYERS - humans().length));
@@ -354,6 +374,16 @@ FP.Game = (function () {
     const change = (d) => {
       const n = Math.min(max, Math.max(min, botCount[m.id] + d));
       if (n !== botCount[m.id]) { botCount[m.id] = n; FP.Audio.play('menu'); draw(); }
+    };
+    const setSkill = (id) => {
+      if (!FP.Bots.SKILLS[id] || id === botSkill) return;
+      botSkill = id;
+      try { localStorage.setItem('floppy-skill', id); } catch (e) { /* no saving */ }
+      FP.Audio.play('menu'); draw();
+    };
+    const moveSkill = (d) => {
+      const order = FP.Bots.SKILL_ORDER;
+      setSkill(order[Math.min(order.length - 1, Math.max(0, order.indexOf(botSkill) + d))]);
     };
     const draw = () => {
       const n = botCount[m.id];
@@ -367,16 +397,27 @@ FP.Game = (function () {
           <b class="count">${n}</b>
           <button class="round" data-bots="1" ${n >= max ? 'disabled' : ''} title="More bots">${ICON.plus}</button>
         </div>
-        ${why}<div class="who">${who}</div><p class="small">${total} player${total > 1 ? 's' : ''} in total. Use left and right to change the number of bots.</p>`;
+        ${n > 0 ? `<div class="skill"><span class="lbl">Bot skill</span>${FP.Bots.SKILL_ORDER.map((id) => `<button class="chip${id === botSkill ? ' on' : ''}" data-skill="${id}">${skillStars(id)}${FP.Bots.SKILLS[id].name}</button>`).join('')}</div>` : ''}
+        ${why}<div class="who">${who}</div><p class="small">${total} player${total > 1 ? 's' : ''} in total. Left and right: number of bots.${n > 0 ? ' Up and down: bot skill.' : ''}</p>`;
       const card = FP.UI.screen({
         cls: 'setup',
         title: m.name,
         html,
         buttons: [{ label: `${ICON.play} Start`, action: () => startMatch(m), cls: 'go' }, { label: `${ICON.back} Pick another game`, action: () => { FP.UI.closeScreen(); state = 'lobby'; chooseMode(); }, small: true }],
         back: () => { FP.UI.closeScreen(); state = 'lobby'; chooseMode(); },
-        onKey: (code) => { if (code === 'left') { change(-1); return true; } if (code === 'right') { change(1); return true; } return false; },
+        onKey: (code) => {
+          if (code === 'left') { change(-1); return true; }
+          if (code === 'right') { change(1); return true; }
+          if (botCount[m.id] > 0 && code === 'up') { moveSkill(1); return true; }
+          if (botCount[m.id] > 0 && code === 'down') { moveSkill(-1); return true; }
+          return false;
+        },
       });
       card.querySelectorAll('[data-bots]').forEach((b) => b.addEventListener('click', () => change(+b.dataset.bots)));
+      card.querySelectorAll('[data-skill]').forEach((b) => {
+        b.addEventListener('mousedown', (e) => e.preventDefault());
+        b.addEventListener('click', () => setSkill(b.dataset.skill));
+      });
     };
     draw();
   }
@@ -445,7 +486,7 @@ FP.Game = (function () {
       scores['team' + res.team] += res.points ?? 1;
       text = `${res.team === 0 ? 'Red' : 'Blue'} team wins!`;
     } else if (res.winners && res.winners.length) {
-      res.winners.forEach((c) => { if (!mode.single) scores[c.player.id] = (scores[c.player.id] || 0) + 1; c.expression = 'smile'; });
+      res.winners.forEach((c) => { if (!mode.single) scores[c.player.id] = (scores[c.player.id] || 0) + 1; c.cheer = 3.5; c.expression = 'happy'; c.exprTimer = 3.5; });
       text = res.winners.length === 1 ? `${res.winners[0].name} wins${mode.roundsToWin > 1 ? ' the round' : ''}!` : 'Winners!';
       const t = res.winners[0].parts.torso.position;
       center.set(t.x, t.y, t.z);
@@ -609,8 +650,9 @@ FP.Game = (function () {
     get chars() { return chars; }, get state() { return state; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
-    clientLobby, clientRound, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : cycleHat(p, dir)),
+    clientLobby, clientRound, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
     botLimits, setBots(id, n) { botCount[id] = n; },
+    setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
     manual: false,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) update(1 / 60); },
   };

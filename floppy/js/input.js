@@ -18,11 +18,11 @@ FP.Input = (function () {
   const KEYMAP = [
     { // PLAYER 1 (left side)
       up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
-      jump: ['Space'], punch: ['KeyF', 'KeyE'], grab: ['KeyG', 'KeyQ', 'ShiftLeft'], color: ['KeyZ'], hat: ['KeyX'],
+      jump: ['Space'], punch: ['KeyF', 'KeyE'], grab: ['KeyG', 'KeyQ', 'ShiftLeft'], color: ['KeyZ'], hat: ['KeyX'], outfit: ['KeyC'],
     },
     { // PLAYER 2 (right side)
       up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
-      jump: ['Slash', 'Numpad0'], punch: ['Period', 'Numpad1'], grab: ['Comma', 'ShiftRight', 'Numpad2'], color: ['KeyK', 'Numpad4'], hat: ['KeyL', 'Numpad5'],
+      jump: ['Slash', 'Numpad0'], punch: ['Period', 'Numpad1'], grab: ['Comma', 'ShiftRight', 'Numpad2'], color: ['KeyK', 'Numpad4'], hat: ['KeyL', 'Numpad5'], outfit: ['KeyJ', 'Numpad6'],
     },
   ];
   const pads = [null, null, null, null]; // up to 4 controllers
@@ -52,12 +52,12 @@ FP.Input = (function () {
 
   // read a "source": { kind: 'keys', map: 0|1 } or { kind: 'pad', index }
   function read(source, id) {
-    const s = { x: 0, z: 0, jump: false, punch: false, grab: false, start: false, color: false, hat: false };
+    const s = { x: 0, z: 0, jump: false, punch: false, grab: false, start: false, color: false, hat: false, outfit: false };
     if (source.kind === 'keys') {
       const k = KEYMAP[source.map];
       s.x = (down(k.right) ? 1 : 0) - (down(k.left) ? 1 : 0);
       s.z = (down(k.down) ? 1 : 0) - (down(k.up) ? 1 : 0);
-      s.jump = down(k.jump); s.punch = down(k.punch); s.grab = down(k.grab); s.color = down(k.color); s.hat = down(k.hat);
+      s.jump = down(k.jump); s.punch = down(k.punch); s.grab = down(k.grab); s.color = down(k.color); s.hat = down(k.hat); s.outfit = down(k.outfit);
     } else if (source.kind === 'pad') {
       const gp = getPads()[source.index];
       if (gp) {
@@ -67,7 +67,7 @@ FP.Input = (function () {
         s.jump = b(0);
         s.punch = b(2) || b(1);
         s.grab = b(7) || b(5) || b(6) || b(4);
-        s.start = b(9); s.color = b(8); s.hat = b(3);
+        s.start = b(9); s.color = b(8); s.hat = b(3); s.outfit = b(11);
       }
     }
     const len = Math.hypot(s.x, s.z);
@@ -78,7 +78,8 @@ FP.Input = (function () {
     s.startPressed = s.start && !p.start;
     s.colorPressed = s.color && !p.color;
     s.hatPressed = s.hat && !p.hat;
-    prev[id] = { jump: s.jump, punch: s.punch, start: s.start, color: s.color, hat: s.hat };
+    s.outfitPressed = s.outfit && !p.outfit;
+    prev[id] = { jump: s.jump, punch: s.punch, start: s.start, color: s.color, hat: s.hat, outfit: s.outfit };
     return s;
   }
 

@@ -6,10 +6,10 @@
 window.FP = window.FP || {};
 
 FP.Look = (function () {
-  // a tiny 3-step texture that makes lighting look like a cartoon
+  // a tiny texture with 4 steps that makes lighting look like a cartoon
   const gradient = (() => {
-    const data = new Uint8Array([90, 90, 90, 255, 180, 180, 180, 255, 255, 255, 255, 255]);
-    const t = new THREE.DataTexture(data, 3, 1, THREE.RGBAFormat);
+    const data = new Uint8Array([105, 105, 105, 255, 165, 165, 165, 255, 222, 222, 222, 255, 255, 255, 255, 255]);
+    const t = new THREE.DataTexture(data, 4, 1, THREE.RGBAFormat);
     t.minFilter = t.magFilter = THREE.NearestFilter;
     t.needsUpdate = true;
     return t;
@@ -22,6 +22,21 @@ FP.Look = (function () {
     const m = new THREE.MeshToonMaterial(Object.assign({ color, gradientMap: gradient }, opts));
     delete m.unique;
     if (!opts.unique) cache.set(key, m);
+    return m;
+  }
+
+  // character material: cartoon shading plus a soft light around the edges ("rim light")
+  const charCache = new Map();
+  function charToon(color) {
+    if (charCache.has(color)) return charCache.get(color);
+    const m = new THREE.MeshToonMaterial({ color, gradientMap: gradient });
+    m.onBeforeCompile = (shader) => {
+      shader.fragmentShader = shader.fragmentShader.replace('#include <dithering_fragment>', `#include <dithering_fragment>
+        float rim = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);
+        gl_FragColor.rgb += vec3(1.0, 0.97, 0.92) * pow(rim, 3.0) * 0.45;`);
+    };
+    m.customProgramCacheKey = () => 'fp-rim';
+    charCache.set(color, m);
     return m;
   }
   const outlineMat = new THREE.MeshBasicMaterial({ color: 0x1d1a2f, side: THREE.BackSide });
@@ -70,68 +85,207 @@ FP.Look = (function () {
   ];
   const HATS = ['party', 'beanie', 'crown', 'cowboy', 'tophat', 'propeller', 'bunny', 'chef', 'none'];
 
-  // body: a round bean with a lighter tummy
-  function makeTorso(c, dims) {
+  const OUTFITS = ['none', 'overalls', 'bowtie', 'scarf', 'cape', 'belt'];
+  const OUTFIT_NAMES = { none: 'Nothing', overalls: 'Overalls', bowtie: 'Bow tie', scarf: 'Scarf', cape: 'Cape', belt: 'Belt' };
+
+  // a shiny spot that makes things look glossy
+  function shine(w, h) {
+    const m = new THREE.Mesh(new THREE.SphereGeometry(1, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false }));
+    m.scale.set(w, h, w * 0.3);
+    return m;
+  }
+
+  // body: a round bean with a lighter tummy, a shiny spot, and an outfit
+  function makeTorso(c, dims, outfit = 'none') {
     const g = new THREE.Group();
-    g.add(mesh(new THREE.CapsuleGeometry(dims.torsoR, dims.torsoH, 8, 18), toon(c.body)));
-    const belly = mesh(new THREE.SphereGeometry(dims.torsoR * 0.78, 18, 14), toon(c.light), 0);
+    const R = dims.torsoR;
+    g.add(mesh(new THREE.CapsuleGeometry(R, dims.torsoH, 10, 20), charToon(c.body)));
+    const belly = mesh(new THREE.SphereGeometry(R * 0.8, 20, 14), charToon(c.light), 0);
     belly.scale.set(1, 1.15, 0.5);
-    belly.position.set(0, -0.05, dims.torsoR * 0.55);
+    belly.position.set(0, -0.06, R * 0.56);
     g.add(belly);
+    const s1 = shine(R * 0.2, R * 0.32);
+    s1.position.set(-R * 0.5, R * 0.35, R * 0.72);
+    s1.rotation.z = 0.5;
+    g.add(s1);
+    const dark = (col) => toon(col);
+    if (outfit === 'overalls') {
+      const denim = dark(0x3d6fd6);
+      const bib = mesh(new THREE.SphereGeometry(R * 1.02, 20, 12, 0, Math.PI * 2, Math.PI * 0.45, Math.PI * 0.55), denim, 0.02);
+      bib.position.y = -dims.torsoH / 2 + 0.02;
+      g.add(bib);
+      const front = mesh(new THREE.BoxGeometry(R * 0.8, R * 0.55, 0.05), denim, 0.015);
+      front.position.set(0, R * 0.05, R * 0.95);
+      g.add(front);
+      for (const side of [-1, 1]) {
+        const strap = mesh(new THREE.BoxGeometry(0.07, R * 1.1, 0.05), denim, 0.012);
+        strap.position.set(side * R * 0.35, R * 0.55, R * 0.72);
+        strap.rotation.x = -0.45;
+        const button = mesh(new THREE.SphereGeometry(0.035, 8, 6), dark(0xffcf33), 0);
+        button.position.set(side * R * 0.3, R * 0.28, R * 1.0);
+        g.add(strap, button);
+      }
+    } else if (outfit === 'bowtie') {
+      const red = dark(0xff3355);
+      for (const side of [-1, 1]) {
+        const wing = mesh(new THREE.ConeGeometry(0.08, 0.15, 10), red, 0.015);
+        wing.rotation.set(-0.35, 0, side * Math.PI / 2);
+        wing.position.set(side * 0.085, R * 0.62, R * 0.93);
+        g.add(wing);
+      }
+      const knot = mesh(new THREE.SphereGeometry(0.045, 10, 8), red, 0.012);
+      knot.position.set(0, R * 0.62, R * 0.98);
+      g.add(knot);
+    } else if (outfit === 'scarf') {
+      const yel = dark(0xffb62e);
+      const ring = mesh(new THREE.TorusGeometry(R * 0.72, 0.09, 10, 24), yel, 0.02);
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = R * 0.72;
+      const tail = mesh(new THREE.BoxGeometry(0.16, 0.38, 0.06), yel, 0.015);
+      tail.position.set(R * 0.35, R * 0.45, R * 0.72);
+      tail.rotation.set(-0.3, 0, 0.25);
+      for (let i = 0; i < 2; i++) {
+        const stripe = mesh(new THREE.BoxGeometry(0.17, 0.04, 0.065), dark(0xff5a5f), 0);
+        stripe.position.set(0, -0.06 - i * 0.1, 0);
+        tail.add(stripe);
+      }
+      g.add(ring, tail);
+    } else if (outfit === 'cape') {
+      const red = dark(0xe8343f);
+      const cape = mesh(new THREE.CylinderGeometry(R * 0.7, R * 1.15, R * 2.1, 16, 1, true, Math.PI * 0.62, Math.PI * 0.76), toon(0xe8343f, { side: THREE.DoubleSide }), 0);
+      cape.position.set(0, -R * 0.1, -R * 0.12);
+      g.add(cape);
+      const clasp = mesh(new THREE.SphereGeometry(0.05, 8, 6), dark(0xffcf33), 0);
+      clasp.position.set(0, R * 0.78, R * 0.55);
+      g.add(clasp);
+      void red;
+    } else if (outfit === 'belt') {
+      const belt = mesh(new THREE.TorusGeometry(R * 1.0, 0.055, 8, 28), dark(0x6b4226), 0.015);
+      belt.rotation.x = Math.PI / 2;
+      belt.position.y = -R * 0.2;
+      const buckle = mesh(new THREE.BoxGeometry(0.16, 0.12, 0.04), dark(0xffcf33), 0.012);
+      buckle.position.set(0, -R * 0.2, R * 1.02);
+      g.add(belt, buckle);
+    }
     return g;
   }
 
+  // head: big eyes that look around, eyebrows, cheeks, mouths for every mood, and a hat
   function makeHead(c, dims, hat) {
     const g = new THREE.Group();
-    const r = dims.headR;
-    g.add(mesh(new THREE.SphereGeometry(r, 24, 18), toon(c.body)));
-    // big shiny eyes
-    const eyes = [];
+    const r = dims.headR * 1.06;
+    const skull = mesh(new THREE.SphereGeometry(r, 28, 20), charToon(c.body));
+    skull.scale.set(1.02, 0.97, 1);
+    g.add(skull);
+    const s1 = shine(r * 0.18, r * 0.12);
+    s1.position.set(-r * 0.42, r * 0.62, r * 0.55);
+    s1.rotation.z = 0.6;
+    g.add(s1);
+    const ink = toon(0x1d1a2f);
+    const eyes = [], brows = [];
     for (const side of [-1, 1]) {
       const eye = new THREE.Group();
-      const white = mesh(new THREE.SphereGeometry(r * 0.36, 16, 12), toon(0xffffff), 0.015, false);
-      white.scale.set(0.85, 1.1, 0.5);
-      const pupil = mesh(new THREE.SphereGeometry(r * 0.23, 14, 10), toon(0x1d1a2f), 0, false);
-      pupil.scale.set(0.85, 1.1, 0.5);
-      pupil.position.z = r * 0.07;
-      const shine = mesh(new THREE.SphereGeometry(r * 0.06, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }), 0, false);
-      shine.position.set(r * 0.05, r * 0.07, r * 0.12);
-      eye.add(white, pupil, shine);
-      eye.position.set(side * r * 0.38, r * 0.12, r * 0.84);
-      eye.lookAt(side * r * 0.6, r * 0.15, r * 3);
+      const white = mesh(new THREE.SphereGeometry(r * 0.3, 18, 14), toon(0xffffff), 0.012, false);
+      white.scale.set(0.9, 1.15, 0.55);
+      const pupil = new THREE.Group();
+      const iris = mesh(new THREE.SphereGeometry(r * 0.19, 16, 12), ink, 0, false);
+      iris.scale.set(0.9, 1.1, 0.5);
+      const glint = new THREE.Mesh(new THREE.SphereGeometry(r * 0.065, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      glint.position.set(r * 0.06, r * 0.08, r * 0.09);
+      const glint2 = new THREE.Mesh(new THREE.SphereGeometry(r * 0.03, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      glint2.position.set(-r * 0.05, -r * 0.06, r * 0.09);
+      pupil.add(iris, glint, glint2);
+      pupil.position.z = r * 0.1;
+      eye.add(white, pupil);
+      eye.position.set(side * r * 0.35, r * 0.1, r * 0.83);
+      eye.lookAt(side * r * 0.7, r * 0.12, r * 3.5);
       g.add(eye);
-      eyes.push(eye);
+      eyes.push({ grp: eye, pupil });
+      const brow = mesh(new THREE.CapsuleGeometry(r * 0.04, r * 0.22, 4, 8), ink, 0, false);
+      brow.rotation.z = Math.PI / 2;
+      const browHolder = new THREE.Group();
+      browHolder.add(brow);
+      browHolder.position.set(side * r * 0.35, r * 0.5, r * 0.84);
+      browHolder.lookAt(side * r * 0.7, r * 0.55, r * 3.5);
+      browHolder.userData.side = side;
+      g.add(browHolder);
+      brows.push(browHolder);
     }
-    // rosy cheeks
     for (const side of [-1, 1]) {
-      const cheek = mesh(new THREE.SphereGeometry(r * 0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff7aa2, transparent: true, opacity: 0.55 }), 0, false);
-      cheek.scale.set(1.3, 0.8, 0.3);
-      cheek.position.set(side * r * 0.62, -r * 0.18, r * 0.72);
+      const cheek = new THREE.Mesh(new THREE.SphereGeometry(r * 0.12, 10, 8), new THREE.MeshBasicMaterial({ color: 0xff7aa2, transparent: true, opacity: 0.55, depthWrite: false }));
+      cheek.scale.set(1.35, 0.8, 0.3);
+      cheek.position.set(side * r * 0.6, -r * 0.2, r * 0.74);
       g.add(cheek);
     }
-    // mouths: happy smile, surprised "O", and dizzy squiggle (shown one at a time)
-    const smile = mesh(new THREE.TorusGeometry(r * 0.18, r * 0.045, 6, 14, Math.PI), toon(0x1d1a2f), 0, false);
+    // mouths (one at a time)
+    const mouthAt = (m) => { m.position.set(0, -r * 0.3, r * 0.94); m.lookAt(0, -r * 0.4, r * 4); g.add(m); m.visible = false; return m; };
+    const smile = mouthAt(mesh(new THREE.TorusGeometry(r * 0.17, r * 0.045, 6, 16, Math.PI), ink, 0, false));
     smile.rotation.z = Math.PI;
-    smile.position.set(0, -r * 0.2, r * 0.95);
-    const oh = mesh(new THREE.TorusGeometry(r * 0.11, r * 0.05, 6, 14), toon(0x1d1a2f), 0, false);
-    oh.position.set(0, -r * 0.3, r * 0.93);
-    oh.visible = false;
-    g.add(smile, oh);
+    smile.position.y = -r * 0.22;
+    smile.visible = true;
+    // big open grin (happy) and an open shouting mouth (angry or scared), each with a tongue
+    const grin = new THREE.Group();
+    const grinShape = new THREE.Mesh(new THREE.CircleGeometry(r * 0.22, 20, Math.PI, Math.PI), new THREE.MeshBasicMaterial({ color: 0x3a1624 }));
+    const grinTongue = new THREE.Mesh(new THREE.CircleGeometry(r * 0.1, 14), new THREE.MeshBasicMaterial({ color: 0xff7a93 }));
+    grinTongue.position.set(0, -r * 0.13, 0.002);
+    grin.add(grinShape, grinTongue);
+    mouthAt(grin);
+    grin.position.y = -r * 0.2;
+    const shout = new THREE.Group();
+    const shoutShape = new THREE.Mesh(new THREE.CircleGeometry(r * 0.13, 18), new THREE.MeshBasicMaterial({ color: 0x3a1624 }));
+    shoutShape.scale.set(1, 1.25, 1);
+    const shoutTongue = new THREE.Mesh(new THREE.CircleGeometry(r * 0.07, 12), new THREE.MeshBasicMaterial({ color: 0xff7a93 }));
+    shoutTongue.position.set(0, -r * 0.07, 0.002);
+    shout.add(shoutShape, shoutTongue);
+    mouthAt(shout);
+    // knocked out: tongue hanging out
+    const tongue = mouthAt(mesh(new THREE.CapsuleGeometry(r * 0.07, r * 0.1, 4, 8), toon(0xff7a93), 0.01, false));
+    tongue.position.set(r * 0.08, -r * 0.4, r * 0.9);
+    tongue.rotation.set(0.3, 0, 0.2);
     // X eyes for knocked out
     const xEyes = new THREE.Group();
     for (const side of [-1, 1]) {
       for (const a of [0.8, -0.8]) {
-        const bar = mesh(new THREE.BoxGeometry(r * 0.38, r * 0.08, r * 0.05), toon(0x1d1a2f), 0, false);
+        const bar = mesh(new THREE.BoxGeometry(r * 0.36, r * 0.08, r * 0.05), ink, 0, false);
         bar.rotation.z = a;
-        bar.position.set(side * r * 0.36, r * 0.12, r * 0.97);
+        bar.position.set(side * r * 0.35, r * 0.1, r * 0.97);
         xEyes.add(bar);
       }
     }
     xEyes.visible = false;
     g.add(xEyes);
-    const hatMesh = makeHat(hat, r);
+    const hatMesh = makeHat(hat, dims.headR);
     if (hatMesh) g.add(hatMesh);
-    return { group: g, eyes, smile, oh, xEyes, hat: hatMesh };
+    return { group: g, eyes, brows, mouths: { smile, grin, shout, tongue }, xEyes, hat: hatMesh, r };
+  }
+
+  // change the face: expression is 'smile', 'happy', 'angry', 'oh' (scared) or 'ko'.
+  // look = where the eyes look (-1..1 left/right, -1..1 down/up), blink = eyes closed
+  function setFace(face, expr, lookX = 0, lookY = 0, blink = false) {
+    const ko = expr === 'ko';
+    const m = face.mouths;
+    m.smile.visible = expr === 'smile';
+    m.grin.visible = expr === 'happy';
+    m.shout.visible = expr === 'angry' || expr === 'oh';
+    m.shout.scale.setScalar(expr === 'oh' ? 1.25 : 0.9);
+    m.tongue.visible = ko;
+    face.xEyes.visible = ko;
+    const r = face.r;
+    for (const e of face.eyes) {
+      e.grp.visible = !ko;
+      e.grp.scale.y = blink ? 0.1 : (expr === 'oh' ? 1.18 : expr === 'happy' ? 0.85 : 1);
+      e.pupil.position.x = lookX * r * 0.09;
+      e.pupil.position.y = lookY * r * 0.08;
+      e.pupil.scale.setScalar(expr === 'oh' ? 0.75 : 1);
+    }
+    for (const b of face.brows) {
+      b.visible = !ko;
+      const side = b.userData.side;
+      // angry: inner ends down. scared: inner ends up. happy: raised
+      const tilt = expr === 'angry' ? -0.5 : expr === 'oh' ? 0.4 : expr === 'happy' ? 0.15 : 0.05;
+      b.children[0].rotation.set(0, 0, Math.PI / 2 + tilt * side);
+      b.children[0].position.y = expr === 'oh' || expr === 'happy' ? r * 0.06 : expr === 'angry' ? -r * 0.04 : 0;
+    }
   }
 
   function makeHat(kind, r) {
@@ -235,24 +389,34 @@ FP.Look = (function () {
     return g;
   }
 
-  // an arm: a noodle with a round mitten at the end (pivot at the shoulder)
+  // an arm: a noodle with a round mitten (and a thumb!)
   function makeArm(c, dims) {
     const g = new THREE.Group();
-    const noodle = mesh(new THREE.CapsuleGeometry(dims.armR, dims.armL, 6, 10), toon(c.body));
-    g.add(noodle);
-    const hand = mesh(new THREE.SphereGeometry(dims.armR * 1.35, 12, 10), toon(c.light));
+    g.add(mesh(new THREE.CapsuleGeometry(dims.armR, dims.armL, 6, 10), charToon(c.body)));
+    const hand = mesh(new THREE.SphereGeometry(dims.armR * 1.45, 14, 10), charToon(c.light));
+    hand.scale.set(1, 1.1, 0.9);
     hand.position.y = -dims.armL / 2 - dims.armR * 0.4;
+    const thumb = mesh(new THREE.SphereGeometry(dims.armR * 0.6, 10, 8), charToon(c.light), 0.012);
+    thumb.position.set(0, dims.armR * 0.3, dims.armR * 1.1);
+    hand.add(thumb);
     g.add(hand);
     return g;
   }
 
-  // a leg: a stubby noodle with a shoe
+  // a leg: a stubby noodle with a sneaker (with a white sole)
   function makeLeg(c, dims) {
     const g = new THREE.Group();
-    g.add(mesh(new THREE.CapsuleGeometry(dims.legR, dims.legL, 6, 10), toon(c.body)));
-    const shoe = mesh(new THREE.SphereGeometry(dims.legR * 1.35, 12, 10), toon(0x3a3350));
-    shoe.scale.set(1, 0.7, 1.45);
-    shoe.position.set(0, -dims.legL / 2 - dims.legR * 0.35, dims.legR * 0.35);
+    g.add(mesh(new THREE.CapsuleGeometry(dims.legR, dims.legL, 6, 10), charToon(c.body)));
+    const shoe = mesh(new THREE.SphereGeometry(dims.legR * 1.4, 14, 10), toon(0x3a3350));
+    shoe.scale.set(1, 0.72, 1.5);
+    shoe.position.set(0, -dims.legL / 2 - dims.legR * 0.3, dims.legR * 0.4);
+    const sole = mesh(new THREE.CylinderGeometry(dims.legR * 1.35, dims.legR * 1.35, 0.05, 14), toon(0xffffff), 0.01);
+    sole.scale.set(1, 1, 1.5);
+    sole.position.y = -dims.legR * 0.85;
+    shoe.add(sole);
+    const lace = mesh(new THREE.BoxGeometry(dims.legR * 1.1, 0.03, 0.05), toon(0xffffff), 0);
+    lace.position.set(0, dims.legR * 0.55, dims.legR * 0.7);
+    shoe.add(lace);
     g.add(shoe);
     return g;
   }
@@ -321,5 +485,5 @@ FP.Look = (function () {
     return g;
   }
 
-  return { toon, mesh, boxMesh, COLORS, HATS, makeTorso, makeHead, makeHat, makeArm, makeLeg, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
+  return { toon, charToon, mesh, boxMesh, COLORS, HATS, OUTFITS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
 })();

@@ -58,7 +58,7 @@ FP.UI = (function () {
       <tr><td>Jump</td><td>Space</td><td>/</td><td>A</td></tr>
       <tr><td>Punch</td><td>F</td><td>.</td><td>X or B</td></tr>
       <tr><td>Grab (hold)</td><td>G</td><td>,</td><td>RT or RB</td></tr>
-      <tr><td>Color / hat (lobby)</td><td>Z / X</td><td>K / L</td><td>Back / Y</td></tr>
+      <tr><td>Color / hat / outfit (lobby)</td><td>Z / X / C</td><td>K / L / J</td><td>Back / Y / R-stick</td></tr>
     </table>
     <ul>
       <li><b>Punch</b> 3 times quickly to knock someone out. They go floppy!</li>

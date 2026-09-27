@@ -43,7 +43,7 @@ FP.Ragdoll = (function () {
     const c = {
       index, name: opts.name || color.name, colorIndex: opts.colorIndex, color, hat: opts.hat, isBot: !!opts.isBot, group,
       yaw: opts.yaw || 0, grounded: false, groundBody: null, ko: 0, strength: 1, dizzy: 0, walkPhase: 0,
-      punchT: 9, punchArm: 0, punchHit: false, grab: [null, null], grabHeld: 0, grabbedBy: null, struggle: 0,
+      punchT: 9, punchArm: 0, punchHit: false, thrownT: 0, grab: [null, null], grabHeld: 0, grabbedBy: null, struggle: 0,
       jumpCool: 0, airTime: 0, lastVel: new Vec3(), alive: true, score: 0, expression: 'smile', exprTimer: 0,
       lastHitBy: null, lastHitTime: -99, parts: {}, meshes: {}, constraints: [],
     };
@@ -67,7 +67,8 @@ FP.Ragdoll = (function () {
     c.constraints.forEach((k) => { k.collideConnected = false; P.world.addConstraint(k); });
 
     // looks
-    c.meshes.torso = FP.Look.makeTorso(color, D);
+    c.outfit = opts.outfit || 'none';
+    c.meshes.torso = FP.Look.makeTorso(color, D, c.outfit);
     const head = FP.Look.makeHead(color, D, opts.hat);
     c.meshes.head = head.group;
     c.face = head;
@@ -186,6 +187,11 @@ FP.Ragdoll = (function () {
     }
 
     // what's under my feet? (check the middle first, then a few spots around it, so edges count too)
+    // things I'm holding don't count as floor (or I could stand on them and float up into the sky!)
+    const held = [];
+    for (const gr of c.grab) if (gr) for (const b of (gr.victim ? gr.victim.bodies : [gr.body])) if (!held.includes(b)) held.push(b);
+    const heldGroups = held.map((b) => b.collisionFilterGroup);
+    held.forEach((b) => { b.collisionFilterGroup = 0; });
     let g = P.groundBelow(t.position, STAND + 0.6, c.group);
     if (!g) {
       for (const [ox, oz] of [[0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]]) {
@@ -193,12 +199,19 @@ FP.Ragdoll = (function () {
         if (g) break;
       }
     }
+    held.forEach((b, i) => { b.collisionFilterGroup = heldGroups[i]; });
     const upright = t.quaternion.vmult(UP, tv).y;
     c.grounded = !!g && g.dist < STAND + 0.2 && upright > 0.5 && g.normal.y > 0.5;
     c.groundBody = c.grounded ? g.body : null;
     c.airTime = c.grounded ? 0 : c.airTime + dt;
     const groundVel = c.groundBody ? c.groundBody.velocity : new Vec3();
     const tall = c.grabbedBy ? 0 : s;
+    // just got thrown: flying through the air, can't steer much until landing
+    if (c.thrownT > 0) {
+      c.thrownT -= dt;
+      if (c.grounded && c.thrownT < 0.75) c.thrownT = 0;
+      c.stagger = Math.max(c.stagger || 0, 0.05);
+    }
 
     if (tall > 0.01) {
       // float at standing height (this is what "legs" do)
@@ -392,8 +405,10 @@ FP.Ragdoll = (function () {
         b.velocity.y = Math.max(b.velocity.y, 7.5);
       }
       if (thrown.bodies) {
+        // YEET! No knockout, unless they smack into a wall (see onBump)
         thrown.lastHitBy = c; thrown.lastHitTime = performance.now();
-        knockOut(thrown, 1.1); // thrown characters go floppy and fly!
+        thrown.thrownT = 1.2;
+        thrown.expression = 'oh'; thrown.exprTimer = 1;
       }
     }
     return thrown;
@@ -433,6 +448,18 @@ FP.Ragdoll = (function () {
     const t = c.parts.torso;
     const dv = t.velocity.vsub(c.lastVel).length();
     const other = e.body && e.body.userData && e.body.userData.char;
+    if (c.thrownT > 0) {
+      // thrown: only a wall knocks you out. Floors and other people just bounce you
+      const n = e.contact && e.contact.ni;
+      const wall = e.body && e.body.mass === 0 && n && Math.abs(n.y) < 0.55;
+      const speed = Math.hypot(c.lastVel.x, c.lastVel.z);
+      if (wall && speed > 5) {
+        c.thrownT = 0;
+        if (c.ko <= 0) knockOut(c, 1.8);
+        FP.bus.emit('bump', { c, pos: t.position.clone(), power: Math.max(dv, 14) });
+      }
+      return;
+    }
     if (dv > 13 && other !== c) {
       if (c.ko <= 0) knockOut(c, 1.6);
       FP.bus.emit('bump', { c, pos: t.position.clone(), power: dv });
@@ -449,21 +476,43 @@ FP.Ragdoll = (function () {
     c.meshes.arms.forEach((m, i) => copy(m, c.parts.arms[i]));
     c.meshes.legs.forEach((m, i) => copy(m, c.parts.legs[i]));
 
-    // face
+    // face: angry while punching, scared when flying or grabbed, happy when cheering
     c.exprTimer -= dt;
     let e = 'smile';
     if (c.ko > 0) e = 'ko';
     else if (c.exprTimer > 0) e = c.expression;
+    else if (c.punchT < 0.5 || (c.grab[0] || c.grab[1])) e = 'angry';
     else if (c.airTime > 0.6 || c.grabbedBy) e = 'oh';
-    c.face.smile.visible = e === 'smile';
-    c.face.oh.visible = e === 'oh';
-    c.face.xEyes.visible = e === 'ko';
-    c.face.eyes.forEach((eye) => { eye.visible = e !== 'ko'; });
-    // blink
+    else if (c.cheer > 0) e = 'happy';
+    c.cheer = Math.max(0, (c.cheer || 0) - dt);
+    c.faceExpr = e;
+    // blink every few seconds
     c.blink = (c.blink || 2 + Math.random() * 3) - dt;
     const blinking = c.blink < 0.1;
     if (c.blink < 0) c.blink = 2 + Math.random() * 4;
-    c.face.eyes.forEach((eye) => { eye.scale.y = blinking ? 0.1 : 1; });
+    // eyes look at the closest other character
+    c.lookTimer = (c.lookTimer || 0) - dt;
+    if (c.lookTimer <= 0) {
+      c.lookTimer = 0.25;
+      let best = null, bd = 7;
+      for (const o of all) {
+        if (o === c) continue;
+        const d = o.parts.head.position.distanceTo(c.parts.head.position);
+        if (d < bd) { bd = d; best = o; }
+      }
+      c.lookAt = best;
+    }
+    let lx = 0, ly = 0;
+    if (c.lookAt && all.includes(c.lookAt)) {
+      const h = c.meshes.head;
+      h.updateMatrixWorld();
+      const p = c.lookAt.parts.head.position;
+      const local = h.worldToLocal(new THREE.Vector3(p.x, p.y, p.z));
+      if (local.z > 0) { lx = Math.max(-1, Math.min(1, local.x / (local.z + 0.5))); ly = Math.max(-1, Math.min(1, local.y / (local.z + 0.5))); }
+    }
+    c.eyeX = (c.eyeX || 0) + (lx - (c.eyeX || 0)) * Math.min(1, dt * 8);
+    c.eyeY = (c.eyeY || 0) + (ly - (c.eyeY || 0)) * Math.min(1, dt * 8);
+    FP.Look.setFace(c.face, e, c.eyeX, c.eyeY, blinking);
     if (c.face.hat && c.face.hat.userData.spin) c.face.hat.userData.spin.rotation.y += dt * (c.grounded ? 4 : 30);
 
     // stars when knocked out

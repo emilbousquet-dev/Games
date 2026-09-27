@@ -98,7 +98,7 @@ FP.Net = (function () {
       } else if (msg.t === 'in') {
         const c = conns.get(conn.peer);
         if (c) inputs[c.pid] = msg;
-      } else if (msg.t === 'color' || msg.t === 'hat') {
+      } else if (msg.t === 'color' || msg.t === 'hat' || msg.t === 'outfit') {
         const c = conns.get(conn.peer);
         const p = c && FP.Game.players.find((q) => q.id === c.pid);
         if (p && FP.Game.state === 'lobby') FP.Game.cycle(p, msg.t, msg.dir === -1 ? -1 : 1);
@@ -114,7 +114,7 @@ FP.Net = (function () {
   }
 
   function broadcast(msg) { for (const { conn } of conns.values()) if (conn.open) conn.send(msg); }
-  const playerList = () => FP.Game.everyone.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, team: p.team, kind: p.source.kind }));
+  const playerList = () => FP.Game.everyone.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, team: p.team, kind: p.source.kind }));
 
   // what a remote player is pressing (presses are counted so none get lost)
   function inputOf(pid) {
@@ -159,7 +159,7 @@ FP.Net = (function () {
     if (sendTimer > 0) return;
     sendTimer = 1 / 20;
     const chars = FP.Ragdoll.all.map((c) => ({
-      k: charKey(c), ko: c.ko > 0 ? 1 : 0, e: c.exprTimer > 0 ? c.expression : (c.airTime > 0.6 || c.grabbedBy ? 'oh' : ''), a: c.alive ? 1 : 0,
+      k: charKey(c), ko: c.ko > 0 ? 1 : 0, e: c.faceExpr && c.faceExpr !== 'smile' && c.faceExpr !== 'ko' ? c.faceExpr : '', a: c.alive ? 1 : 0,
       b: c.bodies.map((b) => [r3(b.position.x), r3(b.position.y), r3(b.position.z), r3(b.quaternion.x), r3(b.quaternion.y), r3(b.quaternion.z), r3(b.quaternion.w)]),
     }));
     const movers = FP.Stage.movers.map(([, b]) => [r3(b.position.x), r3(b.position.y), r3(b.position.z), r3(b.quaternion.x), r3(b.quaternion.y), r3(b.quaternion.z), r3(b.quaternion.w)]);
@@ -221,7 +221,7 @@ FP.Net = (function () {
       FP.UI.screen({ title: 'Results', html: msg.html + '<p class="small">Waiting for the host to pick what\'s next...</p>', buttons: [{ label: 'Leave the party', action: () => { leave(); g.titleScreen(); }, small: true }] });
     }
   }
-  const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
+  const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
 
   function applyEvents(list) {
     const byKey = keyMap();
@@ -251,6 +251,7 @@ FP.Net = (function () {
     if (a.punchPressed || b.punchPressed || pad.punchPressed) pressCount.punch++;
     if (clientState === 'lobby' && (a.colorPressed || b.colorPressed || pad.colorPressed)) hostConn.send({ t: 'color' });
     if (clientState === 'lobby' && (a.hatPressed || b.hatPressed || pad.hatPressed)) hostConn.send({ t: 'hat' });
+    if (clientState === 'lobby' && (a.outfitPressed || b.outfitPressed || pad.outfitPressed)) hostConn.send({ t: 'outfit' });
     inTimer -= dt;
     if (inTimer <= 0 && hostConn && hostConn.open) {
       inTimer = 1 / 30;
