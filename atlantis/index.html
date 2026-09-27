@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlantis Diver</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #ffd966; --gold2: #e8b640; --ink: #eaf6ff; --deep: #04182c;
+    --panel: rgba(6, 30, 56, 0.86); --line: rgba(255, 217, 102, 0.45); --cyan: #5ef0ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #04182c; color: var(--ink); font-family: Nunito, 'Trebuchet MS', sans-serif; }
+  canvas#game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  .overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 16px; z-index: 5; }
+  .overlay.show { display: flex; }
+  button { font-family: inherit; }
+
+  /* ---------- title ---------- */
+  #title { flex-direction: column; background: radial-gradient(ellipse at 50% 60%, rgba(2,20,40,0) 0%, rgba(2,20,40,0.45) 100%); }
+  #title .logo { text-align: center; margin-top: -4vh; animation: float 6s ease-in-out infinite; }
+  #title .trident { font-family: Cinzel, serif; font-size: clamp(40px, 7vw, 72px); color: var(--gold); text-shadow: 0 0 24px rgba(255,210,100,0.8); line-height: 1; }
+  #title h1 {
+    font-family: Cinzel, Georgia, serif; font-weight: 900; margin: 6px 0 0; letter-spacing: 0.08em;
+    font-size: clamp(40px, 9vw, 108px); line-height: 1;
+    background: linear-gradient(180deg, #fff6cf 0%, #ffd966 45%, #c98a1c 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 4px 0 rgba(90,50,0,0.55)) drop-shadow(0 0 30px rgba(255,200,90,0.35));
+  }
+  #title .sub { font-family: Cinzel, serif; font-weight: 700; letter-spacing: 0.35em; font-size: clamp(12px, 1.8vw, 18px); color: #bff6ff; text-shadow: 0 2px 8px rgba(0,0,0,0.6); margin-top: 8px; }
+  .menu { display: flex; flex-direction: column; gap: 10px; margin-top: 5vh; min-width: min(300px, 80vw); }
+  .menu button, .btn {
+    font-weight: 900; font-size: 18px; letter-spacing: 0.04em; color: var(--ink); cursor: pointer;
+    background: linear-gradient(180deg, rgba(20,70,110,0.85), rgba(8,36,64,0.9));
+    border: 2px solid rgba(160,220,255,0.35); border-radius: 14px; padding: 12px 22px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+    transition: transform .12s, border-color .12s, background .12s;
+  }
+  .menu button:hover, .menu button.focus, .btn:hover, .btn.focus {
+    transform: scale(1.04); border-color: var(--gold);
+    background: linear-gradient(180deg, rgba(40,110,160,0.95), rgba(12,50,90,0.95));
+  }
+  .menu button.big { font-size: 22px; background: linear-gradient(180deg, #ffd966, #c98a1c); color: #3a2200; border-color: #fff1b8; }
+  .menu button.big:hover, .menu button.big.focus { background: linear-gradient(180deg, #fff1b8, #e8b640); }
+  #title .help { position: absolute; bottom: 16px; left: 16px; right: 16px; text-align: center; font-weight: 700; font-size: 14px; color: rgba(220,240,255,0.8); text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
+  #title .help b { color: var(--gold); }
+  @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+
+  /* ---------- panels ---------- */
+  .panel {
+    background: var(--panel); border: 2px solid var(--line); border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+    backdrop-filter: blur(6px); max-height: 92vh; overflow: auto; position: relative;
+  }
+  .panel h2 { font-family: Cinzel, serif; color: var(--gold); margin: 0; letter-spacing: 0.05em; }
+  .close { position: absolute; top: 12px; right: 14px; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line); background: rgba(0,0,0,0.3); color: var(--ink); font-size: 20px; font-weight: 900; cursor: pointer; }
+  .close:hover { border-color: var(--gold); color: var(--gold); }
+
+  /* ---------- shop ---------- */
+  #shop { background: rgba(2,12,24,0.45); }
+  #shop .panel {
+    width: min(1060px, 96vw); padding: 22px 22px 18px;
+    background: linear-gradient(180deg, rgba(92,54,26,0.96), rgba(58,32,14,0.97));
+    border-color: #d9a452; box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 6px rgba(0,0,0,0.12);
+  }
+  #shop .panel::before { content: ''; position: absolute; inset: 0; border-radius: 20px; pointer-events: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.07) 0 2px, transparent 2px 38px); }
+  #shop header { display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; margin: 0 50px 14px 4px; }
+  #shop header small { color: #f4dcb0; font-weight: 700; }
+  #shop .gold { margin-left: auto; font-size: 26px; font-weight: 900; color: var(--gold); text-shadow: 0 2px 0 rgba(0,0,0,0.4); }
+  #shop .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { #shop .cards { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 600px) { #shop .cards { grid-template-columns: repeat(2, 1fr); } }
+  .card {
+    display: flex; flex-direction: column; align-items: center; text-align: center; gap: 4px;
+    background: linear-gradient(180deg, #f6e7c4, #e2c993); color: #3a2410; border: 3px solid #a67434; border-radius: 16px;
+    padding: 12px 10px; cursor: pointer; transition: transform .12s, box-shadow .12s; box-shadow: 0 5px 0 #6b4418;
+  }
+  .card canvas { width: 64px; height: 64px; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.3)); }
+  .card .info { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .card h3 { margin: 2px 0 0; font-family: Cinzel, serif; font-size: 17px; }
+  .card p { margin: 2px 0; font-weight: 800; font-size: 13px; }
+  .card .next { font-size: 12px; font-weight: 700; color: #6b4a20; }
+  .card .cost { margin-top: 6px; font-weight: 900; font-size: 17px; background: #2f7a3a; color: #fff; border-radius: 10px; padding: 3px 12px; white-space: nowrap; }
+  .card .cost.poor { background: #8a3a2a; opacity: 0.8; }
+  .card .maxed { margin-top: 6px; font-weight: 900; color: #2f7a3a; }
+  .card.focus, .card:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 8px 0 #6b4418, 0 0 0 4px var(--gold); }
+  .pips { display: flex; gap: 4px; }
+  .pips i { width: 14px; height: 6px; border-radius: 3px; background: rgba(90,60,20,0.25); }
+  .pips i.on { background: #d98a1c; }
+  #shop footer { margin-top: 12px; text-align: center; font-weight: 700; color: #f4dcb0; font-size: 14px; }
+
+  /* ---------- stone tablet ---------- */
+  #tablet { background: rgba(0,6,16,0.55); cursor: pointer; }
+  #tablet .stone {
+    width: min(620px, 94vw); padding: 34px 38px 26px; border-radius: 26px 26px 18px 18px; text-align: center;
+    background: radial-gradient(ellipse at 30% 20%, #8e9ab0, #5d6880 60%, #454f66);
+    border: 3px solid #2e3548; box-shadow: 0 20px 60px rgba(0,0,0,0.6), inset 0 0 0 8px rgba(255,255,255,0.06), inset 0 0 40px rgba(0,0,0,0.35);
+    animation: rise .5s ease-out;
+  }
+  #tablet .num { font-family: Cinzel, serif; font-weight: 700; letter-spacing: 0.3em; color: #d6f9ff; font-size: 13px; opacity: 0.85; }
+  #tablet h2 { font-family: Cinzel, serif; font-size: clamp(26px, 4vw, 38px); margin: 8px 0 14px; color: #bff9ff; text-shadow: 0 0 12px rgba(94,240,255,0.9), 0 0 30px rgba(94,240,255,0.5); }
+  #tablet p { font-size: clamp(17px, 2.3vw, 21px); line-height: 1.55; font-weight: 700; color: #f3f7ff; text-shadow: 0 2px 4px rgba(0,0,0,0.45); margin: 0; }
+  #tablet .hint { margin-top: 18px; font-weight: 800; font-size: 14px; color: #ffe08a; }
+  @keyframes rise { from { transform: translateY(30px) scale(0.96); opacity: 0; } }
+
+  /* ---------- journal ---------- */
+  #journal { background: rgba(0,6,16,0.5); }
+  #journal .panel { width: min(1100px, 96vw); padding: 22px; }
+  #journal .count { color: #bff6ff; font-weight: 800; margin: 4px 0 14px; }
+  #journal .cols { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+  @media (max-width: 800px) { #journal .cols { grid-template-columns: 1fr; } }
+  #journal .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+  .jcard { display: flex; gap: 10px; align-items: center; background: rgba(120,200,255,0.08); border: 1px solid rgba(160,220,255,0.2); border-radius: 14px; padding: 8px; }
+  .jcard canvas { width: 72px; height: 72px; flex: none; background: radial-gradient(circle, rgba(94,240,255,0.18), transparent 70%); border-radius: 12px; }
+  .jcard .q { width: 72px; height: 72px; flex: none; display: grid; place-items: center; font-family: Cinzel, serif; font-size: 34px; color: rgba(255,255,255,0.3); background: rgba(0,0,0,0.25); border-radius: 12px; }
+  .jcard h4 { margin: 0; font-family: Cinzel, serif; color: var(--gold); font-size: 15px; }
+  .jcard p { margin: 2px 0 0; font-size: 13px; font-weight: 700; line-height: 1.35; color: #dcecff; }
+  .jcard.unknown h4 { color: rgba(255,255,255,0.4); }
+  #journal h3 { font-family: Cinzel, serif; color: var(--gold); margin: 0 0 8px; }
+  #journal .tablets details, #journal .tablets .locked { background: rgba(94,240,255,0.07); border-radius: 10px; padding: 7px 10px; margin-bottom: 6px; font-weight: 700; font-size: 14px; }
+  #journal .tablets summary { cursor: pointer; color: #bff9ff; }
+  #journal .tablets p { margin: 6px 0 2px; line-height: 1.45; }
+  #journal .tablets .locked { color: rgba(255,255,255,0.4); }
+
+  /* ---------- pause & ending ---------- */
+  #pause { background: rgba(0,6,16,0.55); }
+  #pause .panel { padding: 28px 34px; text-align: center; }
+  #pause .menu { margin-top: 18px; }
+  #ending { background: radial-gradient(circle, rgba(255,220,130,0.25), rgba(0,6,16,0.75)); }
+  #ending .panel { width: min(640px, 94vw); padding: 34px; text-align: center; border-color: var(--gold); animation: rise .8s ease-out; }
+  #ending h2 { font-size: clamp(30px, 5vw, 46px); background: linear-gradient(180deg, #fff6cf, #ffd966 50%, #c98a1c); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  #ending p { font-size: 18px; line-height: 1.5; font-weight: 700; }
+  #ending-stats { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 18px 0; }
+  #ending-stats div { background: rgba(94,240,255,0.1); border: 1px solid rgba(94,240,255,0.3); border-radius: 14px; padding: 8px 14px; min-width: 96px; }
+  #ending-stats b { display: block; font-size: 24px; color: var(--gold); }
+  #ending-stats span { font-size: 13px; font-weight: 700; color: #bff6ff; }
+  #ending .menu { align-items: center; margin-top: 10px; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="title" class="overlay show">
+  <div class="logo">
+    <div class="trident">Ψ</div>
+    <h1>ATLANTIS DIVER</h1>
+    <div class="sub">DIVE INTO THE LOST CITY</div>
+  </div>
+  <div class="menu">
+    <button id="btn-continue" class="big">Continue</button>
+    <button id="btn-new">New Game</button>
+    <button id="btn-gfx">Graphics: HIGH</button>
+    <button id="btn-sound">Sound: ON</button>
+  </div>
+  <div class="help">
+    <b>Swim</b> W A S D / arrows &nbsp;·&nbsp; <b>Boost</b> Shift &nbsp;·&nbsp; <b>Harpoon</b> Space &nbsp;·&nbsp; <b>Shop</b> E at the boat &nbsp;·&nbsp; <b>Map</b> M &nbsp;·&nbsp; <b>Journal</b> Q &nbsp;·&nbsp; <b>Pause</b> Esc &nbsp;·&nbsp; 🎮 controllers work too!
+  </div>
+</div>
+
+<div id="shop" class="overlay">
+  <div class="panel">
+    <header>
+      <h2>The Sea Sparrow · Diving Shop</h2>
+      <small>Better gear = deeper dives!</small>
+      <div class="gold">🪙 <b>0</b></div>
+    </header>
+    <button class="close" aria-label="Close">✕</button>
+    <div class="cards"></div>
+    <footer>Click, or use the arrows and E to buy · Esc to close</footer>
+  </div>
+</div>
+
+<div id="tablet" class="overlay">
+  <div class="stone">
+    <div class="num">TABLET I OF XII</div>
+    <h2>Title</h2>
+    <p>Text</p>
+    <div class="hint">Press E to continue</div>
+  </div>
+</div>
+
+<div id="journal" class="overlay">
+  <div class="panel">
+    <button class="close" aria-label="Close">✕</button>
+    <h2>Diver's Journal</h2>
+    <div class="count"></div>
+    <div class="cols">
+      <div class="grid"></div>
+      <div><h3>The Story of Atlantis</h3><div class="tablets"></div></div>
+    </div>
+  </div>
+</div>
+
+<div id="pause" class="overlay">
+  <div class="panel">
+    <h2>Paused</h2>
+    <div class="menu">
+      <button id="btn-resume" class="big">Keep Diving</button>
+      <button id="btn-journal">Journal</button>
+      <button id="btn-map">Map</button>
+      <button id="btn-sound2">Sound: ON</button>
+      <button id="btn-gfx2">Graphics: HIGH</button>
+      <button id="btn-quit">Save &amp; Quit</button>
+    </div>
+  </div>
+</div>
+
+<div id="ending" class="overlay">
+  <div class="panel">
+    <h2>ATLANTIS AWAKENS</h2>
+    <p>You lifted the Trident of Poseidon with a kind heart. The Heart Crystal shines again, and the lights of the lost city glow for the first time in a thousand years.</p>
+    <div id="ending-stats"></div>
+    <p style="font-size:15px;color:#bff6ff">Keep exploring to find every tablet, creature and secret room!</p>
+    <div class="menu"><button id="btn-keep" class="big">Keep Exploring</button></div>
+  </div>
+</div>
+
+<script src="js/util.js"></script>
+<script src="js/input.js"></script>
+<script src="js/map.js"></script>
+<script src="js/art.js"></script>
+<script src="js/world.js"></script>
+<script src="js/render.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/diver.js"></script>
+<script src="js/creatures.js"></script>
+<script src="js/shop.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
