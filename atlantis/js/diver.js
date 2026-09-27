@@ -81,7 +81,7 @@ AT.Diver = (function () {
 
   function head() {
     const a = D.angle, f = D.faceS;
-    return { x: D.x + Math.cos(a) * 26 * f, y: D.y + Math.sin(a) * 26 };
+    return { x: D.x + Math.cos(a) * 30 * f, y: D.y + Math.sin(a) * 30 };
   }
 
   // ---------- the harpoon ----------
@@ -156,6 +156,7 @@ AT.Diver = (function () {
     g.translate(x, y);
     g.scale(faceS >= 0 ? Math.max(0.15, faceS) : Math.min(-0.15, faceS), 1);
     g.rotate(angle);
+    g.scale(1.15, 1.15);
     g.lineCap = 'round'; g.lineJoin = 'round';
     const suit = '#1d4a63', suitDark = '#123246', stripe = '#ff8a3d', fin = '#ffb03a', finDark = '#d9772a';
     const leg = (a, dark) => {
