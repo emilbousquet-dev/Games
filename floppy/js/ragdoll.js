@@ -275,7 +275,15 @@ FP.Ragdoll = (function () {
 
       if (c.emote && c.emote.k === 2) c.yaw += Math.sin(c.emote.t * 5) * dt * 2.5; // dance: wiggle side to side
       if (c.emote && c.emote.k === 4) { c.expression = 'happy'; c.exprTimer = 0.2; }
-      if (c.emote && c.emote.k !== 1 && c.emote.k !== 4 && c.grounded && (c.emote.hop -= dt) <= 0) { c.emote.hop = c.emote.k === 3 ? 0.65 : 0.5; for (const b of c.bodies) b.velocity.y += c.emote.k === 3 ? 5 : 3; }
+      // dances: spins, robot turns, and hops (how often, how high)
+      if (c.emote && c.emote.k === 8) c.yaw += dt * 9;
+      if (c.emote && c.emote.k === 6 && Math.floor(c.emote.t * 2) !== Math.floor((c.emote.t - dt) * 2)) c.yaw += (Math.floor(c.emote.t * 2) % 2 ? 0.6 : -0.6);
+      const HOP = { 2: [0.5, 3], 3: [0.65, 5], 5: [0.5, 2.5], 6: [0.9, 1], 7: [1.1, 7.5], 8: [0.8, 2], 9: [0.4, 2], 10: [0.35, 2.5] };
+      if (c.emote && HOP[c.emote.k] && c.grounded && (c.emote.hop -= dt) <= 0) {
+        c.emote.hop = HOP[c.emote.k][0];
+        for (const b of c.bodies) b.velocity.y += HOP[c.emote.k][1];
+        if (c.emote.k === 7) { t.angularVelocity.x += -Math.cos(c.yaw) * 14; t.angularVelocity.z += Math.sin(c.yaw) * 14; } // backflip!
+      }
       legs(c, dt, s, groundVel);
       arms(c, input, dt, s);
     } else {
@@ -359,7 +367,21 @@ FP.Ragdoll = (function () {
         pull(arm, HAND, target, 20, 0.6, s, t.velocity);
         continue;
       }
-      if (em && em.k !== 4 && !(c.hands && (c.hands[0] || c.hands[1])) && !(c.punchT < 0.22 && c.punchArm === i) && emoteArm) {
+      // victory dances (emotes 5 and up): each one moves the arms its own way
+      if (em && em.k >= 5 && !(c.hands && (c.hands[0] || c.hands[1]))) {
+        const rx = -f.z, rz = f.x; // the character's right
+        const tt = em.t;
+        let ox = 0, oy = 0, oz = 0;
+        if (em.k === 5) { const upArm = Math.floor(tt * 2) % 2; if (i === upArm) { oy = 0.75; ox = out.x * 0.35; oz = out.z * 0.35; } else { oy = -0.35; ox = f.x * 0.25; oz = f.z * 0.25; } } // disco point
+        else if (em.k === 6) { const step = Math.floor(tt * 4 + i * 2) % 2 ? 0.28 : -0.05; ox = f.x * 0.45; oz = f.z * 0.45; oy = step; } // robot
+        else if (em.k === 7) { oy = 0.65; ox = out.x * 0.12; oz = out.z * 0.12; } // backflip: arms up
+        else if (em.k === 8) { oy = 0.1; ox = out.x * 0.6; oz = out.z * 0.6; } // spin: arms out wide
+        else if (em.k === 9) { const sw = Math.sin(tt * 10); ox = rx * sw * 0.45 + f.x * (i ? 0.18 : -0.18); oz = rz * sw * 0.45 + f.z * (i ? 0.18 : -0.18); oy = -0.3; } // floss
+        else { const flap = Math.abs(Math.sin(tt * 12)); ox = out.x * (0.2 + flap * 0.25); oz = out.z * (0.2 + flap * 0.25); oy = 0.02; } // chicken dance
+        pull(arm, HAND, new Vec3(sh.x + ox, sh.y + oy, sh.z + oz), 18, 0.6, s, t.velocity);
+        continue;
+      }
+      if (em && em.k !== 4 && em.k < 5 && !(c.hands && (c.hands[0] || c.hands[1])) && !(c.punchT < 0.22 && c.punchArm === i) && emoteArm) {
         const up = em.k === 1 ? 0.5 : em.k === 2 ? 0.15 + 0.35 * (0.5 + 0.5 * Math.sin(em.t * 9 + i * Math.PI)) : 0.55 + 0.08 * Math.sin(em.t * 18 + i);
         const side = em.k === 1 ? 0.25 + Math.sin(em.t * 16) * 0.16 : em.k === 2 ? 0.35 : 0.15;
         const fwd = em.k === 3 ? 0 : 0.12;

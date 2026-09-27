@@ -88,8 +88,10 @@ FP.Look = (function () {
   const SHOP_HATS = ['headphones', 'flowers', 'wizard', 'antlers', 'pirate', 'viking', 'halo', 'astronaut']; // bought with party coins
   const HATS = [...FREE_HATS, ...SHOP_HATS, 'none'];
 
-  const OUTFITS = ['none', 'overalls', 'bowtie', 'scarf', 'cape', 'belt'];
-  const OUTFIT_NAMES = { none: 'Nothing', overalls: 'Overalls', bowtie: 'Bow tie', scarf: 'Scarf', cape: 'Cape', belt: 'Belt' };
+  const FREE_OUTFITS = ['none', 'overalls', 'bowtie', 'scarf', 'cape', 'belt'];
+  const SHOP_OUTFITS = ['tutu', 'tuxedo', 'hero', 'spacesuit', 'hoodie', 'jersey']; // bought with party coins
+  const OUTFITS = [...FREE_OUTFITS, ...SHOP_OUTFITS];
+  const OUTFIT_NAMES = { none: 'Nothing', overalls: 'Overalls', bowtie: 'Bow tie', scarf: 'Scarf', cape: 'Cape', belt: 'Belt', tutu: 'Tutu', tuxedo: 'Tuxedo', hero: 'Superhero', spacesuit: 'Space suit', hoodie: 'Hoodie', jersey: 'Jersey' };
 
   // a shiny spot that makes things look glossy
   function shine(w, h) {
@@ -169,6 +171,48 @@ FP.Look = (function () {
       const buckle = mesh(new THREE.BoxGeometry(0.16, 0.12, 0.04), dark(0xffcf33), 0.012);
       buckle.position.set(0, -R * 0.2, R * 1.02);
       g.add(belt, buckle);
+    } else if (outfit === 'tutu') {
+      for (const [r, y, col] of [[R * 1.55, -R * 0.35, 0xff9ad0], [R * 1.4, -R * 0.2, 0xffc2e2]]) {
+        const skirt = mesh(new THREE.CylinderGeometry(R * 0.95, r, 0.16, 22, 1, true), toon(col, { side: THREE.DoubleSide }), 0.015);
+        skirt.position.y = y;
+        g.add(skirt);
+      }
+      const bow = mesh(new THREE.SphereGeometry(0.06, 8, 6), dark(0xff5a9a), 0.01); bow.position.set(0, -R * 0.1, R * 0.98); g.add(bow);
+    } else if (outfit === 'tuxedo') {
+      // a black jacket (open at the front), a white shirt and a bow tie
+      const jacket = mesh(new THREE.SphereGeometry(R * 1.04, 22, 14, Math.PI / 2 + 0.55, Math.PI * 2 - 1.1, 0.2, Math.PI * 0.8), toon(0x2a2a3a, { side: THREE.DoubleSide }), 0.02);
+      jacket.scale.y = 1 + dims.torsoH / (2 * R) * 0.9;
+      g.add(jacket);
+      const shirt = mesh(new THREE.BoxGeometry(R * 0.7, R * 1.3, 0.04), dark(0xffffff), 0.01); shirt.position.set(0, R * 0.05, R * 0.93); g.add(shirt);
+      for (const side of [-1, 1]) { const wing = mesh(new THREE.ConeGeometry(0.07, 0.13, 10), dark(0x2a2a3a), 0.012); wing.rotation.set(-0.35, 0, side * Math.PI / 2); wing.position.set(side * 0.075, R * 0.66, R * 0.97); g.add(wing); }
+      for (let k = 0; k < 3; k++) { const b = mesh(new THREE.SphereGeometry(0.025, 6, 4), dark(0x2a2a3a), 0); b.position.set(0, R * 0.35 - k * R * 0.28, R * 0.97); g.add(b); }
+    } else if (outfit === 'hero') {
+      const cape = mesh(new THREE.CylinderGeometry(R * 0.7, R * 1.15, R * 2.1, 16, 1, true, Math.PI * 0.62, Math.PI * 0.76), toon(0x3a6fe8, { side: THREE.DoubleSide }), 0);
+      cape.position.set(0, -R * 0.1, -R * 0.12);
+      const shape = new THREE.Shape();
+      for (let k = 0; k < 10; k++) { const a = (k / 10) * Math.PI * 2 + Math.PI / 2, rr = k % 2 ? 0.07 : 0.16; if (k) shape.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else shape.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
+      const star = mesh(new THREE.ShapeGeometry(shape), toon(0xffcf33, { side: THREE.DoubleSide }), 0.012);
+      star.position.set(0, R * 0.2, R * 1.0);
+      const belt = mesh(new THREE.TorusGeometry(R * 1.0, 0.05, 8, 28), dark(0xffcf33), 0.012); belt.rotation.x = Math.PI / 2; belt.position.y = -R * 0.25;
+      g.add(cape, star, belt);
+    } else if (outfit === 'spacesuit') {
+      const suit = mesh(new THREE.CapsuleGeometry(R * 1.05, dims.torsoH, 10, 20), toon(0xf4f6fb), 0.03);
+      g.add(suit);
+      const panel = mesh(new THREE.BoxGeometry(R * 0.7, R * 0.45, 0.08), dark(0x8a8fa0), 0.012); panel.position.set(0, R * 0.2, R * 1.02); g.add(panel);
+      [[0xff5a5f, -1], [0x5cc44a, 0], [0x4aa8ff, 1]].forEach(([col, k]) => { const l = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: col })); l.position.set(k * R * 0.2, R * 0.2, R * 1.07); g.add(l); });
+      const pack = mesh(new THREE.BoxGeometry(R * 1.2, R * 1.4, R * 0.6), dark(0xd9dde6), 0.02); pack.position.set(0, R * 0.1, -R * 1.1); g.add(pack);
+    } else if (outfit === 'hoodie') {
+      const top = mesh(new THREE.CapsuleGeometry(R * 1.04, dims.torsoH * 0.6, 10, 20), toon(0xff9a3c), 0.025); top.position.y = R * 0.15; g.add(top);
+      const hood = mesh(new THREE.TorusGeometry(R * 0.62, 0.14, 10, 22), dark(0xff8a2a), 0.02); hood.rotation.x = Math.PI / 2.4; hood.position.set(0, R * 0.85, -R * 0.35); g.add(hood);
+      const pocket = mesh(new THREE.BoxGeometry(R * 0.9, R * 0.35, 0.05), dark(0xe07a20), 0.012); pocket.position.set(0, -R * 0.2, R * 1.02); g.add(pocket);
+      for (const side of [-1, 1]) { const cord = mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.25, 5), dark(0xffffff), 0); cord.position.set(side * 0.08, R * 0.5, R * 0.98); g.add(cord); }
+    } else if (outfit === 'jersey') {
+      const shirt = mesh(new THREE.CapsuleGeometry(R * 1.04, dims.torsoH * 0.6, 10, 20), toon(0xff3a4a), 0.025); shirt.position.y = R * 0.15; g.add(shirt);
+      const cv = document.createElement('canvas'); cv.width = cv.height = 64;
+      const x = cv.getContext('2d'); x.fillStyle = '#ffffff'; x.font = '900 52px Arial, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('7', 32, 36);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      for (const z of [1, -1]) { const num = new THREE.Mesh(new THREE.PlaneGeometry(R * 0.9, R * 0.9), new THREE.MeshBasicMaterial({ map: tex, transparent: true })); num.position.set(0, R * 0.1, z * R * 1.06); if (z < 0) num.rotation.y = Math.PI; g.add(num); }
+      for (const side of [-1, 1]) { const stripe = mesh(new THREE.BoxGeometry(0.05, R * 1.2, 0.05), dark(0xffffff), 0); stripe.position.set(side * R * 1.02, R * 0.15, 0); g.add(stripe); }
     }
     return g;
   }
@@ -571,5 +615,5 @@ FP.Look = (function () {
     return g;
   }
 
-  return { toon, charToon, mesh, boxMesh, COLORS, HATS, FREE_HATS, SHOP_HATS, OUTFITS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
+  return { toon, charToon, mesh, boxMesh, COLORS, HATS, FREE_HATS, SHOP_HATS, OUTFITS, FREE_OUTFITS, SHOP_OUTFITS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
 })();

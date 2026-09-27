@@ -22,7 +22,7 @@ FP.Net = (function () {
   let peer = null, role = null, code = '', conns = new Map(), hostConn = null, myId = null, myName = '';
   const inputs = {}, prevCount = {};
   let sendTimer = 0, keyTimer = 0, beatTimer = 0, inTimer = 0, lastHud = '', lastState = '', events = [], lastMovers = [];
-  let snap = null, clientState = 'lobby', clientMode = null, pressCount = { jump: 0, punch: 0 }, actCount = { color: 0, hat: 0, outfit: 0 };
+  let snap = null, clientState = 'lobby', clientMode = null, pressCount = { jump: 0, punch: 0 }, actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0 };
   let roundNo = 0, clientRoundNo = -1, resultsHtml = '', resultsNo = 0, clientResultsNo = -1;
 
   // ---------------- the claude.ai room (if this page runs there) ----------------
@@ -166,7 +166,7 @@ FP.Net = (function () {
       const pl = g.addPlayer({ kind: 'remote', peer: p.peer }, { name: pr.name.slice(0, 12) || 'Friend' });
       if (!pl) continue;
       conns.set(p.peer, { pid: pl.id });
-      lastActs[p.peer] = { c: pr.cc | 0, h: pr.hc | 0, o: pr.oc | 0 };
+      lastActs[p.peer] = { c: pr.cc | 0, h: pr.hc | 0, o: pr.oc | 0, f: pr.fc | 0, d: pr.dc | 0, t: pr.tc | 0 };
       FP.UI.toast(`${pl.name} joined the party!`);
       playersChanged();
       sendState(true);
@@ -184,14 +184,17 @@ FP.Net = (function () {
       const pr = p.presence && p.presence.fp;
       if (!c || !pr) continue;
       inputs[c.pid] = { x: +pr.x || 0, z: +pr.z || 0, jump: !!pr.j, grab: !!pr.g, gl: pr.gl, gr: pr.gr, jc: pr.jc | 0, pc: pr.pc | 0, em: pr.em | 0, ek: pr.ek | 0 };
-      const last = lastActs[p.peer] || { c: 0, h: 0, o: 0 };
+      const last = lastActs[p.peer] || { c: 0, h: 0, o: 0, f: 0, d: 0, t: 0 };
       const pl = FP.Game.players.find((q) => q.id === c.pid);
       if (pl && FP.Game.state === 'lobby') {
         if ((pr.cc | 0) > last.c) FP.Game.cycle(pl, 'color', 1);
         if ((pr.hc | 0) > last.h) FP.Game.cycle(pl, 'hat', 1);
         if ((pr.oc | 0) > last.o) FP.Game.cycle(pl, 'outfit', 1);
+        if ((pr.fc | 0) > last.f) FP.Game.cycle(pl, 'face', 1);
+        if ((pr.dc | 0) > last.d) FP.Game.cycle(pl, 'dance', 1);
+        if ((pr.tc | 0) > last.t) FP.Game.cycle(pl, 'trail', 1);
       }
-      lastActs[p.peer] = { c: pr.cc | 0, h: pr.hc | 0, o: pr.oc | 0 };
+      lastActs[p.peer] = { c: pr.cc | 0, h: pr.hc | 0, o: pr.oc | 0, f: pr.fc | 0, d: pr.dc | 0, t: pr.tc | 0 };
     }
   }
 
@@ -220,7 +223,7 @@ FP.Net = (function () {
       } else if (msg.t === 'in') {
         const c = conns.get(conn.peer);
         if (c) inputs[c.pid] = msg;
-      } else if (msg.t === 'color' || msg.t === 'hat' || msg.t === 'outfit') {
+      } else if (['color', 'hat', 'outfit', 'face', 'dance', 'trail'].includes(msg.t)) {
         const c = conns.get(conn.peer);
         const p = c && FP.Game.players.find((q) => q.id === c.pid);
         if (p && FP.Game.state === 'lobby') FP.Game.cycle(p, msg.t, msg.dir === -1 ? -1 : 1);
@@ -240,7 +243,7 @@ FP.Net = (function () {
     for (let i = 0; i < n; i++) party.emit('fp', { t: 'ch', id, i, n, s: text.slice(i * MAX_BYTES, (i + 1) * MAX_BYTES) }).catch(() => {});
   }
   const hasFriends = () => conns.size > 0;
-  const playerList = () => FP.Game.everyone.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, team: p.team, kind: p.source.kind, peer: p.source.kind === 'remote' ? p.source.peer : undefined }));
+  const playerList = () => FP.Game.everyone.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, face: p.face, dance: p.dance, trail: p.trail, team: p.team, kind: p.source.kind, peer: p.source.kind === 'remote' ? p.source.peer : undefined }));
 
   // what a remote player is pressing (presses are counted so none get lost)
   function inputOf(pid) {
@@ -358,7 +361,7 @@ FP.Net = (function () {
     }
     role = 'client';
     joinWait = 8;
-    pressCount = { jump: 0, punch: 0 }; actCount = { color: 0, hat: 0, outfit: 0 };
+    pressCount = { jump: 0, punch: 0 }; actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0 };
     party.presence({ fp: { name: myName, x: 0, z: 0, j: false, g: false, jc: 0, pc: 0, cc: 0, hc: 0, oc: 0 } });
     unsub.push(party.on('fp', (m) => { if (m.sameTab) return; hostPeer = m.peer; onRoomMessage(m.data); }, () => {}));
     unsub.push(party.onPeers((ch) => {
@@ -436,7 +439,7 @@ FP.Net = (function () {
       FP.UI.screen({ cls: 'results', title: 'Results', html: msg.html + '<p class="small">Waiting for the host to pick what\'s next...</p>', buttons: [{ label: 'Leave the party', action: () => { leave(); g.titleScreen(); }, small: true }] });
     }
   }
-  const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
+  const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, face: p.face, dance: p.dance, trail: p.trail, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
 
   function applyEvents(list) {
     const byKey = keyMap();
@@ -474,7 +477,7 @@ FP.Net = (function () {
     const gl = !!(a.grabL || b.grabL || (pad.grabL !== undefined ? pad.grabL : pad.grab)), gr = !!(a.grabR || b.grabR || (pad.grabR !== undefined ? pad.grabR : pad.grab));
     if (kind === 'room') {
       // the room sends presence about 30 times a second by itself: just keep it up to date
-      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit } }).catch(() => {});
+      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit, fc: actCount.face, dc: actCount.dance, tc: actCount.trail } }).catch(() => {});
       if (myId === null) {
         joinWait -= dt;
         if (joinWait <= 0) { FP.UI.toast(hostPeer ? 'That party is full (4 players)' : 'Nobody is hosting that party right now', 3); leave(); menu(); return; }

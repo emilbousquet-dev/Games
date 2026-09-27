@@ -100,7 +100,7 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
 ## Party Tour and Surprise me
 
 - **Party Tour**: play 3, 5 or 7 random mini-games in a row, or **your own playlist** (press *Pick my playlist* and click the games you want, in order; it's saved).
-  Every game gives party points(4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else).
+  Every game gives party points (4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else).
   Most points at the end is the **Party Champion**!
 - **Surprise me!**: a spinning wheel of mini-games stops on a random one.
 - **Daily Challenge** (title screen): a new mini-game with a twist every day, like *Moon Gravity Bowling* or *Disco Soccer*, sometimes against hard bots. Win it for 150 or 200 bonus coins and keep your streak going.

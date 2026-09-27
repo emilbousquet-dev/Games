@@ -53,7 +53,8 @@ FP.Game = (function () {
       id: opts.id || nextId++, source,
       colorIndex: opts.colorIndex !== undefined ? opts.colorIndex : freeColor(),
       hat: opts.hat || FP.Look.FREE_HATS[(players.length * 3 + 1) % FP.Look.FREE_HATS.length],
-      outfit: opts.outfit || FP.Look.OUTFITS[(players.length + 1) % FP.Look.OUTFITS.length],
+      outfit: opts.outfit || FP.Look.FREE_OUTFITS[(players.length + 1) % FP.Look.FREE_OUTFITS.length],
+      face: opts.face || 'none', dance: opts.dance || 'none', trail: opts.trail || 'none',
       name: opts.name || nextPlayerName(),
     };
     players.push(p);
@@ -77,7 +78,7 @@ FP.Game = (function () {
       const names = BOT_NAMES.filter((nm) => !used.has(nm));
       const name = names[Math.floor(Math.random() * names.length)] || `Bot ${i + 1}`;
       used.add(name);
-      matchBots.push({ id: nextId++, source: { kind: 'bot' }, name, colorIndex: freeColor(), hat: FP.Look.HATS[Math.floor(Math.random() * (FP.Look.HATS.length - 1))], outfit: FP.Look.OUTFITS[Math.floor(Math.random() * FP.Look.OUTFITS.length)] });
+      matchBots.push({ id: nextId++, source: { kind: 'bot' }, name, colorIndex: freeColor(), hat: FP.Look.HATS[Math.floor(Math.random() * (FP.Look.HATS.length - 1))], outfit: FP.Look.OUTFITS[Math.floor(Math.random() * FP.Look.OUTFITS.length)], face: Math.random() < 0.3 ? FP.Style.FACES[1 + Math.floor(Math.random() * (FP.Style.FACES.length - 1))] : 'none', dance: FP.Style.DANCES[Math.floor(Math.random() * FP.Style.DANCES.length)], trail: 'none' });
     }
   }
 
@@ -89,6 +90,7 @@ FP.Game = (function () {
     const c = FP.Ragdoll.create(scene, { index: idx, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, name: p.name, x: spot.x, y: spot.y || 0, z: spot.z, yaw: spot.yaw || 0, isBot: p.source.kind === 'bot' });
     c.player = p;
     c.team = p.team;
+    if (p.face && p.face !== 'none') FP.Style.applyFace(c, p.face);
     if (c.isBot) c.botSkill = botSkill;
     chars.push(c);
     return c;
@@ -155,7 +157,7 @@ FP.Game = (function () {
         { label: `${ICON.people} Play on this computer`, action: () => lobby() },
         { label: `${ICON.online} Play online with friends`, action: () => FP.Net.menu() },
         { label: `${ICON.star} Daily Challenge${dailyDone() ? ' (done!)' : ''}`, action: dailyScreen, cls: 'daily-btn' },
-        { label: `${ICON.crown} Hat Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
+        { label: `${ICON.crown} Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
         { label: `${ICON.trophy} Achievements`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
         { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
         { label: `${ICON.help} How to play`, action: () => { FP.UI.help.hidden = false; }, small: true },
@@ -299,11 +301,15 @@ FP.Game = (function () {
       const mine = !client || p.source.kind === 'me';
       const arrows = (act) => (mine ? [`<button class="arrow" data-act="${act}" data-dir="-1" data-i="${i}" title="Previous">${ICON.left}</button>`, `<button class="arrow" data-act="${act}" data-dir="1" data-i="${i}" title="Next">${ICON.right}</button>`] : ['', '']);
       const [cl, cr] = arrows('color'), [hl, hr] = arrows('hat'), [ol, or] = arrows('outfit');
+      const [fl, fr] = arrows('face'), [dl, dr] = arrows('dance'), [tl, tr] = arrows('trail');
       slots.push(`<div class="slot" style="--c:${hex(col.body)};--l:${hex(col.light)}">
         <div class="slot-head"><span class="slot-num">P${i + 1}</span><b>${esc(p.name)}</b>${i > 0 && !client ? `<button class="leave" data-act="remove" data-i="${i}" title="Remove this player">Leave</button>` : ''}</div>
         <div class="slot-row"><span class="lbl">Color</span>${cl}<span class="val"><i class="dot"></i>${col.name}</span>${cr}</div>
         <div class="slot-row"><span class="lbl">Hat</span>${hl}<span class="val">${FP.UI.HAT_NAMES[p.hat]}</span>${hr}</div>
         <div class="slot-row"><span class="lbl">Outfit</span>${ol}<span class="val">${FP.Look.OUTFIT_NAMES[p.outfit || 'none']}</span>${or}</div>
+        <div class="slot-row"><span class="lbl">Face</span>${fl}<span class="val">${FP.Style.FACE_NAMES[p.face || 'none']}</span>${fr}</div>
+        <div class="slot-row"><span class="lbl">Dance</span>${dl}<span class="val">${FP.Style.DANCE_NAMES[p.dance || 'none']}</span>${dr}</div>
+        <div class="slot-row"><span class="lbl">Trail</span>${tl}<span class="val">${FP.Style.TRAIL_NAMES[p.trail || 'none']}</span>${tr}</div>
         <div class="slot-foot">${controlsText(p)}<br><span class="keys">${colorKeys(p)}</span></div>
       </div>`);
     }
@@ -313,7 +319,7 @@ FP.Game = (function () {
       <div class="slots">${slots.join('')}</div>
       <div class="lobby-actions">
         <button class="btn" data-act="back">${ICON.back} ${client ? 'Leave the party' : 'Title'}</button>
-        ${client ? '' : `<button class="btn" data-act="shop">${ICON.crown} Hat Shop</button><button class="btn go" data-act="start">${ICON.play} Pick a mini-game <kbd>Enter</kbd></button>`}
+        ${client ? '' : `<button class="btn" data-act="shop">${ICON.crown} Shop</button><button class="btn go" data-act="start">${ICON.play} Pick a mini-game <kbd>Enter</kbd></button>`}
       </div>
       ${client ? '' : `<div class="lobby-coins">${FP.Profile.coinLine()}</div>`}`;
     lobbyPanel.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => lobbyAction(b.dataset.act, +b.dataset.i, +b.dataset.dir || 1)));
@@ -323,13 +329,14 @@ FP.Game = (function () {
     FP.Audio.play('select');
     const p = players[i];
     if (FP.Net && FP.Net.isClient()) {
-      if (act === 'color' || act === 'hat' || act === 'outfit') FP.Net.send({ t: act, dir });
+      if (STYLE_ACTS.includes(act)) FP.Net.send({ t: act, dir });
       else if (act === 'back') { FP.Net.leave(); titleScreen(); }
       return;
     }
     if (act === 'color' && p) cycleColor(p, dir);
     else if (act === 'hat' && p) cycleHat(p, dir);
     else if (act === 'outfit' && p) cycleOutfit(p, dir);
+    else if ((act === 'face' || act === 'dance' || act === 'trail') && p) cycleStyle(p, act, dir);
     else if (act === 'remove' && p) removePlayer(p);
     else if (act === 'start') chooseMode();
     else if (act === 'shop') { lobbyPanel.hidden = true; FP.Profile.shopScreen(() => { FP.UI.closeScreen(); showLobbyPanel(); refreshLobby(); }); }
@@ -344,7 +351,7 @@ FP.Game = (function () {
     if (FP.Net) FP.Net.playersChanged();
   }
   function cycleHat(p, dir = 1) {
-    // only hats you have (the others are in the Hat Shop)
+    // only hats you have (the others are in the Shop)
     const H = FP.Look.HATS, n = H.length;
     let i = H.indexOf(p.hat);
     for (let k = 0; k < n; k++) { i = (i + dir + n) % n; if (FP.Profile.owns(H[i])) break; }
@@ -354,9 +361,25 @@ FP.Game = (function () {
   }
 
   function cycleOutfit(p, dir = 1) {
-    const n = FP.Look.OUTFITS.length;
-    p.outfit = FP.Look.OUTFITS[(FP.Look.OUTFITS.indexOf(p.outfit || 'none') + dir + n) % n];
+    // only outfits you have (the others are in the Shop)
+    const O = FP.Look.OUTFITS, n = O.length;
+    let i = Math.max(0, O.indexOf(p.outfit || 'none'));
+    for (let k = 0; k < n; k++) { i = (i + dir + n) % n; if (FP.Profile.owns('outfit', O[i])) break; }
+    p.outfit = O[i];
     spawnInLobby(p); refreshLobby();
+    if (FP.Net) FP.Net.playersChanged();
+  }
+  // face paint, victory dance and trail (only the ones you have)
+  const STYLE_ACTS = ['color', 'hat', 'outfit', 'face', 'dance', 'trail'];
+  function cycleStyle(p, what, dir = 1) {
+    const L = what === 'face' ? FP.Style.FACES : what === 'dance' ? FP.Style.DANCES : FP.Style.TRAILS, n = L.length;
+    let i = Math.max(0, L.indexOf(p[what] || 'none'));
+    for (let k = 0; k < n; k++) { i = (i + dir + n) % n; if (FP.Profile.owns(what, L[i])) break; }
+    if (L[i] === p[what]) { FP.UI.toast('Buy more in the Shop!'); return; }
+    p[what] = L[i];
+    if (what === 'face') spawnInLobby(p);
+    if (what === 'dance') { const c = chars.find((q) => q.player === p); if (c && FP.Style.DANCE_EMOTE[p.dance]) c.emote = { k: FP.Style.DANCE_EMOTE[p.dance], t: 0, hop: 0.2 }; }
+    refreshLobby();
     if (FP.Net) FP.Net.playersChanged();
   }
 
@@ -1137,10 +1160,26 @@ FP.Game = (function () {
     const flash = document.createElement('div'); flash.className = 'photo-flash'; document.body.append(flash); setTimeout(() => flash.remove(), 400);
     document.querySelectorAll('.photo-preview').forEach((el) => el.remove());
     const prev = document.createElement('div'); prev.className = 'photo-preview';
-    prev.innerHTML = `<img src="${url}" alt="Your photo"><div><a class="btn small" download="floppy-party-photo.png" href="${url}">Save picture</a> <button class="btn small" data-close>Keep going</button></div>`;
+    prev.innerHTML = `<img src="${url}" alt="Your photo"><div><button class="btn small" data-save>Save picture</button> <button class="btn small" data-close>Keep going</button></div>`;
     document.body.append(prev);
     prev.querySelector('[data-close]').addEventListener('click', () => prev.remove());
+    prev.querySelector('[data-save]').addEventListener('click', () => savePhoto(cv, url));
   }
+  // save the picture: on claude.ai the page asks you first, on a normal website it just downloads
+  async function savePhoto(cv, url) {
+    const name = 'floppy-party-photo.png';
+    let dl = null;
+    try { dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null; } catch (e) { dl = null; }
+    if (dl) {
+      cv.toBlob(async (blob) => {
+        try { await dl.save({ filename: name, data: blob }); FP.UI.toast('Picture saved!'); }
+        catch (e) { if (e && e.code !== 'declined') FP.UI.toast('Could not save the picture here'); }
+      }, 'image/png');
+      return;
+    }
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.append(a); a.click(); a.remove();
+  }
+
   function endPhoto() {
     if (!photo) return;
     photo = null;
@@ -1215,6 +1254,7 @@ FP.Game = (function () {
     FP.Camera.setOrbit(state === 'title' ? Math.sin(titleT * 0.12) * 0.45 : state === 'replay' && replay ? Math.sin(replay.t * 1.4) * 0.7 : 0);
     FP.Camera.setShift(state === 'title' && innerWidth > 800 ? 3.2 : 0);
     FP.Props.animate(dt);
+    if (!paused && state !== 'replay') FP.Style.update(dt, chars); // sparkly trails
     const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
     FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));
     if (FP.Net && FP.Net.isClient()) {
@@ -1271,7 +1311,12 @@ FP.Game = (function () {
       introFrame(dt);
     } else if (state === 'results') {
       // winners on the podium dance and cheer
-      for (const c of chars) if (c.podiumWinner && !c.emote && c.grounded && Math.random() < dt * 1.5) c.emote = { k: 2 + Math.floor(Math.random() * 2), t: 0, hop: 0.3 };
+      for (const c of chars) {
+        if (!c.podiumWinner || c.emote || !c.grounded || Math.random() > dt * 1.5) continue;
+        // your victory dance from the Shop (or a surprise one)
+        const dance = c.player && FP.Style.DANCE_EMOTE[c.player.dance];
+        c.emote = { k: dance || 2 + Math.floor(Math.random() * 2), t: 0, hop: 0.3 };
+      }
     } else if (state === 'title') {
       // the characters on the title screen show off their moves
       if (chars.length && Math.random() < dt * 1.6) { const c = chars[Math.floor(Math.random() * chars.length)]; if (!c.emote && c.ko <= 0) c.emote = { k: 1 + Math.floor(Math.random() * 3), t: 0, hop: 0.3 }; }
@@ -1293,7 +1338,7 @@ FP.Game = (function () {
     get chars() { return chars; }, get state() { return state; }, get round() { return round; }, set round(v) { round = v; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
-    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : cycleHat(p, dir)),
+    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
     get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,

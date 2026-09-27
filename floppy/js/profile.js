@@ -20,7 +20,7 @@ FP.Profile = (function () {
     { id: 'survivor', name: 'Survivor', desc: 'Be the last survivor in Zombie Tag.' },
     { id: 'sharp', name: 'Sharpshooter', desc: 'Win Dodgeball.' },
     { id: 'racer', name: 'Speedy', desc: 'Win the Obstacle Race.' },
-    { id: 'fashion', name: 'Fashionista', desc: 'Buy a hat in the shop.' },
+    { id: 'fashion', name: 'Fashionista', desc: 'Buy something in the shop.' },
     { id: 'rich', name: 'Rich!', desc: 'Earn 1000 party coins.', stat: 'earned', goal: 1000 },
     { id: 'silly', name: 'So Silly', desc: 'Play a game with 3 fun options on.' },
     { id: 'online', name: 'Party People', desc: 'Play a game in an online party.' },
@@ -99,26 +99,50 @@ FP.Profile = (function () {
     return got;
   }
 
-  // ---------------- the hat shop ----------------
-  const owns = (hat) => hat === 'none' || FP.Look.FREE_HATS.includes(hat) || data.owned.includes(hat);
-  function buy(hat) {
-    const price = PRICES[hat];
-    if (!price || owns(hat)) return false;
+  // ---------------- the shop ----------------
+  // hats use their plain name ("wizard"); everything else has its kind in front ("outfit:tutu", "dance:robot")
+  const KINDS = [
+    { id: 'hat', tab: 'Hats', list: () => FP.Look.SHOP_HATS, free: () => FP.Look.FREE_HATS, names: () => FP.UI.HAT_NAMES, where: 'Pick it in the lobby.' },
+    { id: 'outfit', tab: 'Outfits', list: () => FP.Look.SHOP_OUTFITS, free: () => FP.Look.FREE_OUTFITS, names: () => FP.Look.OUTFIT_NAMES, where: 'Pick it in the lobby.' },
+    { id: 'face', tab: 'Face paint', list: () => FP.Style.FACES.filter((f) => !FP.Style.FREE_FACES.includes(f)), free: () => FP.Style.FREE_FACES, names: () => FP.Style.FACE_NAMES, where: 'Pick it in the lobby.' },
+    { id: 'dance', tab: 'Dances', list: () => FP.Style.DANCES.filter((f) => !FP.Style.FREE_DANCES.includes(f)), free: () => FP.Style.FREE_DANCES, names: () => FP.Style.DANCE_NAMES, where: 'Win a game to show it off!' },
+    { id: 'trail', tab: 'Trails', list: () => FP.Style.TRAILS.filter((f) => !FP.Style.FREE_TRAILS.includes(f)), free: () => FP.Style.FREE_TRAILS, names: () => FP.Style.TRAIL_NAMES, where: 'Pick it in the lobby.' },
+  ];
+  Object.assign(PRICES, {
+    'outfit:hoodie': 120, 'outfit:jersey': 120, 'outfit:tutu': 150, 'outfit:tuxedo': 200, 'outfit:hero': 200, 'outfit:spacesuit': 250,
+    'face:whiskers': 80, 'face:stars': 80, 'face:tiger': 100, 'face:clown': 100, 'face:shades': 120,
+    'dance:spin': 120, 'dance:robot': 150, 'dance:floss': 150, 'dance:chicken': 150, 'dance:flip': 200,
+    'trail:bubbles': 150, 'trail:sparkles': 200, 'trail:hearts': 200, 'trail:rainbow': 300, 'trail:fire': 300,
+  });
+  const splitId = (id) => { const k = String(id).indexOf(':'); return k < 0 ? ['hat', id] : [id.slice(0, k), id.slice(k + 1)]; };
+  const kindOf = (kid) => KINDS.find((k) => k.id === kid);
+  function owns(id, name) {
+    // owns('wizard'), owns('outfit:tutu') or owns('outfit', 'tutu')
+    const [kid, item] = name !== undefined ? [id, name] : splitId(id);
+    const kind = kindOf(kid);
+    if (!kind || item === 'none' || item == null) return true;
+    if (kind.free().includes(item)) return true;
+    return data.owned.includes(kid === 'hat' ? item : kid + ':' + item);
+  }
+  function itemName(id) { const [kid, item] = splitId(id); const kind = kindOf(kid); return (kind && kind.names()[item]) || item; }
+  function buy(id) {
+    const price = PRICES[id];
+    if (!price || owns(id)) return false;
     if (data.coins < price) { FP.UI.toast(`You need ${price - data.coins} more coins!`); FP.Audio.play('beep'); return false; }
     data.coins -= price;
-    data.owned.push(hat);
+    data.owned.push(id);
     save();
     FP.Audio.play('coin'); FP.Audio.play('cheer');
-    FP.UI.toast(`You got the ${FP.UI.HAT_NAMES[hat]}! Pick it in the lobby.`, 3);
+    FP.UI.toast(`You got ${itemName(id)}! ${kindOf(splitId(id)[0]).where}`, 3);
     unlock('fashion');
     return true;
   }
 
-  // little pictures of each hat on a bean head (drawn once with a small extra renderer)
+  // little pictures of each thing on a bean (drawn once with a small extra renderer)
   let thumbR = null, thumbScene = null, thumbCam = null;
   const thumbs = {};
-  function hatThumb(hat) {
-    if (thumbs[hat] !== undefined) return thumbs[hat];
+  function snap(key, build, camY = 0.28, dist = 2.6) {
+    if (thumbs[key] !== undefined) return thumbs[key];
     try {
       if (!thumbR) {
         thumbR = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
@@ -127,40 +151,99 @@ FP.Profile = (function () {
         thumbScene.add(new THREE.HemisphereLight(0xffffff, 0x9fc4ff, 1.7));
         const sun = new THREE.DirectionalLight(0xffffff, 1.8); sun.position.set(2, 3, 4); thumbScene.add(sun);
         thumbCam = new THREE.PerspectiveCamera(30, 1, 0.1, 30);
-        thumbCam.position.set(0, 0.45, 2.6); thumbCam.lookAt(0, 0.28, 0);
       }
-      const head = FP.Look.makeHead(FP.Look.COLORS[3], FP.Ragdoll.D, hat === 'none' ? null : hat).group;
-      head.rotation.y = -0.4;
-      thumbScene.add(head);
+      thumbCam.position.set(0, camY + 0.17, dist); thumbCam.lookAt(0, camY, 0);
+      const obj = build();
+      thumbScene.add(obj);
       thumbR.render(thumbScene, thumbCam);
-      thumbs[hat] = thumbR.domElement.toDataURL();
-      thumbScene.remove(head);
-    } catch (e) { thumbs[hat] = ''; }
-    return thumbs[hat];
+      thumbs[key] = thumbR.domElement.toDataURL();
+      thumbScene.remove(obj);
+    } catch (e) { thumbs[key] = ''; }
+    return thumbs[key];
+  }
+  const hatThumb = (hat) => snap('hat:' + hat, () => {
+    const head = FP.Look.makeHead(FP.Look.COLORS[3], FP.Ragdoll.D, hat === 'none' ? null : hat).group;
+    head.rotation.y = -0.4;
+    return head;
+  });
+  const outfitThumb = (o) => snap('outfit:' + o, () => {
+    const g = FP.Look.makeTorso(FP.Look.COLORS[3], FP.Ragdoll.D, o);
+    g.rotation.y = -0.6;
+    return g;
+  }, 0.0, 2.9);
+  const faceThumb = (f) => snap('face:' + f, () => {
+    const h = FP.Look.makeHead(FP.Look.COLORS[3], FP.Ragdoll.D, null);
+    FP.Style.applyFace({ meshes: { head: h.group }, face: { r: h.r } }, f);
+    h.group.rotation.y = -0.25;
+    return h.group;
+  }, 0.0, 1.75);
+  // dances and trails get simple drawings
+  const DANCE_ART = {
+    robot: '<rect x="15" y="4" width="10" height="9" rx="2"/><rect x="13" y="14" width="14" height="13" rx="3"/><path d="M13 16H6v8M27 16h7V8M17 27v9M23 27v9" fill="none" stroke-width="3.2"/>',
+    flip: '<circle cx="20" cy="31" r="5"/><path d="M20 26V13M20 20l-8-6M20 20l8-6M20 13l-6-8M20 13l6-8" fill="none" stroke-width="3.2"/><path d="M6 24a14 14 0 0 1 28 0" fill="none" stroke-width="2.2" stroke-dasharray="3 3"/>',
+    spin: '<circle cx="20" cy="8" r="5"/><path d="M20 13v13M20 17l-11 2M20 17l11-2M20 26l-6 10M20 26l6 10" fill="none" stroke-width="3.2"/><path d="M5 30a15 6 0 0 0 30 0" fill="none" stroke-width="2.2"/>',
+    floss: '<circle cx="20" cy="7" r="5"/><path d="M20 12v14M20 16l-10 8M20 16l-6 10M20 26l-5 10M20 26l5 10" fill="none" stroke-width="3.2"/>',
+    chicken: '<circle cx="20" cy="7" r="5"/><path d="M20 12v14M20 16l-7 2 3 4M20 16l7 2-3 4M20 26l-7 10M20 26l7 10" fill="none" stroke-width="3.2"/><path d="M18 3l2-3 2 3" fill="#ff3a4a" stroke-width="1"/>',
+  };
+  const danceThumb = (d) => `<svg class="art" viewBox="0 0 40 40" fill="#7bd05a" stroke="#2a2140" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${DANCE_ART[d] || ''}</svg>`;
+  function trailThumb(t) {
+    const dots = [];
+    for (let k = 0; k < 6; k++) {
+      const x = 6 + k * 5.5, y = 30 - k * 4 + (k % 2) * 3, s = 1.5 + k * 0.6;
+      if (t === 'sparkles') dots.push(`<path d="M${x} ${y - s * 1.6}l${s * 0.5} ${s * 1.1} ${s * 1.1} ${s * 0.5} -${s * 1.1} ${s * 0.5} -${s * 0.5} ${s * 1.1} -${s * 0.5} -${s * 1.1} -${s * 1.1} -${s * 0.5} ${s * 1.1} -${s * 0.5}z" fill="#ffcf33"/>`);
+      else if (t === 'hearts') dots.push(`<path d="M${x} ${y + s}l-${s} -${s}a${s * 0.6} ${s * 0.6} 0 0 1 ${s} -${s * 0.9}a${s * 0.6} ${s * 0.6} 0 0 1 ${s} ${s * 0.9}z" fill="#ff5a9a"/>`);
+      else if (t === 'bubbles') dots.push(`<circle cx="${x}" cy="${y}" r="${s}" fill="#dff3ff" stroke="#6ab8e8" stroke-width="1"/>`);
+      else if (t === 'rainbow') dots.push(`<circle cx="${x}" cy="${y}" r="${s}" fill="hsl(${k * 55},90%,60%)"/>`);
+      else if (t === 'fire') dots.push(`<circle cx="${x}" cy="${y}" r="${s}" fill="${k % 2 ? '#ffcf33' : '#ff5a1a'}"/>`);
+    }
+    return `<svg class="art" viewBox="0 0 40 40"><circle cx="34" cy="7" r="5" fill="#ff9ad0" stroke="#2a2140" stroke-width="1.6"/>${dots.join('')}</svg>`;
+  }
+  function thumbFor(kid, item) {
+    if (kid === 'hat') { const s = hatThumb(item); return s ? `<img src="${s}" alt="">` : ''; }
+    if (kid === 'outfit') { const s = outfitThumb(item); return s ? `<img src="${s}" alt="">` : ''; }
+    if (kid === 'face') { const s = faceThumb(item); return s ? `<img src="${s}" alt="">` : ''; }
+    if (kid === 'dance') return danceThumb(item);
+    return trailThumb(item);
   }
 
   function coinLine() { return `<span class="coins">${ICON().coin} <b>${data.coins}</b> party coins</span>`; }
 
-  function shopScreen(back, sel = 0) {
-    const hats = FP.Look.SHOP_HATS;
+  let shopTab = 0;
+  function shopScreen(back, sel, tab = shopTab) {
+    shopTab = tab;
+    const kind = KINDS[tab];
+    const items = kind.list();
+    const tabs = KINDS.map((k, i) => ({
+      label: k.tab, small: true, cls: 'tab' + (i === tab ? ' cur' : ''),
+      action: () => shopScreen(back, i, i),
+    }));
+    const T = tabs.length;
+    const goods = items.map((it, i) => {
+      const id = kind.id === 'hat' ? it : kind.id + ':' + it;
+      const own = owns(id), price = PRICES[id];
+      return {
+        label: `${thumbFor(kind.id, it)}<b>${kind.names()[it]}</b><small>${own ? `${ICON().check} Yours!` : `${ICON().coin} ${price}`}</small>`,
+        cls: 'hat' + (own ? ' owned' : data.coins >= price ? ' afford' : ''),
+        action: () => { if (!own && buy(id)) shopScreen(back, T + i, tab); else if (own) FP.UI.toast(`You have this one! ${kind.where}`); },
+      };
+    });
+    const last = T + goods.length; // the Back button
     FP.UI.screen({
       cls: 'shop',
-      title: 'Hat Shop',
-      html: `<p>${coinLine()}</p><p class="small">Earn coins by playing mini-games (more for winning) and from achievements.</p>`,
+      title: 'Shop',
+      html: `<p>${coinLine()}</p><p class="small">Earn coins by playing mini-games (more for winning) and from achievements. Hats, outfits, face paint and trails show up in the lobby. Your dance plays when you win!</p>`,
       columns: 4,
-      start: sel,
-      buttons: [
-        ...hats.map((h, i) => {
-          const own = owns(h), price = PRICES[h];
-          const img = hatThumb(h);
-          return {
-            label: `${img ? `<img src="${img}" alt="">` : ''}<b>${FP.UI.HAT_NAMES[h]}</b><small>${own ? `${ICON().check} Yours!` : `${ICON().coin} ${price}`}</small>`,
-            cls: 'hat' + (own ? ' owned' : data.coins >= price ? ' afford' : ''),
-            action: () => { if (!own && buy(h)) shopScreen(back, i); else if (own) FP.UI.toast('You have this one! Pick it in the lobby.'); },
-          };
-        }),
-        { label: `${ICON().back} Back`, action: back, small: true, cls: 'wide' },
-      ],
+      start: sel === undefined ? tab : sel,
+      // the tab row has 5 buttons, the rows below have 4: move up and down by hand so it feels right
+      onKey: (code) => {
+        const s = FP.UI.selected();
+        if (code === 'down' && s < T) { FP.UI.select(T + Math.min(s, 3, goods.length - 1)); return true; }
+        if (code === 'up' && s >= T && s < T + 4) { FP.UI.select(tab); return true; }
+        if (code === 'up' && s === last) { FP.UI.select(T + Math.max(0, goods.length - 1)); return true; }
+        if (code === 'down' && s >= T && s < last && s + 4 >= last) { FP.UI.select(last); return true; }
+        return false;
+      },
+      buttons: [...tabs, ...goods, { label: `${ICON().back} Back`, action: back, small: true, cls: 'wide' }],
       back,
     });
   }
@@ -181,5 +264,5 @@ FP.Profile = (function () {
     });
   }
 
-  return { PRICES, ACH, owns, buy, earn, unlock, matchEnded, shopScreen, achievementsScreen, hatThumb, coinLine, get coins() { return data.coins; }, get data() { return data; }, isLocal };
+  return { PRICES, ACH, KINDS, owns, buy, itemName, earn, unlock, matchEnded, shopScreen, achievementsScreen, hatThumb, coinLine, get coins() { return data.coins; }, get data() { return data; }, isLocal };
 })();

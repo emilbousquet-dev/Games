@@ -233,5 +233,5 @@ FP.UI = (function () {
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) toastBox.classList.remove('show'); }
   }
 
-  return { screen, closeScreen, open, wipe, selected: () => sel, lastDevice: () => lastDevice, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
+  return { screen, closeScreen, open, wipe, selected: () => sel, select, lastDevice: () => lastDevice, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
 })();
