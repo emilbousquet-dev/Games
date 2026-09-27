@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Floppy Party - wobbly ragdoll party game</title>
-  <meta name="description" content="A wobbly ragdoll party game with 38 silly mini-games for 1 to 4 players. Play on one computer or online with friends.">
+  <meta name="description" content="A wobbly ragdoll party game with 42 silly mini-games for 1 to 4 players. Play on one computer or online with friends.">
   <meta name="theme-color" content="#ffcf33">
   <meta property="og:title" content="Floppy Party">
-  <meta property="og:description" content="Punch, grab and throw your friends in 38 silly ragdoll mini-games. Free, in your browser, online with friends.">
+  <meta property="og:description" content="Punch, grab and throw your friends in 42 silly ragdoll mini-games. Free, in your browser, online with friends.">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://emilbousquet-dev.github.io/Games/floppy/preview.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -186,6 +186,8 @@
     .credit-list small { font-size: 14px; opacity: .6; font-weight: 700; }
     .version { opacity: .5; }
     /* kart racing */
+    .hs-curtain { position: fixed; inset: 0; z-index: 40; background: #1d1a2f; display: flex; align-items: center; justify-content: center; text-align: center; color: #fff; }
+    .hs-curtain b { display: block; font: 900 42px/1.2 system-ui, sans-serif; } .hs-curtain small { font: 700 20px system-ui, sans-serif; opacity: .8; }
     .extra:has(.tug-bar) { flex-direction: column; gap: 4px; padding: 4px 16px; border-radius: 16px; }
     .tug-bar { position: relative; width: 240px; height: 14px; border-radius: 99px; background: linear-gradient(90deg, #ff5a5f 0 50%, #4aa8ff 50% 100%); border: 2px solid #fff; }
     .tug-bar.speed { background: linear-gradient(90deg, #fff, #ffcf33 50%, #5cc44a); }
@@ -393,6 +395,10 @@
   <script src="js/modes/hockey.js"></script>
   <script src="js/modes/snowball.js"></script>
   <script src="js/modes/boxing.js"></script>
+  <script src="js/modes/skydive.js"></script>
+  <script src="js/modes/cooking.js"></script>
+  <script src="js/modes/hideseek.js"></script>
+  <script src="js/modes/water.js"></script>
   <script src="js/net.js"></script>
   <script src="js/game.js"></script>
 </body>

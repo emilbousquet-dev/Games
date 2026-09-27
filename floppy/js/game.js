@@ -9,7 +9,7 @@ window.FP = window.FP || {};
 FP.Game = (function () {
   const scene = FP.Stage.scene;
   const MAX_PLAYERS = 4;
-  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit', 'tug', 'volley', 'hurdles', 'penalty', 'hockey', 'snowball', 'boxing'];
+  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit', 'tug', 'volley', 'hurdles', 'penalty', 'hockey', 'snowball', 'boxing', 'skydive', 'cooking', 'hideseek', 'water'];
   const MODES = () => MODE_ORDER.map((id) => FP.Modes[id]).filter(Boolean);
   const BOT_NAMES = ['Wobbles', 'Noodle', 'Biscuit', 'Pickle', 'Jellybean', 'Mr. Flop', 'Sprout', 'Bonkers'];
   const ICON = FP.UI.ICON;
@@ -612,6 +612,10 @@ FP.Game = (function () {
     hockey: ['The ice is slippery!', 'Skate into the puck, PUNCH to shoot, GRAB to pass', 'No puck? PUNCH the carrier to poke it away'],
     snowball: ['Hold GRAB to make a snowball (up to 3)', 'PUNCH to throw it', 'Hide behind the snow forts!'],
     boxing: ['PUNCH to punch, hold GRAB to block', 'No health left? You go down!', 'MASH JUMP to get up before the ref counts to 5'],
+    skydive: ['Steer through the rings while you fall', 'Press JUMP to open your parachute', 'Land in the middle of the target for +5'],
+    cooking: ['Run into a crate to pick up food, run into a pot to put it in', '3 of the same or 3 different = soup', 'Bring soups to the SERVE window before they burn!'],
+    hideseek: ['Hiders: GRAB next to furniture to hide inside it', 'Seeker: PUNCH furniture to look inside', 'Hidden furniture wiggles sometimes!'],
+    water: ['PUNCH to lob a water balloon', 'Out? Refill at your team\'s water tap', 'Getting wet makes you slippery!'],
   };
   const INTRO_TIME = 15;
   let ready = new Set(), introT = 0;
