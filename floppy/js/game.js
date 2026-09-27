@@ -9,7 +9,7 @@ window.FP = window.FP || {};
 FP.Game = (function () {
   const scene = FP.Stage.scene;
   const MAX_PLAYERS = 4;
-  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit', 'tug', 'volley', 'hurdles'];
+  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race', 'balloons', 'seats', 'zombie', 'boulder', 'kart', 'sumo', 'bowling', 'hoops', 'meteor', 'conveyor', 'wall', 'simon', 'moles', 'chickens', 'golf', 'bumpers', 'fruit', 'tug', 'volley', 'hurdles', 'penalty', 'hockey', 'snowball', 'boxing'];
   const MODES = () => MODE_ORDER.map((id) => FP.Modes[id]).filter(Boolean);
   const BOT_NAMES = ['Wobbles', 'Noodle', 'Biscuit', 'Pickle', 'Jellybean', 'Mr. Flop', 'Sprout', 'Bonkers'];
   const ICON = FP.UI.ICON;
@@ -608,6 +608,10 @@ FP.Game = (function () {
     tug: ['MASH PUNCH as fast as you can to pull', 'When the sign says HEAVE!, presses count 3 times', 'Pull the flag over your line!'],
     volley: ['Stand under the ball and you BUMP it', 'PUNCH near the ball to hit it over the net', 'JUMP and PUNCH up high to SPIKE!'],
     hurdles: ['MASH PUNCH as fast as you can to run', 'JUMP over the hurdles (or trip!)', '3 races: points for every place'],
+    penalty: ['Shooter: move your aim, PUNCH to shoot', 'Goalie: left and right, JUMP to dive', 'Goals and saves both score points'],
+    hockey: ['The ice is slippery!', 'Skate into the puck, PUNCH to shoot, GRAB to pass', 'No puck? PUNCH the carrier to poke it away'],
+    snowball: ['Hold GRAB to make a snowball (up to 3)', 'PUNCH to throw it', 'Hide behind the snow forts!'],
+    boxing: ['PUNCH to punch, hold GRAB to block', 'No health left? You go down!', 'MASH JUMP to get up before the ref counts to 5'],
   };
   const INTRO_TIME = 15;
   let ready = new Set(), introT = 0;

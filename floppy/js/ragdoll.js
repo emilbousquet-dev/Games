@@ -262,7 +262,7 @@ FP.Ragdoll = (function () {
       const speed = SPEED * ((FP.Fun && FP.Fun.speed) || 1) * (c.speedMul || 1) * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
       const wantX = input.x * speed + groundVel.x, wantZ = input.z * speed + groundVel.z;
       c.stagger = Math.max(0, (c.stagger || 0) - dt);
-      const accel = (c.grounded ? (FP.Fun && FP.Fun.slip ? 1.6 : 14) : 3.5) * (c.stagger > 0 ? 0.15 : 1);
+      const accel = (c.grounded ? ((FP.Fun && FP.Fun.slip) || c.onIce ? 2.2 : 14) : 3.5) * (c.stagger > 0 ? 0.15 : 1);
       t.applyForce(new Vec3((wantX - t.velocity.x) * TOTAL * accel * tall, 0, (wantZ - t.velocity.z) * TOTAL * accel * tall), new Vec3(0, 0, 0));
 
       // jump
@@ -344,6 +344,13 @@ FP.Ragdoll = (function () {
       const out = new Vec3(sh.x - t.position.x, 0, sh.z - t.position.z);
       out.normalize();
       const em = c.emote;
+      // guard (boxing): both gloves up in front of the face
+      if (c.guard && !(c.punchT < 0.22 && c.punchArm === i) && !(c.grab[0] || c.grab[1])) {
+        const hp = c.parts.head.position;
+        const target = new Vec3(hp.x + f.x * 0.4 + out.x * 0.14, hp.y - 0.12, hp.z + f.z * 0.4 + out.z * 0.14);
+        pull(arm, HAND, target, 22, 0.6, s, t.velocity);
+        continue;
+      }
       // which arms the emote uses: wave = left arm, touch your nose = right arm, the others = both
       const emoteArm = em && (em.k === 1 ? i === 1 : em.k === 4 ? i === 0 : true);
       if (em && em.k === 4 && emoteArm && !(c.hands && (c.hands[0] || c.hands[1])) && !(c.punchT < 0.22 && c.punchArm === i)) {

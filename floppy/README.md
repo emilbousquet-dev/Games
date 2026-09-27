@@ -1,7 +1,7 @@
 # FLOPPY PARTY
 
 A **wobbly ragdoll party game** for 1 to 4 players, in a cute cartoon style.
-Punch, grab and throw your friends around in 34 silly mini-games!
+Punch, grab and throw your friends around in 38 silly mini-games!
 Play on **one computer** (2 players on the keyboard, plus controllers and bots) or **online** with a room code.
 
 ## How to play
@@ -79,6 +79,10 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Tug of War** | Red vs Blue on a rope over a mud pit. **Mash punch** to pull! When the sign says HEAVE!, every press counts 3 times. The losers land in the mud. First to 2. | 2 to 4 |
 | **Beach Volleyball** | Red vs Blue at the beach. Stand under the floaty ball to bump it (3 touches per side), **punch** to hit it over, **jump and punch** up high to SPIKE. First to 7. | 2 to 4 |
 | **Hurdle Dash** | A sprint race: **mash punch** to run faster and **jump** over the hurdles (hit one and you trip). 3 races with points for every place. | 1 to 4 |
+| **Penalty Shootout** | Everyone takes turns shooting and being the goalie. Shooter: move your aim, **punch** to shoot. Goalie: left and right, **jump** to dive. Goals and saves both score. | 2 to 4 |
+| **Ice Hockey** | Red vs Blue on slippery ice with sticks and goalies. Skate into the puck, **punch** to shoot, **grab** to pass, punch the carrier to poke it away. 3 periods. | 2 to 4 |
+| **Snowball Fight** | **Hold grab** to make snowballs (up to 3), **punch** to throw. Hide behind snow forts (they break). Most hits after 90 seconds wins. | 2 to 4 |
+| **Floppy Boxing** | A boxing ring with gloves, health bars and a referee. **Punch**, **hold grab** to block. Knocked down? Mash **jump** before the count of 5. 3 knockdowns and you're out. First to 2 rounds. | 2 to 4 |
 
 After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race, Kart Racing, Bowling)
 can be played alone with no bots. The other games need at least 2 players, so if you play alone you get at least 1 bot.
