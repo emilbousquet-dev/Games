@@ -21,7 +21,7 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 | Punch | `F` | `.` | X or B |
 | Grab with both hands (hold) | `G` | `,` | LB + RB |
 | Left hand / right hand (hold) | `Q` / `E` | `;` / `'` | LB or LT / RB or RT |
-| Emotes: wave / dance / cheer / touch your nose | `1` / `2` / `3` / `4` | `8` / `9` / `0` / `-` | Back / left stick click / Y / right stick click |
+| Emotes: wave / dance / cheer | `1` / `2` / `3` | `8` / `9` / `0` | Back / left stick click / Y |
 | Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / left stick click |
 
 `H` help, `Esc` pause (or **Start** on a controller), `M` music on or off.
@@ -46,7 +46,7 @@ In the lobby you can also click the arrows on your player card to change your co
 | Mini-game | How it works | Players |
 |---|---|---|
 | **Knockout Arena** | A floating platform made of tiles that start falling. Knock everyone off! Last one standing wins the round. First to 3. | 2 to 4 |
-| **Ragdoll Soccer** | Red team vs Blue team with a giant bouncy ball. First to 3 goals. A tie after 3 minutes means golden goal. | 2 to 4 |
+| **Soccer** | Real soccer, Red vs Blue, with a goalkeeper in each goal. Run into the ball to dribble it, **punch** to shoot, **grab** to pass, **jump** to slide tackle. Two halves, golden goal if it's a tie. | 2 to 4 |
 | **The Heist** | Everyone on one team: carry treasure from the museum to the getaway van. The diamond is heavy, so carry it together. Guards with flashlights chase you, lasers zap you. | 1 to 4 |
 | **Bomb Tag** | One player carries a ticking bomb. Bump into or punch someone to pass it. If it explodes on you, you're out. First to 3. | 2 to 4 |
 | **King of the Hill** | Stand on top of the hill alone to earn points. If someone else is up there, nobody scores. First to 25. | 2 to 4 |
@@ -55,7 +55,7 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Color Panic** | A color is called out: get on a tile of that color before all the other tiles drop away. It gets faster and faster. First to 3. | 2 to 4 |
 | **Spin Sweeper** | A giant bar spins around the platform. Jump over it! Later a second bar joins in. Last one standing wins. First to 3. | 2 to 4 |
 | **Coin Grab** | Grab the most coins in 75 seconds. Knock someone out and they drop coins. Watch for the big coin worth 5. | 1 to 4 |
-| **Dodgeball** | Grab a ball, run and let go to throw it. BONK someone to score. First to 5 hits. | 2 to 4 |
+| **Dodgeball** | Real dodgeball, Red vs Blue on two halves of the court. Run into a ball to pick it up, **punch** to throw. Hit = out. **Grab** right when a ball comes to CATCH it: the thrower is out and a teammate comes back in. First to 2 rounds. | 2 to 4 |
 | **Paint Party** | Walk around to paint the floor your color. Jump and land for a big splat. Most paint after 60 seconds wins. | 1 to 4 |
 | **Crown Keeper** | Wear the crown to earn points. Punch whoever has it to knock it off their head. First to 30. | 2 to 4 |
 | **Obstacle Race** | Spinning bars, jumping pads, moving platforms, pushers and stairs. First over the finish line wins! Fall off and you go back to the last checkpoint. | 1 to 4 |
@@ -65,15 +65,15 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Boulder Dodge** | Giant boulders roll across the island. Red arrows show where they come from. Dodge! First to 3. | 2 to 4 |
 | **Kart Racing** | Floppy drivers in go-karts, 3 laps. Drive through **?** boxes for items (boost, banana, bouncy ball, star, triple boost) and press **punch** to use them. Hold **jump** while turning to drift for a mini boost. The camera is behind your kart, with split screen for 2 to 4 players on one computer. | 1 to 4 |
 | **Sumo Wrestling** | Push everyone out of the rope circle. **Jump** does a big belly charge, and punches push extra hard. First to 3. | 2 to 4 |
-| **Bowling** | Everyone has a lane. Grab your ball, run and let go to bowl. 3 throws, strikes give a bonus. Most pins wins. | 1 to 4 |
-| **Basketball** | Red vs Blue. Grab the ball and let go near the other team's hoop to shoot (2 or 3 points). Punch the carrier to steal. First to 10. | 2 to 4 |
+| **Bowling** | Real bowling with the camera behind you. Step left or right, hold **grab** to aim and power up, let go to bowl, and curve the ball while it rolls. Gutters, 10 frames, strikes and spares with a real scorecard. | 1 to 4 |
+| **Basketball** | Real basketball, Red vs Blue. Run into the ball to pick it up. **Punch** to shoot (jump by the hoop to SLAM DUNK), **grab** to pass, punch the ball carrier to steal, jump to block. 3-point line, 4 quarters, overtime. | 2 to 4 |
 | **Meteor Shower** | Meteors fall from the sky. Red circles show where. Get out of the way! First to 3. | 2 to 4 |
 | **Conveyor Brawl** | The floor is moving belts that push you toward the edge and keep getting faster. First to 2. | 2 to 4 |
 | **Hole in the Wall** | A wall slides across the platform. Stand in a gap or get pushed off! The walls get faster and the gaps smaller. First to 2. | 2 to 4 |
-| **Floppy Says** | Do what Floppy says: jump, punch, wave, dance, cheer, touch your nose, grab with one hand, spin, run, hug a friend, freeze. Only if it starts with "Floppy says" (watch out for "Flappy says"!). It gets faster, with two moves at once near the end. 20 orders. | 1 to 4 |
+| **Floppy Says** | Do what Floppy says: jump, punch, wave, dance, cheer, grab with one hand, spin in a circle, run, hug a friend, freeze. Only if it starts with "Floppy says" (watch out for "Flappy says"!). It gets faster, with two moves at once near the end. 20 orders. | 1 to 4 |
 | **Bop the Moles** | Punch the moles popping out of the holes. Golden moles are worth 3. Never punch a mole with a bomb! 60 seconds. | 1 to 4 |
 | **Chicken Round-up** | Grab the running chickens and carry them to the pen in your color. The golden chicken is worth 3. 90 seconds. | 1 to 4 |
-| **Floppy Golf** | Walk behind your ball, face the hole and punch it (your caddy picks how hard). First in the hole gets the most points. 3 holes, one with a spinner. | 1 to 4 |
+| **Floppy Golf** | Stand by your ball and face the hole: an arrow shows your shot. **Punch** and your caddy picks the power, or **hold grab** to pick the power yourself and let go to hit. First in the hole gets the most points. 3 holes. | 1 to 4 |
 | **Bumper Bash** | A pinball table full of bumpers. Touch one and BOING, you fly! After a while the bumpers get super bouncy and shockwaves push everyone out. First to 2. | 2 to 4 |
 | **Fruit Frenzy** | Fruit falls from a giant tree. Watch the shadows and catch it with your head. Golden fruit is worth 3, rotten fruit knocks you out. 60 seconds. | 1 to 4 |
 

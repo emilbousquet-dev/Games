@@ -20,12 +20,12 @@ FP.Input = (function () {
     { // PLAYER 1 (left side)
       up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
       jump: ['Space'], punch: ['KeyF'], grab: ['KeyG', 'ShiftLeft'], grabL: ['KeyQ'], grabR: ['KeyE'], color: ['KeyZ'], hat: ['KeyX'], outfit: ['KeyC'],
-      emotes: [['Digit1'], ['Digit2'], ['Digit3'], ['Digit4']],
+      emotes: [['Digit1'], ['Digit2'], ['Digit3']],
     },
     { // PLAYER 2 (right side)
       up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'],
       jump: ['Slash', 'Numpad0'], punch: ['Period', 'Numpad1'], grab: ['Comma', 'ShiftRight', 'Numpad2'], grabL: ['Semicolon', 'Numpad3'], grabR: ['Quote', 'NumpadDecimal'], color: ['KeyK', 'Numpad4'], hat: ['KeyL', 'Numpad5'], outfit: ['KeyJ', 'Numpad6'],
-      emotes: [['Digit8', 'Numpad7'], ['Digit9', 'Numpad8'], ['Digit0', 'Numpad9'], ['Minus', 'NumpadAdd']],
+      emotes: [['Digit8', 'Numpad7'], ['Digit9', 'Numpad8'], ['Digit0', 'Numpad9']],
     },
   ];
   const pads = [null, null, null, null]; // up to 4 controllers
@@ -88,7 +88,7 @@ FP.Input = (function () {
       s.jumpPressed = tapped(k.jump); s.punchPressed = tapped(k.punch);
       s.colorPressed = tapped(k.color); s.hatPressed = tapped(k.hat); s.outfitPressed = tapped(k.outfit);
       s.startPressed = false;
-      s.emote = k.emotes.findIndex((list) => tapped(list)) + 1; // 1 wave, 2 dance, 3 cheer, 4 touch your nose (0 = none)
+      s.emote = k.emotes.findIndex((list) => tapped(list)) + 1; // 1 wave, 2 dance, 3 cheer (0 = none)
     } else {
       s.jumpPressed = s.jump && !p.jump;
       s.punchPressed = s.punch && !p.punch;
@@ -96,8 +96,8 @@ FP.Input = (function () {
       s.colorPressed = s.color && !p.color;
       s.hatPressed = s.hat && !p.hat;
       s.outfitPressed = s.outfit && !p.outfit;
-      // emotes on a controller: Back wave, left stick click dance, Y cheer, right stick click touch your nose
-      s.emote = s.dance && !p.dance ? 2 : s.colorPressed ? 1 : s.hatPressed ? 3 : s.outfitPressed ? 4 : 0;
+      // emotes on a controller: Back wave, left stick click dance, Y cheer
+      s.emote = s.dance && !p.dance ? 2 : s.colorPressed ? 1 : s.hatPressed ? 3 : 0;
     }
     prev[id] = { jump: s.jump, punch: s.punch, start: s.start, color: s.color, hat: s.hat, outfit: s.outfit, dance: s.dance, t: now };
     return s;

@@ -1,7 +1,7 @@
 // ============================================================
 //  FLOPPY PARTY — FLOPPY SAYS
 //  Like "Simon says"! The big announcer gives orders: jump,
-//  punch, wave, dance, touch your nose, grab with one hand,
+//  punch, wave, dance, cheer, grab with one hand,
 //  spin around, hug a friend, freeze... Only do it when it
 //  starts with "Floppy says"! (Watch out for "Flappy says"!)
 //  Do it right: +1 point. Get tricked: -1.
@@ -20,10 +20,9 @@ FP.Modes.simon = (function () {
     grab: { word: 'GRAB WITH BOTH HANDS!', hint: 'G / both bumpers', from: 3 },
     dance: { word: 'DANCE!', hint: 'key 2 / left stick click', from: 4 },
     cheer: { word: 'CHEER!', hint: 'key 3 / Y', from: 4 },
-    nose: { word: 'TOUCH YOUR NOSE!', hint: 'key 4 / right stick click', from: 5 },
     left: { word: 'LEFT HAND ONLY!', hint: 'Q / left bumper', from: 6 },
     right: { word: 'RIGHT HAND ONLY!', hint: 'E / right bumper', from: 6 },
-    spin: { word: 'SPIN AROUND!', hint: 'walk in a little circle', from: 8 },
+    spin: { word: 'SPIN IN A CIRCLE!', hint: 'walk around in a little circle', from: 5 },
     run: { word: 'RUN AROUND!', hint: 'keep running', from: 8 },
     hug: { word: 'HUG A FRIEND!', hint: 'grab someone', from: 10, needsFriend: true },
   };
@@ -211,7 +210,7 @@ FP.Modes.simon = (function () {
 
   self = {
     id: 'simon', name: 'Floppy Says', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 3, song: 'circus', minZoom: 14, art: ART,
-    desc: 'Jump, wave, dance, touch your nose, spin, hug... but only if it starts with "Floppy says"! It gets faster and trickier.',
+    desc: 'Jump, punch, wave, dance, spin in a circle, hug... but only if it starts with "Floppy says"! It gets faster and trickier.',
     build, spawn, update, botThink, hud,
     focus: (chars) => chars.map(FP.Ragdoll.center).concat([new THREE.Vector3(0, 2.5, -5)]), // keep the announcer in view
     scoreLabel: (s) => `${s}`,

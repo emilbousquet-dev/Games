@@ -86,7 +86,8 @@ FP.Modes.golf = (function () {
       k.body.collisionFilterMask = FP.Physics.GROUP.WORLD | FP.Physics.GROUP.PROP; // people walk through balls (no dribbling!)
       const x = hole.tee[0] + (i - (n - 1) / 2) * 1.1, z = hole.tee[1] - 1;
       k.body.position.set(x, R + 0.02, z);
-      const ball = { ...FP.Stage.prop(k.mesh, k.body), player: p, strokes: 0, sunk: false, safe: { x, z }, cool: 0 };
+      const arrow = aimArrow(col); S.add(arrow);
+      const ball = { ...FP.Stage.prop(k.mesh, k.body), player: p, strokes: 0, sunk: false, safe: { x, z }, cool: 0, arrow, aim: { show: false, len: 3, yaw: 0, charging: false, power: 0, t: 0 } };
       balls.push(ball);
     });
     // the rough: lower grass all around the course (balls that land here go back)
@@ -119,11 +120,25 @@ FP.Modes.golf = (function () {
     return Math.max(1.2, Math.min(16, d));
   }
 
-  function strike(c, ball) {
+  // an arrow on the grass that shows where (and how far) your shot goes
+  function aimArrow(color) {
+    const g = new THREE.Group();
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8, depthWrite: false });
+    const shaft = new THREE.Mesh(new THREE.PlaneGeometry(0.22, 1), mat);
+    shaft.rotation.x = -Math.PI / 2;
+    const head = new THREE.Mesh(new THREE.CircleGeometry(0.3, 3), mat);
+    head.rotation.x = -Math.PI / 2; head.rotation.z = Math.PI / 2;
+    g.add(shaft, head);
+    g.userData = { shaft, head, mat, color };
+    g.visible = false;
+    return g;
+  }
+
+  function strike(c, ball, dist) {
     const fx = Math.sin(c.yaw), fz = Math.cos(c.yaw);
     const b = ball.body;
-    const d = shotLength(b.position, fx, fz);
-    const v = d * 0.62 * (0.93 + Math.random() * 0.14);
+    const d = dist || shotLength(b.position, fx, fz);
+    const v = d * 0.62 * (dist ? 1 : 0.93 + Math.random() * 0.14);
     b.velocity.set(fx * v, 0.3, fz * v);
     b.angularVelocity.set(fz * v / R, 0, -fx * v / R);
     ball.safe = { x: b.position.x, z: b.position.z };
@@ -132,17 +147,53 @@ FP.Modes.golf = (function () {
     FP.Audio.play('hit');
   }
 
-  // punch near your ball to hit it (only when it has stopped rolling)
-  FP.bus.on('punch', (c) => {
-    if (!FP.Kit.live(self) || !c || c.ko > 0) return;
-    const ball = ballOf(c);
-    if (!ball || ball.sunk || ball.cool > 0) return;
+  // can this player hit their ball right now? (standing next to it, and it stopped rolling)
+  function canHit(c, ball) {
+    if (!ball || ball.sunk || ball.cool > 0 || c.ko > 0) return false;
     const b = ball.body, t = c.parts.torso.position;
     const dx = b.position.x - t.x, dz = b.position.z - t.z, d = Math.hypot(dx, dz);
-    if (d > 1.3 || Math.hypot(b.velocity.x, b.velocity.z) > 1.5) return;
-    if (d > 0.3 && (dx * Math.sin(c.yaw) + dz * Math.cos(c.yaw)) / d < -0.3) return; // it's behind you
-    strike(c, ball);
-  });
+    if (d > 1.3 || Math.hypot(b.velocity.x, b.velocity.z) > 1.5) return false;
+    return !(d > 0.3 && (dx * Math.sin(c.yaw) + dz * Math.cos(c.yaw)) / d < -0.3); // not behind you
+  }
+
+  // golf controls: PUNCH = your caddy picks the power. Hold GRAB = the power goes up and down, let go to hit
+  function control(c, input, dt, playing) {
+    const inp = input || {};
+    const ball = ballOf(c);
+    if (ball) {
+      const a = ball.aim;
+      const ready = playing && canHit(c, ball);
+      if (ready && inp.grab) {
+        if (!a.charging) { a.charging = true; a.t = 0; }
+        a.t += dt;
+        const ph = (a.t / 1.4) % 2;
+        a.power = ph < 1 ? ph : 2 - ph;
+      } else {
+        if (a.charging && ready && a.t > 0.15) { strike(c, ball, 1.5 + a.power * 15); c.punchT = 0; c.punchHit = true; }
+        a.charging = false;
+        if (ready && inp.punchPressed) strike(c, ball);
+      }
+      a.show = ready;
+      a.yaw = c.yaw;
+      a.len = a.charging ? 1.5 + a.power * 15 : ready ? shotLength(ball.body.position, Math.sin(c.yaw), Math.cos(c.yaw)) : 3;
+    }
+    FP.Ragdoll.control(c, { x: inp.x || 0, z: inp.z || 0, jump: inp.jump, jumpPressed: inp.jumpPressed, punchPressed: inp.punchPressed, grab: false, emote: inp.emote }, dt);
+  }
+
+  // the aim arrows (for online friends too)
+  function visual() {
+    for (const ball of balls) {
+      const a = ball.aim, g = ball.arrow, u = g.userData;
+      g.visible = !!a.show && !ball.sunk;
+      if (!g.visible) continue;
+      const len = Math.max(0.6, a.len - 0.3);
+      g.position.set(ball.body.position.x, 0.08, ball.body.position.z);
+      g.rotation.y = a.yaw + Math.PI;
+      u.shaft.scale.y = len; u.shaft.position.z = -0.3 - len / 2;
+      u.head.position.z = -0.3 - len - 0.15;
+      u.mat.color.setHex(a.charging ? (a.power > 0.8 ? 0xff5a5f : a.power > 0.45 ? 0xffcf33 : 0x5cc44a) : u.color);
+    }
+  }
 
   function beforeStep(dt) {
     if (!spinner) return;
@@ -186,6 +237,7 @@ FP.Modes.golf = (function () {
       if (respawn) respawn.update(chars, dt, -4);
       if (balls.length && balls.every((b) => b.sunk)) doneT += dt;
     }
+    visual();
     if (roundOver || dt === 0) return null;
     if (doneT > 1.5 || time >= HOLE_TIME) {
       const last = holeIndex() === HOLES.length - 1;
@@ -242,7 +294,7 @@ FP.Modes.golf = (function () {
   }
 
   function hud() {
-    return `Hole ${holeIndex() + 1}: ${hole.name}. Punch your ball into the hole! &nbsp; ${FP.UI.ICON.clock} ${FP.Kit.clock(HOLE_TIME - time)}`;
+    return `<span>Hole ${holeIndex() + 1}: ${hole.name} &nbsp; ${FP.UI.ICON.clock} ${FP.Kit.clock(HOLE_TIME - time)}</span><span class="hud-tip">Stand by your ball, face the hole. PUNCH: the caddy hits it &nbsp; Hold GRAB: pick the power yourself, let go to hit</span>`;
   }
 
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><ellipse cx="60" cy="62" rx="54" ry="14" fill="#7fd65a" stroke="#2a2140" stroke-width="2"/><ellipse cx="86" cy="62" rx="12" ry="4" fill="#a8e98a"/><ellipse cx="86" cy="62" rx="4" ry="1.6" fill="#1d1a2f"/><path d="M86 62V22" stroke="#2a2140" stroke-width="2.5"/><path d="M86 22l18 6-18 6z" fill="#ff5a5f" stroke="#2a2140" stroke-width="2" stroke-linejoin="round"/><circle cx="46" cy="60" r="5" fill="#fff" stroke="#2a2140" stroke-width="2"/><ellipse cx="30" cy="48" rx="7" ry="9" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><circle cx="30" cy="35" r="6" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><path d="M52 58h10M54 54l8-2" stroke="#2a2140" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>';
@@ -250,10 +302,10 @@ FP.Modes.golf = (function () {
   self = {
     id: 'golf', name: 'Floppy Golf', roundsToWin: 1, rounds: HOLES.length, roundName: 'Hole', minTotal: 1, defaultBots: 3, song: 'chill', minZoom: 15, art: ART,
     desc: 'Walk behind your ball, face the hole and PUNCH it! First in the hole gets the most points. 3 holes.',
-    build, spawn, beforeStep, update, botThink, hud,
+    build, spawn, control, beforeStep, update, botThink, hud, visual,
     scoreLabel: (s) => `${s} pts`,
-    netState: () => ({ t: Math.round(time) }),
-    applyNetState: (st) => { time = st.t; },
+    netState: () => ({ t: Math.round(time), a: balls.map((b) => [b.aim.show ? 1 : 0, Math.round(b.aim.len * 10), Math.round(b.aim.yaw * 100), b.aim.charging ? 1 : 0, Math.round(b.aim.power * 100)]) }),
+    applyNetState: (st) => { time = st.t; (st.a || []).forEach((v, i) => { const b = balls[i]; if (!b) return; b.aim.show = !!v[0]; b.aim.len = v[1] / 10; b.aim.yaw = v[2] / 100; b.aim.charging = !!v[3]; b.aim.power = v[4] / 100; }); },
   };
   return self;
 })();

@@ -186,6 +186,18 @@
     .credit-list small { font-size: 14px; opacity: .6; font-weight: 700; }
     .version { opacity: .5; }
     /* kart racing */
+    .extra:has(.hud-tip) { flex-direction: column; gap: 2px; padding: 4px 16px; border-radius: 16px; }
+    .hud-tip { font-size: 12px; opacity: .85; font-weight: 700; }
+    .extra:has(.bowl-card) { flex-direction: column; background: none; padding: 0; }
+    .bowl-card { border-collapse: separate; border-spacing: 2px; background: #2a2140e6; border-radius: 10px; padding: 4px; font: 800 12px/1 system-ui, sans-serif; color: #2a2140; }
+    .bowl-card th { padding: 0 6px 0 2px; text-align: left; }
+    .bowl-card td { background: #fff; border-radius: 5px; min-width: 24px; height: 26px; text-align: center; vertical-align: top; padding: 1px 2px; }
+    .bowl-card td.now { background: #ffcf33; }
+    .bowl-card td.tot { background: #5cc44a; color: #fff; font-size: 15px; vertical-align: middle; min-width: 38px; }
+    .bowl-card .mk { display: inline-block; min-width: 10px; font-size: 11px; color: #6a4c93; }
+    .bowl-card td b { display: block; font-size: 12px; margin-top: 2px; }
+    .bowl-tip { margin-top: 6px; background: #ffcf33; color: #2a2140; font: 900 16px/1.2 system-ui, sans-serif; padding: 6px 14px; border-radius: 999px; box-shadow: 0 3px 0 #2a2140; }
+    @media (max-width: 700px) { .bowl-card td { min-width: 20px; height: 24px; } .bowl-card .mk { font-size: 9px; min-width: 7px; } }
     .kart-hud { position: fixed; inset: 0; pointer-events: none; z-index: 3; }
     .kh { position: absolute; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
     .kh-place { font: 800 44px var(--font); line-height: 1; color: #fff; -webkit-text-stroke: 4px var(--ink); paint-order: stroke fill; text-shadow: 0 4px 0 var(--ink); }
