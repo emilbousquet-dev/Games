@@ -11,10 +11,10 @@ FP.Modes.soccer = (function () {
   const L = 26, W = 16;           // field size
   const GOAL_W = 5.4, GOAL_H = 2.6;
   const TEAM_COLORS = [0xff5a5f, 0x4aa8ff];
-  let ball = null, rings = [], goalPause = 0, time = 0, lastTouch = null, game = null, kickoffTeam = 0;
+  let ball = null, rings = [], goalPause = 0, time = 0, lastTouch = null, game = null, golden = false;
 
   function build() {
-    rings = []; goalPause = 0; time = 0; lastTouch = null; fans.length = 0;
+    rings = []; goalPause = 0; time = 0; lastTouch = null; fans.length = 0; golden = false;
     const P = FP.Physics;
     // grass with stripes
     FP.Stage.block(0, -0.5, 0, L + 8, 1, W + 8, 0x6ccf5a);
@@ -169,8 +169,8 @@ FP.Modes.soccer = (function () {
       goalPause -= dt;
       if (goalPause <= 0) {
         const sc = g.scores;
-        if (sc.team0 >= 3) return { team: 0, points: 0, text: 'Red team wins! 🏆' };
-        if (sc.team1 >= 3) return { team: 1, points: 0, text: 'Blue team wins! 🏆' };
+        if (sc.team0 >= 3) return { team: 0, points: 0, text: 'Red team wins!' };
+        if (sc.team1 >= 3) return { team: 1, points: 0, text: 'Blue team wins!' };
         resetPlayers(chars); kickoff();
         FP.UI.big('Kick off!', 1);
       }
@@ -189,10 +189,12 @@ FP.Modes.soccer = (function () {
       FP.Camera.shake(0.6);
       if (FP.Net) FP.Net.banner('GOAL!', who);
     }
-    // 3 minutes: the team with more goals wins
+    // 3 minutes: the team with more goals wins. A tie? Golden goal: the next goal wins (for up to 1 more minute)
     if (time > 180) {
       const sc = g.scores;
-      if (sc.team0 !== sc.team1) { const t = sc.team0 > sc.team1 ? 0 : 1; return { team: t, points: 3 - sc['team' + t], text: `Time! ${t ? 'Blue' : 'Red'} team wins!` }; }
+      if (sc.team0 !== sc.team1) { const t = sc.team0 > sc.team1 ? 0 : 1; return { team: t, points: 0, text: `Time! ${t ? 'Blue' : 'Red'} team wins!` }; }
+      if (!golden) { golden = true; FP.UI.big('Golden goal!', 2.2, 'The next goal wins'); if (FP.Net) FP.Net.banner('Golden goal!', 'The next goal wins'); }
+      if (time > 240) return { text: 'It\'s a draw!', sub: 'Nobody scored the golden goal' };
     }
     return null;
   }
@@ -201,8 +203,9 @@ FP.Modes.soccer = (function () {
   function botThink(c, chars, dt, input, tools) {
     const bp = ball.body.position, p = c.parts.torso.position;
     const attackX = c.team === 0 ? L / 2 + 1.5 : -(L / 2 + 1.5);
-    const mates = chars.filter((o) => o.team === c.team && o.player.source.kind === 'bot');
-    const goalie = mates.length > 1 && mates[0] === c;
+    const team = chars.filter((o) => o.team === c.team);
+    const mates = team.filter((o) => o.player.source.kind === 'bot');
+    const goalie = team.length >= 3 && mates.length > 1 && mates[0] === c; // only big teams have a goalie
     if (goalie) {
       const homeX = -attackX * 0.85;
       const tz = Math.max(-GOAL_W / 2, Math.min(GOAL_W / 2, bp.z * 0.6));
@@ -233,12 +236,14 @@ FP.Modes.soccer = (function () {
   }
 
   function hud() {
+    if (golden) return 'Golden goal: the next goal wins!';
     const left = Math.max(0, 180 - time);
-    return `⏱ ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}`;
+    return `${FP.UI.ICON.clock} ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')} &nbsp; first to 3 goals`;
   }
 
   return {
-    id: 'soccer', name: 'Ragdoll Soccer', icon: '⚽', roundsToWin: 3, teams: true, minPlayers: 4, song: 'party', minZoom: 17,
+    id: 'soccer', name: 'Ragdoll Soccer', roundsToWin: 3, single: true, teams: true, minTotal: 2, song: 'party', minZoom: 17,
+    art: '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#7ad866"/><rect x="0" y="0" width="30" height="80" fill="#66c455"/><rect x="60" y="0" width="30" height="80" fill="#66c455"/><path d="M60 0v80" stroke="#fff" stroke-width="2.5"/><circle cx="60" cy="40" r="14" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M104 26h12v28h-12" fill="#c2e0ff" stroke="#fff" stroke-width="3"/><circle cx="72" cy="46" r="11" fill="#fff" stroke="#2a2140" stroke-width="2.5"/><path d="M72 40l5 4-2 6h-6l-2-6z" fill="#2a2140"/><ellipse cx="40" cy="44" rx="7" ry="9" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/><circle cx="40" cy="31" r="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/></svg>',
     desc: 'Red vs Blue! Push, punch and headbutt the giant ball into the other goal. First to 3!',
     build, spawn, update, botThink, hud, visual,
     netState: () => ({ gp: goalPause > 0 ? 1 : 0 }),

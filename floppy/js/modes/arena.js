@@ -108,7 +108,8 @@ FP.Modes.arena = (function () {
   }
 
   return {
-    id: 'arena', name: 'Knockout Arena', icon: '🥊', roundsToWin: 3, song: 'party', minZoom: 15,
+    id: 'arena', name: 'Knockout Arena', roundsToWin: 3, song: 'party', minZoom: 15, minTotal: 2,
+    art: '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><circle cx="22" cy="18" r="9" fill="#fff"/><circle cx="32" cy="16" r="7" fill="#fff"/><path d="M14 52l20-14h52l20 14-20 12H34z" fill="#fff1b8" stroke="#2a2140" stroke-width="2.5" stroke-linejoin="round"/><path d="M34 38l6 26M60 38v26M86 38l-6 26M24 45h72M22 57h76" stroke="#2a2140" stroke-width="1.5" opacity=".35"/><path d="M34 64v8h52v-8" fill="#ffd6e7" stroke="#2a2140" stroke-width="2.5"/><ellipse cx="50" cy="36" rx="7" ry="9" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/><circle cx="50" cy="24" r="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/><ellipse cx="98" cy="66" rx="6" ry="8" fill="#4aa8ff" stroke="#2a2140" stroke-width="2.5" transform="rotate(40 98 66)"/><circle cx="106" cy="60" r="5" fill="#4aa8ff" stroke="#2a2140" stroke-width="2.5"/></svg>',
     desc: 'Punch, grab and throw everyone off the platform. Last one standing wins!',
     build, spawn, update, hud,
   };

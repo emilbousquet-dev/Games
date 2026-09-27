@@ -31,19 +31,19 @@ FP.Net = (function () {
   // ------------------------------------------------------------
   function menu() {
     if (typeof Peer === 'undefined' || !window.RTCPeerConnection) {
-      FP.UI.screen({ title: '🌍 Play online', html: '<p>Online play works on the <b>website version</b> of Floppy Party (on GitHub Pages).<br>This page can only play on one computer.</p>', buttons: [{ label: '← Back', action: () => FP.Game.titleScreen() }], back: () => FP.Game.titleScreen() });
+      FP.UI.screen({ title: 'Play online', html: '<p>Online play works on the <b>website version</b> of Floppy Party (on GitHub Pages).<br>This page can only play on one computer.</p>', buttons: [{ label: `${FP.UI.ICON.back} Back`, action: () => FP.Game.titleScreen() }], back: () => FP.Game.titleScreen() });
       return;
     }
     FP.UI.screen({
-      title: '🌍 Play online',
+      title: 'Play online',
       html: `<p>One person <b>hosts</b> and gets a room code.<br>Friends type the code to <b>join</b>.</p>
         <p><input id="fp-name" class="field name" maxlength="12" placeholder="Your name" autocomplete="off" spellcheck="false"></p>
         <p><input id="fp-code" class="field" maxlength="4" placeholder="CODE" autocomplete="off" spellcheck="false"></p>
         <p class="small">Tip: the host can also have a friend on the same keyboard, and bots!</p>`,
       buttons: [
-        { label: '🏠 Host a party', action: () => host() },
-        { label: '🚪 Join with the code', action: () => { const v = (document.getElementById('fp-code').value || '').trim().toUpperCase(); const n = (document.getElementById('fp-name').value || '').trim(); if (v.length === 4) join(v, n || 'Friend'); else FP.UI.toast('Type the 4-letter code first!'); } },
-        { label: '← Back', action: () => FP.Game.titleScreen(), small: true },
+        { label: `${FP.UI.ICON.home} Host a party`, action: () => host() },
+        { label: `${FP.UI.ICON.online} Join with the code`, action: () => { const v = (document.getElementById('fp-code').value || '').trim().toUpperCase(); const n = (document.getElementById('fp-name').value || '').trim(); if (v.length === 4) join(v, n || 'Friend'); else FP.UI.toast('Type the 4-letter code first!'); } },
+        { label: `${FP.UI.ICON.back} Back`, action: () => FP.Game.titleScreen(), small: true },
       ],
       back: () => FP.Game.titleScreen(),
     });
@@ -56,7 +56,7 @@ FP.Net = (function () {
   }
 
   function waiting(text) {
-    FP.UI.screen({ title: '🌍 Online', html: `<p>${text}</p>`, buttons: [{ label: 'Cancel', action: () => { leave(); FP.Game.titleScreen(); } }] });
+    FP.UI.screen({ title: 'Online', html: `<p>${text}</p>`, buttons: [{ label: 'Cancel', action: () => { leave(); FP.Game.titleScreen(); } }] });
   }
 
   // ------------------------------------------------------------
@@ -91,7 +91,7 @@ FP.Net = (function () {
         if (!p) return;
         conns.set(conn.peer, { conn, pid: p.id });
         conn.send({ t: 'welcome', id: p.id, code });
-        FP.UI.toast(`${p.name} joined! 🎉`);
+        FP.UI.toast(`${p.name} joined the party!`);
         playersChanged();
         sendState(true);
         if (g.state !== 'lobby' && g.state !== 'title') conn.send({ t: 'round', mode: g.mode && g.mode.id, players: playerList(), state: g.state });
@@ -101,7 +101,7 @@ FP.Net = (function () {
       } else if (msg.t === 'color' || msg.t === 'hat') {
         const c = conns.get(conn.peer);
         const p = c && FP.Game.players.find((q) => q.id === c.pid);
-        if (p && FP.Game.state === 'lobby') FP.Game.cycle(p, msg.t);
+        if (p && FP.Game.state === 'lobby') FP.Game.cycle(p, msg.t, msg.dir === -1 ? -1 : 1);
       }
     });
     conn.on('close', () => {
@@ -114,7 +114,7 @@ FP.Net = (function () {
   }
 
   function broadcast(msg) { for (const { conn } of conns.values()) if (conn.open) conn.send(msg); }
-  const playerList = () => FP.Game.players.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, team: p.team, kind: p.source.kind }));
+  const playerList = () => FP.Game.everyone.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, team: p.team, kind: p.source.kind }));
 
   // what a remote player is pressing (presses are counted so none get lost)
   function inputOf(pid) {
@@ -197,7 +197,7 @@ FP.Net = (function () {
   function onClientData(msg) {
     if (!msg || !msg.t) return;
     const g = FP.Game;
-    if (msg.t === 'welcome') { myId = msg.id; FP.UI.closeScreen(); FP.UI.toast(`You joined room ${msg.code}! 🎉`); }
+    if (msg.t === 'welcome') { myId = msg.id; FP.UI.closeScreen(); FP.UI.toast(`You joined room ${msg.code}!`); }
     else if (msg.t === 'full') { FP.UI.toast('That party is full (4 players)'); leave(); menu(); }
     else if (msg.t === 'players' || msg.t === 'state') {
       g.players = msg.players.map(fromList);
@@ -218,7 +218,7 @@ FP.Net = (function () {
     else if (msg.t === 'banner') FP.UI.big(msg.text, msg.text === 'GO!' ? 0.8 : 2.6, msg.sub);
     else if (msg.t === 'results') {
       FP.UI.setHud('');
-      FP.UI.screen({ title: '🏆 Results', html: msg.html + '<p class="small">Waiting for the host to pick what\'s next...</p>', buttons: [{ label: 'Leave the party', action: () => { leave(); g.titleScreen(); }, small: true }] });
+      FP.UI.screen({ title: 'Results', html: msg.html + '<p class="small">Waiting for the host to pick what\'s next...</p>', buttons: [{ label: 'Leave the party', action: () => { leave(); g.titleScreen(); }, small: true }] });
     }
   }
   const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
@@ -297,8 +297,8 @@ FP.Net = (function () {
   }
 
   function status() {
-    if (isHost()) return `🌍 Online party! Room code: <b>${code}</b> &nbsp;·&nbsp; Friends: open the game, click <i>Play online</i> and type the code.`;
-    if (isClient()) return `🌍 You're in room <b>${code}</b>. The host starts the game. Change color/hat: <kbd>Z</kbd> <kbd>X</kbd>`;
+    if (isHost()) return `Online party. Room code: <b>${code}</b> &nbsp; Friends: open the game, click <i>Play online</i> and type the code.`;
+    if (isClient()) return `You're in room <b>${code}</b>. The host starts the game.`;
     return '';
   }
 

@@ -185,8 +185,14 @@ FP.Ragdoll = (function () {
       if (c.struggle >= 5) freeFrom(c);
     }
 
-    // what's under my feet?
-    const g = P.groundBelow(t.position, STAND + 0.6, c.group);
+    // what's under my feet? (check the middle first, then a few spots around it, so edges count too)
+    let g = P.groundBelow(t.position, STAND + 0.6, c.group);
+    if (!g) {
+      for (const [ox, oz] of [[0.3, 0], [-0.3, 0], [0, 0.3], [0, -0.3]]) {
+        g = P.groundBelow(new Vec3(t.position.x + ox, t.position.y, t.position.z + oz), STAND + 0.6, c.group);
+        if (g) break;
+      }
+    }
     const upright = t.quaternion.vmult(UP, tv).y;
     c.grounded = !!g && g.dist < STAND + 0.2 && upright > 0.5 && g.normal.y > 0.5;
     c.groundBody = c.grounded ? g.body : null;

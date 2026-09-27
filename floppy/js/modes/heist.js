@@ -316,15 +316,14 @@ FP.Modes.heist = (function () {
     if (roundOver) return null;
     const allGone = loot.every((l) => l.got);
     if (time >= TIME || allGone) {
-      return { winners: [], text: allGone ? `You stole EVERYTHING! 💰` : `Time's up! You stole $${money}`, sub: stars() };
+      return { winners: [], text: allGone ? 'You stole EVERYTHING!' : `Time's up! You stole $${money}`, sub: starText() };
     }
     return null;
   }
 
-  function stars() {
-    const n = money >= 4000 ? 3 : money >= 2200 ? 2 : money >= 800 ? 1 : 0;
-    return n ? '⭐'.repeat(n) + '☆'.repeat(3 - n) : 'No stars... try again!';
-  }
+  const starCount = () => (money >= 4000 ? 3 : money >= 2200 ? 2 : money >= 800 ? 1 : 0);
+  function starText() { const n = starCount(); return n ? `${n} star${n > 1 ? 's' : ''} out of 3` : 'No stars this time... try again!'; }
+  function starIcons() { const n = starCount(); return FP.UI.ICON.star.repeat(n) + FP.UI.ICON.starEmpty.repeat(3 - n); }
 
   // which room is a spot in? (outside, the east room, or the west room)
   const room = (x) => (x > 14.5 ? 2 : x > 0 ? 1 : 0);
@@ -384,15 +383,16 @@ FP.Modes.heist = (function () {
 
   function hud() {
     const left = Math.max(0, TIME - time);
-    return `💰 $${money} &nbsp; ⏱ ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}${alarm > 0 ? ' &nbsp; 🚨 ALARM!' : ''}`;
+    return `${FP.UI.ICON.coin} $${money} &nbsp; ${FP.UI.ICON.clock} ${Math.floor(left / 60)}:${String(Math.floor(left % 60)).padStart(2, '0')}${alarm > 0 ? ` &nbsp; ${FP.UI.ICON.alarm} ALARM!` : ''}`;
   }
 
   return {
-    id: 'heist', name: 'The Heist', icon: '💎', roundsToWin: 1, single: true, minPlayers: 1, song: 'tense', minZoom: 15,
+    id: 'heist', name: 'The Heist', roundsToWin: 1, single: true, minTotal: 1, defaultBots: 1, song: 'tense', minZoom: 15,
+    art: '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#e9d4f5"/><rect x="0" y="58" width="120" height="22" fill="#f0e2c8"/><path d="M46 60l-40 18h56z" fill="#fff2a0" opacity=".7"/><rect x="72" y="44" width="22" height="18" fill="#fff" stroke="#2a2140" stroke-width="2.5"/><path d="M83 14l12 12-12 16-12-16z" fill="#8ff5ff" stroke="#2a2140" stroke-width="2.5" stroke-linejoin="round"/><path d="M71 26h24" stroke="#2a2140" stroke-width="1.5"/><ellipse cx="40" cy="50" rx="7" ry="9" fill="#3a4a8f" stroke="#2a2140" stroke-width="2.5"/><circle cx="40" cy="37" r="6" fill="#3a4a8f" stroke="#2a2140" stroke-width="2.5"/><rect x="34" y="28" width="12" height="4" rx="1" fill="#23305e"/><path d="M14 30h14" stroke="#ff2244" stroke-width="3"/></svg>',
     desc: 'Team up! Carry treasure from the museum to the van. The diamond is HEAVY. Watch out for guards and lasers!',
     build, spawn, update, beforeStep, botThink, hud, visual, scoreLabel: (s) => `$${s}`,
     netState: () => ({ l: lasers.map((l) => (l.on ? 1 : 0)), g: guards.map((gd) => (gd.state === 'chase' ? 1 : 0)) }),
     applyNetState: (s) => { s.l.forEach((on, i) => { if (lasers[i]) lasers[i].on = !!on; }); s.g.forEach((ch, i) => { if (guards[i]) guards[i].state = ch ? 'chase' : 'patrol'; }); },
-    resultText: () => `You stole $${money}! ${stars()}`,
+    resultText: () => `You stole $${money}! <span class="stars">${starIcons()}</span>`,
   };
 })();
