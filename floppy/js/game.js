@@ -9,7 +9,7 @@ window.FP = window.FP || {};
 FP.Game = (function () {
   const scene = FP.Stage.scene;
   const MAX_PLAYERS = 4;
-  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava'];
+  const MODE_ORDER = ['arena', 'soccer', 'heist', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'coins', 'dodge', 'paint', 'crown', 'race'];
   const MODES = () => MODE_ORDER.map((id) => FP.Modes[id]).filter(Boolean);
   const BOT_NAMES = ['Wobbles', 'Noodle', 'Biscuit', 'Pickle', 'Jellybean', 'Mr. Flop', 'Sprout', 'Bonkers'];
   const ICON = FP.UI.ICON;
@@ -639,7 +639,8 @@ FP.Game = (function () {
     if (['countdown', 'play', 'roundOver'].includes(state)) FP.UI.setHud(hudHtml());
     FP.FX.update(dt);
     FP.Stage.update(dt, timer, FP.Camera.target);
-    const focus = chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
+    const playing = mode && ['countdown', 'play', 'roundOver'].includes(state);
+    const focus = playing && mode.focus ? mode.focus(chars) : chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
     FP.Camera.update(focus.length ? focus : chars.map(FP.Ragdoll.center), dt, mode && state !== 'lobby' ? (mode.minZoom || 12) : 11);
     FP.UI.nameTags(chars, FP.Camera.camera, ['lobby', 'countdown', 'play', 'roundOver'].includes(state));
     if (FP.Net) FP.Net.hostFrame(dt);

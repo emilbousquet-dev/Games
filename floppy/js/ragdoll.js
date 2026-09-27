@@ -249,7 +249,7 @@ FP.Ragdoll = (function () {
 
       // jump
       if (input.jumpPressed && c.grounded && c.jumpCool <= 0) {
-        for (const b of c.bodies) b.velocity.y = Math.max(b.velocity.y, groundVel.y) + JUMP;
+        for (const b of c.bodies) b.velocity.y = Math.max(b.velocity.y, Math.min(groundVel.y, 4)) + JUMP * ((FP.Fun && FP.Fun.jump) || 1);
         c.jumpCool = 0.35;
         FP.bus.emit('jump', c);
       }
