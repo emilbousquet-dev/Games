@@ -917,7 +917,7 @@ DA.Game = (function () {
   // ============================================================
   //  THE MAIN LOOP
   // ============================================================
-  let lastPlace = null, heartT = 0, mapOpen = false, titleT = 0, saveT = 0;
+  let lastPlace = null, heartT = 0, mapOpen = false, titleT = 0, saveT = 0, goalT = 0, lastGoal = '';
   function lockMouse() {
     const c = $('game');
     if (c.requestPointerLock && !Inv.UI.open && !mapOpen && G.mode === 'play' && !DA.Input.typing) { try { const r = c.requestPointerLock(); if (r && r.catch) r.catch(() => {}); } catch (e) { /* needs a click */ } }
@@ -979,6 +979,8 @@ DA.Game = (function () {
     W.update(dt, cam);
     W.updateSky(G.hour, cam);
     if (W.towerLight) W.towerLight.visible = Math.sin(t * 3) > 0;
+    // your crashed car is still smoking on the first day
+    if (G.state.day === 1 && Math.random() < dt * 4) { const c = MAP.cars[0]; FX.smoke(c.x + U.rand(-0.3, 0.3), W.heightAt(c.x, c.z) + 1, c.z + U.rand(-0.3, 0.3), 1.6, 0x444444); }
     updateLights(t);
     // sounds all around
     const zNear = Z.nearestZombie(me.x, me.z);
@@ -998,14 +1000,35 @@ DA.Game = (function () {
     HUD.update(dt, {
       me, hour: G.hour, day: s.day, prompt: me.prompt, targetKind: me.target && me.target.kind,
       nightIn: night ? null : secondsUntil(G.hour, 20.2), dayIn: night ? secondsUntil(G.hour, 6) : null, horde: isHordeNight(),
-      markers: compassMarkers(), online: onlineText(),
+      markers: compassMarkers(), online: onlineText(), goal: goalT <= 0 ? (goalT = 0.5, lastGoal = goalText()) : lastGoal,
     });
+    goalT -= dt;
     if (mapOpen) HUD.drawMap(me, [...G.players.values()].filter((p) => p.pid !== G.myPid).map((p) => ({ x: p.x, z: p.z, name: p.name, color: COLORS_CSS[p.color % 4] })), mapExtras());
     // draw
     if (window.DA_NO_RENDER) return; // (for test robots)
     renderer.clear();
     renderer.render(scene, cam);
     if (me.alive && !me.inHeli) { renderer.clearDepth(); renderer.render(P.vm.scene, P.vm.cam); }
+  }
+
+  // what should I do next? (a little helper for new players)
+  function goalText() {
+    const s = G.state, r = s.radio;
+    const has = (id) => Inv.count(id) > 0;
+    const myBuild = (t) => Object.values(s.builds).some((b) => b.type === t && (t !== 'bed' || b.owner === G.myName));
+    const parts = Inv.count('radiopart');
+    if (r.heli) return 'Get to the helipad on Radio Hill and press E on the helicopter!';
+    if (r.fixed) return 'The helicopter comes at sunrise. Stay alive until morning!';
+    if (parts + r.parts >= 3) return 'Bring the radio parts to the tower on Radio Hill (📡 on your compass) and press E.';
+    const tools = has('stoneaxe') || has('metalaxe');
+    if (!tools && Inv.count('wood') < 3) return 'Punch a tree to get wood (hold left click).';
+    if (!tools && Inv.count('stone') < 3) return 'Punch a rock to get stone.';
+    if (!tools) return 'Press TAB and craft a Stone Axe.';
+    if (!myBuild('campfire') && !has('campfire') && s.day < 3) return 'Craft a Campfire and place it. It lights up the night.';
+    if (has('campfire') && !myBuild('campfire') && s.day < 3) return 'Hold the Campfire and click to place it.';
+    if (!myBuild('bed') && (Inv.count('cloth') < 5 || !has('bed'))) return has('bed') ? 'Hold the Bed and click to place it.' : 'Build a Bed so you wake up there if you die (search houses for cloth).';
+    if (!myBuild('bed')) return 'Hold the Bed and click to place it.';
+    return `Find the 3 radio parts (${parts + r.parts}/3): police station, gas station, hunter's cabin.`;
   }
 
   function onlineText() {
@@ -1074,7 +1097,7 @@ DA.Game = (function () {
     const cx = 60 + Math.sin(a) * 80, cz = 24 + Math.cos(a) * 80;
     cam.position.set(cx, W.heightAt(cx, cz) + 22, cz);
     cam.lookAt(60, 10, 24);
-    const hour = 19.2;
+    const hour = 18.5;
     G.hour = hour;
     W.update(dt, cam);
     W.updateSky(hour, cam);

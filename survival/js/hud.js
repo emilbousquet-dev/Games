@@ -150,6 +150,9 @@ DA.HUD = (function () {
     $('lowhp').style.opacity = me.alive ? U.clamp((40 - me.hp) / 40, 0, 1) * (0.6 + Math.sin(performance.now() / 200) * 0.2) : 0;
     $('crosshair').className = o.targetKind === 'zombie' || o.targetKind === 'animal' ? 'enemy' : o.prompt ? 'use' : '';
     compass(me.yaw, o.markers || []);
+    // what to do next
+    const goal = o.goal ? `<b>NEXT GOAL</b>${o.goal}` : '';
+    if (last.goal !== goal) { last.goal = goal; $('goal').innerHTML = goal; }
     // online info
     const online = o.online || '';
     if (last.online !== online) { last.online = online; $('online').innerHTML = online; $('online').style.display = online ? 'block' : 'none'; }

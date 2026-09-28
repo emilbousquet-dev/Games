@@ -425,7 +425,7 @@ DA.Player = (function () {
     if (d.food) me.food = U.clamp(me.food + d.food, 0, 100);
     if (d.water) me.water = U.clamp(me.water + d.water, 0, 100);
     if (d.hp) { if (d.hp < 0) hurt(-d.hp, null, null, 'food'); else me.hp = Math.min(100, me.hp + d.hp); }
-    if (d.empty) Inv.add(d.empty, 1);
+    if (d.empty && Inv.add(d.empty, 1) > 0) G.dropItems([[d.empty, 1]]);
     if (d.kind === 'med') A.heal(); else if (d.water > d.food || !d.food) A.drink(); else A.eat();
     if (s.id === 'rawmeat') G.msg('Raw meat made you sick! Cook it on a campfire.', '#fa4');
     return true;
@@ -500,10 +500,10 @@ DA.Player = (function () {
       if (inp.attack) { me.useT += dt; if (me.useT > (d.kind === 'med' ? 1.2 : 0.8)) { consume(Inv.sel); me.useT = 0; } }
       else me.useT = 0;
     } else me.useT = 0;
-    if (d && d.kind === 'build') { if (inp.attackPressed) placeBuild(); }
+    if (d && d.kind === 'build') { updateBuild(inp); if (inp.attackPressed) placeBuild(); }
     else if (!(d && d.ranged) && !(d && (d.kind === 'food' || d.kind === 'med')) && inp.attack && me.swingT <= 0) startSwing();
     if (me.swingT > 0 && !me.swingHit && me.swingT < me.swingDur * 0.6) { me.swingHit = true; doHit(); }
-    updateBuild(inp);
+    if (!d || d.kind !== 'build') updateBuild(inp);
     // hunger and thirst
     const mult = me.sprinting ? 1.6 : 1;
     me.food = Math.max(0, me.food - HUNGER * mult * dt);

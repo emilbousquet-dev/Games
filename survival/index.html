@@ -51,6 +51,8 @@
   #clock { font-size: 16px; font-weight: bold; letter-spacing: 1px; }
   #clockWarn { font-size: 13px; color: #9ab0ff; margin-top: 3px; }
   #clockWarn.horde { color: #ff5040; font-weight: bold; }
+  #goal { position: absolute; left: 16px; top: 14px; max-width: min(330px, 30vw); font-size: 13px; text-shadow: 0 0 4px #000, 0 0 2px #000; line-height: 1.35; }
+  #goal b { color: var(--accent); letter-spacing: 1px; font-size: 11px; display: block; }
   #online { position: absolute; left: 16px; bottom: 112px; font-size: 13px; text-shadow: 0 0 4px #000; background: rgba(0,20,40,0.55); padding: 5px 10px; border-radius: 4px; display: none; }
   #online b { color: #8cf; font-size: 16px; letter-spacing: 3px; }
   #compass { position: absolute; left: 50%; top: 12px; width: min(460px, 60vw); height: 34px; transform: translateX(-50%); overflow: hidden;
@@ -192,6 +194,7 @@
   <div id="hurt"></div>
   <div id="lowhp"></div>
   <div id="compass"></div>
+  <div id="goal"></div>
   <div id="online"></div>
   <div id="clockBox"><div id="clock"></div><div id="clockWarn"></div></div>
   <div id="msgs"></div>

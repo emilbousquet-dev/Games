@@ -491,7 +491,8 @@ DA.Zombies = (function () {
         for (let i = 0; i < 5 && hordeLeft > 0; i++) {
           const p = U.pick(alive);
           const s = randomSpot(p, 35, 50);
-          if (s) { spawnZombie(pickKind(true), s[0], s[1], true); hordeLeft--; }
+          const r = Math.random();
+          if (s) { spawnZombie(r < 0.7 ? 'walker' : r < 0.9 ? 'runner' : 'brute', s[0], s[1], true); hordeLeft--; }
         }
       }
     }
