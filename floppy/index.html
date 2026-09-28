@@ -164,6 +164,12 @@
     .title-coins { margin: 10px 0 0; font-size: 17px; }
     .screen.title .buttons { flex-direction: row; flex-wrap: wrap; justify-content: center; }
     .screen.title .btn:not(.small) { flex-basis: 100%; }
+    .screen.title .buttons { gap: 8px; margin-top: 12px; }
+    .screen.title .btn:not(.small) { padding-block: 6px; }
+    .screen.title .logo { font-size: clamp(40px, min(9vw, 10.5vh), 86px); }
+    .screen.title .card { padding-top: 16px; padding-bottom: 16px; }
+    @media (max-width: 480px) { .screen.title .btn:not(.small) { font-size: 17px; } .screen.title .card { padding-inline: 16px; } }
+    @media (max-height: 700px) { .screen.title .btn:not(.small) { font-size: 18px; padding-block: 4px; } .screen.title .btn.small { font-size: 15px; padding-block: 3px; } .screen.title .buttons { gap: 6px; margin-top: 8px; } .title-coins { margin-top: 6px; } }
     .lobby-coins { position: fixed; right: 16px; top: 12px; background: rgba(255,255,255,.9); border-radius: 999px; padding: 4px 12px; box-shadow: var(--shadow); font-size: 16px; }
     .shop .card { width: min(820px, 100%); }
     .shop .buttons { display: grid; grid-template-columns: repeat(20, 1fr); gap: 10px; }
@@ -426,6 +432,26 @@
     .splash-bar i { display: block; height: 100%; width: 40%; background: var(--yellow); border-radius: 999px; animation: load 1.2s ease-in-out infinite; }
     @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
     #splash p { margin: 0; font-weight: 800; font-size: 20px; }
+    .extra.tut-hud { background: none; padding: 0; }
+    .tut { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,250,243,.96); color: var(--ink); border: 4px solid #fff; border-radius: 20px; padding: 8px 20px 10px; box-shadow: var(--shadow); min-width: 280px; }
+    .tut small { font-weight: 800; font-size: 13px; opacity: .55; text-transform: uppercase; letter-spacing: .5px; }
+    .tut-title { font-size: 24px; line-height: 1.1; }
+    .tut-how { font-size: 17px; font-weight: 700; }
+    .tut-how kbd { font-size: 14px; }
+    .tut-dots { display: flex; gap: 6px; margin-bottom: 2px; }
+    .tut-dots i { width: 12px; height: 12px; border-radius: 50%; background: #e0d6ea; }
+    .tut-dots i.done { background: #5cc44a; }
+    .tut-dots i.now { background: var(--yellow); box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--yellow); }
+    .tut-bar { width: 180px; height: 10px; border-radius: 6px; background: #e0d6ea; overflow: hidden; margin-top: 3px; }
+    .tut-bar i { display: block; height: 100%; background: #5cc44a; transition: width .2s; }
+    .ach-pop { position: fixed; right: 16px; top: 64px; z-index: 8; display: flex; align-items: center; gap: 12px; background: var(--ink); color: #fff; border: 4px solid var(--yellow); border-radius: 20px; padding: 8px 18px 8px 10px; box-shadow: 0 6px 0 rgba(42,33,64,.25); max-width: min(360px, calc(100% - 32px)); pointer-events: none; }
+    .ach-pop.show { animation: ach-in 4s cubic-bezier(.2, 1.3, .4, 1) both; }
+    .ach-pop-ico .ico { width: 44px; height: 44px; filter: drop-shadow(0 2px 0 rgba(0,0,0,.3)); }
+    .ach-pop-txt { display: flex; flex-direction: column; line-height: 1.15; }
+    .ach-pop-txt small { color: var(--yellow); font-weight: 800; font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+    .ach-pop-txt b { font-size: 20px; }
+    .ach-pop-txt span { font-size: 14px; opacity: .85; display: inline-flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+    @keyframes ach-in { 0% { transform: translateX(120%); } 8% { transform: translateX(-6px); } 12%, 88% { transform: none; } 100% { transform: translateX(120%); } }
     /* polish: match awards, between-round scores, animations */
     .place, .award { animation: rise .42s cubic-bezier(.2, 1.3, .4, 1) both; animation-delay: calc(.35s + var(--k, 0) * .13s); }
     .award { animation-delay: calc(.9s + var(--k, 0) * .22s); }
@@ -527,6 +553,7 @@
   <script src="js/modes/water.js"></script>
   <script src="js/modes/boss.js"></script>
   <script src="js/modes/custom.js"></script>
+  <script src="js/modes/tutorial.js"></script>
   <script src="js/net.js"></script>
   <script src="js/editor.js"></script>
   <script src="js/game.js"></script>

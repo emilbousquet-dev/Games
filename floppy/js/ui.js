@@ -193,6 +193,24 @@ FP.UI = (function () {
     sub.hidden = !subText;
     bigTimer = seconds;
   }
+  // "Achievement unlocked!" card that slides in at the top right
+  const achBox = el('div', 'ach-pop');
+  achBox.hidden = true;
+  root.append(achBox);
+  const achQueue = [];
+  let achTimer = 0;
+  function achievement(name, desc, bonus) {
+    achQueue.push({ name, desc, bonus });
+    if (achBox.hidden) nextAch();
+  }
+  function nextAch() {
+    const a = achQueue.shift();
+    if (!a) { achBox.hidden = true; return; }
+    achBox.innerHTML = `<span class="ach-pop-ico">${ICON.trophy}</span><span class="ach-pop-txt"><small>Achievement unlocked!</small><b>${escapeHtml(a.name)}</b><span>${escapeHtml(a.desc)}${a.bonus ? ` &nbsp;${ICON.coin} +${a.bonus}` : ''}</span></span>`;
+    achBox.hidden = false;
+    achBox.classList.remove('show'); void achBox.offsetWidth; achBox.classList.add('show');
+    achTimer = 4;
+  }
   function toast(text, seconds = 1.8) {
     toastBox.textContent = text;
     toastBox.classList.add('show');
@@ -239,9 +257,10 @@ FP.UI = (function () {
 
   function update(dt) {
     pollPads();
+    if (achTimer > 0) { achTimer -= dt; if (achTimer <= 0) nextAch(); }
     if (bigTimer > 0) { bigTimer -= dt; if (bigTimer <= 0) { bigText.hidden = true; sub.hidden = true; } }
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) toastBox.classList.remove('show'); }
   }
 
-  return { screen, closeScreen, open, wipe, selected: () => sel, select, lastDevice: () => lastDevice, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
+  return { achievement, screen, closeScreen, open, wipe, selected: () => sel, select, lastDevice: () => lastDevice, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
 })();

@@ -21,7 +21,7 @@ FP.Game = (function () {
   let state = 'title', mode = null, scores = {}, round = 0, timer = 0, count = 0;
   let paused = false, botCount = {}, nextId = 1, lobbyPanel = null, outTimers = [];
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
-  const VERSION = '1.1';
+  const VERSION = '1.2';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
   let tourOpts = { games: 5, bots: null, list: false };
   let playlist = [];         // your own list of games for a Party Tour (saved on this computer)
@@ -180,6 +180,7 @@ FP.Game = (function () {
       title: '<span class="logo">' + ['FLOPPY', 'PARTY'].map((w, k) => `<span class="word">${w.split('').map((ch, i) => `<b style="--i:${i + k * 6}">${ch}</b>`).join('')}</span>`).join('') + '</span>',
       html: 'Wobbly ragdoll mini-games for 1 to 4 players',
       buttons: [
+        ...(tutorialSeen() ? [] : [{ label: `${ICON.help} New here? Try the Tutorial!`, action: startTutorial, cls: 'go' }]),
         { label: `${ICON.people} Play on this computer`, action: () => lobby() },
         { label: `${ICON.online} Play online with friends`, action: () => FP.Net.menu() },
         { label: `${ICON.flag} Story Mode: World Tour`, action: () => storyMap(), cls: 'story-btn' },
@@ -189,6 +190,7 @@ FP.Game = (function () {
         { label: `${ICON.pencil} Level Editor`, action: () => editor(), small: true },
         { label: `${ICON.gear} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
         { label: `${ICON.help} How to play`, action: () => { FP.UI.help.hidden = false; }, small: true },
+        ...(tutorialSeen() ? [{ label: `${ICON.play} Tutorial`, action: startTutorial, small: true }] : []),
         { label: `${ICON.star} Credits`, action: credits, small: true },
       ],
     });
@@ -216,6 +218,34 @@ FP.Game = (function () {
     FP.Editor.open({
       back: () => (fromGame ? lobby() : titleScreen()),
       play: () => { lobby(); FP.UI.closeScreen(); state = 'select'; if (lobbyPanel) lobbyPanel.hidden = true; setupMatch(FP.Modes.custom); },
+    });
+  }
+
+  // ------------------------------------------------------------
+  //  TUTORIAL (learn the moves on a practice dummy; the steps are in modes/tutorial.js)
+  // ------------------------------------------------------------
+  function tutorialSeen() { try { return !!localStorage.getItem('floppy-tutorial') || FP.Profile.data.stats.games > 0; } catch (e) { return true; } }
+  function startTutorial() {
+    lobby(); // makes sure Player 1 is here
+    botCount.tutorial = 1;
+    FP.UI.wipe(() => startMatch(FP.Modes.tutorial));
+  }
+  function tutorialDone() {
+    state = 'results';
+    FP.UI.setHud('');
+    let first = false;
+    try { first = localStorage.getItem('floppy-tutorial') !== 'done'; localStorage.setItem('floppy-tutorial', 'done'); } catch (e) { /* no saving */ }
+    if (first) FP.Profile.earn(100);
+    for (const c of chars) if (c.player && c.player.source.kind !== 'bot') { c.cheer = 30; c.expression = 'happy'; c.exprTimer = 30; c.podiumWinner = true; }
+    FP.FX.confetti(FP.Camera.target.clone(), 120, 5);
+    FP.UI.screen({
+      cls: 'setup',
+      title: 'Tutorial complete!',
+      html: `<div class="champ">${ICON.trophy}</div><p>You can walk, jump, punch, grab, throw and do emotes. <b>You are ready to party!</b></p>${first ? `<p class="coins">${ICON.coin} <b>+100</b> party coins for finishing the tutorial!</p>` : ''}<p class="small">Every mini-game shows its own tips before it starts. Press <kbd>H</kbd> any time to see all the controls.</p>`,
+      buttons: [
+        { label: `${ICON.play} Let's play!`, action: () => FP.UI.wipe(() => lobby()), cls: 'go' },
+        { label: `${ICON.home} Title screen`, action: () => FP.UI.wipe(titleScreen), small: true },
+      ],
     });
   }
 
@@ -686,7 +716,7 @@ FP.Game = (function () {
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     timer = 0;
     if (FP.Net) FP.Net.roundStarted();
-    if (round === 1 && humans().length && !api.skipIntro) showIntro();
+    if (round === 1 && humans().length && !api.skipIntro && !mode.noIntro) showIntro();
     else goCountdown();
   }
 
@@ -839,6 +869,8 @@ FP.Game = (function () {
     lastStop = now;
     hitstop = Math.max(hitstop, t);
   }
+  // the coin counter in the lobby updates right away
+  FP.bus.on('coins', () => { if (state === 'lobby' && lobbyPanel && !lobbyPanel.hidden && !lobbyPanel.querySelector('.name-input')) refreshLobby(); });
   let matchStats = {};
   function resetStats() { matchStats = {}; everyone().forEach((p) => { matchStats[p.id] = { hits: 0, kos: 0, throws: 0, knocked: 0, grabs: 0, jumps: 0, outs: 0 }; }); }
   const statOf = (c) => (c && c.player && state === 'play' && !(FP.Net && FP.Net.isClient()) ? matchStats[c.player.id] || null : null);
@@ -1011,6 +1043,7 @@ FP.Game = (function () {
   }
 
   function results() {
+    if (mode.id === 'tutorial') { tutorialDone(); return; }
     state = 'results';
     FP.UI.setHud('');
     const list = everyone();
@@ -1081,7 +1114,8 @@ FP.Game = (function () {
     if (!mode) return '';
     const extra = mode.hud ? mode.hud() : '';
     let pills;
-    if (mode.teams) {
+    if (mode.noPills) pills = '';
+    else if (mode.teams) {
       pills = `<span class="pill team0">Red ${scores.team0}</span><span class="pill team1">Blue ${scores.team1}</span>`;
     } else {
       pills = everyone().map((p) => {
@@ -1092,7 +1126,7 @@ FP.Game = (function () {
       }).join('');
     }
     const goal = (mode.rounds ? ` <small>${mode.roundName || 'Round'} ${round} of ${mode.rounds}</small>` : mode.roundsToWin > 1 && !mode.single ? ` <small>first to ${mode.roundsToWin}</small>` : '') + (tour ? ` <small>Party Tour ${tour.index + 1} of ${tour.games.length}</small>` : '');
-    return `<div class="modename">${mode.name}${goal}</div><div class="pills">${pills}</div>${extra ? `<div class="extra">${extra}</div>` : ''}`;
+    return `<div class="modename">${mode.name}${goal}</div>${pills ? `<div class="pills">${pills}</div>` : ''}${extra ? `<div class="extra${mode.hudClass ? ' ' + mode.hudClass : ''}">${extra}</div>` : ''}`;
   }
 
   // ------------------------------------------------------------

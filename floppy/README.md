@@ -7,9 +7,10 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 ## How to play
 
 1. Open **`index.html`** in Chrome, Edge or Firefox.
-2. Click **Play on this computer**, or **Play online with friends**.
-3. In the lobby, more players join by pressing their **jump** button. Everyone can walk around and goof off.
-4. Press **Enter** to pick a mini-game, then choose **how many bots** play with you and **how good they are**, and **Start**.
+2. New to the game? Click **New here? Try the Tutorial!** It teaches you to walk, jump, punch, grab, throw and do emotes on a practice dummy (and gives you 100 party coins the first time).
+3. Click **Play on this computer**, or **Play online with friends**.
+4. In the lobby, more players join by pressing their **jump** button. Everyone can walk around and goof off. Click your name to type a new one.
+5. Press **Enter** to pick a mini-game, then choose **how many bots** play with you and **how good they are**, and **Start**.
    Or try the **Party Tour** (several random mini-games in a row) or **Surprise me!** (a spinning wheel picks a game).
 
 ## Controls
@@ -22,7 +23,7 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 | Grab with both hands (hold) | `G` | `,` | LB + RB |
 | Left hand / right hand (hold) | `Q` / `E` | `;` / `'` | LB or LT / RB or RT |
 | Emotes: wave / dance / cheer | `1` / `2` / `3` | `8` / `9` / `0` | Back / left stick click / Y |
-| Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / left stick click |
+| Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / right stick click |
 
 `H` help, `Esc` pause (or **Start** on a controller), `M` music on or off.
 
@@ -141,6 +142,7 @@ It works online too: your friends get your arena automatically.
   - **Victory dances**: Robot, Backflip, Spin, Floss, Chicken. Your winner does it on the podium!
   - **Trails**: Sparkles, Hearts, Bubbles, Rainbow, Fire. They follow you when you run.
 - Pick what you own in the lobby (rows for hat, outfit, face, dance and trail).
+- The **Stats** page shows your games played, wins, knockouts, throws, World Tour stars and your favorite mini-game, above your achievements.
 - **Achievements** (14 of them) give 50 bonus coins each, like "Yeet Master" (throw 10 people) or "Party Champion" (win a Party Tour).
 - Coins, everything you own, World Tour stars, your arenas and achievements are saved on this computer.
 
@@ -151,8 +153,14 @@ It works online too: your friends get your arena automatically.
 - **Slow motion** on the final knockout of a round. The knockout that wins the whole game also gets a **replay** from a moving camera (press jump to skip, or switch replays off in Settings).
 - **Photo mode** (in the pause menu): move the camera around, pick a filter (black and white, old photo, super colors, dreamy) and take a picture you can save.
 
+- **Hits feel strong:** big punches and knockouts freeze the action for a split second, and hard landings kick up dust.
+- **Awards** at the end of every game: Knockout King, Punch Machine, Yeet Master, Frequent Flyer, Big Hugger, Bunny Hopper and Peacemaker.
+- **Between rounds** a scoreboard shows everyone's crowns, and the next round says who has **match point**.
+- The **mini-game picker** has tabs (All games, Brawl, Sports, Party) and a check mark on the games you have played.
+- **Achievement unlocked!** cards slide in when you earn one.
 - Before each mini-game there is a **how to play** card with tips and controls. Everyone presses **jump** when they're ready.
 - At the end, the winners stand on a **3D podium** (1st, 2nd and 3rd) while the crowd cheers.
+- The pause menu has **How to play this game** (the tips and controls again).
 - **Settings** (title screen or pause menu): volume, music, sound effects, screen shake, graphics (Pretty or Fast), name tags, fullscreen.
 
 ## Fun options

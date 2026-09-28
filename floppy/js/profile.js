@@ -43,6 +43,7 @@ FP.Profile = (function () {
     data.stats.earned += n;
     save();
     check();
+    FP.bus.emit('coins', data.coins);
   }
 
   function unlock(id) {
@@ -51,7 +52,7 @@ FP.Profile = (function () {
     if (!a) return;
     data.ach.push(id);
     save();
-    FP.UI.toast(`Achievement: ${a.name}! +${ACH_BONUS} coins`, 3.5);
+    FP.UI.achievement(a.name, a.desc, ACH_BONUS);
     FP.Audio.play('win');
     earn(ACH_BONUS);
   }
