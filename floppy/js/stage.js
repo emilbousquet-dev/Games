@@ -101,5 +101,5 @@ FP.Stage = (function () {
   function render(camera) { renderer.render(scene, camera); }
   function resize() { renderer.setSize(window.innerWidth, window.innerHeight); }
 
-  return { renderer, scene, sun, hemi, add, island, block, prop, update, clear, onClear, render, resize, movers, bodies };
+  return { renderer, scene, sun, hemi, sky, add, island, block, prop, update, clear, onClear, render, resize, movers, bodies };
 })();

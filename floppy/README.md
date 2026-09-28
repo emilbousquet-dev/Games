@@ -1,7 +1,7 @@
 # FLOPPY PARTY
 
 A **wobbly ragdoll party game** for 1 to 4 players, in a cute cartoon style.
-Punch, grab and throw your friends around in 43 silly mini-games, a Story Mode with a giant Robot Boss, and arenas you build yourself!
+Punch, grab and throw your friends around in 43 silly mini-games, a Story Mode with a giant Robot Boss and a UFO Mothership, and arenas you build yourself!
 Play on **one computer** (2 players on the keyboard, plus controllers and bots) or **online** with a room code.
 
 ## How to play
@@ -25,7 +25,7 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 | Emotes: wave / dance / cheer | `1` / `2` / `3` | `8` / `9` / `0` | Back / left stick click / Y |
 | Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / right stick click |
 
-`H` help, `Esc` pause (or **Start** on a controller), `M` music on or off.
+`H` help, `Esc` pause (or **Start** on a controller), `M` music on or off. You can change the keys in **Settings > Controls**.
 
 **Buttons feel late?** That usually means the computer is drawing the game slowly. The game switches to Fast graphics by itself when that happens. You can also pick *Graphics: Fast* in Settings, and turn on *Show speed (FPS)* to see how fast it runs (60 is perfect, under 30 feels laggy).
 
@@ -60,7 +60,7 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Paint Party** | Walk around to paint the floor your color. Jump and land for a big splat. Most paint after 60 seconds wins. | 1 to 4 |
 | **Crown Keeper** | Wear the crown to earn points. Punch whoever has it to knock it off their head. First to 30. | 2 to 4 |
 | **Obstacle Race** | Spinning bars, jumping pads, moving platforms, pushers and stairs. First over the finish line wins! Fall off and you go back to the last checkpoint. | 1 to 4 |
-| **Balloon Pop** | Everyone has 3 balloons tied to their back. Sneak behind people and punch their balloons. Protect yours! After 70 seconds, most balloons wins. First to 2. | 2 to 4 |
+| **Balloon Pop** | Everyone has 3 balloons tied to their back. Sneak behind people and punch their balloons. Protect yours! After 50 seconds, most balloons wins. First to 2. | 2 to 4 |
 | **Musical Seats** | Walk around the jukebox while the music plays. When it stops, jump onto a chair. There is always one chair too few! First to 2. | 2 to 4 |
 | **Zombie Tag** | Zombies turn everyone they touch into zombies. Zombies are slower, and a punch stuns them. Survivors score a point every second, and the last survivor gets a bonus. | 2 to 4 |
 | **Boulder Dodge** | Giant boulders roll across the island. Red arrows show where they come from. Dodge! First to 2. | 2 to 4 |
@@ -105,21 +105,27 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
   Every game gives party points (4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else).
   Most points at the end is the **Party Champion**!
 - **Surprise me!**: a spinning wheel of mini-games stops on a random one.
-- **Daily Challenge** (title screen): a new mini-game with a twist every day, like *Moon Gravity Bowling* or *Disco Soccer*, sometimes against hard bots. Win it for 150 or 200 bonus coins and keep your streak going.
+- **Daily Challenge** (title screen, *Daily and Weekly Challenges*): a new mini-game with a twist every day, like *Moon Gravity Bowling* or *Disco Soccer*, sometimes against hard bots. Win it for 150 or 200 bonus coins and keep your streak going.
+- **Weekly Challenges** (same screen): 3 bigger goals every week, like *Win 4 Brawl games* or *Throw 10 characters*. Each one gives 100 coins, and finishing all 3 gives a **mystery prize** from the Shop. New challenges every Monday.
 
 ## Story Mode: the Floppy World Tour
 
-Press **Story Mode: World Tour** on the title screen. Travel through 5 worlds (Sunny Meadow, Sandy Beach, Snowy Peaks,
-Lava Land and the Robot Factory), with 4 levels each. Come 1st in a level to open the next one.
-Win on **Easy** for 1 star, **Normal** for 2 stars, **Hard** for 3 stars (60 stars in total).
+Press **Story Mode: World Tour** on the title screen. Travel through 6 worlds (Sunny Meadow, Sandy Beach, Snowy Peaks,
+Lava Land, the Robot Factory and Outer Space), with 4 levels each. Come 1st in a level to open the next one.
+Win on **Easy** for 1 star, **Normal** for 2 stars, **Hard** for 3 stars (72 stars in total).
 
 Stars win prizes you can't buy in the shop: the **Hero mask** (10 stars), **Gold stars** trail (20), **Knight armor** (30)
 and the **Champion** victory dance (45).
 
-The very last level is the **Robot Boss**: everyone on your computer plays together (plus a bot friend if you're alone)
+The last level of the Robot Factory is the **Robot Boss**: everyone on your computer plays together (plus a bot friend if you're alone)
 against a giant robot. Jump over its shockwave rings and its spinning laser, get out of the red circles when it fires
 missiles, and don't stand right in front of it (it swats!). When it gets tired it sits down and opens its chest:
 **punch the glowing core!** Break it three times to win the **Robot helmet**. Falling off costs one of your team's hearts.
+
+The very last level, in Outer Space, is the **UFO Mothership**: a giant flying saucer over a space station. Run from its
+green **tractor beam** (get caught and you float up and get dropped), **punch the little aliens** it drops, and step off
+the red **laser stripes** before they zap. When it gets tired it lands: **punch the glowing lights on its edge!**
+Beat it to win the **Alien antennas** and finish the whole World Tour.
 
 ## Level Editor
 
@@ -131,6 +137,8 @@ It works online too: your friends get your arena automatically.
 - Mouse or touch: click or drag to paint, right-click to erase.
 - Keyboard: arrow keys move, **Space** paints, **Backspace** erases, **1 to 8** (or Q and E) pick a tool, **Enter** plays.
 - Controller: stick or d-pad moves, **A** paints, **X** erases, **LB / RB** pick a tool, **Start** plays.
+- **Share code**: gives you a code for your arena (like `FP1.X31F6...`). Send it to a friend.
+  They press **Load a code** in their Level Editor, paste it, and get your arena.
 
 ## Party coins, the Shop and achievements
 
@@ -161,6 +169,13 @@ It works online too: your friends get your arena automatically.
 - Before each mini-game there is a **how to play** card with tips and controls. Everyone presses **jump** when they're ready.
 - At the end, the winners stand on a **3D podium** (1st, 2nd and 3rd) while the crowd cheers.
 - The pause menu has **How to play this game** (the tips and controls again).
+- **Character voices:** every character has its own silly chirpy voice when they get hit, knocked out, thrown, grabbed or win.
+- **Special events:** in December it's the **Winter Party** (snow, snowmen, presents and a free Santa hat). In October it's
+  the **Spooky Party** (pumpkins, spooky trees and a free Witch hat). Event hats are yours to keep.
+- **Rematch vote:** after an online game, friends vote *play again* or *new game*, and the host sees the votes.
+- **Controls:** in Settings, press **Controls** to pick your own keys for both keyboard players.
+- **Colorblind shapes** (Settings): Color Panic tiles also get shapes (circle, star, triangle, square, diamond).
+  Chicken pens show their owner's name.
 - **Settings** (title screen or pause menu): volume, music, sound effects, screen shake, graphics (Pretty or Fast), name tags, fullscreen.
 
 ## Fun options

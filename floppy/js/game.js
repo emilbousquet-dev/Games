@@ -21,7 +21,7 @@ FP.Game = (function () {
   let state = 'title', mode = null, scores = {}, round = 0, timer = 0, count = 0;
   let paused = false, botCount = {}, nextId = 1, lobbyPanel = null, outTimers = [];
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
-  const VERSION = '1.2';
+  const VERSION = '1.3';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
   let tourOpts = { games: 5, bots: null, list: false };
   let playlist = [];         // your own list of games for a Party Tour (saved on this computer)
@@ -797,6 +797,7 @@ FP.Game = (function () {
     cooking: ['Run into a crate to pick up food, run into a pot to put it in', '3 of the same or 3 different = soup', 'Bring soups to the SERVE window before they burn!'],
     hideseek: ['Hiders: GRAB next to furniture to hide inside it', 'Seeker: PUNCH furniture to look inside', 'Hidden furniture wiggles sometimes!'],
     boss: ['JUMP over the rings and the laser', 'Red circle? Missiles! Get out', 'When the robot sits down, PUNCH its glowing core'],
+    ufo: ['Run from the green tractor beam', 'Red stripes on the floor? Step out before the ZAP', 'When the UFO lands, PUNCH the lights on its edge'],
     custom: ['Build arenas in the Level Editor', 'Jump pads launch you high', 'Lava and falling off = out!'],
     water: ['PUNCH to lob a water balloon', 'Out? Refill at your team\'s water tap', 'Getting wet makes you slippery!'],
   };
@@ -1359,9 +1360,12 @@ FP.Game = (function () {
     { name: 'Snowy Peaks', levels: ['snowball', 'hockey', 'tiles', 'penalty'] },
     { name: 'Lava Land', levels: ['lava', 'meteor', 'bomb', 'boxing'] },
     { name: 'Robot Factory', levels: ['conveyor', 'sweeper', 'kart', 'boss'] },
+    { name: 'Outer Space', levels: ['skydive', 'boulder', 'bumpers', 'ufo'] },
   ];
+  const BOSSES = ['boss', 'ufo'];
+  const isBoss = (id) => BOSSES.includes(id);
   const STORY_PRIZES = [
-    { stars: 10, id: 'face:mask' }, { stars: 20, id: 'trail:gold' }, { stars: 30, id: 'outfit:knight' }, { stars: 45, id: 'dance:champ' }, { boss: true, id: 'robot' },
+    { stars: 10, id: 'face:mask' }, { stars: 20, id: 'trail:gold' }, { stars: 30, id: 'outfit:knight' }, { stars: 45, id: 'dance:champ' }, { boss: 'boss', id: 'robot' }, { boss: 'ufo', id: 'alien' },
   ];
   const STAR_SKILL = { easy: 1, normal: 2, hard: 3 };
   const LOCK = '<svg viewBox="0 0 24 24" class="ico"><rect x="5" y="10" width="14" height="11" rx="3" fill="#8a8fa0" stroke="#2a2140" stroke-width="1.8"/><path d="M8 10V7a4 4 0 0 1 8 0v3" fill="none" stroke="#2a2140" stroke-width="2.2"/></svg>';
@@ -1388,20 +1392,20 @@ FP.Game = (function () {
       sel = 0;
       outer: for (let w = 0; w < WORLDS.length; w++) for (let l = 0; l < 4; l++) if (levelOpen(d, w, l) && !(d.stars[levelKey(w, l)] | 0)) { sel = w * 4 + l; break outer; }
     }
-    const prizes = STORY_PRIZES.map((p) => `<span class="prize${FP.Profile.owns(p.id) ? ' got' : ''}">${FP.Profile.owns(p.id) ? ICON.check : p.boss ? ICON.trophy : ICON.star} ${p.boss ? 'Beat the boss' : p.stars}: <b>${FP.Profile.itemName(p.id)}</b></span>`).join('');
+    const prizes = STORY_PRIZES.map((p) => `<span class="prize${FP.Profile.owns(p.id) ? ' got' : ''}">${FP.Profile.owns(p.id) ? ICON.check : p.boss ? ICON.trophy : ICON.star} ${p.boss ? (p.boss === 'ufo' ? 'Beat the UFO' : 'Beat the robot') : p.stars}: <b>${FP.Profile.itemName(p.id)}</b></span>`).join('');
     const buttons = [];
     WORLDS.forEach((W, w) => W.levels.forEach((id, l) => {
       const m = FP.Modes[id], open = levelOpen(d, w, l), st = d.stars[levelKey(w, l)] | 0;
       buttons.push({
         label: `<span class="lv-num">${w + 1}-${l + 1}</span>${open ? `<span class="lv-art">${m.art || ''}</span><b>${m.name}</b>${starRow(st)}` : `<span class="lv-lock">${LOCK}</span><b>Locked</b><small>Beat ${l > 0 ? `${w + 1}-${l}` : `${w}-4`} first</small>`}`,
-        cls: `level w${w}${open ? '' : ' locked'}${id === 'boss' ? ' boss' : ''}`,
+        cls: `level w${w}${open ? '' : ' locked'}${isBoss(id) ? ' boss' : ''}`,
         action: () => (open ? storyLevel(w, l) : FP.UI.toast('Win the level before this one to open it!', 2.2)),
       });
     }));
     buttons.push({ label: `${ICON.back} Back`, action: titleScreen, small: true, cls: 'wide' });
     const card = FP.UI.screen({
       cls: 'story', title: 'Floppy World Tour',
-      html: `<p>Travel the world and beat every mini-game! At the end waits the <b>Robot Boss</b>.</p>
+      html: `<p>Travel the world and beat every mini-game! The <b>Robot Boss</b> waits in the factory, and the <b>UFO Mothership</b> in outer space.</p>
         <p class="story-stars">${ICON.star} <b>${total}</b> of ${MAX_STARS} stars &nbsp; <span class="small">(win on Easy = 1 star, Normal = 2, Hard = 3)</span></p>
         <div class="prizes">${prizes}</div>`,
       columns: 4, start: sel, buttons, back: titleScreen,
@@ -1414,9 +1418,9 @@ FP.Game = (function () {
   function storyLevel(w, l) {
     const d = storyData(), id = WORLDS[w].levels[l], m = FP.Modes[id], st = d.stars[levelKey(w, l)] | 0;
     const back = () => storyMap(w * 4 + l);
-    const boss = id === 'boss';
+    const boss = isBoss(id);
     const html = `<div class="setup-art">${m.art || ''}</div><h2>${w + 1}-${l + 1} ${esc(WORLDS[w].name)}: ${m.name}</h2><p>${m.desc}</p>
-      <p>${boss ? 'Everyone on this computer plays together against the robot (with a bot friend if you are alone).' : 'Come 1st to clear the level and open the next one!'}</p>
+      <p>${boss ? `Everyone on this computer plays together against the ${id === 'ufo' ? 'UFO' : 'robot'} (with a bot friend if you are alone).` : 'Come 1st to clear the level and open the next one!'}</p>
       <p>Your best: ${starRow(st)} &nbsp; <span class="small">Easy = 1 star, Normal = 2, Hard = 3</span></p>`;
     FP.UI.screen({
       cls: 'setup story-level', title: 'Floppy World Tour', html,
@@ -1433,19 +1437,19 @@ FP.Game = (function () {
     if (!m) return;
     lobby(); // makes sure Player 1 is here
     story = { w, l, skill, prevSkill: botSkill, result: null };
-    botSkill = m.id === 'boss' ? 'hard' : skill; // (bots are your friends in the boss fight: they try their best)
-    if (m.id === 'boss') m.level = skill; // the robot is tougher on Hard
+    botSkill = isBoss(m.id) ? 'hard' : skill; // (bots are your friends in the boss fights: they try their best)
+    if (isBoss(m.id)) m.level = skill; // the bosses are tougher on Hard
     const { min, max } = botLimits(m);
-    botCount[m.id] = Math.min(max, Math.max(min, m.id === 'boss' ? 1 : 3));
+    botCount[m.id] = Math.min(max, Math.max(min, isBoss(m.id) ? 1 : 3));
     FP.UI.wipe(() => startMatch(m));
   }
-  function endStory() { if (!story) return; botSkill = story.prevSkill; story = null; if (FP.Modes.boss) FP.Modes.boss.level = null; }
+  function endStory() { if (!story) return; botSkill = story.prevSkill; story = null; for (const id of BOSSES) if (FP.Modes[id]) FP.Modes[id].level = null; }
 
   // after a story level: stars, coins and prizes
   function storyFinished(places) {
     if (!story) return;
     const local = (p) => ['keys', 'pad', 'touch'].includes(p.source.kind);
-    const won = mode.id === 'boss' ? !!mode.beaten : places.length > 1 && places[0].some(local);
+    const won = isBoss(mode.id) ? !!mode.beaten : places.length > 1 && places[0].some(local);
     const res = { won, newStars: 0, coins: 0, prizes: [] };
     if (won) {
       const d = storyData(), key = levelKey(story.w, story.l), before = d.stars[key] | 0;
@@ -1453,9 +1457,10 @@ FP.Game = (function () {
       if (got > before) { d.stars[key] = got; res.newStars = got - before; }
       res.coins = (before ? 0 : 50) + res.newStars * 25;
       if (mode.id === 'boss') d.boss = true;
+      if (mode.id === 'ufo') d.ufo = true;
       saveStory(d);
       const total = totalStars(d);
-      for (const p of STORY_PRIZES) if ((p.boss ? d.boss : total >= p.stars) && FP.Profile.grant(p.id)) res.prizes.push(p.id);
+      for (const p of STORY_PRIZES) if ((p.boss ? d[p.boss] : total >= p.stars) && FP.Profile.grant(p.id)) res.prizes.push(p.id);
       if (res.coins) FP.Profile.earn(res.coins);
     }
     story.result = res;
@@ -1468,7 +1473,8 @@ FP.Game = (function () {
     let msg = r.won ? `<p class="winner">Level cleared!${r.newStars ? ` +${r.newStars} star${r.newStars > 1 ? 's' : ''}` : ''}</p>` : '<p class="winner">Not this time... try again!</p>';
     if (r.coins) msg += `<p>${ICON.coin} +${r.coins} World Tour bonus coins</p>`;
     for (const id of r.prizes) msg += `<p class="prize-won">${ICON.trophy} New prize: <b>${FP.Profile.itemName(id)}</b>! Pick it in the lobby.</p>`;
-    if (r.won && lastLevel) msg += '<p><b>You beat the Robot Boss and finished the Floppy World Tour! You are the champions!</b></p>';
+    if (r.won && mode.id === 'boss') msg += '<p><b>You beat the Robot Boss! Next stop: Outer Space!</b></p>';
+    if (r.won && lastLevel) msg += '<p><b>You beat the UFO Mothership and finished the whole Floppy World Tour! You are the champions of the universe!</b></p>';
     if (r.prizes.length) { FP.Audio.play('cheer'); setTimeout(() => FP.Audio.play('fanfare'), 400); FP.FX.confetti(FP.Camera.target.clone()); }
     for (let i = 0; i < (r.newStars || 0); i++) setTimeout(() => FP.Audio.play('star'), 700 + i * 260);
     if (!r.won) setTimeout(() => FP.Audio.play('aww'), 500);
