@@ -27,7 +27,7 @@ FP.Profile = (function () {
     { id: 'games50', name: 'Party Animal', desc: 'Play 50 mini-games.', stat: 'games', goal: 50 },
   ];
 
-  let data = { coins: 0, owned: [], stats: { throws: 0, kos: 0, earned: 0, games: 0 }, played: [], ach: [] };
+  let data = { coins: 0, owned: [], stats: { throws: 0, kos: 0, earned: 0, games: 0, wins: 0 }, played: [], plays: {}, ach: [] };
   try { const saved = JSON.parse(localStorage.getItem('floppy-profile') || 'null'); if (saved && typeof saved === 'object') data = Object.assign(data, saved, { stats: Object.assign(data.stats, saved.stats || {}) }); } catch (e) { /* no saving */ }
   function save() { try { localStorage.setItem('floppy-profile', JSON.stringify(data)); } catch (e) { /* no saving */ } }
 
@@ -60,7 +60,7 @@ FP.Profile = (function () {
   function check() { for (const a of ACH) if (a.goal && !has(a.id) && statValue(a) >= goalOf(a)) unlock(a.id); }
 
   // is this character played by someone on THIS computer?
-  const isLocal = (c) => { const k = c && c.player && c.player.source && c.player.source.kind; return k === 'keys' || k === 'pad'; };
+  const isLocal = (c) => { const k = c && c.player && c.player.source && c.player.source.kind; return k === 'keys' || k === 'pad' || k === 'touch'; };
   const counting = () => FP.Game && FP.Game.state === 'play' && !(FP.Net && FP.Net.isClient());
 
   FP.bus.on('throw', (d) => { if (counting() && d && isLocal(d.by) && d.who && d.who.bodies) { data.stats.throws++; save(); check(); } });
@@ -74,13 +74,16 @@ FP.Profile = (function () {
   function matchEnded({ mode, places, skill, funCount, bots, online, extra = {} }) {
     data.stats.games++;
     if (!data.played.includes(mode.id)) data.played.push(mode.id);
+    if (!data.plays || typeof data.plays !== 'object') data.plays = {};
+    data.plays[mode.id] = (data.plays[mode.id] || 0) + 1;
+    if (places.length > 1 && places[0].some((p) => ['keys', 'pad', 'touch'].includes(p.source && p.source.kind))) data.stats.wins = (data.stats.wins || 0) + 1;
     check();
     const got = {};
     let total = 0;
     places.forEach((group, i) => {
       for (const p of group) {
         const k = p.source && p.source.kind;
-        if (k !== 'keys' && k !== 'pad') continue;
+        if (k !== 'keys' && k !== 'pad' && k !== 'touch') continue;
         const n = PLACE_COINS[Math.min(i, 3)];
         got[p.id] = n; total += n;
         if (i === 0 && places.length > 1) {
@@ -91,7 +94,7 @@ FP.Profile = (function () {
         }
       }
     });
-    if (extra.survivor && ['keys', 'pad'].includes(extra.survivor.source && extra.survivor.source.kind)) unlock('survivor');
+    if (extra.survivor && ['keys', 'pad', 'touch'].includes(extra.survivor.source && extra.survivor.source.kind)) unlock('survivor');
     if (funCount >= 3) unlock('silly');
     if (online) unlock('online');
     save();
@@ -279,13 +282,23 @@ FP.Profile = (function () {
       const prog = a.goal && !done ? `<span class="prog"><i style="width:${Math.min(100, Math.round((statValue(a) / goal) * 100))}%"></i></span><small>${Math.min(statValue(a), goal)} / ${goal}</small>` : '';
       return `<div class="ach${done ? ' done' : ''}"><span class="medal-ico">${done ? ICON().trophy : ICON().starEmpty}</span><span class="txt"><b>${a.name}</b><small>${a.desc}</small>${prog}</span></div>`;
     }).join('');
+    // your stats: games played, wins, knockouts... and your favorite mini-game
+    const st = data.stats, plays = data.plays || {};
+    const fav = Object.keys(plays).filter((id) => FP.Modes[id]).sort((a, b) => plays[b] - plays[a])[0];
+    let stars = 0;
+    try { const story = JSON.parse(localStorage.getItem('floppy-story') || '{}'); stars = Object.values((story && story.stars) || {}).reduce((a, b) => a + (+b || 0), 0); } catch (e) { /* no saving */ }
+    const total = FP.Game && FP.Game.MODES ? FP.Game.MODES().length : 0;
+    const box = (n, lbl) => `<div class="stat"><b>${n}</b><small>${lbl}</small></div>`;
+    const statsHtml = `<div class="stats">${box(st.games || 0, 'games played')}${box(st.wins || 0, 'wins')}${box(st.kos || 0, 'knockouts')}${box(st.throws || 0, 'throws')}${box(`${data.played.length}/${total}`, 'mini-games tried')}${box(stars, 'World Tour stars')}${box(st.earned || 0, 'coins earned')}${box(fav ? FP.UI.escapeHtml(FP.Modes[fav].name) : '-', 'favorite game')}</div>`;
     FP.UI.screen({
       cls: 'achievements',
-      title: 'Achievements',
-      html: `<p>${data.ach.length} of ${ACH.length} unlocked &nbsp; ${coinLine()}</p><p class="small">Every achievement gives ${ACH_BONUS} bonus coins.</p><div class="ach-list">${rows}</div>`,
+      title: 'Stats and achievements',
+      html: `${statsHtml}<p>${data.ach.length} of ${ACH.length} achievements unlocked &nbsp; ${coinLine()}</p><p class="small">Every achievement gives ${ACH_BONUS} bonus coins.</p><div class="ach-list">${rows}</div>`,
       buttons: [{ label: `${ICON().back} Back`, action: back, small: true }],
       back,
     });
+    const card = document.querySelector('.screen.achievements .card');
+    if (card) card.scrollTop = 0; // start at the top (your stats)
   }
 
   return { PRICES, ACH, KINDS, owns, buy, grant, itemName, earn, unlock, matchEnded, shopScreen, achievementsScreen, hatThumb, coinLine, get coins() { return data.coins; }, get data() { return data; }, isLocal };

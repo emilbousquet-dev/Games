@@ -220,6 +220,7 @@ FP.Ragdoll = (function () {
     const upright = t.quaternion.vmult(UP, tv).y;
     c.grounded = !!g && g.dist < STAND + 0.2 && upright > 0.5 && g.normal.y > 0.5;
     c.groundBody = c.grounded ? g.body : null;
+    if (c.grounded && c.airTime > 0.6 && c.ko <= 0) FP.bus.emit('land', { c, hard: c.airTime > 1.4 }); // landing after a big jump or fall
     c.airTime = c.grounded ? 0 : c.airTime + dt;
     c.coyote = c.grounded ? 0.12 : Math.max(0, (c.coyote || 0) - dt); // you can still jump just after stepping off an edge
     const groundVel = c.groundBody ? c.groundBody.velocity : new Vec3();

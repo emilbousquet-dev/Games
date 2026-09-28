@@ -2,7 +2,7 @@
 //  FLOPPY PARTY — BOMB TAG
 //  One player carries a ticking bomb. Bump into or punch
 //  someone to pass it on. When it explodes, whoever holds it
-//  is OUT. Last one standing wins the round. First to 3.
+//  is OUT. Last one standing wins the round. First to 2.
 // ============================================================
 window.FP = window.FP || {};
 FP.Modes = FP.Modes || {};
@@ -181,7 +181,7 @@ FP.Modes.bomb = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#ffe0c2"/><ellipse cx="60" cy="68" rx="52" ry="9" fill="#7ad35e"/><circle cx="38" cy="30" r="13" fill="#2a2140"/><path d="M45 19l6-7" stroke="#c98b58" stroke-width="3"/><circle cx="53" cy="10" r="4" fill="#ffcf33"/><circle cx="33" cy="25" r="3" fill="#fff"/><ellipse cx="38" cy="56" rx="7" ry="9" fill="#ff9a3c" stroke="#2a2140" stroke-width="2.5"/><circle cx="38" cy="44" r="6" fill="#ff9a3c" stroke="#2a2140" stroke-width="2.5"/><ellipse cx="86" cy="56" rx="7" ry="9" fill="#9b6bff" stroke="#2a2140" stroke-width="2.5" transform="rotate(-15 86 56)"/><circle cx="89" cy="44" r="6" fill="#9b6bff" stroke="#2a2140" stroke-width="2.5"/><path d="M98 48h10M96 54h12M98 60h8" stroke="#2a2140" stroke-width="2" stroke-linecap="round" opacity=".5"/></svg>';
 
   return {
-    id: 'bomb', name: 'Bomb Tag', roundsToWin: 3, minTotal: 2, removeOut: 2.5, song: 'tense', minZoom: 14, art: ART,
+    id: 'bomb', name: 'Bomb Tag', roundsToWin: 2, minTotal: 2, removeOut: 2.5, song: 'tense', minZoom: 14, art: ART,
     desc: 'Pass the ticking bomb by bumping into someone. If it explodes on you, you\'re out!',
     build, spawn, update, botThink, hud,
     netState: () => ({ h: holder ? (holder.player ? 'p' + holder.player.id : '') : '', f: fuse, m: fuseMax }),

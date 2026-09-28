@@ -117,6 +117,7 @@ FP.FX = (function () {
   bus.on('jump', (c) => { const p = v3(c.parts.torso.position); p.y -= 0.9; puffs(p, 5, 0xf2ead8, 1.8, 0.8); });
   bus.on('throw', (e) => { word(e.by.parts.torso.position, 'YEET!', '#6fd35a', 1.4); });
   bus.on('breakFree', (c) => { puffs(c.parts.torso.position, 8, 0xffffff, 3); });
+  bus.on('land', (e) => { const p = v3(e.c.parts.torso.position); p.y -= 0.95; puffs(p, e.hard ? 9 : 5, 0xf2ead8, e.hard ? 2.6 : 1.6, e.hard ? 1 : 0.7); if (e.hard) FP.Camera.shake(0.12); });
 
   return { puffs, stars, confetti, word, update, clear };
 })();

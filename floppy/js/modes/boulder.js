@@ -3,7 +3,7 @@
 //  Giant boulders roll across the island from every side.
 //  A red arrow shows where the next one comes from. DODGE!
 //  Get flattened off the edge and you're out. Last one
-//  standing wins. First to 3.
+//  standing wins. First to 2.
 // ============================================================
 window.FP = window.FP || {};
 FP.Modes = FP.Modes || {};
@@ -147,7 +147,7 @@ FP.Modes.boulder = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><path d="M10 56l50-14 50 14-50 18z" fill="#a8d86e" stroke="#2a2140" stroke-width="2"/><circle cx="40" cy="42" r="13" fill="#9a8f86" stroke="#2a2140" stroke-width="2.5"/><path d="M33 36l6 4-2 7M44 34l3 6" stroke="#2a2140" stroke-width="1.5" fill="none" opacity=".5"/><path d="M18 44h-8M20 50h-10M20 38h-6" stroke="#2a2140" stroke-width="2" stroke-linecap="round" opacity=".5"/><path d="M86 60l8-6h-4v-6h-8v6h-4z" fill="#ff3a3a"/><ellipse cx="72" cy="50" rx="6" ry="8" fill="#5cc44a" stroke="#2a2140" stroke-width="2" transform="rotate(-15 72 50)"/><circle cx="75" cy="39" r="5" fill="#5cc44a" stroke="#2a2140" stroke-width="2"/></svg>';
 
   self = {
-    id: 'boulder', name: 'Boulder Dodge', roundsToWin: 3, minTotal: 2, removeOut: 1.5, song: 'tense', minZoom: 16, art: ART,
+    id: 'boulder', name: 'Boulder Dodge', roundsToWin: 2, minTotal: 2, removeOut: 1.5, song: 'tense', minZoom: 16, art: ART,
     desc: 'Giant boulders roll across the island. Watch the red arrows and dodge!',
     build, spawn, update, botThink, hud, visual,
     netState: () => warns.map((w) => (w.on ? [Math.round(w.x * 10) / 10, Math.round(w.z * 10) / 10, w.dx, w.dz] : 0)),

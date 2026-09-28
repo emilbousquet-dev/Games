@@ -48,11 +48,11 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Knockout Arena** | A floating platform made of tiles that start falling. Knock everyone off! Last one standing wins the round. First to 3. | 2 to 4 |
 | **Soccer** | Real soccer, Red vs Blue, with a goalkeeper in each goal. Run into the ball to dribble it, **punch** to shoot, **grab** to pass, **jump** to slide tackle. Two halves, golden goal if it's a tie. | 2 to 4 |
 | **The Heist** | Everyone on one team: carry treasure from the museum to the getaway van. The diamond is heavy, so carry it together. Guards with flashlights chase you, lasers zap you. | 1 to 4 |
-| **Bomb Tag** | One player carries a ticking bomb. Bump into or punch someone to pass it. If it explodes on you, you're out. First to 3. | 2 to 4 |
+| **Bomb Tag** | One player carries a ticking bomb. Bump into or punch someone to pass it. If it explodes on you, you're out. First to 2. | 2 to 4 |
 | **King of the Hill** | Stand on top of the hill alone to earn points. If someone else is up there, nobody scores. First to 25. | 2 to 4 |
 | **Lava Rising** | The lava keeps rising! Jump up the spiral platforms around the tower. Last one out of the lava wins. First to 2. | 2 to 4 |
 | **Tile Drop** | Two floors of tiles. Every tile you step on wobbles and falls, so keep moving! Fall through both floors and you're out. First to 3. | 2 to 4 |
-| **Color Panic** | A color is called out: get on a tile of that color before all the other tiles drop away. It gets faster and faster. First to 3. | 2 to 4 |
+| **Color Panic** | A color is called out: get on a tile of that color before all the other tiles drop away. It gets faster and faster. First to 2. | 2 to 4 |
 | **Spin Sweeper** | A giant bar spins around the platform. Jump over it! Later a second bar joins in. Last one standing wins. First to 3. | 2 to 4 |
 | **Coin Grab** | Grab the most coins in 75 seconds. Knock someone out and they drop coins. Watch for the big coin worth 5. | 1 to 4 |
 | **Dodgeball** | Real dodgeball, Red vs Blue on two halves of the court. Run into a ball to pick it up, **punch** to throw. Hit = out. **Grab** right when a ball comes to CATCH it: the thrower is out and a teammate comes back in. First to 2 rounds. | 2 to 4 |
@@ -62,12 +62,12 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Balloon Pop** | Everyone has 3 balloons tied to their back. Sneak behind people and punch their balloons. Protect yours! After 70 seconds, most balloons wins. First to 2. | 2 to 4 |
 | **Musical Seats** | Walk around the jukebox while the music plays. When it stops, jump onto a chair. There is always one chair too few! First to 2. | 2 to 4 |
 | **Zombie Tag** | Zombies turn everyone they touch into zombies. Zombies are slower, and a punch stuns them. Survivors score a point every second, and the last survivor gets a bonus. | 2 to 4 |
-| **Boulder Dodge** | Giant boulders roll across the island. Red arrows show where they come from. Dodge! First to 3. | 2 to 4 |
+| **Boulder Dodge** | Giant boulders roll across the island. Red arrows show where they come from. Dodge! First to 2. | 2 to 4 |
 | **Kart Racing** | Floppy drivers in go-karts, 3 laps. Drive through **?** boxes for items (boost, banana, bouncy ball, star, triple boost) and press **punch** to use them. Hold **jump** while turning to drift for a mini boost. The camera is behind your kart, with split screen for 2 to 4 players on one computer. | 1 to 4 |
 | **Sumo Wrestling** | Push everyone out of the rope circle. **Jump** does a big belly charge, and punches push extra hard. First to 3. | 2 to 4 |
 | **Bowling** | Real bowling with the camera behind you. Step left or right, hold **grab** to aim and power up, let go to bowl, and curve the ball while it rolls. Gutters, 10 frames, strikes and spares with a real scorecard. | 1 to 4 |
 | **Basketball** | Real basketball, Red vs Blue. Run into the ball to pick it up. **Punch** to shoot (jump by the hoop to SLAM DUNK), **grab** to pass, punch the ball carrier to steal, jump to block. 3-point line, 4 quarters, overtime. | 2 to 4 |
-| **Meteor Shower** | Meteors fall from the sky. Red circles show where. Get out of the way! First to 3. | 2 to 4 |
+| **Meteor Shower** | Meteors fall from the sky. Red circles show where. Get out of the way! First to 2. | 2 to 4 |
 | **Conveyor Brawl** | The floor is moving belts that push you toward the edge and keep getting faster. First to 2. | 2 to 4 |
 | **Hole in the Wall** | A wall slides across the platform. Stand in a gap or get pushed off! The walls get faster and the gaps smaller. First to 2. | 2 to 4 |
 | **Floppy Says** | Do what Floppy says: jump, punch, wave, dance, cheer, grab with one hand, spin in a circle, run, hug a friend, freeze. Only if it starts with "Floppy says" (watch out for "Flappy says"!). It gets faster, with two moves at once near the end. 20 orders. | 1 to 4 |
@@ -148,7 +148,7 @@ It works online too: your friends get your arena automatically.
 
 - **Emotes:** wave, dance and cheer at your friends. Bots sometimes show off after knocking someone out.
 - **Music:** 7 songs made with code (party, tense, race, chill, spooky, circus and the menu song), with drums and chords.
-- **Slow motion** on the final knockout of a round, then a **replay** of the last moment from a moving camera (press jump to skip, or switch replays off in Settings).
+- **Slow motion** on the final knockout of a round. The knockout that wins the whole game also gets a **replay** from a moving camera (press jump to skip, or switch replays off in Settings).
 - **Photo mode** (in the pause menu): move the camera around, pick a filter (black and white, old photo, super colors, dreamy) and take a picture you can save.
 
 - Before each mini-game there is a **how to play** card with tips and controls. Everyone presses **jump** when they're ready.

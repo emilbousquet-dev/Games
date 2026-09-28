@@ -60,7 +60,7 @@ FP.Fun = (function () {
   // every frame: surprise events, and the disco lights
   function update(dt, state) {
     t += dt;
-    inMatch = ['countdown', 'play', 'roundOver'].includes(state) || state === 'client';
+    inMatch = ['countdown', 'play', 'roundOver', 'transition'].includes(state) || state === 'client';
     if (state === 'play' && (chosen.chaos || forced.chaos)) {
       if (temp) { tempT -= dt; if (tempT <= 0) temp = null; }
       chaosT -= dt;

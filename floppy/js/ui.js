@@ -19,6 +19,7 @@ FP.UI = (function () {
   const wipeBox = el('div', 'wipe');
   root.append(tags, hud, bigText, sub, toastBox, screenBox, help, corner, wipeBox);
   screenBox.hidden = true; help.hidden = true; bigText.hidden = true; sub.hidden = true;
+  let lastTitle = null;
   let items = [], sel = 0, backFn = null, keyFn = null, bigTimer = 0, toastTimer = 0, grid = 1;
 
   const hex = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -50,6 +51,9 @@ FP.UI = (function () {
     dice: svg('<rect x="3.5" y="3.5" width="17" height="17" rx="4" fill="#fff" stroke="#2a2140" stroke-width="2"/><circle cx="8.5" cy="8.5" r="1.6" fill="#2a2140"/><circle cx="15.5" cy="15.5" r="1.6" fill="#2a2140"/><circle cx="12" cy="12" r="1.6" fill="#2a2140"/><circle cx="15.5" cy="8.5" r="1.6" fill="#2a2140"/><circle cx="8.5" cy="15.5" r="1.6" fill="#2a2140"/>'),
     sparkle: svg('<path d="M12 2l2.2 6.8L21 11l-6.8 2.2L12 20l-2.2-6.8L3 11l6.8-2.2z" fill="#ff7eb6" stroke="#2a2140" stroke-width="1.6" stroke-linejoin="round"/><circle cx="19" cy="4" r="1.6" fill="#ffcf33"/><circle cx="5" cy="19" r="1.3" fill="#4aa8ff"/>'),
     check: svg('<path d="M5 12.5l4.5 4.5L19 7" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>'),
+    gear: svg('<path d="M10.3 2.5h3.4l.5 2.6 1.9.8 2.2-1.5 2.4 2.4-1.5 2.2.8 1.9 2.6.5v3.4l-2.6.5-.8 1.9 1.5 2.2-2.4 2.4-2.2-1.5-1.9.8-.5 2.6h-3.4l-.5-2.6-1.9-.8-2.2 1.5-2.4-2.4 1.5-2.2-.8-1.9-2.6-.5v-3.4l2.6-.5.8-1.9-1.5-2.2 2.4-2.4 2.2 1.5 1.9-.8z" fill="currentColor"/><circle cx="12" cy="12" r="3.3" fill="var(--paper2, #f3e9dc)"/>'),
+    pencil: svg('<path d="M4 20l1-5L16 4l4 4L9 19z" fill="currentColor"/><path d="M4 20l1-5 4 4z" fill="#ffcf33" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>'),
+    chart: svg('<rect x="3" y="12" width="4.5" height="9" rx="1.2" fill="currentColor"/><rect x="9.8" y="6" width="4.5" height="15" rx="1.2" fill="currentColor"/><rect x="16.5" y="3" width="4.5" height="18" rx="1.2" fill="currentColor"/>'),
     right: svg('<path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
 
@@ -59,13 +63,13 @@ FP.UI = (function () {
     <h2>How to play</h2>
     <table>
       <tr><th></th><th>Player 1</th><th>Player 2</th><th>Controller</th></tr>
-      <tr><td>Move</td><td>W A S D</td><td>Arrows</td><td>Left stick</td></tr>
-      <tr><td>Jump</td><td>Space</td><td>/</td><td>A</td></tr>
-      <tr><td>Punch</td><td>F</td><td>.</td><td>X or B</td></tr>
-      <tr><td>Grab with both hands (hold)</td><td>G</td><td>,</td><td>LB + RB</td></tr>
-      <tr><td>Left hand / right hand</td><td>Q / E</td><td>; / '</td><td>LB or LT / RB or RT</td></tr>
-      <tr><td>Emotes: wave / dance / cheer</td><td>1 / 2 / 3</td><td>8 / 9 / 0</td><td>Back / L-stick click / Y</td></tr>
-      <tr><td>Color / hat / outfit (lobby)</td><td>Z / X / C</td><td>K / L / J</td><td>Back / Y / R-stick</td></tr>
+      <tr><td>Move</td><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></td><td><kbd>Arrows</kbd></td><td>Left stick</td></tr>
+      <tr><td>Jump</td><td><kbd>Space</kbd></td><td><kbd>/</kbd></td><td><kbd>A</kbd></td></tr>
+      <tr><td>Punch</td><td><kbd>F</kbd></td><td><kbd>.</kbd></td><td><kbd>X</kbd> or <kbd>B</kbd></td></tr>
+      <tr><td>Grab with both hands (hold)</td><td><kbd>G</kbd></td><td><kbd>,</kbd></td><td><kbd>LB</kbd> + <kbd>RB</kbd></td></tr>
+      <tr><td>Left hand / right hand</td><td><kbd>Q</kbd> / <kbd>E</kbd></td><td><kbd>;</kbd> / <kbd>'</kbd></td><td><kbd>LB</kbd> / <kbd>RB</kbd></td></tr>
+      <tr><td>Emotes: wave, dance, cheer</td><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td><kbd>8</kbd> <kbd>9</kbd> <kbd>0</kbd></td><td><kbd>Back</kbd> <kbd>L3</kbd> <kbd>Y</kbd></td></tr>
+      <tr><td>Color, hat, outfit (lobby)</td><td><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd></td><td><kbd>K</kbd> <kbd>L</kbd> <kbd>J</kbd></td><td><kbd>Back</kbd> <kbd>Y</kbd> <kbd>R3</kbd></td></tr>
     </table>
     <ul>
       <li><b>Punch</b> 3 times quickly to knock someone out. They go floppy!</li>
@@ -76,7 +80,7 @@ FP.UI = (function () {
     </ul>
     <p class="small">Player 1 can use a controller: press A on it to start (on the title screen, or in the lobby).</p>
     <p class="small">H: show or hide this &nbsp; Esc or Start: pause &nbsp; M: music on or off</p>
-    <button class="btn small" type="button" data-close>Close</button>`;
+    <button class="btn go" type="button" data-close>Got it!</button>`;
   help.querySelector('[data-close]').addEventListener('click', () => { help.hidden = true; });
 
   // buttons never take keyboard focus (so pressing Space to jump can't "click" them)
@@ -99,9 +103,12 @@ FP.UI = (function () {
 
   // ---------------- menu screens ----------------
   // buttons: [{ label, action, small, cls }]. grid: how many buttons per row (for arrow keys)
+  let lastCls = null;
   function screen({ title = '', html = '', buttons = [], back = null, cls = '', columns = 1, onKey = null, start = 0 }) {
+    const fresh = screenBox.hidden || cls !== lastCls || title !== lastTitle;
+    lastCls = cls; lastTitle = title;
     screenBox.innerHTML = '';
-    screenBox.className = 'screen ' + cls;
+    screenBox.className = 'screen ' + cls + (fresh ? ' enter' : '');
     const card = el('div', 'card');
     if (title) card.append(el('h1', '', title));
     if (html) card.append(el('div', 'body', html));
@@ -109,7 +116,7 @@ FP.UI = (function () {
     items = buttons.map((b, i) => {
       const btn = el('button', 'btn' + (b.small ? ' small' : '') + (b.cls ? ' ' + b.cls : ''), b.label);
       btn.type = 'button';
-      btn.addEventListener('mouseenter', () => select(i));
+      btn.addEventListener('mouseenter', () => { if (sel !== i) FP.Audio.play('tick'); select(i); });
       btn.addEventListener('click', () => { select(i); choose(); });
       row.append(btn);
       return { ...b, btn };
@@ -148,6 +155,8 @@ FP.UI = (function () {
     FP.Audio.start();
     if (e.target && e.target.tagName === 'INPUT') return;
     if (e.code === 'KeyH') { help.hidden = !help.hidden; return; }
+    // Esc or Enter closes the help (instead of pausing or clicking a menu button)
+    if (!help.hidden && ['Escape', 'Enter', 'NumpadEnter'].includes(e.code)) { help.hidden = true; e.preventDefault(); e.stopImmediatePropagation(); return; }
     if (e.code === 'KeyM') { toast(FP.Audio.toggleMusic() ? 'Music on' : 'Music off'); return; }
     if (!open()) return;
     const map = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right', KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right', Enter: 'ok', NumpadEnter: 'ok', Space: 'ok', Escape: 'back' };
@@ -168,6 +177,7 @@ FP.UI = (function () {
       const b = (n) => gp.buttons[n] && gp.buttons[n].pressed;
       const now = { up: b(12) || gp.axes[1] < -0.6, down: b(13) || gp.axes[1] > 0.6, left: b(14) || gp.axes[0] < -0.6, right: b(15) || gp.axes[0] > 0.6, ok: b(0) || b(9), back: b(1) };
       const was = padPrev[gp.index] || {};
+      if (!help.hidden && ((now.back && !was.back) || (now.ok && !was.ok))) { help.hidden = true; padPrev[gp.index] = now; continue; }
       if (open()) for (const k of Object.keys(now)) if (now[k] && !was[k]) { lastDevice = { kind: 'pad', index: gp.index }; menuKey(k); }
       padPrev[gp.index] = now;
     }

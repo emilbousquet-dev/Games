@@ -47,6 +47,22 @@ FP.Game = (function () {
     return 'Player';
   }
 
+  // names you typed in the lobby are remembered on this computer (Player 1 shares its name with online play)
+  function savedName(i) {
+    try {
+      const n = i === 0 ? localStorage.getItem('floppy-name') : (JSON.parse(localStorage.getItem('floppy-names') || '[]') || [])[i];
+      const clean = typeof n === 'string' ? n.replace(/[<>&"'`]/g, '').trim().slice(0, 12) : '';
+      return clean && !everyone().some((p) => p.name === clean) ? clean : '';
+    } catch (e) { return ''; }
+  }
+  function saveName(i, name) {
+    try {
+      if (i === 0) localStorage.setItem('floppy-name', name);
+      else { const l = JSON.parse(localStorage.getItem('floppy-names') || '[]') || []; l[i] = name; localStorage.setItem('floppy-names', JSON.stringify(l)); }
+    } catch (e) { /* no saving */ }
+  }
+  const isLocalSource = (src) => ['keys', 'pad', 'touch'].includes(src && src.kind);
+
   function addPlayer(source, opts = {}) {
     if (players.length >= MAX_PLAYERS) return null;
     const p = {
@@ -55,7 +71,7 @@ FP.Game = (function () {
       hat: opts.hat || FP.Look.FREE_HATS[(players.length * 3 + 1) % FP.Look.FREE_HATS.length],
       outfit: opts.outfit || FP.Look.FREE_OUTFITS[(players.length + 1) % FP.Look.FREE_OUTFITS.length],
       face: opts.face || 'none', dance: opts.dance || 'none', trail: opts.trail || 'none',
-      name: opts.name || nextPlayerName(),
+      name: opts.name || (isLocalSource(source) && savedName(players.length)) || nextPlayerName(),
     };
     players.push(p);
     if (state === 'lobby') { spawnInLobby(p); FP.Audio.play('voice'); refreshLobby(); }
@@ -169,9 +185,9 @@ FP.Game = (function () {
         { label: `${ICON.flag} Story Mode: World Tour`, action: () => storyMap(), cls: 'story-btn' },
         { label: `${ICON.star} Daily Challenge${dailyDone() ? ' (done!)' : ''}`, action: dailyScreen, cls: 'daily-btn' },
         { label: `${ICON.crown} Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
-        { label: `${ICON.trophy} Achievements`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
-        { label: `${ICON.grid} Level Editor`, action: () => editor(), small: true },
-        { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
+        { label: `${ICON.chart} Stats`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
+        { label: `${ICON.pencil} Level Editor`, action: () => editor(), small: true },
+        { label: `${ICON.gear} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
         { label: `${ICON.help} How to play`, action: () => { FP.UI.help.hidden = false; }, small: true },
         { label: `${ICON.star} Credits`, action: credits, small: true },
       ],
@@ -245,7 +261,7 @@ FP.Game = (function () {
     clearChars();
     // Player 1 uses whatever picked "Play on this computer": the keyboard, a controller or the touch screen
     const dev = FP.UI.lastDevice();
-    if (!players.length) players.push({ id: nextId++, source: FP.Touch.available && dev.kind !== 'pad' ? { kind: 'touch' } : { ...dev }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: 'Player 1' });
+    if (!players.length) players.push({ id: nextId++, source: FP.Touch.available && dev.kind !== 'pad' ? { kind: 'touch' } : { ...dev }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: savedName(0) || 'Player 1' });
     players.forEach((p) => spawnInLobby(p));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     showLobbyPanel();
@@ -339,7 +355,7 @@ FP.Game = (function () {
       const [cl, cr] = arrows('color'), [hl, hr] = arrows('hat'), [ol, or] = arrows('outfit');
       const [fl, fr] = arrows('face'), [dl, dr] = arrows('dance'), [tl, tr] = arrows('trail');
       slots.push(`<div class="slot" style="--c:${hex(col.body)};--l:${hex(col.light)}">
-        <div class="slot-head"><span class="slot-num">P${i + 1}</span><b>${esc(p.name)}</b>${i > 0 && !client ? `<button class="leave" data-act="remove" data-i="${i}" title="Remove this player">Leave</button>` : ''}</div>
+        <div class="slot-head"><span class="slot-num">P${i + 1}</span>${!client && isLocalSource(p.source) ? `<button class="name-btn" data-act="rename" data-i="${i}" title="Change your name">${esc(p.name)}${ICON.pencil}</button>` : `<b>${esc(p.name)}</b>`}${i > 0 && !client ? `<button class="leave" data-act="remove" data-i="${i}" title="Remove this player">Leave</button>` : ''}</div>
         <div class="slot-row"><span class="lbl">Color</span>${cl}<span class="val"><i class="dot"></i>${col.name}</span>${cr}</div>
         <div class="slot-row"><span class="lbl">Hat</span>${hl}<span class="val">${FP.UI.HAT_NAMES[p.hat]}</span>${hr}</div>
         <div class="slot-row"><span class="lbl">Outfit</span>${ol}<span class="val">${FP.Look.OUTFIT_NAMES[p.outfit || 'none']}</span>${or}</div>
@@ -374,9 +390,34 @@ FP.Game = (function () {
     else if (act === 'outfit' && p) cycleOutfit(p, dir);
     else if ((act === 'face' || act === 'dance' || act === 'trail') && p) cycleStyle(p, act, dir);
     else if (act === 'remove' && p) removePlayer(p);
+    else if (act === 'rename' && p) renamePlayer(i);
     else if (act === 'start') chooseMode();
     else if (act === 'shop') { lobbyPanel.hidden = true; FP.Profile.shopScreen(() => { FP.UI.closeScreen(); showLobbyPanel(); refreshLobby(); }); }
     else if (act === 'back') { if (FP.Net) FP.Net.leave(); titleScreen(); }
+  }
+  // click your name in the lobby to type a new one
+  function renamePlayer(i) {
+    const p = players[i];
+    const btn = p && lobbyPanel.querySelector(`[data-act="rename"][data-i="${i}"]`);
+    if (!btn) return;
+    const input = document.createElement('input');
+    input.className = 'name-input'; input.maxLength = 12; input.value = p.name; input.spellcheck = false; input.autocomplete = 'off';
+    btn.replaceWith(input);
+    input.focus(); input.select();
+    let done = false;
+    const finish = (keep) => {
+      if (done) return;
+      done = true;
+      const name = input.value.replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
+      if (keep && name && name !== p.name) {
+        if (everyone().some((q) => q !== p && q.name.toLowerCase() === name.toLowerCase())) FP.UI.toast('Someone already has that name');
+        else { p.name = name; saveName(i, name); spawnInLobby(p); if (FP.Net) FP.Net.playersChanged(); FP.Audio.play('select'); }
+      }
+      refreshLobby();
+    };
+    input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false); });
+    input.addEventListener('keyup', (e) => e.stopPropagation());
+    input.addEventListener('blur', () => finish(true));
   }
   function cycleColor(p, dir = 1) {
     const n = FP.Look.COLORS.length;
@@ -448,29 +489,45 @@ FP.Game = (function () {
   // ------------------------------------------------------------
   //  PICK A MINI-GAME, THEN HOW MANY BOTS
   // ------------------------------------------------------------
-  function chooseMode() {
+  // the mini-game picker has tabs: all games, brawls, sports and party games
+  const CATS = [
+    { id: 'all', name: 'All games' },
+    { id: 'brawl', name: 'Brawl', ids: ['arena', 'bomb', 'hill', 'lava', 'tiles', 'color', 'sweeper', 'crown', 'balloons', 'seats', 'zombie', 'boulder', 'sumo', 'meteor', 'conveyor', 'wall', 'bumpers', 'boxing', 'custom'] },
+    { id: 'sports', name: 'Sports', ids: ['soccer', 'dodge', 'race', 'kart', 'bowling', 'hoops', 'golf', 'volley', 'hurdles', 'penalty', 'hockey', 'tug', 'skydive'] },
+    { id: 'party', name: 'Party' }, // everything else
+  ];
+  const catOf = (id) => (CATS.find((c) => c.ids && c.ids.includes(id)) || CATS[3]).id;
+  let pickCat = 'all';
+  function chooseMode(sel) {
     if (state !== 'lobby' || FP.UI.open()) return;
     if (FP.Net && FP.Net.isClient()) { FP.UI.toast('The host picks the mini-game'); return; }
     state = 'select';
     lobbyPanel.hidden = true;
     const nFun = FP.Fun.list().length;
+    const all = MODES(), played = FP.Profile.data.played;
+    const list = all.filter((m) => pickCat === 'all' || catOf(m.id) === pickCat);
+    const nPlayed = all.filter((m) => played.includes(m.id)).length;
+    const setCat = (id, i) => { pickCat = id; FP.UI.closeScreen(); state = 'lobby'; chooseMode(i); };
     FP.UI.screen({
       cls: 'modes',
       title: 'Pick a mini-game',
+      html: `<p class="small">You have played <b>${nPlayed}</b> of ${all.length} mini-games${nPlayed < all.length ? '. Play them all for the Explorer achievement!' : '. You played them all!'}</p>`,
       columns: 4,
-      start: 4,
+      // sel: a button number, or a mini-game id (to point at the game you just looked at)
+      start: typeof sel === 'number' ? sel : typeof sel === 'string' && list.some((m) => m.id === sel) ? 8 + list.findIndex((m) => m.id === sel) : 8,
       buttons: [
         { label: `${ICON.trophy} Party Tour`, action: tourSetup, cls: 'extra tour' },
         { label: `${ICON.dice} Surprise me!`, action: surprise, cls: 'extra' },
         { label: `${ICON.sparkle} Fun options${nFun ? ` (${nFun})` : ''}`, action: () => funScreen(backToPicker), cls: 'extra' },
         { label: `${ICON.back} Lobby`, action: backToLobby, cls: 'extra' },
-        ...MODES().map((m) => ({ label: `<span class="art">${m.art || ''}</span><b>${m.name}</b><small>${m.desc}</small>`, action: () => setupMatch(m), cls: 'mode' })),
+        ...CATS.map((c, i) => ({ label: `${c.name} <small>${c.id === 'all' ? all.length : all.filter((m) => catOf(m.id) === c.id).length}</small>`, action: () => setCat(c.id, 4 + i), cls: 'cat' + (pickCat === c.id ? ' active' : '') })),
+        ...list.map((m) => ({ label: `<span class="art">${m.art || ''}</span><b>${m.name}</b><small>${m.desc}</small>${played.includes(m.id) ? `<span class="played" title="You played this one">${ICON.check}</span>` : ''}`, action: () => setupMatch(m), cls: 'mode' })),
       ],
       back: backToLobby,
     });
     if (FP.Net) FP.Net.playersChanged();
   }
-  function backToPicker() { FP.UI.closeScreen(); state = 'lobby'; chooseMode(); }
+  function backToPicker(sel) { FP.UI.closeScreen(); state = 'lobby'; chooseMode(typeof sel === 'string' ? sel : undefined); }
 
   // Surprise me: a spinning wheel of mini-games that stops on a random one
   function surprise() {
@@ -568,9 +625,9 @@ FP.Game = (function () {
         buttons: [
           { label: `${ICON.play} Start`, action: () => FP.UI.wipe(() => startMatch(m)), cls: 'go' },
           { label: `${ICON.sparkle} Fun options`, action: () => funScreen(() => setupMatch(m)), small: true },
-          { label: `${ICON.back} Pick another game`, action: backToPicker, small: true },
+          { label: `${ICON.back} Pick another game`, action: () => backToPicker(m.id), small: true },
         ],
-        back: () => { FP.UI.closeScreen(); state = 'lobby'; chooseMode(); },
+        back: () => backToPicker(m.id),
         onKey: (code) => {
           if (code === 'left') { change(-1); return true; }
           if (code === 'right') { change(1); return true; }
@@ -607,6 +664,7 @@ FP.Game = (function () {
     list.forEach((p) => { scores[p.id] = 0; });
     if (m.teams) scores = { team0: 0, team1: 0 };
     round = 0;
+    resetStats();
     FP.Camera.setLift(0);
     FP.Audio.setSong(m.song || 'party');
     if (FP.Net) FP.Net.matchStarted(m.id);
@@ -635,7 +693,22 @@ FP.Game = (function () {
   function goCountdown() {
     state = 'countdown';
     count = 3.99;
-    FP.UI.big(mode.rounds ? `${mode.roundName || 'Round'} ${round}` : mode.roundsToWin > 1 && !mode.single ? `Round ${round}` : mode.name, 1.2, mode.desc);
+    let sub = mode.desc;
+    if (round > 1) sub = matchPointText() || sub;
+    const title = mode.rounds ? `${round === mode.rounds ? 'Final ' + (mode.roundName || 'Round').toLowerCase() : `${mode.roundName || 'Round'} ${round}`}` : mode.roundsToWin > 1 && !mode.single ? `Round ${round}` : mode.name;
+    FP.UI.big(title, 1.2, sub);
+  }
+  // "Match point for Pickle!": someone wins the whole game if they win this round
+  function matchPointText() {
+    if (mode.single || mode.rounds || mode.roundsToWin < 2) return '';
+    const need = mode.roundsToWin - 1;
+    if (mode.teams) {
+      const t = [0, 1].filter((k) => scores['team' + k] === need);
+      return t.length === 2 ? 'Match point for both teams!' : t.length ? `Match point for ${t[0] === 0 ? 'Red' : 'Blue'}!` : '';
+    }
+    const who = everyone().filter((p) => scores[p.id] === need);
+    if (!who.length) return '';
+    return who.length === 1 ? `Match point for ${who[0].name}!` : who.length === 2 ? `Match point for ${who[0].name} and ${who[1].name}!` : 'Match point for everyone!';
   }
 
   // ------------------------------------------------------------
@@ -695,10 +768,19 @@ FP.Game = (function () {
     const left = Math.max(0, Math.ceil(INTRO_TIME - introT));
     const who = humans().map((p) => `<span class="ready-pill${ready.has(p.id) ? ' ok' : ''}">${FP.UI.playerPill(p)}${ready.has(p.id) ? ICON.check : '<small>press jump</small>'}</span>`).join('');
     return `<div class="intro-grid"><div class="setup-art">${mode.art || ''}</div><div class="intro-text"><p class="goal">${mode.desc}</p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul></div></div>
-      <div class="keys-row"><span><kbd>W A S D</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> grab</span><span><kbd>Q</kbd><kbd>E</kbd> one hand</span><span class="small">(player 2: arrows / . ,)</span></div>
+      ${keysRow()}
       <div class="ready-row">${who}</div>
       <p class="small">Press <b>JUMP</b> when you're ready! Starting in <b class="intro-timer">${left}</b>...</p>
       ${withButton ? `<button class="btn go" data-start>${ICON.play} Start now</button>` : ''}`;
+  }
+  // the controls, for whatever everyone is playing with (keyboard, controller or touch screen)
+  function keysRow() {
+    const kinds = new Set(humans().map((p) => p.source.kind));
+    const rows = [];
+    if (kinds.has('keys') || !kinds.size) rows.push(`<div class="keys-row"><span><kbd>W A S D</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> grab</span><span><kbd>Q</kbd><kbd>E</kbd> one hand</span><span class="small">(player 2: arrows / . ,)</span></div>`);
+    if (kinds.has('pad')) rows.push(`<div class="keys-row"><span><kbd>Stick</kbd> move</span><span><kbd>A</kbd> jump</span><span><kbd>X</kbd> punch</span><span><kbd>LB</kbd>+<kbd>RB</kbd> grab</span><span><kbd>LB</kbd> or <kbd>RB</kbd> one hand</span></div>`);
+    if (kinds.has('touch')) rows.push('<div class="keys-row"><span>Use the joystick and the buttons on the screen</span></div>');
+    return rows.join('');
   }
   function drawIntro() {
     const card = FP.UI.screen({ cls: 'intro', title: mode.name, html: introHtml(true) });
@@ -724,7 +806,7 @@ FP.Game = (function () {
       const src = p.source;
       let pressed = false;
       if (src.kind === 'remote') pressed = FP.Net ? FP.Net.inputOf(p.id).jumpPressed : false;
-      else if (src.kind === 'keys' || src.kind === 'pad') pressed = FP.Input.read(src, p.id).jumpPressed;
+      else if (src.kind === 'keys' || src.kind === 'pad' || src.kind === 'touch') pressed = FP.Input.read(src, p.id).jumpPressed;
       if (pressed) { ready.add(p.id); changed = true; FP.Audio.play('select'); }
     }
     if (changed) drawIntro();
@@ -743,19 +825,85 @@ FP.Game = (function () {
     // some games move players who are out away from the action after a moment
     if (mode && mode.removeOut) outTimers.push({ c, t: mode.removeOut });
     FP.FX.puffs(c.parts.torso.position, 12, 0xffffff, 4, 1.5);
+    const s = statOf(c); if (s) s.outs++;
+  }
+
+  // ------------------------------------------------------------
+  //  HIT-STOP AND MATCH AWARDS (fun prizes at the end of a game:
+  //  most punches, most knockouts, most throws...)
+  // ------------------------------------------------------------
+  function hitStop(t) {
+    if (!['play', 'lobby'].includes(state) || (FP.Net && FP.Net.isClient())) return;
+    const now = performance.now();
+    if (now - lastStop < 220) return; // not too often, or a big brawl would stutter
+    lastStop = now;
+    hitstop = Math.max(hitstop, t);
+  }
+  let matchStats = {};
+  function resetStats() { matchStats = {}; everyone().forEach((p) => { matchStats[p.id] = { hits: 0, kos: 0, throws: 0, knocked: 0, grabs: 0, jumps: 0, outs: 0 }; }); }
+  const statOf = (c) => (c && c.player && state === 'play' && !(FP.Net && FP.Net.isClient()) ? matchStats[c.player.id] || null : null);
+  FP.bus.on('punchHit', (e) => {
+    if (!e || !e.by) return;
+    if (e.victim && e.victim !== e.by) { const s = statOf(e.by); if (s) s.hits++; }
+    hitStop(0.05);
+  });
+  FP.bus.on('knockOut', (c) => {
+    if (!c || !c.parts) return;
+    const s = statOf(c); if (s) s.knocked++;
+    const by = c.lastHitBy;
+    if (by && by !== c && performance.now() - c.lastHitTime < 3000) { const b = statOf(by); if (b) b.kos++; }
+    hitStop(0.09);
+  });
+  FP.bus.on('throw', (e) => { if (e && e.who && e.who.bodies) { const s = statOf(e.by); if (s) s.throws++; } });
+  FP.bus.on('grab', (e) => { if (e && e.victim) { const s = statOf(e.by); if (s) s.grabs++; } });
+  FP.bus.on('jump', (c) => { const s = statOf(c); if (s) s.jumps++; });
+
+  const aIco = (inner) => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${inner}</svg>`;
+  const AWARDS = [
+    { k: 'kos', min: 2, name: 'Knockout King', text: (n) => `${n} knockouts`, icon: aIco('<path d="M12 1.5l2.2 5 5.3-1.8-1.9 5.2 5 2.3-5 2.2 1.9 5.3-5.3-1.9L12 22.5l-2.2-4.7-5.3 1.9 1.9-5.3-5-2.2 5-2.3-1.9-5.2 5.3 1.8z" fill="#ffcf33" stroke="#2a2140" stroke-width="1.5" stroke-linejoin="round"/><path d="M8.6 9.5v5M8.6 12l2.4-2.5M8.6 12l2.4 2.5" stroke="#2a2140" stroke-width="1.5" stroke-linecap="round" fill="none"/><circle cx="14.6" cy="12" r="2.2" fill="none" stroke="#2a2140" stroke-width="1.5"/>') },
+    { k: 'hits', min: 4, name: 'Punch Machine', text: (n) => `${n} punches landed`, icon: aIco('<path d="M5 10.5a6.5 6.5 0 0 1 13 0V14a5 5 0 0 1-5 5H9a4 4 0 0 1-4-4z" fill="#ff5a5f" stroke="#2a2140" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 9.5c1.5-1.2 3.5-1.2 5 0" stroke="#fff" stroke-width="1.6" stroke-linecap="round" fill="none" opacity=".7"/><rect x="7" y="18" width="10" height="4.2" rx="1.4" fill="#fff" stroke="#2a2140" stroke-width="1.6"/>') },
+    { k: 'throws', min: 1, name: 'Yeet Master', text: (n) => `${n} throw${n > 1 ? 's' : ''}`, icon: aIco('<path d="M4 19c1-7 6-11 13-11" fill="none" stroke="#6fd35a" stroke-width="3.2" stroke-linecap="round"/><path d="M14 4l5 4-5 4" fill="none" stroke="#2a2140" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="5" cy="19" r="2.2" fill="#2a2140"/>') },
+    { k: 'knocked', min: 2, name: 'Frequent Flyer', text: (n) => `knocked out ${n} times`, icon: aIco('<path d="M2.5 11.5L21 4l-6 16-3.5-6.5z" fill="#4aa8ff" stroke="#2a2140" stroke-width="1.6" stroke-linejoin="round"/><path d="M11.5 13.5L21 4" stroke="#2a2140" stroke-width="1.5"/>') },
+    { k: 'grabs', min: 3, name: 'Big Hugger', text: (n) => `${n} grabs`, icon: aIco('<path d="M12 20.5S3 15 3 9a4.5 4.5 0 0 1 9-1 4.5 4.5 0 0 1 9 1c0 6-9 11.5-9 11.5z" fill="#ff7eb6" stroke="#2a2140" stroke-width="1.7" stroke-linejoin="round"/>') },
+    { k: 'jumps', min: 12, name: 'Bunny Hopper', text: (n) => `${n} jumps`, icon: aIco('<path d="M5 13l7-6 7 6M5 19l7-6 7 6" fill="none" stroke="#9b6bff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>') },
+    { k: 'peace', name: 'Peacemaker', text: () => 'never landed a punch', icon: aIco('<path d="M12 21C5 18 3 12 5 4c7 0 12 4 12 10a7 7 0 0 1-5 7z" fill="#8fd46a" stroke="#2a2140" stroke-width="1.7" stroke-linejoin="round"/><path d="M12 21c-1-6-3-10-6-15" fill="none" stroke="#2a2140" stroke-width="1.5" stroke-linecap="round"/>') },
+  ];
+  // up to 3 prizes, each to a different player (and no prize if two players are tied)
+  function pickAwards(list) {
+    const out = [], used = new Set(), val = (p, k) => (matchStats[p.id] ? matchStats[p.id][k] : 0);
+    for (const a of AWARDS) {
+      if (out.length >= 3) break;
+      if (a.k === 'peace') {
+        if (Math.max(0, ...list.map((p) => val(p, 'hits'))) < 5) continue;
+        const peaceful = list.filter((p) => matchStats[p.id] && val(p, 'hits') === 0 && val(p, 'jumps') + val(p, 'grabs') > 0);
+        if (peaceful.length === 1 && !used.has(peaceful[0].id)) { used.add(peaceful[0].id); out.push({ a, p: peaceful[0], n: 0 }); }
+        continue;
+      }
+      const sorted = list.map((p) => [p, val(p, a.k)]).sort((x, y) => y[1] - x[1]);
+      if (!sorted.length || sorted[0][1] < a.min || (sorted[1] && sorted[1][1] === sorted[0][1]) || used.has(sorted[0][0].id)) continue;
+      used.add(sorted[0][0].id);
+      out.push({ a, p: sorted[0][0], n: sorted[0][1] });
+    }
+    return out;
+  }
+  function awardsHtml(list) {
+    const aw = pickAwards(list);
+    if (!aw.length) return '';
+    return `<div class="awards"><h3>Awards</h3>${aw.map((w, i) => `<div class="award" style="--k:${i}"><span class="award-ico">${w.a.icon}</span><b>${w.a.name}</b>${FP.UI.playerPill(w.p)}<small>${w.a.text(w.n)}</small></div>`).join('')}</div>`;
   }
 
   function endRound(res) {
     state = 'roundOver';
     timer = 0;
     // the final knockout happens in slow motion, with the camera zooming in
-    if (!mode.single && res.winners && res.winners.length === 1 && chars.some((c) => !c.alive)) {
-      if (!mode.render && FP.Settings.get('replays') !== false && replayBuf.length > 60) replayPending = true;
+    const finalKO = !mode.single && res.winners && res.winners.length === 1 && chars.some((c) => !c.alive);
+    if (finalKO) {
       slowmo = 1.2;
       FP.Camera.zoomTo(0.7);
       FP.Audio.play('whoosh');
     }
     let text = 'Nobody wins!';
+    roundWinners = (res.winners || []).map((c) => c.player && c.player.id);
     const center = new THREE.Vector3();
     if (mode.teams && res.team !== undefined) {
       scores['team' + res.team] += res.points ?? 1;
@@ -767,12 +915,38 @@ FP.Game = (function () {
       center.set(t.x, t.y, t.z);
     }
     if (res.text) text = res.text;
+    // the knockout that wins the whole match gets a slow-motion replay
+    if (finalKO && matchOver() && !mode.render && FP.Settings.get('replays') !== false && replayBuf.length > 60) replayPending = true;
     FP.UI.big(text, 2.8, res.sub || '');
     FP.FX.confetti(center);
     FP.Audio.play('win');
     FP.Audio.play('cheer');
     if (FP.Net) FP.Net.banner(text, res.sub || '');
   }
+
+  // ------------------------------------------------------------
+  //  BETWEEN ROUNDS: a little scoreboard (who has how many crowns)
+  // ------------------------------------------------------------
+  let boardEl = null, roundWinners = [];
+  function showBoard() {
+    if (!boardEl) { boardEl = FP.UI.el('div', 'round-board'); FP.UI.root.append(boardEl); }
+    let rows;
+    if (mode.teams) rows = `<div class="rb-teams"><span class="pill team0">Red ${scores.team0}</span><span class="rb-dash">to</span><span class="pill team1">Blue ${scores.team1}</span></div>`;
+    else {
+      const crowns = !mode.rounds && !mode.scoreLabel && mode.roundsToWin <= 5;
+      rows = everyone().slice().sort((a, b) => (scores[b.id] || 0) - (scores[a.id] || 0)).map((p) => {
+        const s = scores[p.id] || 0;
+        const marks = crowns ? Array.from({ length: mode.roundsToWin }, (_, i) => `<span class="rb-crown${i < s ? ' on' : ''}${i === s - 1 && roundWinners.includes(p.id) ? ' new' : ''}">${ICON.crown}</span>`).join('')
+          : `<b class="rb-num">${mode.scoreLabel ? mode.scoreLabel(s) : s}</b>`;
+        return `<div class="rb-row">${FP.UI.playerPill(p)}<span class="rb-marks">${marks}</span></div>`;
+      }).join('');
+    }
+    const goal = mode.rounds ? `Next: ${mode.roundName || 'Round'} ${round + 1} of ${mode.rounds}` : `First to ${mode.roundsToWin} wins`;
+    boardEl.innerHTML = `<div class="rb-card"><div class="rb-title">Scores</div>${rows}<div class="rb-goal">${goal}</div></div>`;
+    boardEl.hidden = false;
+    if (roundWinners.length && !mode.teams) setTimeout(() => { if (state === 'roundOver') FP.Audio.play('ding'); }, 380);
+  }
+  const hideBoard = () => { if (boardEl) boardEl.hidden = true; };
 
   function matchOver() {
     if (mode.rounds) return round >= mode.rounds; // a set number of rounds (like 3 golf holes)
@@ -817,7 +991,9 @@ FP.Game = (function () {
       S.add(num);
       grp.forEach((p, k) => spots.set(p.id, { x: b.x + (k - (grp.length - 1) / 2) * 1.1, y: b.h, z: 0 }));
     });
-    (places[3] || []).forEach((p, k, arr) => spots.set(p.id, { x: (k - (arr.length - 1) / 2) * 1.4, y: 0, z: 2.6 }));
+    // everyone else stands off to the left (where they don't hide the podium)
+    const left = places[1] && places[1].length ? -2.7 - Math.max(2.2, places[1].length * 1.15) / 2 - 0.4 : -2;
+    (places[3] || []).forEach((p, k) => spots.set(p.id, { x: left - k * 0.95, y: 0, z: 1.6 + k * 0.45 }));
     const fans = FP.Props.crowd(2, 10, 1.2); fans.position.set(0, 0, -3); S.add(fans);
     fans.userData.hype = 1;
     S.add(FP.Props.bunting(-6, 3.2, -1.2, 6, 3.2, -1.2, 16));
@@ -844,6 +1020,8 @@ FP.Game = (function () {
     dailyFinished(places);
     storyFinished(places);
     const placeOf = (p) => places.findIndex((g) => g.includes(p));
+    const awardsBlock = awardsHtml(list);
+    const nAwards = (awardsBlock.match(/class="award"/g) || []).length;
     const makeHtml = (coins) => {
     const earn = (p) => (coins && got[p.id] ? ` <span class="earn">${ICON.coin}+${got[p.id]}</span>` : '');
     let html;
@@ -857,8 +1035,9 @@ FP.Game = (function () {
       const label = (v) => (mode.scoreLabel ? mode.scoreLabel(v) : v);
       const medals = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
       html = (mode.resultText ? `<p class="winner">${mode.resultText()}</p>` : '') +
-        `<div class="podium">${sorted.map((p) => { const i = placeOf(p) < 3 ? placeOf(p) : sorted.indexOf(p); return `<div class="place p${i}"><span class="medal m${i}">${medals[i]}</span>${FP.UI.playerPill(p)}<b>${label(scores[p.id] || 0)}</b>${earn(p)}</div>`; }).join('')}</div>`;
+        `<div class="podium">${sorted.map((p) => { const i = placeOf(p) < 3 ? placeOf(p) : sorted.indexOf(p); return `<div class="place p${i}" style="--k:${sorted.indexOf(p)}"><span class="medal m${i}">${medals[i]}</span>${FP.UI.playerPill(p)}<b>${label(scores[p.id] || 0)}</b>${earn(p)}</div>`; }).join('')}</div>`;
     }
+    html += awardsBlock;
     if (coins && Object.keys(got).length) html += `<p class="small">${FP.Profile.coinLine()}</p>`;
     return html;
     };
@@ -876,9 +1055,11 @@ FP.Game = (function () {
         FP.Ragdoll.teleport(c, sp.x, sp.y + 0.05, sp.z, 0);
         const win = places[0].includes(p) && places.length > 1;
         c.podiumWinner = win;
-        c.cheer = win ? 30 : 0; c.expression = win ? 'happy' : 'oh'; c.exprTimer = win ? 30 : 2;
+        const lost = places.length > 1 && placeOf(p) === places.length - 1 && !win;
+        c.cheer = win ? 30 : 0; c.expression = win ? 'happy' : lost ? 'sad' : 'oh'; c.exprTimer = win ? 30 : lost ? 30 : 2;
       }
       FP.Camera.snap(chars.map(FP.Ragdoll.center));
+      for (let i = 0; i < nAwards; i++) setTimeout(() => { if (state === 'results') FP.Audio.play('ding'); }, 950 + i * 220);
       if (FP.Net) FP.Net.podium(places.map((g) => g.map((p) => p.id)));
       if (tour) { tourResults(html, netHtml); return; }
       if (story) { storyResults(html); return; }
@@ -1017,7 +1198,7 @@ FP.Game = (function () {
     FP.Audio.play('win'); FP.Audio.play('cheer');
     FP.FX.confetti(FP.Camera.target.clone());
     for (const c of chars) if (champs.includes(c.player)) { c.cheer = 6; c.expression = 'happy'; c.exprTimer = 6; }
-    if (champs.some((p) => p.source.kind === 'keys' || p.source.kind === 'pad')) { FP.Profile.unlock('champion'); FP.Profile.earn(100); FP.UI.toast('Party Champion bonus: +100 coins!', 3); }
+    if (champs.some((p) => ['keys', 'pad', 'touch'].includes(p.source.kind))) { FP.Profile.unlock('champion'); FP.Profile.earn(100); FP.UI.toast('Party Champion bonus: +100 coins!', 3); }
     FP.UI.screen({
       cls: 'results',
       title: 'Party Tour: the end!',
@@ -1281,7 +1462,12 @@ FP.Game = (function () {
     replay = null;
     if (replayEl) replayEl.hidden = true;
     FP.Camera.zoomTo(1);
-    if (matchOver()) results(); else startRound();
+    if (matchOver()) results(); else nextRound();
+  }
+  // a quick screen wipe, then the next round
+  function nextRound() {
+    state = 'transition';
+    FP.UI.wipe(() => { if (state === 'transition') startRound(); });
   }
 
   // ------------------------------------------------------------
@@ -1370,19 +1556,32 @@ FP.Game = (function () {
     pauseMenu();
   }
   function pauseMenu() {
+    FP.Audio.duck(true);
     FP.UI.screen({
+      cls: 'paused',
       title: 'Paused',
       buttons: [
         { label: `${ICON.play} Keep playing`, action: resume },
         { label: `${ICON.again} Restart this game`, action: () => { paused = false; FP.UI.wipe(() => startMatch(mode)); } },
+        { label: `${ICON.help} How to play this game`, action: pauseHelp, small: true },
         { label: `${ICON.sparkle} Photo mode`, action: startPhoto, small: true },
-        { label: `${ICON.grid} Settings`, action: () => FP.Settings.screen(pauseMenu), small: true },
+        { label: `${ICON.gear} Settings`, action: () => FP.Settings.screen(pauseMenu), small: true },
         { label: `${ICON.home} Back to the lobby`, action: () => { paused = false; FP.UI.wipe(() => lobby()); } },
       ],
       back: resume,
     });
   }
-  function resume() { paused = false; FP.UI.closeScreen(); }
+  function pauseHelp() {
+    const tips = TIPS[mode.id] || [];
+    FP.UI.screen({
+      cls: 'intro paused',
+      title: mode.name,
+      html: `<div class="intro-grid"><div class="setup-art">${mode.art || ''}</div><div class="intro-text"><p class="goal">${mode.desc}</p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul></div></div>${keysRow()}`,
+      buttons: [{ label: `${ICON.back} Back`, action: pauseMenu }],
+      back: pauseMenu,
+    });
+  }
+  function resume() { paused = false; FP.UI.closeScreen(); FP.Audio.duck(false); }
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
     if (photo) { photoKey(e); return; }
@@ -1417,7 +1616,7 @@ FP.Game = (function () {
     });
   }
 
-  let acc = 0, titleT = 0, slowmo = 0;
+  let acc = 0, titleT = 0, slowmo = 0, hitstop = 0, lastStop = 0;
   function update(dt) {
     FP.UI.update(dt);
     FP.Fun.update(dt, FP.Net && FP.Net.isClient() ? 'client' : state);
@@ -1434,6 +1633,8 @@ FP.Game = (function () {
       return;
     }
     padPause();
+    if (state !== 'roundOver') hideBoard();
+    FP.Audio.duck(paused && !photo);
     if (paused) { if (photo) photoFrame(dt); return; }
     if (state === 'lobby') lobbyJoins();
     if (state === 'editor') FP.Editor.update(dt);
@@ -1441,7 +1642,8 @@ FP.Game = (function () {
     else if (state !== 'roundOver') FP.Camera.zoomTo(1);
 
     // physics runs in fixed little steps (60 per second)
-    acc += dt;
+    // hit-stop: on a big hit everything freezes for a split second (it makes hits feel strong)
+    if (hitstop > 0) { hitstop -= dt; acc = 0; } else acc += dt;
     let steps = 0;
     if (state === 'replay') acc = 0; // the replay moves everything by itself
     while (acc >= FP.Physics.STEP && steps < 6) {
@@ -1475,7 +1677,8 @@ FP.Game = (function () {
     } else if (state === 'roundOver') {
       timer += dt;
       if (mode.update) mode.update(dt, chars, api, true);
-      if (timer > 3.2) { if (replayPending) startReplay(); else if (matchOver()) results(); else startRound(); }
+      if (timer > 1.1 && timer - dt <= 1.1 && !mode.single && !matchOver()) showBoard();
+      if (timer > 3.2) { if (replayPending) startReplay(); else if (matchOver()) results(); else nextRound(); }
     } else if (state === 'replay') {
       replayFrame(dt);
     } else if (state === 'intro') {

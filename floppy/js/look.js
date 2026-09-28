@@ -318,12 +318,15 @@ FP.Look = (function () {
     return { group: g, eyes, brows, mouths: { smile, grin, shout, tongue }, xEyes, hat: hatMesh, r };
   }
 
-  // change the face: expression is 'smile', 'happy', 'angry', 'oh' (scared) or 'ko'.
+  // change the face: expression is 'smile', 'happy', 'sad', 'angry', 'oh' (scared) or 'ko'.
   // look = where the eyes look (-1..1 left/right, -1..1 down/up), blink = eyes closed
   function setFace(face, expr, lookX = 0, lookY = 0, blink = false) {
     const ko = expr === 'ko';
     const m = face.mouths;
-    m.smile.visible = expr === 'smile';
+    const sad = expr === 'sad';
+    m.smile.visible = expr === 'smile' || sad;
+    m.smile.rotation.z = sad ? 0 : Math.PI; // upside-down smile = sad
+    m.smile.position.y = sad ? -face.r * 0.4 : -face.r * 0.22;
     m.grin.visible = expr === 'happy';
     m.shout.visible = expr === 'angry' || expr === 'oh';
     m.shout.scale.setScalar(expr === 'oh' ? 1.25 : 0.9);
@@ -332,7 +335,7 @@ FP.Look = (function () {
     const r = face.r;
     for (const e of face.eyes) {
       e.grp.visible = !ko;
-      e.grp.scale.y = blink ? 0.1 : (expr === 'oh' ? 1.18 : expr === 'happy' ? 0.85 : 1);
+      e.grp.scale.y = blink ? 0.1 : (expr === 'oh' ? 1.18 : expr === 'happy' ? 0.85 : sad ? 0.8 : 1);
       e.pupil.position.x = lookX * r * 0.09;
       e.pupil.position.y = lookY * r * 0.08;
       e.pupil.scale.setScalar(expr === 'oh' ? 0.75 : 1);
@@ -341,7 +344,7 @@ FP.Look = (function () {
       b.visible = !ko;
       const side = b.userData.side;
       // angry: inner ends down. scared: inner ends up. happy: raised
-      const tilt = expr === 'angry' ? -0.5 : expr === 'oh' ? 0.4 : expr === 'happy' ? 0.15 : 0.05;
+      const tilt = expr === 'angry' ? -0.5 : expr === 'oh' || sad ? 0.4 : expr === 'happy' ? 0.15 : 0.05;
       b.children[0].rotation.set(0, 0, Math.PI / 2 + tilt * side);
       b.children[0].position.y = expr === 'oh' || expr === 'happy' ? r * 0.06 : expr === 'angry' ? -r * 0.04 : 0;
     }

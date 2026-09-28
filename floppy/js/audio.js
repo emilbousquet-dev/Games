@@ -48,7 +48,7 @@ FP.Audio = (function () {
   const S = {
     jump: () => tone('sine', rnd(260, 320), rnd(700, 820), 0.16, 0.2),
     whoosh: () => noise(0.16, 0.18, rnd(700, 1100)),
-    hit: () => { noise(0.1, 0.7, rnd(1800, 2600)); tone('sine', 260, 90, 0.14, 0.35); },
+    hit: () => { noise(0.1, 0.7, rnd(1800, 2600)); tone('sine', rnd(240, 290), 80, 0.16, 0.4); noise(0.06, 0.3, 300, 0, null, 1.5); },
     bonk: () => { tone('triangle', 520, 180, 0.2, 0.3); tone('sine', 1040, 600, 0.12, 0.12); },
     ko: () => { tone('square', 700, 90, 0.5, 0.12); for (let i = 0; i < 5; i++) tone('triangle', 1500 - i * 120, 1600 - i * 120, 0.07, 0.07, 0.3 + i * 0.08); },
     grab: () => tone('square', 320, 240, 0.08, 0.1),
@@ -64,6 +64,10 @@ FP.Audio = (function () {
     coin: () => { tone('square', 988, 988, 0.07, 0.1); tone('square', 1319, 1319, 0.2, 0.1, 0.07); },
     alarm: () => { for (let i = 0; i < 4; i++) tone('sawtooth', i % 2 ? 600 : 800, i % 2 ? 600 : 800, 0.18, 0.06, i * 0.2); },
     menu: () => tone('square', 660, 880, 0.05, 0.07),
+    tick: () => tone('sine', 1500, 1300, 0.025, 0.035),
+    thud: () => { tone('sine', 150, 55, 0.14, 0.28); noise(0.08, 0.14, 320); },
+    step: () => tone('sine', 210, 90, 0.07, 0.1),
+    ding: () => { tone('sine', 1320, 1320, 0.28, 0.09); tone('sine', 1980, 1980, 0.2, 0.05, 0.03); },
     select: () => { tone('square', 880, 880, 0.05, 0.08); tone('square', 1320, 1320, 0.08, 0.08, 0.05); },
     boing: () => { tone('sine', rnd(180, 220), rnd(600, 700), 0.18, 0.22); tone('triangle', 400, 1200, 0.1, 0.08, 0.04); },
     cluck: () => { for (let i = 0; i < 2; i++) tone('square', rnd(500, 650), rnd(900, 1100), 0.05, 0.05, i * 0.09); },
@@ -73,12 +77,20 @@ FP.Audio = (function () {
   };
   function play(name) { if (ctx && S[name]) S[name](); }
 
+  // the music gets quieter while the game is paused
+  let ducked = false;
+  function duck(on) {
+    if (on === ducked) return;
+    ducked = on;
+    if (ctx && musicGain) musicGain.gain.setTargetAtTime(0.27 * vols[1] * (on ? 0.35 : 1), ctx.currentTime, 0.15);
+  }
+
   // volumes from 0 to 1 (the settings screen changes these)
   function setVolumes(m, mu, fx) {
     vols = [m, mu, fx];
     if (!ctx) return;
     master.gain.value = 0.62 * m;
-    musicGain.gain.value = 0.27 * mu;
+    musicGain.gain.value = 0.27 * mu * (ducked ? 0.35 : 1);
     sfxGain.gain.value = fx;
   }
 
@@ -180,12 +192,14 @@ FP.Audio = (function () {
   bus.on('grab', () => play('grab'));
   bus.on('throw', () => play('yeet'));
   bus.on('breakFree', () => play('squeak'));
+  bus.on('land', (e) => play(e.hard ? 'thud' : 'step'));
 
   return {
     start, play,
     toggleMusic() { musicOn = !musicOn; return musicOn; },
     setSong(name) { song = name; },
     setVolumes,
+    duck,
     engine,
   };
 })();
