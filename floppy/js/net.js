@@ -24,6 +24,9 @@ FP.Net = (function () {
   let sendTimer = 0, keyTimer = 0, beatTimer = 0, inTimer = 0, lastHud = '', lastState = '', events = [], lastMovers = [];
   let snap = null, clientState = 'lobby', clientMode = null, pressCount = { jump: 0, punch: 0 }, actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0 };
   let roundNo = 0, clientRoundNo = -1, resultsHtml = '', resultsNo = 0, clientResultsNo = -1;
+  // rematch vote after a game: friends vote "play again" or "new game", the host sees the votes
+  const votes = new Map();
+  let voteOpen = false, myVote = null;
 
   // ---------------- the claude.ai room (if this page runs there) ----------------
   let roomNs = null, roomAsked = false, party = null, myPeer = '', hostPeer = '', unsub = [], chunks = new Map(), lastActs = {}, joinWait = 0;
@@ -195,6 +198,7 @@ FP.Net = (function () {
         if ((pr.tc | 0) > last.t) FP.Game.cycle(pl, 'trail', 1);
       }
       lastActs[p.peer] = { c: pr.cc | 0, h: pr.hc | 0, o: pr.oc | 0, f: pr.fc | 0, d: pr.dc | 0, t: pr.tc | 0 };
+      if (pr.vt && pr.vn === resultsNo) setVote(c.pid, pr.vt, pr.vn);
     }
   }
 
@@ -223,6 +227,9 @@ FP.Net = (function () {
       } else if (msg.t === 'in') {
         const c = conns.get(conn.peer);
         if (c) inputs[c.pid] = msg;
+      } else if (msg.t === 'vote') {
+        const c = conns.get(conn.peer);
+        if (c) setVote(c.pid, msg.v, msg.n);
       } else if (['color', 'hat', 'outfit', 'face', 'dance', 'trail'].includes(msg.t)) {
         const c = conns.get(conn.peer);
         const p = c && FP.Game.players.find((q) => q.id === c.pid);
@@ -261,7 +268,30 @@ FP.Net = (function () {
   function modeCfg() { const m = FP.Game.mode; return m && m.netSetup ? m.netSetup() : undefined; }
   function roundStarted() { if (isHost()) { roundNo++; broadcast({ t: 'round', n: roundNo, r: FP.Game.round, mode: FP.Game.mode.id, cfg: modeCfg(), players: playerList(), state: 'countdown' }); } }
   function banner(text, sub) { if (isHost()) broadcast({ t: 'banner', text, sub }); }
-  function results(html) { if (isHost()) { resultsNo++; resultsHtml = html; broadcast({ t: 'results', n: resultsNo, html }); } }
+  function results(html, vote = false) { if (isHost()) { resultsNo++; resultsHtml = html; votes.clear(); voteOpen = vote; broadcast({ t: 'results', n: resultsNo, html, vote }); } }
+  // a friend voted (host)
+  function setVote(pid, v, n) {
+    if (!voteOpen || n !== resultsNo || !['again', 'new'].includes(v) || votes.get(pid) === v) return;
+    votes.set(pid, v);
+    const p = FP.Game.everyone.find((q) => q.id === pid);
+    if (p) FP.UI.toast(`${p.name} votes: ${v === 'again' ? 'play again' : 'a new game'}`);
+    FP.Audio.play('tick');
+    showVotes([...votes]);
+    broadcast({ t: 'votes', n: resultsNo, list: [...votes] });
+  }
+  // show how many votes each choice has (on the host's buttons, and on friends' screens)
+  function showVotes(list) {
+    for (const v of ['again', 'new']) {
+      const n = list.filter((e) => e[1] === v).length;
+      document.querySelectorAll(`.vote-count[data-v="${v}"]`).forEach((el) => { el.textContent = n ? `${n} vote${n > 1 ? 's' : ''}` : ''; });
+    }
+  }
+  function vote(v) {
+    myVote = v;
+    if (kind === 'peer' && hostConn && hostConn.open) hostConn.send({ t: 'vote', v, n: clientResultsNo });
+    document.querySelectorAll('.screen.results .btn[data-vote]').forEach((b) => b.classList.toggle('voted', b.dataset.vote === v));
+    FP.UI.toast(v === 'again' ? 'You voted: play again!' : 'You voted: a new game!');
+  }
   function podium(places) { if (isHost()) broadcast({ t: 'podium', places, players: playerList() }); }
   function intro(html) { if (isHost()) broadcast({ t: 'intro', html }); }
   function introEnd() { if (isHost()) broadcast({ t: 'introEnd' }); }
@@ -298,7 +328,7 @@ FP.Net = (function () {
       beatTimer = 2;
       const g = FP.Game;
       broadcast({ t: 'beat', state: g.state, mode: g.mode && g.mode.id, cfg: modeCfg(), n: roundNo, r: g.round, players: playerList() });
-      if (g.state === 'results' && resultsHtml) broadcast({ t: 'results', n: resultsNo, html: resultsHtml });
+      if (g.state === 'results' && resultsHtml) broadcast({ t: 'results', n: resultsNo, html: resultsHtml, vote: voteOpen });
     }
     sendTimer -= dt;
     if (sendTimer > 0) return;
@@ -438,8 +468,18 @@ FP.Net = (function () {
     else if (msg.t === 'results') {
       if (msg.n !== undefined && msg.n === clientResultsNo) return;
       clientResultsNo = msg.n;
+      myVote = null;
       FP.UI.setHud('');
-      FP.UI.screen({ cls: 'results', title: 'Results', html: msg.html + '<p class="small">Waiting for the host to pick what\'s next...</p>', buttons: [{ label: 'Leave the party', action: () => { leave(); g.titleScreen(); }, small: true }] });
+      const I = FP.UI.ICON;
+      const buttons = msg.vote ? [
+        { label: `${I.again} Vote: play again <span class="vote-count" data-v="again"></span>`, action: () => vote('again'), cls: 'vote-btn' },
+        { label: `${I.grid} Vote: new game <span class="vote-count" data-v="new"></span>`, action: () => vote('new'), cls: 'vote-btn' },
+      ] : [];
+      buttons.push({ label: 'Leave the party', action: () => { leave(); g.titleScreen(); }, small: true });
+      FP.UI.screen({ cls: 'results', title: 'Results', html: msg.html + `<p class="small">${msg.vote ? 'Vote for what\'s next! The host picks.' : 'Waiting for the host to pick what\'s next...'}</p>`, buttons });
+      document.querySelectorAll('.screen.results .vote-btn').forEach((b, i) => { b.dataset.vote = i ? 'new' : 'again'; });
+    } else if (msg.t === 'votes') {
+      if (msg.n === clientResultsNo && Array.isArray(msg.list)) showVotes(msg.list);
     }
   }
   const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, face: p.face, dance: p.dance, trail: p.trail, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
@@ -480,7 +520,7 @@ FP.Net = (function () {
     const gl = !!(a.grabL || b.grabL || (pad.grabL !== undefined ? pad.grabL : pad.grab)), gr = !!(a.grabR || b.grabR || (pad.grabR !== undefined ? pad.grabR : pad.grab));
     if (kind === 'room') {
       // the room sends presence about 30 times a second by itself: just keep it up to date
-      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit, fc: actCount.face, dc: actCount.dance, tc: actCount.trail } }).catch(() => {});
+      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit, fc: actCount.face, dc: actCount.dance, tc: actCount.trail, vt: myVote || '', vn: clientResultsNo } }).catch(() => {});
       if (myId === null) {
         joinWait -= dt;
         if (joinWait <= 0) { FP.UI.toast(hostPeer ? 'That party is full (4 players)' : 'Nobody is hosting that party right now', 3); leave(); menu(); return; }

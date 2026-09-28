@@ -255,6 +255,15 @@ FP.Profile = (function () {
         action: () => FP.UI.toast(own ? `You have this one! ${kind.where}` : 'Win it in Story Mode: the Floppy World Tour!', 2.5),
       });
     }
+    // event hats: free during the Winter (December) and Spooky (October) events
+    if (kind.id === 'hat') for (const it of FP.Look.EVENT_HATS) {
+      const own = owns(it), when = it === 'santa' ? 'Winter event (December)' : 'Spooky event (October)';
+      goods.push({
+        label: `${thumbFor('hat', it)}<b>${kind.names()[it]}</b><small>${own ? `${ICON().check} Yours!` : `${ICON().star} ${when}`}</small>`,
+        cls: 'hat prize' + (own ? ' owned' : ''),
+        action: () => FP.UI.toast(own ? `You have this one! ${kind.where}` : `Free for everyone during the ${when}!`, 2.5),
+      });
+    }
     const last = T + goods.length; // the Back button
     FP.UI.screen({
       cls: 'shop',

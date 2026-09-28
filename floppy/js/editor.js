@@ -64,6 +64,57 @@ FP.Editor = (function () {
     try { localStorage.setItem(KEY, JSON.stringify(arenas)); localStorage.setItem(SLOT_KEY, String(slot)); } catch (e) { /* no saving */ }
   }
 
+  // ---------------- share codes (give your arena to a friend) ----------------
+  // FP1.<runs>.<name>: every run is a letter (the kind of square) and how many in a row, like X31F6
+  const LETTER = { f: 'F', b: 'B', w: 'W', j: 'J', i: 'I', l: 'L', s: 'S', '.': 'X' };
+  const FROM = Object.fromEntries(Object.entries(LETTER).map(([k, v]) => [v, k]));
+  function toCode(a) {
+    let out = '', i = 0;
+    const c = a.cells;
+    while (i < c.length) { let j = i; while (j < c.length && c[j] === c[i]) j++; out += LETTER[c[i]] + (j - i > 1 ? j - i : ''); i = j; }
+    const name = a.name.replace(/[^A-Za-z0-9 ]/g, '').trim().replace(/ /g, '_').slice(0, 16) || 'Arena';
+    return `FP1.${out}.${name}`;
+  }
+  function fromCode(code) {
+    const parts = String(code || '').trim().split('.');
+    if (parts.length !== 3 || parts[0].toUpperCase() !== 'FP1') return null;
+    const runs = parts[1].toUpperCase();
+    if (!/^([FBWJILSX]\d*)+$/.test(runs)) return null;
+    let cells = '';
+    for (const m of runs.matchAll(/([FBWJILSX])(\d*)/g)) { const n = m[2] ? +m[2] : 1; if (n < 1 || cells.length + n > N * N) return null; cells += FROM[m[1]].repeat(n); }
+    if (cells.length !== N * N) return null;
+    if (cells.split('').filter((x) => x === 's').length > 4) return null;
+    return { name: parts[2].replace(/_/g, ' ').replace(/[^A-Za-z0-9 ]/g, '').slice(0, 16) || 'Shared arena', cells };
+  }
+  function shareBox(mode) {
+    const box = panel.querySelector('.ed-share');
+    if (mode === 'share') {
+      const code = toCode(arena());
+      box.innerHTML = `<b>Your arena's code</b><input readonly value="${code}"><div><button class="btn small" data-copy>Copy</button> <button class="btn small" data-close>Done</button></div><p class="small">Send this code to a friend. They click <b>Load a code</b> in their Level Editor.</p>`;
+      const input = box.querySelector('input');
+      input.addEventListener('focus', () => input.select());
+      box.querySelector('[data-copy]').addEventListener('click', () => {
+        input.select();
+        const ok = () => { FP.UI.toast('Code copied!'); FP.Audio.play('select'); };
+        try { if (navigator.clipboard) navigator.clipboard.writeText(code).then(ok, () => { document.execCommand('copy'); ok(); }); else { document.execCommand('copy'); ok(); } } catch (e) { FP.UI.toast('Select the code and copy it'); }
+      });
+    } else {
+      box.innerHTML = `<b>Load a friend's arena</b><input placeholder="Paste the code here (FP1...)" spellcheck="false"><div><button class="btn small go" data-load>Load into ${FP.UI.escapeHtml(arena().name)}</button> <button class="btn small" data-close>Cancel</button></div><p class="small">This replaces the arena in this slot.</p>`;
+      const input = box.querySelector('input');
+      input.focus();
+      const load = () => {
+        const a = fromCode(input.value);
+        if (!a) { FP.UI.toast('That code does not work. Check it and try again!'); FP.Audio.play('beep'); return; }
+        arenas[slot] = a; save(); FP.Audio.play('coin'); FP.UI.toast(`Loaded "${a.name}"!`);
+        render(); preview();
+      };
+      box.querySelector('[data-load]').addEventListener('click', load);
+      input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') load(); if (e.key === 'Escape') { box.hidden = true; } });
+    }
+    box.querySelector('[data-close]').addEventListener('click', () => { box.hidden = true; });
+    box.hidden = false;
+  }
+
   // ---------------- the editor screen ----------------
   let panel = null, canvas = null, ctx = null, tool = 0, cur = { r: 7, c: 7 }, painting = null, dirty = 0, hooks = null;
   let padPrev = {}, padRepeat = 0, padSkip = false;
@@ -110,8 +161,11 @@ FP.Editor = (function () {
           <button class="btn go" data-act="play">${ICON.play} Play it! <kbd>Enter</kbd></button>
           <button class="btn small" data-act="fill">Fill with floor</button>
           <button class="btn small" data-act="clear">Clear all</button>
+          <button class="btn small" data-act="share">Share code</button>
+          <button class="btn small" data-act="loadcode">Load a code</button>
           <button class="btn small" data-act="back">${ICON.back} Back <kbd>Esc</kbd></button>
         </div>
+        <div class="ed-share" hidden></div>
         <p class="small ed-help">Click or drag to paint. Right-click erases. Keys: arrows + SPACE, 1-8 pick a tool. Controller: A paints, X erases, LB / RB tools.</p>
       </div>`;
     canvas = panel.querySelector('canvas');
@@ -154,6 +208,8 @@ FP.Editor = (function () {
       if (hooks && hooks.play) hooks.play();
     } else if (a === 'back') { close(); if (hooks && hooks.back) hooks.back(); }
     else if (a === 'clear') { arena().cells = '.'.repeat(N * N); save(); draw(); preview(); FP.Audio.play('whoosh'); }
+    else if (a === 'share') shareBox('share');
+    else if (a === 'loadcode') shareBox('load');
     else if (a === 'fill') { arena().cells = arena().cells.split('').map((ch) => (ch === '.' ? 'f' : ch)).join(''); save(); draw(); preview(); FP.Audio.play('select'); }
   }
 
@@ -244,7 +300,7 @@ FP.Editor = (function () {
   }
 
   return {
-    N, TOOLS, open, close, update, isOpen,
+    N, TOOLS, open, close, update, isOpen, codes: { toCode, fromCode },
     arenas: () => arenas, slot: () => slot,
     setSlot: (i) => { slot = Math.min(2, Math.max(0, i | 0)); save(); },
     playing: () => arenas[slot],

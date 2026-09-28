@@ -57,7 +57,7 @@ FP.UI = (function () {
     right: svg('<path d="M9.5 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>'),
   };
 
-  const HAT_NAMES = { party: 'Party hat', beanie: 'Beanie', crown: 'Crown', cowboy: 'Cowboy hat', tophat: 'Top hat', propeller: 'Propeller', bunny: 'Bunny ears', chef: 'Chef hat', headphones: 'Headphones', flowers: 'Flower crown', wizard: 'Wizard hat', antlers: 'Antlers', pirate: 'Pirate hat', viking: 'Viking helmet', halo: 'Halo', astronaut: 'Space helmet', robot: 'Robot helmet', none: 'No hat' };
+  const HAT_NAMES = { party: 'Party hat', beanie: 'Beanie', crown: 'Crown', cowboy: 'Cowboy hat', tophat: 'Top hat', propeller: 'Propeller', bunny: 'Bunny ears', chef: 'Chef hat', headphones: 'Headphones', flowers: 'Flower crown', wizard: 'Wizard hat', antlers: 'Antlers', pirate: 'Pirate hat', viking: 'Viking helmet', halo: 'Halo', astronaut: 'Space helmet', robot: 'Robot helmet', alien: 'Alien antennas', santa: 'Santa hat', witch: 'Witch hat', none: 'No hat' };
 
   // (built every time it opens, so it shows your own keys from Settings > Controls)
   function renderHelp() {
@@ -207,14 +207,14 @@ FP.UI = (function () {
   root.append(achBox);
   const achQueue = [];
   let achTimer = 0;
-  function achievement(name, desc, bonus) {
-    achQueue.push({ name, desc, bonus });
+  function achievement(name, desc, bonus, label = 'Achievement unlocked!') {
+    achQueue.push({ name, desc, bonus, label });
     if (achBox.hidden) nextAch();
   }
   function nextAch() {
     const a = achQueue.shift();
     if (!a) { achBox.hidden = true; return; }
-    achBox.innerHTML = `<span class="ach-pop-ico">${ICON.trophy}</span><span class="ach-pop-txt"><small>Achievement unlocked!</small><b>${escapeHtml(a.name)}</b><span>${escapeHtml(a.desc)}${a.bonus ? ` &nbsp;${ICON.coin} +${a.bonus}` : ''}</span></span>`;
+    achBox.innerHTML = `<span class="ach-pop-ico">${ICON.trophy}</span><span class="ach-pop-txt"><small>${escapeHtml(a.label)}</small><b>${escapeHtml(a.name)}</b><span>${escapeHtml(a.desc)}${a.bonus ? ` &nbsp;${ICON.coin} +${a.bonus}` : ''}</span></span>`;
     achBox.hidden = false;
     achBox.classList.remove('show'); void achBox.offsetWidth; achBox.classList.add('show');
     achTimer = 4;

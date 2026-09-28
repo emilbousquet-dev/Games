@@ -99,7 +99,8 @@ FP.Game = (function () {
       const notPrize = (x) => !FP.Style.TOUR_ONLY.includes(x);
       matchBots.push({
         id: nextId++, source: { kind: 'bot' }, name, colorIndex: freeColor(),
-        hat: pick(FP.Look.HATS.filter((h) => h !== 'none' && !FP.Look.TOUR_HATS.includes(h))),
+        // (in the Winter or Spooky event, bots often wear the event hat)
+        hat: FP.Season.hat && Math.random() < 0.4 ? FP.Season.hat : pick(FP.Look.HATS.filter((h) => h !== 'none' && !FP.Look.TOUR_HATS.includes(h) && !FP.Look.EVENT_HATS.includes(h))),
         outfit: pick(FP.Look.OUTFITS.filter((o) => !FP.Look.TOUR_OUTFITS.includes(o))),
         face: Math.random() < 0.3 ? pick(FP.Style.FACES.filter((f) => f !== 'none' && notPrize(f))) : 'none',
         dance: pick(FP.Style.DANCES.filter(notPrize)), trail: 'none',
@@ -133,13 +134,15 @@ FP.Game = (function () {
     FP.FX.clear();
     FP.Camera.fix(null);
     FP.Camera.setAngle(0.62, 0.9);
-    FP.Stage.island(0, -1, 0, 18, 2, 12);
-    FP.Stage.island(-6.5, 0, -4.5, 4, 4, 3);
-    FP.Stage.island(6.5, -0.5, -4.5, 4, 3, 3);
+    const sea = { grass: FP.Season.grass, dirt: FP.Season.dirt }; // snowy in winter
+    FP.Stage.island(0, -1, 0, 18, 2, 12, sea);
+    FP.Stage.island(-6.5, 0, -4.5, 4, 4, 3, sea);
+    FP.Stage.island(6.5, -0.5, -4.5, 4, 3, 3, sea);
+    FP.Season.decorate([[-5, -3.2, 0.3], [5.2, -3.4, -0.4], [-8, 2, 0.8], [7.9, 1.6, -0.6], [-4.2, 4.6, 0.2], [4.6, 4.8, -0.2]]);
     const trees = [[-8, 1, -4.5, 1.1], [8, 0.5, -4.8, 0.9], [-7.8, 0, 4.4, 0.8], [7.6, 0, 4.2, 1]];
     trees.forEach(([x, y, z, s]) => { const t = FP.Look.tree(s); t.position.set(x, y, z); FP.Stage.add(t); });
     const flowerColors = [0xff5a5f, 0xffcf33, 0xffffff, 0x9b6bff, 0xff8fc8];
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < (FP.Season.id === 'winter' ? 0 : 40); i++) { // (no flowers in the snow)
       const f = FP.Look.flower(flowerColors[i % flowerColors.length]);
       f.position.set(-8.5 + ((i * 7.3) % 17), 0, -5.5 + ((i * 3.7) % 11)); // same spots every time
       FP.Stage.add(f);
@@ -157,6 +160,7 @@ FP.Game = (function () {
   // ------------------------------------------------------------
   //  TITLE SCREEN (4 bots goofing around behind the menu)
   // ------------------------------------------------------------
+  let seasonWelcomed = false;
   function titleScreen() {
     const splash = document.getElementById('splash');
     if (splash && !splash.classList.contains('gone')) { splash.classList.add('gone'); setTimeout(() => splash.remove(), 600); }
@@ -187,7 +191,7 @@ FP.Game = (function () {
         { label: `${ICON.people} Play on this computer`, action: () => lobby() },
         { label: `${ICON.online} Play online with friends`, action: () => FP.Net.menu() },
         { label: `${ICON.flag} Story Mode: World Tour`, action: () => storyMap(), cls: 'story-btn' },
-        { label: `${ICON.star} Daily Challenge${dailyDone() ? ' (done!)' : ''}`, action: dailyScreen, cls: 'daily-btn' },
+        { label: `${ICON.star} Daily and Weekly Challenges`, action: dailyScreen, cls: 'daily-btn' },
         { label: `${ICON.crown} Shop`, action: () => FP.Profile.shopScreen(titleScreen), small: true },
         { label: `${ICON.chart} Stats`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
         { label: `${ICON.pencil} Level Editor`, action: () => editor(), small: true },
@@ -199,6 +203,8 @@ FP.Game = (function () {
     });
     const card = document.querySelector('.screen.title .card');
     if (card) card.insertAdjacentHTML('beforeend', `<p class="title-coins">${FP.Profile.coinLine()}</p>`);
+    if (card && FP.Season.info) card.querySelector('.logo').insertAdjacentHTML('afterend', `<div class="season-tag season-${FP.Season.id}">${FP.Season.info.name}!</div>`);
+    if (!seasonWelcomed) { seasonWelcomed = true; FP.Season.welcome(); }
   }
 
   // ------------------------------------------------------------
@@ -1014,7 +1020,8 @@ FP.Game = (function () {
     FP.FX.clear();
     FP.Camera.fix(null);
     const S = FP.Stage;
-    S.island(0, -1, 0, 16, 2, 10, { grass: 0x9bd46e });
+    S.island(0, -1, 0, 16, 2, 10, { grass: FP.Season.grass || 0x9bd46e, dirt: FP.Season.dirt });
+    FP.Season.decorate([[-6.8, -1.5, 0.4], [6.6, -1.2, -0.3], [5.4, 3.2, -0.5]]);
     const blocks = [{ x: 0, h: 1.5, col: 0xffcf33, t: '1' }, { x: -2.7, h: 1.0, col: 0xd8dde6, t: '2' }, { x: 2.7, h: 0.6, col: 0xf0b27a, t: '3' }];
     const spots = new Map();
     blocks.forEach((b, i) => {
@@ -1056,6 +1063,9 @@ FP.Game = (function () {
     const got = FP.Profile.matchEnded({ mode, places, skill: botSkill, funCount: FP.Fun.list().length, bots: matchBots.length, online: !!(FP.Net && FP.Net.isHost()), extra: { survivor: mode.lastSurvivor } });
     dailyFinished(places);
     storyFinished(places);
+    // weekly challenges (for players on this computer)
+    const localHere = list.filter((p) => isLocalSource(p.source));
+    if (localHere.length) FP.Weekly.matchEnded({ mode, won: places.length > 1 && places[0].some((p) => localHere.includes(p)), skill: botSkill, bots: matchBots.length });
     const placeOf = (p) => places.findIndex((g) => g.includes(p));
     const awardsBlock = awardsHtml(list);
     const nAwards = (awardsBlock.match(/class="award"/g) || []).length;
@@ -1109,12 +1119,12 @@ FP.Game = (function () {
         title: `${mode.name}: results`,
         html,
         buttons: [
-          { label: `${ICON.again} Play again`, action: () => FP.UI.wipe(() => startMatch(mode)) },
-          { label: `${ICON.grid} Another mini-game`, action: () => FP.UI.wipe(() => { lobby(); chooseMode(); }) },
+          { label: `${ICON.again} Play again <span class="vote-count" data-v="again"></span>`, action: () => FP.UI.wipe(() => startMatch(mode)) },
+          { label: `${ICON.grid} Another mini-game <span class="vote-count" data-v="new"></span>`, action: () => FP.UI.wipe(() => { lobby(); chooseMode(); }) },
           { label: `${ICON.home} Back to the lobby`, action: () => FP.UI.wipe(() => lobby()), small: true },
         ],
       });
-      if (FP.Net) FP.Net.results(netHtml);
+      if (FP.Net) FP.Net.results(netHtml, true); // (friends can vote: play again or a new game)
     });
   }
 
@@ -1310,8 +1320,8 @@ FP.Game = (function () {
     const html = `<div class="setup-art">${ch.mode.art || ''}</div><h2>${esc(ch.name)}</h2><p>${ch.mode.desc}</p>
       <p><b>Today's twist:</b> ${TWISTS[ch.twist][1]}${ch.hard ? ' And the bots are on HARD!' : ''}</p>
       <p>${done ? `${ICON.check} You beat today's challenge! Come back tomorrow for a new one.` : `Win it for <b>${ICON.coin} ${ch.reward}</b> bonus party coins!`}</p>
-      <p class="small">Your streak: <b>${streak}</b> day${streak === 1 ? '' : 's'} in a row.</p>`;
-    FP.UI.screen({ cls: 'setup daily', title: 'Daily Challenge', html, buttons: [{ label: `${ICON.play} Play`, action: () => startDaily(ch), cls: 'go' }, { label: `${ICON.back} Back`, action: titleScreen, small: true }], back: titleScreen });
+      <p class="small">Your streak: <b>${streak}</b> day${streak === 1 ? '' : 's'} in a row.</p>${FP.Weekly.html()}`;
+    FP.UI.screen({ cls: 'setup daily', title: 'Challenges', html: `<h2 class="daily-h">Today: ${esc(ch.name)}</h2>` + html.replace(`<h2>${esc(ch.name)}</h2>`, ''), buttons: [{ label: `${ICON.play} Play today's challenge`, action: () => startDaily(ch), cls: 'go' }, { label: `${ICON.back} Back`, action: titleScreen, small: true }], back: titleScreen });
   }
   function startDaily(ch) {
     lobby(); // makes sure Player 1 is here
@@ -1681,6 +1691,7 @@ FP.Game = (function () {
     FP.Camera.setOrbit(state === 'title' ? Math.sin(titleT * 0.12) * 0.45 : state === 'replay' && replay ? Math.sin(replay.t * 1.4) * 0.7 : 0);
     FP.Camera.setShift(state === 'title' && innerWidth > 800 ? 3.2 : 0);
     FP.Props.animate(dt);
+    FP.Season.update(dt); // falling snow in winter
     if (!paused && state !== 'replay') FP.Style.update(dt, chars); // sparkly trails
     const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
     FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));
@@ -1773,7 +1784,7 @@ FP.Game = (function () {
     clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, editor, storyMap, startStory, get story() { return story; }, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
-    get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,
+    catOf, get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,
     manual: false,
     step(seconds) { for (let i = 0; i < Math.round(seconds * 60); i++) update(1 / 60); },
   };

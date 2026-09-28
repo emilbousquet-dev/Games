@@ -86,8 +86,9 @@ FP.Look = (function () {
   ];
   const FREE_HATS = ['party', 'beanie', 'crown', 'cowboy', 'tophat', 'propeller', 'bunny', 'chef'];
   const SHOP_HATS = ['headphones', 'flowers', 'wizard', 'antlers', 'pirate', 'viking', 'halo', 'astronaut']; // bought with party coins
-  const TOUR_HATS = ['robot']; // won in the World Tour
-  const HATS = [...FREE_HATS, ...SHOP_HATS, ...TOUR_HATS, 'none'];
+  const TOUR_HATS = ['robot', 'alien']; // won in the World Tour
+  const EVENT_HATS = ['santa', 'witch']; // free during the Winter and Spooky events (and yours to keep)
+  const HATS = [...FREE_HATS, ...SHOP_HATS, ...TOUR_HATS, ...EVENT_HATS, 'none'];
 
   const FREE_OUTFITS = ['none', 'overalls', 'bowtie', 'scarf', 'cape', 'belt'];
   const SHOP_OUTFITS = ['tutu', 'tuxedo', 'hero', 'spacesuit', 'hoodie', 'jersey']; // bought with party coins
@@ -467,6 +468,36 @@ FP.Look = (function () {
         horn.rotation.z = -side * 0.9;
         g.add(horn);
       }
+    } else if (kind === 'santa') {
+      const fur = mesh(new THREE.TorusGeometry(r * 0.6, r * 0.16, 10, 24), toon(0xffffff), 0.015);
+      fur.rotation.x = Math.PI / 2; fur.position.y = -r * 0.05;
+      const cone = mesh(new THREE.ConeGeometry(r * 0.6, r * 1.1, 18), toon(0xe8303a));
+      cone.position.set(r * 0.08, r * 0.48, 0); cone.rotation.z = -0.45;
+      const pom = mesh(new THREE.SphereGeometry(r * 0.17, 12, 10), toon(0xffffff), 0.015);
+      pom.position.set(r * 0.52, r * 0.88, 0);
+      g.add(fur, cone, pom);
+    } else if (kind === 'witch') {
+      const brim = mesh(new THREE.CylinderGeometry(r * 1.0, r * 1.0, r * 0.05, 28), toon(0x2a2438));
+      const band = mesh(new THREE.CylinderGeometry(r * 0.52, r * 0.55, r * 0.22, 18), toon(0x9b6bff));
+      band.position.y = r * 0.12;
+      const cone = mesh(new THREE.ConeGeometry(r * 0.52, r * 1.3, 18), toon(0x2a2438));
+      cone.position.set(0, r * 0.85, 0); cone.rotation.z = 0.12;
+      const tip = mesh(new THREE.ConeGeometry(r * 0.16, r * 0.45, 10), toon(0x2a2438));
+      tip.position.set(-r * 0.2, r * 1.52, 0); tip.rotation.z = 1.0;
+      const buckle = mesh(new THREE.BoxGeometry(r * 0.2, r * 0.18, r * 0.05), toon(0xffcf33), 0.01);
+      buckle.position.set(0, r * 0.12, r * 0.54);
+      g.add(brim, band, cone, tip, buckle);
+    } else if (kind === 'alien') {
+      const band = mesh(new THREE.TorusGeometry(r * 0.66, r * 0.07, 8, 24), toon(0x6fd35a), 0.012);
+      band.rotation.x = Math.PI / 2; band.position.y = -r * 0.05;
+      g.add(band);
+      for (const side of [-1, 1]) {
+        const stalk = mesh(new THREE.CylinderGeometry(r * 0.04, r * 0.04, r * 0.75, 6), toon(0x6fd35a), 0.012);
+        stalk.position.set(side * r * 0.32, r * 0.32, 0); stalk.rotation.z = -side * 0.35;
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(r * 0.15, 12, 10), new THREE.MeshBasicMaterial({ color: 0xb8ff6a }));
+        ball.position.set(side * r * 0.47, r * 0.68, 0);
+        g.add(stalk, ball);
+      }
     } else if (kind === 'halo') {
       const ring = mesh(new THREE.TorusGeometry(r * 0.45, r * 0.07, 10, 28), new THREE.MeshBasicMaterial({ color: 0xffe066 }), 0.015);
       ring.rotation.x = Math.PI / 2; ring.position.y = r * 0.55;
@@ -648,5 +679,5 @@ FP.Look = (function () {
     return g;
   }
 
-  return { toon, charToon, mesh, boxMesh, COLORS, HATS, FREE_HATS, SHOP_HATS, OUTFITS, FREE_OUTFITS, SHOP_OUTFITS, TOUR_OUTFITS, TOUR_HATS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
+  return { toon, charToon, mesh, boxMesh, COLORS, HATS, FREE_HATS, SHOP_HATS, EVENT_HATS, OUTFITS, FREE_OUTFITS, SHOP_OUTFITS, TOUR_OUTFITS, TOUR_HATS, OUTFIT_NAMES, makeTorso, makeHead, makeHat, makeArm, makeLeg, setFace, skyTexture, cloud, tree, flower, islandBlock, outlineMat };
 })();
