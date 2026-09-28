@@ -1600,9 +1600,22 @@ FP.Game = (function () {
         { label: `${ICON.help} How to play this game`, action: pauseHelp, small: true },
         { label: `${ICON.sparkle} Photo mode`, action: startPhoto, small: true },
         { label: `${ICON.gear} Settings`, action: () => FP.Settings.screen(pauseMenu), small: true },
-        { label: `${ICON.home} Back to the lobby`, action: () => { paused = false; FP.UI.wipe(() => lobby()); } },
+        { label: `${ICON.home} Back to the lobby`, action: confirmQuit },
       ],
       back: resume,
+    });
+  }
+  // leaving in the middle of a game: are you sure?
+  function confirmQuit() {
+    FP.UI.screen({
+      cls: 'paused confirm',
+      title: 'Leave this game?',
+      html: '<p>The scores of this game will be lost.</p>',
+      buttons: [
+        { label: `${ICON.back} No, keep playing`, action: resume },
+        { label: `${ICON.home} Yes, back to the lobby`, action: () => { paused = false; FP.Audio.duck(false); FP.UI.wipe(() => lobby()); } },
+      ],
+      back: pauseMenu,
     });
   }
   function pauseHelp() {
