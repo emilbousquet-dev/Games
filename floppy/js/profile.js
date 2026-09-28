@@ -53,7 +53,7 @@ FP.Profile = (function () {
     data.ach.push(id);
     save();
     FP.UI.achievement(a.name, a.desc, ACH_BONUS);
-    FP.Audio.play('win');
+    FP.Audio.play('fanfare');
     earn(ACH_BONUS);
   }
 
@@ -151,7 +151,7 @@ FP.Profile = (function () {
     data.coins -= price;
     data.owned.push(id);
     save();
-    FP.Audio.play('coin'); FP.Audio.play('cheer');
+    FP.Audio.play('buy'); FP.Audio.play('cheer');
     FP.UI.toast(`You got ${itemName(id)}! ${kindOf(splitId(id)[0]).where}`, 3);
     unlock('fashion');
     return true;

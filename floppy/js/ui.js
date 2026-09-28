@@ -59,15 +59,18 @@ FP.UI = (function () {
 
   const HAT_NAMES = { party: 'Party hat', beanie: 'Beanie', crown: 'Crown', cowboy: 'Cowboy hat', tophat: 'Top hat', propeller: 'Propeller', bunny: 'Bunny ears', chef: 'Chef hat', headphones: 'Headphones', flowers: 'Flower crown', wizard: 'Wizard hat', antlers: 'Antlers', pirate: 'Pirate hat', viking: 'Viking helmet', halo: 'Halo', astronaut: 'Space helmet', robot: 'Robot helmet', none: 'No hat' };
 
-  help.innerHTML = `
+  // (built every time it opens, so it shows your own keys from Settings > Controls)
+  function renderHelp() {
+    const K = (m, a) => FP.Input.kbd(m, a);
+    help.innerHTML = `
     <h2>How to play</h2>
     <table>
       <tr><th></th><th>Player 1</th><th>Player 2</th><th>Controller</th></tr>
-      <tr><td>Move</td><td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></td><td><kbd>Arrows</kbd></td><td>Left stick</td></tr>
-      <tr><td>Jump</td><td><kbd>Space</kbd></td><td><kbd>/</kbd></td><td><kbd>A</kbd></td></tr>
-      <tr><td>Punch</td><td><kbd>F</kbd></td><td><kbd>.</kbd></td><td><kbd>X</kbd> or <kbd>B</kbd></td></tr>
-      <tr><td>Grab with both hands (hold)</td><td><kbd>G</kbd></td><td><kbd>,</kbd></td><td><kbd>LB</kbd> + <kbd>RB</kbd></td></tr>
-      <tr><td>Left hand / right hand</td><td><kbd>Q</kbd> / <kbd>E</kbd></td><td><kbd>;</kbd> / <kbd>'</kbd></td><td><kbd>LB</kbd> / <kbd>RB</kbd></td></tr>
+      <tr><td>Move</td><td>${K(0,'move')}</td><td>${K(1,'move')}</td><td>Left stick</td></tr>
+      <tr><td>Jump</td><td>${K(0,'jump')}</td><td>${K(1,'jump')}</td><td><kbd>A</kbd></td></tr>
+      <tr><td>Punch</td><td>${K(0,'punch')}</td><td>${K(1,'punch')}</td><td><kbd>X</kbd> or <kbd>B</kbd></td></tr>
+      <tr><td>Grab with both hands (hold)</td><td>${K(0,'grab')}</td><td>${K(1,'grab')}</td><td><kbd>LB</kbd> + <kbd>RB</kbd></td></tr>
+      <tr><td>Left hand / right hand</td><td>${K(0,'grabL')} / ${K(0,'grabR')}</td><td>${K(1,'grabL')} / ${K(1,'grabR')}</td><td><kbd>LB</kbd> / <kbd>RB</kbd></td></tr>
       <tr><td>Emotes: wave, dance, cheer</td><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td><kbd>8</kbd> <kbd>9</kbd> <kbd>0</kbd></td><td><kbd>Back</kbd> <kbd>L3</kbd> <kbd>Y</kbd></td></tr>
       <tr><td>Color, hat, outfit (lobby)</td><td><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd></td><td><kbd>K</kbd> <kbd>L</kbd> <kbd>J</kbd></td><td><kbd>Back</kbd> <kbd>Y</kbd> <kbd>R3</kbd></td></tr>
     </table>
@@ -79,9 +82,13 @@ FP.UI = (function () {
       <li>Grab with <b>just one hand</b> (Q or E, or one bumper) and keep the other hand free. Let go of one hand and the other keeps holding.</li>
     </ul>
     <p class="small">Player 1 can use a controller: press A on it to start (on the title screen, or in the lobby).</p>
+    <p class="small">You can change your keys in <b>Settings</b>, then <b>Controls</b>.</p>
     <p class="small">H: show or hide this &nbsp; Esc or Start: pause &nbsp; M: music on or off</p>
     <button class="btn go" type="button" data-close>Got it!</button>`;
-  help.querySelector('[data-close]').addEventListener('click', () => { help.hidden = true; });
+    help.querySelector('[data-close]').addEventListener('click', () => { help.hidden = true; });
+  }
+  function showHelp() { renderHelp(); help.hidden = false; }
+  renderHelp();
 
   // buttons never take keyboard focus (so pressing Space to jump can't "click" them)
   document.addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
@@ -126,6 +133,7 @@ FP.UI = (function () {
     screenBox.hidden = false;
     backFn = back; keyFn = onKey; grid = columns;
     select(start);
+    if (fresh && !(FP.Game && FP.Game.manual)) FP.Audio.play('pop');
     return card;
   }
   function closeScreen() { screenBox.hidden = true; screenBox.innerHTML = ''; items = []; backFn = null; keyFn = null; }
@@ -154,7 +162,7 @@ FP.UI = (function () {
   window.addEventListener('keydown', (e) => {
     FP.Audio.start();
     if (e.target && e.target.tagName === 'INPUT') return;
-    if (e.code === 'KeyH') { help.hidden = !help.hidden; return; }
+    if (e.code === 'KeyH') { if (help.hidden) showHelp(); else help.hidden = true; return; }
     // Esc or Enter closes the help (instead of pausing or clicking a menu button)
     if (!help.hidden && ['Escape', 'Enter', 'NumpadEnter'].includes(e.code)) { help.hidden = true; e.preventDefault(); e.stopImmediatePropagation(); return; }
     if (e.code === 'KeyM') { toast(FP.Audio.toggleMusic() ? 'Music on' : 'Music off'); return; }
@@ -262,5 +270,5 @@ FP.UI = (function () {
     if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) toastBox.classList.remove('show'); }
   }
 
-  return { achievement, screen, closeScreen, open, wipe, selected: () => sel, select, lastDevice: () => lastDevice, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
+  return { achievement, showHelp, screen, closeScreen, open, wipe, selected: () => sel, select, lastDevice: () => lastDevice, big, toast, setHud, playerPill, nameTags, update, ICON, HAT_NAMES, hex, help, el, root, escapeHtml };
 })();

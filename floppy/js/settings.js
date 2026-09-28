@@ -6,7 +6,7 @@
 window.FP = window.FP || {};
 
 FP.Settings = (function () {
-  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: FP.Touch && FP.Touch.available ? 'low' : 'high', tags: true, fps: false, replays: true };
+  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: FP.Touch && FP.Touch.available ? 'low' : 'high', tags: true, fps: false, replays: true, colorblind: false };
   const s = Object.assign({}, DEFAULTS);
   try { Object.assign(s, JSON.parse(localStorage.getItem('floppy-settings') || '{}')); } catch (e) { /* no saving */ }
   function save() { try { localStorage.setItem('floppy-settings', JSON.stringify(s)); } catch (e) { /* no saving */ } }
@@ -45,6 +45,7 @@ FP.Settings = (function () {
     { key: 'tags', name: 'Name tags', kind: 'bool' },
     { key: 'replays', name: 'Knockout replays', kind: 'bool' },
     { key: 'fps', name: 'Show speed (FPS)', kind: 'bool' },
+    { key: 'colorblind', name: 'Colorblind shapes', kind: 'bool' },
   ];
   function change(row, dir) {
     if (row.kind === 'num') s[row.key] = Math.max(0, Math.min(10, s[row.key] + dir));
@@ -67,6 +68,7 @@ FP.Settings = (function () {
       start: sel,
       buttons: [
         ...ROWS.map((r, i) => ({ label: label(r), cls: 'set', action: () => { change(r, 1); screen(back, i); } })),
+        { label: `${FP.UI.ICON.people} Controls (change your keys)`, small: true, action: () => controls(() => screen(back, ROWS.length)) },
         { label: `${FP.UI.ICON.grid} Fullscreen`, small: true, action: () => { try { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen(); } catch (e) { /* not allowed here */ } } },
         { label: `${FP.UI.ICON.back} Back`, small: true, action: back },
       ],
@@ -79,5 +81,46 @@ FP.Settings = (function () {
     });
   }
 
-  return { get: (k) => s[k], apply, screen, autoFast };
+  // ---------------- CONTROLS: pick your own keys ----------------
+  const ACT_NAMES = { up: 'Up', down: 'Down', left: 'Left', right: 'Right', jump: 'Jump', punch: 'Punch', grab: 'Grab (both hands)', grabL: 'Left hand', grabR: 'Right hand' };
+  let waiting = null;
+  function controls(back, sel = 0, msg = '') {
+    const I = FP.Input, A = I.BINDABLE;
+    const buttons = [];
+    A.forEach((a) => [0, 1].forEach((m) => {
+      const i = buttons.length, wait = waiting && waiting.m === m && waiting.a === a;
+      buttons.push({ label: `<span class="set-name">${ACT_NAMES[a]}</span>${wait ? '<kbd class="wait">press a key...</kbd>' : `<kbd>${FP.UI.escapeHtml(I.label(m, a))}</kbd>`}`, cls: 'set key' + (wait ? ' wait' : ''), action: () => listen(back, m, a, i) });
+    }));
+    buttons.push({ label: `${FP.UI.ICON.again} Reset Player 1`, small: true, action: () => { I.resetKeys(0); FP.Audio.play('whoosh'); controls(back, A.length * 2); } });
+    buttons.push({ label: `${FP.UI.ICON.again} Reset Player 2`, small: true, action: () => { I.resetKeys(1); FP.Audio.play('whoosh'); controls(back, A.length * 2 + 1); } });
+    buttons.push({ label: `${FP.UI.ICON.back} Back`, small: true, cls: 'wide', action: () => { waiting = null; back(); } });
+    FP.UI.screen({
+      cls: 'settings controls',
+      title: 'Controls',
+      html: `<p class="small">Click a move, then press the key you want for it. Esc to cancel. If another move already has that key, they swap.</p>${msg ? `<p class="warn">${msg}</p>` : ''}<div class="ctl-head"><b>Player 1</b><b>Player 2</b></div>`,
+      columns: 2,
+      start: sel,
+      buttons,
+      back: () => { waiting = null; back(); },
+    });
+  }
+  function listen(back, m, a, i) {
+    waiting = { m, a };
+    const me = waiting;
+    controls(back, i);
+    const onKey = (e) => {
+      window.removeEventListener('keydown', onKey, true);
+      // the controls screen was closed (or another key is being picked): don't grab this key press
+      if (waiting !== me || !document.querySelector('.screen.controls:not([hidden])')) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      waiting = null;
+      if (e.code === 'Escape') { controls(back, i); return; }
+      const ok = FP.Input.bind(m, a, e.code);
+      FP.Audio.play(ok ? 'select' : 'beep');
+      controls(back, i, ok ? '' : `The ${FP.UI.escapeHtml(FP.Input.keyName(e.code))} key can't be used for that. Pick another key.`);
+    };
+    window.addEventListener('keydown', onKey, true);
+  }
+
+  return { get: (k) => s[k], apply, screen, autoFast, controls };
 })();

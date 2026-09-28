@@ -115,6 +115,9 @@ FP.Game = (function () {
     const c = FP.Ragdoll.create(scene, { index: idx, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, name: p.name, x: spot.x, y: spot.y || 0, z: spot.z, yaw: spot.yaw || 0, isBot: p.source.kind === 'bot' });
     c.player = p;
     c.team = p.team;
+    // everyone has their own voice (a higher or lower chirp)
+    const h = String(p.name || '').split('').reduce((a, ch) => (a * 31 + ch.charCodeAt(0)) % 997, p.colorIndex * 7);
+    c.voice = 0.8 + (h % 11) * 0.055;
     if (p.face && p.face !== 'none') FP.Style.applyFace(c, p.face);
     if (c.isBot) c.botSkill = botSkill;
     chars.push(c);
@@ -189,7 +192,7 @@ FP.Game = (function () {
         { label: `${ICON.chart} Stats`, action: () => FP.Profile.achievementsScreen(titleScreen), small: true },
         { label: `${ICON.pencil} Level Editor`, action: () => editor(), small: true },
         { label: `${ICON.gear} Settings`, action: () => FP.Settings.screen(titleScreen), small: true },
-        { label: `${ICON.help} How to play`, action: () => { FP.UI.help.hidden = false; }, small: true },
+        { label: `${ICON.help} How to play`, action: () => { FP.UI.showHelp(); }, small: true },
         ...(tutorialSeen() ? [{ label: `${ICON.play} Tutorial`, action: startTutorial, small: true }] : []),
         { label: `${ICON.star} Credits`, action: credits, small: true },
       ],
@@ -345,7 +348,7 @@ FP.Game = (function () {
 
   function controlsText(p) {
     const k = p.source.kind;
-    if (k === 'keys') return p.source.map === 0 ? 'Keyboard: W A S D' : 'Keyboard: arrows';
+    if (k === 'keys') return `Keyboard: ${esc(FP.Input.label(p.source.map, 'move'))}`;
     if (k === 'pad') return `Controller ${p.source.index + 1}`;
     if (k === 'touch') return 'Touch screen';
     if (k === 'remote') return 'Online';
@@ -372,8 +375,8 @@ FP.Game = (function () {
       if (!p) {
         const taken = (src) => players.some((q) => sameSource(q.source, src));
         const hints = client ? 'Waiting for a friend to join' : [
-          !taken({ kind: 'keys', map: 0 }) ? 'Keyboard left: press <kbd>Space</kbd>' : '',
-          !taken({ kind: 'keys', map: 1 }) ? 'Keyboard right: press <kbd>/</kbd>' : '',
+          !taken({ kind: 'keys', map: 0 }) ? `Keyboard left: press ${FP.Input.kbd(0, 'jump')}` : '',
+          !taken({ kind: 'keys', map: 1 }) ? `Keyboard right: press ${FP.Input.kbd(1, 'jump')}` : '',
           'Controller: press <kbd>A</kbd>',
         ].filter(Boolean).join('<br>');
         slots.push(`<div class="slot empty"><div class="slot-num">P${i + 1}</div><div class="slot-join">Join the party<small>${hints}</small></div></div>`);
@@ -807,7 +810,8 @@ FP.Game = (function () {
   function keysRow() {
     const kinds = new Set(humans().map((p) => p.source.kind));
     const rows = [];
-    if (kinds.has('keys') || !kinds.size) rows.push(`<div class="keys-row"><span><kbd>W A S D</kbd> move</span><span><kbd>Space</kbd> jump</span><span><kbd>F</kbd> punch</span><span><kbd>G</kbd> grab</span><span><kbd>Q</kbd><kbd>E</kbd> one hand</span><span class="small">(player 2: arrows / . ,)</span></div>`);
+    const K = FP.Input.kbd, L = FP.Input.label;
+    if (kinds.has('keys') || !kinds.size) rows.push(`<div class="keys-row"><span>${K(0, 'move')} move</span><span>${K(0, 'jump')} jump</span><span>${K(0, 'punch')} punch</span><span>${K(0, 'grab')} grab</span><span>${K(0, 'grabL')}${K(0, 'grabR')} one hand</span><span class="small">(player 2: ${esc([L(1, 'move'), L(1, 'jump'), L(1, 'punch'), L(1, 'grab')].join(' '))})</span></div>`);
     if (kinds.has('pad')) rows.push(`<div class="keys-row"><span><kbd>Stick</kbd> move</span><span><kbd>A</kbd> jump</span><span><kbd>X</kbd> punch</span><span><kbd>LB</kbd>+<kbd>RB</kbd> grab</span><span><kbd>LB</kbd> or <kbd>RB</kbd> one hand</span></div>`);
     if (kinds.has('touch')) rows.push('<div class="keys-row"><span>Use the joystick and the buttons on the screen</span></div>');
     return rows.join('');
@@ -941,7 +945,7 @@ FP.Game = (function () {
       scores['team' + res.team] += res.points ?? 1;
       text = `${res.team === 0 ? 'Red' : 'Blue'} team wins!`;
     } else if (res.winners && res.winners.length) {
-      res.winners.forEach((c) => { if (!mode.single && !mode.rounds) scores[c.player.id] = (scores[c.player.id] || 0) + 1; c.cheer = 3.5; c.expression = 'happy'; c.exprTimer = 3.5; });
+      res.winners.forEach((c, i) => { if (!mode.single && !mode.rounds) scores[c.player.id] = (scores[c.player.id] || 0) + 1; c.cheer = 3.5; c.expression = 'happy'; c.exprTimer = 3.5; setTimeout(() => FP.Audio.voice(c, 'yay'), 300 + i * 150); });
       text = res.winners.length === 1 ? `${res.winners[0].name} wins${mode.roundsToWin > 1 ? ' the round' : ''}!` : 'Winners!';
       const t = res.winners[0].parts.torso.position;
       center.set(t.x, t.y, t.z);
@@ -1093,6 +1097,10 @@ FP.Game = (function () {
       }
       FP.Camera.snap(chars.map(FP.Ragdoll.center));
       for (let i = 0; i < nAwards; i++) setTimeout(() => { if (state === 'results') FP.Audio.play('ding'); }, 950 + i * 220);
+      // coins for you, or an "aww" if nobody on this computer won
+      const localP = list.filter((p) => ['keys', 'pad', 'touch'].includes(p.source.kind));
+      if (Object.keys(got).length) setTimeout(() => { if (state === 'results') FP.Audio.play('coin'); }, 650);
+      if (localP.length && places.length > 1 && !places[0].some((p) => localP.includes(p))) setTimeout(() => { if (state === 'results') FP.Audio.play('aww'); }, 400);
       if (FP.Net) FP.Net.podium(places.map((g) => g.map((p) => p.id)));
       if (tour) { tourResults(html, netHtml); return; }
       if (story) { storyResults(html); return; }
@@ -1451,7 +1459,9 @@ FP.Game = (function () {
     if (r.coins) msg += `<p>${ICON.coin} +${r.coins} World Tour bonus coins</p>`;
     for (const id of r.prizes) msg += `<p class="prize-won">${ICON.trophy} New prize: <b>${FP.Profile.itemName(id)}</b>! Pick it in the lobby.</p>`;
     if (r.won && lastLevel) msg += '<p><b>You beat the Robot Boss and finished the Floppy World Tour! You are the champions!</b></p>';
-    if (r.prizes.length) { FP.Audio.play('cheer'); FP.FX.confetti(FP.Camera.target.clone()); }
+    if (r.prizes.length) { FP.Audio.play('cheer'); setTimeout(() => FP.Audio.play('fanfare'), 400); FP.FX.confetti(FP.Camera.target.clone()); }
+    for (let i = 0; i < (r.newStars || 0); i++) setTimeout(() => FP.Audio.play('star'), 700 + i * 260);
+    if (!r.won) setTimeout(() => FP.Audio.play('aww'), 500);
     const buttons = [];
     if (r.won && !lastLevel) buttons.push({ label: `${ICON.play} Next level: ${FP.Modes[WORLDS[nw].levels[nl]].name}`, action: () => storyLevel(nw, nl), cls: 'go' });
     buttons.push({ label: `${ICON.again} ${r.won ? 'Play again' : 'Try again'}`, action: () => startStory(w, l, skill), cls: r.won ? '' : 'go' });

@@ -62,6 +62,12 @@ FP.Modes.chickens = (function () {
       const floor = new THREE.Mesh(new THREE.PlaneGeometry(PEN - 0.3, PEN - 0.3), FP.Look.toon(color));
       floor.rotation.x = -Math.PI / 2; floor.position.set(cx, 0.05, cz);
       S.add(floor);
+      // the owner's name painted on the pen (so you don't need to tell colors apart)
+      if (p) {
+        const tag = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: FP.Props.textTexture(p.name, '#ffffff', FP.UI.hex(color), 512, 128), transparent: true }));
+        tag.rotation.x = -Math.PI / 2; tag.position.set(cx, 0.07, cz + 0.6);
+        S.add(tag);
+      }
       // little fence posts on the two inside edges (the pen is open, so you can walk in)
       for (let k = 0; k <= 4; k++) {
         const t = k / 4;

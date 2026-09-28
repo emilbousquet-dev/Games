@@ -377,7 +377,7 @@ FP.Modes.soccer = (function () {
   }
 
   self = {
-    id: 'soccer', name: 'Soccer', roundsToWin: 1, single: true, teams: true, minTotal: 2, song: 'race', minZoom: 15,
+    id: 'soccer', name: 'Soccer', roundsToWin: 1, single: true, teams: true, minTotal: 2, song: 'race', minZoom: 18,
     art: '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#7ad866"/><rect x="0" y="0" width="30" height="80" fill="#66c455"/><rect x="60" y="0" width="30" height="80" fill="#66c455"/><path d="M60 0v80" stroke="#fff" stroke-width="2.5"/><circle cx="60" cy="40" r="14" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M104 26h12v28h-12" fill="#c2e0ff" stroke="#fff" stroke-width="3"/><circle cx="84" cy="48" r="6" fill="#fff" stroke="#2a2140" stroke-width="2"/><path d="M84 44l3 2-1 4h-4l-1-4z" fill="#2a2140"/><ellipse cx="70" cy="44" rx="7" ry="9" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/><circle cx="70" cy="31" r="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2.5"/><ellipse cx="108" cy="40" rx="5" ry="7" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><circle cx="104" cy="34" r="3" fill="#ffcf33" stroke="#2a2140" stroke-width="1.5"/></svg>',
     desc: 'Real soccer with goalkeepers! Dribble the ball, PUNCH to shoot, GRAB to pass, JUMP to slide tackle. Two halves.',
     build, spawn, control, beforeStep, update, botThink, hud, visual,
@@ -385,6 +385,8 @@ FP.Modes.soccer = (function () {
       const b = ball ? ball.body.position : new THREE.Vector3();
       const pts = [new THREE.Vector3(b.x, 0, b.z)];
       chars.map((c) => ({ c, d: dist2(pos(c), b.x, b.z) })).sort((a, z) => a.d - z.d).slice(0, 2).forEach((o) => pts.push(FP.Ragdoll.center(o.c)));
+      // near a goal? keep that goal on the screen too
+      if (Math.abs(b.x) > 5) pts.push(new THREE.Vector3(Math.sign(b.x) * (L / 2 + 0.5), 0, 0));
       return pts;
     },
     netState: () => ({ p: pause > 0 ? 1 : 0, h: half, c: Math.round(clock), g: golden ? 1 : 0 }),

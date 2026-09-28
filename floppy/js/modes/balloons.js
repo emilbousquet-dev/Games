@@ -8,7 +8,7 @@ window.FP = window.FP || {};
 FP.Modes = FP.Modes || {};
 
 FP.Modes.balloons = (function () {
-  const LIVES = 3, TIME = 70;
+  const LIVES = 3, TIME = 50;
   let data = new Map(), time = 0, self = null;
 
   function build() {

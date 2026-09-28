@@ -65,6 +65,11 @@ FP.Audio = (function () {
     alarm: () => { for (let i = 0; i < 4; i++) tone('sawtooth', i % 2 ? 600 : 800, i % 2 ? 600 : 800, 0.18, 0.06, i * 0.2); },
     menu: () => tone('square', 660, 880, 0.05, 0.07),
     tick: () => tone('sine', 1500, 1300, 0.025, 0.035),
+    pop: () => tone('sine', 420, 880, 0.07, 0.06),
+    buy: () => { [1047, 1319, 1568, 2093].forEach((f, i) => tone('square', f, f, 0.08, 0.07, i * 0.06)); noise(0.05, 0.12, 5000, 0.26); },
+    star: () => { tone('triangle', 1568, 2093, 0.18, 0.1); tone('sine', 3136, 3136, 0.16, 0.04, 0.05); },
+    fanfare: () => { [523, 659, 784].forEach((f, i) => tone('square', f, f, 0.11, 0.09, i * 0.12)); tone('square', 1047, 1047, 0.45, 0.1, 0.36); tone('square', 784, 784, 0.45, 0.05, 0.36); },
+    aww: () => { tone('triangle', 520, 300, 0.5, 0.1); tone('triangle', 400, 230, 0.6, 0.08, 0.14); },
     thud: () => { tone('sine', 150, 55, 0.14, 0.28); noise(0.08, 0.14, 320); },
     step: () => tone('sine', 210, 90, 0.07, 0.1),
     ding: () => { tone('sine', 1320, 1320, 0.28, 0.09); tone('sine', 1980, 1980, 0.2, 0.05, 0.03); },
@@ -76,6 +81,34 @@ FP.Audio = (function () {
     voice: () => { for (let i = 0; i < 3; i++) { const f = rnd(350, 800); tone('triangle', f, f * rnd(0.8, 1.4), 0.08, 0.08, i * 0.08); } },
   };
   function play(name) { if (ctx && S[name]) S[name](); }
+
+  // ------------------------------------------------------------
+  //  CHARACTER VOICES: silly little chirps (like Animal Crossing).
+  //  Every character has its own voice pitch (c.voice).
+  // ------------------------------------------------------------
+  function syll(f1, f2, dur, when = 0, vol = 0.06) {
+    tone('triangle', f1, f2, dur, vol, when);
+    tone('square', f1 * 2, f2 * 2, dur, vol * 0.22, when);
+  }
+  function voice(c, kind) {
+    if (!ctx || !c) return;
+    const now = ctx.currentTime;
+    if (c.voiceT && now - c.voiceT < 0.22 && kind !== 'ko') return; // don't talk over yourself
+    c.voiceT = now;
+    const p = (c.voice || 1) * rnd(0.95, 1.05);
+    if (kind === 'hurt') syll(430 * p, 250 * p, 0.12);
+    else if (kind === 'ko') { syll(520 * p, 200 * p, 0.3, 0, 0.07); syll(320 * p, 140 * p, 0.3, 0.26, 0.05); }
+    else if (kind === 'hup') syll(330 * p, 470 * p, 0.07, 0, 0.035);
+    else if (kind === 'wee') syll(380 * p, 950 * p, 0.45, 0, 0.06);
+    else if (kind === 'eep') syll(700 * p, 840 * p, 0.08, 0, 0.05);
+    else if (kind === 'yay') { syll(440 * p, 660 * p, 0.12, 0, 0.06); syll(660 * p, 900 * p, 0.2, 0.13, 0.06); }
+  }
+  FP.bus.on('punchHit', (e) => { if (e && e.victim) voice(e.victim, 'hurt'); });
+  FP.bus.on('knockOut', (c) => voice(c, 'ko'));
+  FP.bus.on('jump', (c) => { if (Math.random() < 0.35) voice(c, 'hup'); });
+  FP.bus.on('throw', (e) => { if (e && e.who && e.who.bodies) voice(e.who, 'wee'); });
+  FP.bus.on('grab', (e) => { if (e && e.victim) voice(e.victim, 'eep'); });
+  FP.bus.on('emote', (c) => { if (c && c.emote && c.emote.k === 3) voice(c, 'yay'); });
 
   // the music gets quieter while the game is paused
   let ducked = false;
@@ -200,6 +233,7 @@ FP.Audio = (function () {
     setSong(name) { song = name; },
     setVolumes,
     duck,
+    voice,
     engine,
   };
 })();

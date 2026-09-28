@@ -28,6 +28,61 @@ FP.Input = (function () {
       emotes: [['Digit8', 'Numpad7'], ['Digit9', 'Numpad8'], ['Digit0', 'Numpad9']],
     },
   ];
+  // ---------------- your own keys (Settings > Controls) ----------------
+  const DEFAULT_KEYS = KEYMAP.map((m) => JSON.parse(JSON.stringify(m)));
+  const BINDABLE = ['up', 'down', 'left', 'right', 'jump', 'punch', 'grab', 'grabL', 'grabR'];
+  const RESERVED = ['Escape', 'KeyH', 'KeyM', 'KeyP', 'Enter', 'NumpadEnter', 'Tab', 'Backspace', 'MetaLeft', 'MetaRight', 'ContextMenu', 'CapsLock'];
+  try {
+    const saved = JSON.parse(localStorage.getItem('floppy-keys') || 'null');
+    if (saved) [0, 1].forEach((m) => { for (const a of BINDABLE) if (saved[m] && Array.isArray(saved[m][a]) && saved[m][a].every((c) => typeof c === 'string')) KEYMAP[m][a] = saved[m][a].slice(0, 3); });
+  } catch (e) { /* no saving */ }
+  function saveKeys() { try { localStorage.setItem('floppy-keys', JSON.stringify(KEYMAP.map((m) => Object.fromEntries(BINDABLE.map((a) => [a, m[a]]))))); } catch (e) { /* no saving */ } }
+  // which action (on which side of the keyboard) uses a key already?
+  function whoUses(code) {
+    for (let m = 0; m < 2; m++) {
+      for (const [a, v] of Object.entries(KEYMAP[m])) {
+        const list = a === 'emotes' ? v.flat() : v;
+        if (list.includes(code)) return { map: m, action: a };
+      }
+    }
+    return null;
+  }
+  // set a key. If another move already uses it, the two moves swap keys. Returns false if the key can't be used
+  function bind(map, action, code) {
+    if (!BINDABLE.includes(action) || RESERVED.includes(code)) return false;
+    const other = whoUses(code);
+    if (other && !BINDABLE.includes(other.action)) return false; // (emotes and lobby keys stay where they are)
+    const old = KEYMAP[map][action].slice();
+    if (other && !(other.map === map && other.action === action)) {
+      const rest = KEYMAP[other.map][other.action].filter((c) => c !== code);
+      KEYMAP[other.map][other.action] = rest.length ? rest : [old[0]];
+    }
+    KEYMAP[map][action] = [code];
+    saveKeys();
+    return true;
+  }
+  function resetKeys(map) { for (const a of BINDABLE) KEYMAP[map][a] = DEFAULT_KEYS[map][a].slice(); saveKeys(); }
+  const NAMES = { Space: 'Space', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', Slash: '/', Period: '.', Comma: ',', Semicolon: ';', Quote: "'", BracketLeft: '[', BracketRight: ']', Backslash: '\\', Minus: '-', Equal: '=', Backquote: '`', ShiftLeft: 'Left Shift', ShiftRight: 'Right Shift', ControlLeft: 'Left Ctrl', ControlRight: 'Right Ctrl', AltLeft: 'Left Alt', AltRight: 'Right Alt', NumpadDecimal: 'Num .', NumpadAdd: 'Num +', NumpadSubtract: 'Num -', NumpadMultiply: 'Num *', NumpadDivide: 'Num /', Delete: 'Delete', Insert: 'Insert', Home: 'Home', End: 'End', PageUp: 'Page Up', PageDown: 'Page Down' };
+  function keyName(code) {
+    if (!code) return '?';
+    if (NAMES[code]) return NAMES[code];
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+    if (/^Digit\d$/.test(code)) return code.slice(5);
+    if (/^Numpad\d$/.test(code)) return 'Num ' + code.slice(6);
+    return code.replace(/([a-z])([A-Z])/g, '$1 $2');
+  }
+  // the key for a move, like "Space", or for walking: "W A S D" / "Arrows"
+  function label(map, action) {
+    const k = KEYMAP[map] || KEYMAP[0];
+    if (action === 'move') {
+      const four = ['up', 'left', 'down', 'right'].map((a) => keyName(k[a][0]));
+      if (four.join('') === 'UpLeftDownRight') return 'Arrows';
+      return four.join(' ');
+    }
+    return keyName((k[action] || [])[0]);
+  }
+  const kbd = (map, action) => (action === 'move' && label(map, 'move') !== 'Arrows' ? label(map, 'move').split(' ').map((x) => `<kbd>${x}</kbd>`).join(' ') : `<kbd>${label(map, action)}</kbd>`);
+
   const pads = [null, null, null, null]; // up to 4 controllers
   const prev = {};
   const listeners = [];
@@ -103,5 +158,5 @@ FP.Input = (function () {
     return s;
   }
 
-  return { init, read, activePads, getPads, keys, onKey: (f) => listeners.push(f), KEYMAP };
+  return { init, read, activePads, getPads, keys, onKey: (f) => listeners.push(f), KEYMAP, BINDABLE, bind, resetKeys, keyName, label, kbd };
 })();

@@ -10,14 +10,27 @@ FP.Modes = FP.Modes || {};
 FP.Modes.color = (function () {
   const N = 7, SIZE = 2.2, GAP = 0.1;
   const PALETTE = [
-    { name: 'PINK', hex: 0xff7eb6, css: '#ff7eb6' },
-    { name: 'YELLOW', hex: 0xffd23f, css: '#ffd23f' },
-    { name: 'GREEN', hex: 0x6ad65a, css: '#6ad65a' },
-    { name: 'BLUE', hex: 0x4aa8ff, css: '#4aa8ff' },
-    { name: 'PURPLE', hex: 0xa77bff, css: '#a77bff' },
+    { name: 'PINK', hex: 0xff7eb6, css: '#ff7eb6', shape: 'circle' },
+    { name: 'YELLOW', hex: 0xffd23f, css: '#ffd23f', shape: 'star' },
+    { name: 'GREEN', hex: 0x6ad65a, css: '#6ad65a', shape: 'triangle' },
+    { name: 'BLUE', hex: 0x4aa8ff, css: '#4aa8ff', shape: 'square' },
+    { name: 'PURPLE', hex: 0xa77bff, css: '#a77bff', shape: 'diamond' },
   ];
+  // colorblind shapes (Settings): every color also has its own shape, painted on the tiles
+  const cb = () => !!(FP.Settings && FP.Settings.get('colorblind'));
+  const poly = (pts) => { const s = new THREE.Shape(); pts.forEach(([x, y], i) => (i ? s.lineTo(x, y) : s.moveTo(x, y))); s.closePath(); return new THREE.ShapeGeometry(s); };
+  let GEOS = null;
+  function geos() {
+    if (GEOS) return GEOS;
+    const star = []; for (let i = 0; i < 10; i++) { const a = Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 0.22 : 0.5; star.push([Math.cos(a) * r, Math.sin(a) * r]); }
+    GEOS = { circle: new THREE.CircleGeometry(0.42, 28), star: poly(star), triangle: poly([[0, 0.5], [0.46, -0.34], [-0.46, -0.34]]), square: new THREE.PlaneGeometry(0.72, 0.72), diamond: poly([[0, 0.52], [0.38, 0], [0, -0.52], [-0.38, 0]]) };
+    return GEOS;
+  }
+  const shapeMat = new THREE.MeshBasicMaterial({ color: 0x2a2140, transparent: true, opacity: 0.55, depthWrite: false });
+  const SVG = { circle: '<circle cx="12" cy="12" r="8"/>', star: '<path d="M12 2l3 7 7 .6-5.4 4.6 1.7 7L12 17.4 5.7 21.2l1.7-7L2 9.6 9 9z"/>', triangle: '<path d="M12 3l10 17H2z"/>', square: '<rect x="4" y="4" width="16" height="16"/>', diamond: '<path d="M12 2l8 10-8 10-8-10z"/>' };
+  const shapeIcon = (c) => `<svg class="ico" viewBox="0 0 24 24" fill="#2a2140" aria-hidden="true">${SVG[PALETTE[c].shape]}</svg>`;
   // phases: 'calm' (tiles up, waiting), 'warn' (color called, run!), 'drop' (wrong tiles gone), 'rise' (coming back)
-  let tiles = [], phase = 'calm', timer = 0, target = 0, cycle = 0, sign = null;
+  let tiles = [], phase = 'calm', timer = 0, target = 0, cycle = 0, sign = null, signShape = null;
 
   function shuffle() {
     // every color appears a few times, spread around randomly
@@ -26,7 +39,12 @@ FP.Modes.color = (function () {
     tiles.forEach((t, i) => { t.c = colors[i]; });
     paint();
   }
-  function paint() { for (const t of tiles) t.mesh.material.color.setHex(PALETTE[t.c].hex); }
+  function paint() {
+    for (const t of tiles) {
+      t.mesh.material.color.setHex(PALETTE[t.c].hex);
+      if (t.shape) { t.shape.geometry = geos()[PALETTE[t.c].shape]; t.shape.visible = cb(); }
+    }
+  }
 
   function build() {
     tiles = []; phase = 'calm'; timer = 2.5; cycle = 0; target = 0;
@@ -35,7 +53,10 @@ FP.Modes.color = (function () {
       for (let iz = 0; iz < N; iz++) {
         const x = (ix - half) * SIZE, z = (iz - half) * SIZE;
         const b = FP.Stage.block(x, -0.3, z, SIZE - GAP, 0.6, SIZE - GAP, 0xffffff, { kinematic: true, unique: true });
-        tiles.push({ x, z, body: b.body, mesh: b.mesh, c: 0, y: -0.3 });
+        const shape = new THREE.Mesh(geos().circle, shapeMat);
+        shape.rotation.x = -Math.PI / 2; shape.position.y = 0.31; shape.scale.setScalar(1.3);
+        b.mesh.add(shape);
+        tiles.push({ x, z, body: b.body, mesh: b.mesh, c: 0, y: -0.3, shape });
       }
     }
     tiles.forEach((t, i) => { t.c = (i * 3 + Math.floor(i / N)) % PALETTE.length; });
@@ -46,6 +67,9 @@ FP.Modes.color = (function () {
     FP.Stage.add(g);
     FP.Stage.island(0, -1.6, -N * SIZE / 2 - 2, 5, 1.6, 2, { grass: 0x9bd46e });
     sign = g.userData.panel;
+    signShape = new THREE.Mesh(geos().circle, new THREE.MeshBasicMaterial({ color: 0x2a2140 }));
+    signShape.position.z = 0.01; signShape.scale.setScalar(1.7); signShape.visible = false;
+    sign.add(signShape);
     // lamps in the corners
     for (const [x, z] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
       const l = FP.Props.lamp(0xfff1b8);
@@ -78,6 +102,7 @@ FP.Modes.color = (function () {
   function visual(dt) {
     const show = phase === 'warn' || phase === 'drop';
     sign.material.color.setHex(show ? PALETTE[target].hex : 0xffffff);
+    if (signShape) { signShape.visible = show && cb(); signShape.geometry = geos()[PALETTE[target].shape]; }
     sign.parent.rotation.z = show ? Math.sin(performance.now() / 120) * 0.02 : 0;
   }
 
@@ -96,7 +121,7 @@ FP.Modes.color = (function () {
           paint();
           timer = warnTime();
           const col = PALETTE[target];
-          FP.UI.big(col.name, 1.2, 'Get on a ' + col.name.toLowerCase() + ' tile!');
+          FP.UI.big(col.name, 1.2, 'Get on a ' + col.name.toLowerCase() + ' tile!' + (cb() ? ` (the ${col.shape})` : ''));
           if (FP.Net) FP.Net.banner(col.name, 'Get on a ' + col.name.toLowerCase() + ' tile!');
           FP.Audio.play('beep');
         } else if (phase === 'warn') {
@@ -142,7 +167,7 @@ FP.Modes.color = (function () {
   function hud() {
     if (phase === 'warn' || phase === 'drop') {
       const col = PALETTE[target];
-      return `Find <b class="swatch" style="background:${col.css}">${col.name}</b> ${phase === 'warn' ? `<span class="fuse"><i style="width:${Math.round((timer / warnTime()) * 100)}%"></i></span>` : ''}`;
+      return `Find <b class="swatch" style="background:${col.css}">${cb() ? shapeIcon(target) + ' ' : ''}${col.name}</b> ${phase === 'warn' ? `<span class="fuse"><i style="width:${Math.round((timer / warnTime()) * 100)}%"></i></span>` : ''}`;
     }
     return 'Get ready...';
   }

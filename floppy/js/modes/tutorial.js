@@ -16,8 +16,9 @@ FP.Modes.tutorial = (function () {
     const k = src && src.kind;
     if (k === 'pad') return { move: 'the left stick', jump: '<kbd>A</kbd>', punch: '<kbd>X</kbd>', grab: 'hold <kbd>LB</kbd> + <kbd>RB</kbd>', emote: '<kbd>Y</kbd>' };
     if (k === 'touch') return { move: 'the joystick', jump: 'the <b>Jump</b> button', punch: 'the <b>Punch</b> button', grab: 'hold the <b>Grab</b> button', emote: 'the <b>Emote</b> button' };
-    if (k === 'keys' && src.map === 1) return { move: 'the arrow keys', jump: '<kbd>/</kbd>', punch: '<kbd>.</kbd>', grab: 'hold <kbd>,</kbd>', emote: '<kbd>8</kbd> <kbd>9</kbd> or <kbd>0</kbd>' };
-    return { move: '<kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>', jump: '<kbd>Space</kbd>', punch: '<kbd>F</kbd>', grab: 'hold <kbd>G</kbd>', emote: '<kbd>1</kbd> <kbd>2</kbd> or <kbd>3</kbd>' };
+    // the keyboard: your own keys from Settings > Controls
+    const m = k === 'keys' && src.map === 1 ? 1 : 0, K = (a) => FP.Input.kbd(m, a);
+    return { move: FP.Input.label(m, 'move') === 'Arrows' ? 'the arrow keys' : K('move'), jump: K('jump'), punch: K('punch'), grab: `hold ${K('grab')}`, emote: m ? '<kbd>8</kbd> <kbd>9</kbd> or <kbd>0</kbd>' : '<kbd>1</kbd> <kbd>2</kbd> or <kbd>3</kbd>' };
   }
   const STEPS = [
     { id: 'move', need: 8, title: 'Walk around', how: (k) => `Use ${k.move}` },
