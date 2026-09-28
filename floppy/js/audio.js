@@ -4,14 +4,17 @@
 window.FP = window.FP || {};
 
 FP.Audio = (function () {
-  let ctx = null, master = null, musicGain = null, sfxGain = null, vols = [0.8, 0.6, 0.8], musicOn = true, song = 'party', step = 0;
+  let ctx = null, master = null, musicGain = null, duckGain = null, sfxGain = null, vols = [0.8, 0.6, 0.8], musicOn = true, song = 'party', step = 0;
 
   function start() {
-    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    // (wake the sound up again if the browser paused it, for example after switching tabs)
+    if (ctx) { if (ctx.state !== 'running' && ctx.state !== 'closed') ctx.resume().catch(() => {}); return; }
     try {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       master = ctx.createGain(); master.gain.value = 0.5; master.connect(ctx.destination);
-      musicGain = ctx.createGain(); musicGain.gain.value = 0.16; musicGain.connect(master);
+      // music -> music volume -> "quieter while paused" -> everything
+      duckGain = ctx.createGain(); duckGain.gain.value = ducked ? 0.35 : 1; duckGain.connect(master);
+      musicGain = ctx.createGain(); musicGain.gain.value = 0.16; musicGain.connect(duckGain);
       sfxGain = ctx.createGain(); sfxGain.gain.value = 1; sfxGain.connect(master);
       setVolumes(...vols);
       setInterval(schedule, 25);
@@ -112,10 +115,16 @@ FP.Audio = (function () {
 
   // the music gets quieter while the game is paused
   let ducked = false;
+  // (its own volume knob, so it can never mix up the music volume from Settings)
   function duck(on) {
+    on = !!on;
     if (on === ducked) return;
     ducked = on;
-    if (ctx && musicGain) musicGain.gain.setTargetAtTime(0.27 * vols[1] * (on ? 0.35 : 1), ctx.currentTime, 0.15);
+    if (!ctx || !duckGain) return;
+    const g = duckGain.gain, t = ctx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(on ? 0.35 : 1, t + 0.25);
   }
 
   // volumes from 0 to 1 (the settings screen changes these)
@@ -123,7 +132,7 @@ FP.Audio = (function () {
     vols = [m, mu, fx];
     if (!ctx) return;
     master.gain.value = 0.62 * m;
-    musicGain.gain.value = 0.27 * mu * (ducked ? 0.35 : 1);
+    musicGain.gain.value = 0.27 * mu;
     sfxGain.gain.value = fx;
   }
 
@@ -231,6 +240,7 @@ FP.Audio = (function () {
     start, play,
     toggleMusic() { musicOn = !musicOn; return musicOn; },
     setSong(name) { song = name; },
+    get song() { return song; },
     setVolumes,
     duck,
     voice,

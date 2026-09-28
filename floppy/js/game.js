@@ -1049,6 +1049,7 @@ FP.Game = (function () {
   }
   function clientPodium(placeIds) {
     state = 'clientResults';
+    if (FP.Audio.song === 'silent') FP.Audio.setSong('party');
     const byId = (id) => players.find((p) => p.id === id) || { id };
     buildPodium((placeIds || []).map((g) => g.map(byId)));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
@@ -1056,6 +1057,7 @@ FP.Game = (function () {
 
   function results() {
     if (mode.id === 'tutorial') { tutorialDone(); return; }
+    if (FP.Audio.song === 'silent') FP.Audio.setSong('party'); // (Musical Chairs stops the music: bring it back for the podium)
     state = 'results';
     FP.UI.setHud('');
     const list = everyone();
@@ -1654,11 +1656,13 @@ FP.Game = (function () {
       back: pauseMenu,
     });
   }
-  function resume() { paused = false; FP.UI.closeScreen(); FP.Audio.duck(false); }
+  let resumedAt = 0;
+  function resume() { paused = false; resumedAt = performance.now(); FP.UI.closeScreen(); FP.Audio.duck(false); }
   window.addEventListener('keydown', (e) => {
     if (e.target && e.target.tagName === 'INPUT') return;
     if (photo) { photoKey(e); return; }
-    if ((e.code === 'Escape' || e.code === 'KeyP') && !FP.UI.open()) pause();
+    // (Esc that just closed the pause menu must not open it again right away)
+    if ((e.code === 'Escape' || e.code === 'KeyP') && !FP.UI.open() && !e.defaultPrevented) pause(); // (defaultPrevented: the menu already used this key)
     if ((e.code === 'Enter' || e.code === 'NumpadEnter') && state === 'lobby' && !FP.UI.open()) { e.preventDefault(); chooseMode(); }
   });
 
@@ -1684,7 +1688,7 @@ FP.Game = (function () {
     FP.Input.getPads().forEach((gp, i) => {
       if (!gp) return;
       const down = !!(gp.buttons[9] && gp.buttons[9].pressed);
-      if (down && !padStart[i] && ['countdown', 'play', 'roundOver'].includes(state) && !paused && !FP.UI.open()) pause();
+      if (down && !padStart[i] && ['countdown', 'play', 'roundOver'].includes(state) && !paused && !FP.UI.open() && performance.now() - resumedAt > 250) pause();
       padStart[i] = down;
     });
   }
@@ -1702,6 +1706,7 @@ FP.Game = (function () {
     const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
     FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));
     if (FP.Net && FP.Net.isClient()) {
+      FP.Audio.duck(false);
       FP.Net.clientFrame(dt);
       FP.UI.nameTags(FP.Game.chars, FP.Camera.camera, state === 'lobby' || (state === 'client' && !(mode && mode.noTags)));
       return;
