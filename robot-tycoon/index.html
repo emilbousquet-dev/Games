@@ -1,0 +1,2663 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Robot Army Tycoon</title>
+<!--
+  ROBOT ARMY TYCOON
+  Build a factory, make money, build robots, send your army to battle.
+  Everything (pictures, sounds, online play) is made with code in this one file,
+  so you can paste the whole file into Google Sites: Insert > Embed > Embed code.
+-->
+<style>
+:root {
+  --bg: #0f1420; --bg2: #161d2d; --panel: #1f2738; --panel2: #283247; --line: #3a4760;
+  --text: #eef3ff; --dim: #9fb0cc; --gold: #ffcc33; --gold2: #ff9d1c; --green: #4dff88;
+  --red: #ff4d5e; --blue: #4db8ff; --purple: #b57bff;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+  font-family: system-ui, "Segoe UI", Roboto, Arial, sans-serif; font-size: 14px; overflow: hidden;
+  user-select: none; -webkit-user-select: none; }
+input { user-select: text; -webkit-user-select: text; }
+button { font-family: inherit; }
+#app { position: absolute; inset: 0; display: flex; flex-direction: column; min-width: 320px; }
+
+/* ---------- top bar ---------- */
+#top { display: flex; align-items: center; gap: 10px; padding: 6px 10px; flex-wrap: wrap;
+  background: linear-gradient(#2b3550, #1a2133); border-bottom: 3px solid #0a0e17; }
+.logo { font-weight: 900; font-style: italic; letter-spacing: 1px; font-size: 16px;
+  background: linear-gradient(#fff6c2, #ffcc33 45%, #ff8a1c); -webkit-background-clip: text; background-clip: text;
+  color: transparent; filter: drop-shadow(0 2px 0 #000); white-space: nowrap; }
+.stat { display: flex; align-items: center; gap: 5px; background: #0c111b; border: 2px solid #3a4760;
+  border-radius: 20px; padding: 3px 10px; font-weight: 800; white-space: nowrap; }
+.stat .v { font-variant-numeric: tabular-nums; }
+#coins .v { color: var(--gold); font-size: 16px; }
+#income .v { color: var(--green); }
+#trophies .v { color: #ffd98a; }
+.spacer { flex: 1; }
+.iconbtn { background: #2a3550; color: #fff; border: 2px solid #4a5a7c; border-radius: 10px; padding: 4px 8px;
+  cursor: pointer; font-size: 15px; font-weight: 700; }
+.iconbtn:hover { background: #34426a; }
+
+/* ---------- goal bar ---------- */
+@media (max-width: 720px) { .logo { display: none; } #tabs button { min-width: 64px; font-size: 12px; } }
+#goal { display: flex; align-items: center; gap: 8px; padding: 5px 12px; font-weight: 700; font-size: 13px;
+  background: repeating-linear-gradient(-45deg, #2c2410 0 14px, #231d0d 14px 28px); border-bottom: 2px solid #0a0e17; }
+#goal .g-label { color: var(--gold); white-space: nowrap; }
+#goal .g-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#goal .g-prog { color: var(--dim); white-space: nowrap; }
+#goal .g-rew { color: var(--green); white-space: nowrap; }
+
+/* ---------- tabs ---------- */
+#tabs { display: flex; gap: 4px; padding: 6px 8px 0; background: var(--bg2); overflow-x: auto; }
+#tabs button { flex: 1; min-width: 80px; padding: 8px 6px 7px; border: 2px solid var(--line); border-bottom: none;
+  border-radius: 12px 12px 0 0; background: #1b2232; color: var(--dim); font-weight: 800; font-size: 13px;
+  cursor: pointer; white-space: nowrap; position: relative; }
+#tabs button.active { background: var(--panel); color: #fff; box-shadow: inset 0 3px 0 var(--gold); }
+#tabs button.pulse::after { content: "!"; position: absolute; top: 2px; right: 6px; background: var(--red); color: #fff;
+  border-radius: 10px; width: 16px; height: 16px; font-size: 11px; line-height: 16px; animation: bob .8s infinite alternate; }
+@keyframes bob { to { transform: translateY(-3px); } }
+#main { flex: 1; overflow: auto; background: var(--panel); padding: 10px; position: relative; }
+.screen { display: none; }
+.screen.show { display: block; }
+
+/* ---------- common widgets ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 14px;
+  border-radius: 10px; border: 2px solid #0a0e17; border-bottom-width: 5px; cursor: pointer; font-weight: 800;
+  font-size: 14px; color: #fff; background: linear-gradient(#4a5d85, #34435f); text-shadow: 0 1px 0 #0008;
+  transition: transform .05s; white-space: nowrap; }
+.btn:hover { filter: brightness(1.12); }
+.btn:active { transform: translateY(2px); border-bottom-width: 3px; }
+.btn.gold { background: linear-gradient(#ffd84d, #ff9d1c); color: #2a1a00; text-shadow: 0 1px 0 #fff6; }
+.btn.green { background: linear-gradient(#5dff9a, #1fb85a); color: #03250f; text-shadow: 0 1px 0 #fff6; }
+.btn.red { background: linear-gradient(#ff6b7a, #d02a3c); }
+.btn.blue { background: linear-gradient(#6fd0ff, #2b86d6); }
+.btn.purple { background: linear-gradient(#c79bff, #7a3fe0); }
+.btn.big { font-size: 18px; padding: 12px 22px; }
+.btn.small { font-size: 12px; padding: 4px 9px; border-bottom-width: 3px; border-radius: 8px; }
+.btn.cant, .btn:disabled { filter: grayscale(1) brightness(.6); cursor: not-allowed; }
+.btn .cost { background: #0005; border-radius: 6px; padding: 1px 6px; color: #fff; }
+.btn.gold .cost, .btn.green .cost { color: #fff; }
+.card { background: linear-gradient(#2c3650, #222a3e); border: 2px solid var(--line); border-radius: 14px; padding: 10px;
+  box-shadow: 0 3px 0 #0a0e17; }
+.card h3 { margin: 0 0 6px; font-size: 15px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.grid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+.dim { color: var(--dim); }
+.small { font-size: 12px; }
+.hint { color: var(--dim); font-size: 12px; margin-top: 4px; }
+.bar { height: 8px; background: #0b0f18; border-radius: 6px; overflow: hidden; border: 1px solid #000; }
+.bar > i { display: block; height: 100%; background: linear-gradient(90deg, #4db8ff, #7df0ff); }
+.bar.xp > i { background: linear-gradient(90deg, #b57bff, #ff7bf0); }
+.bar.hp > i { background: linear-gradient(90deg, #3ddc6b, #b6ff5c); }
+.section-title { font-weight: 900; font-style: italic; letter-spacing: .5px; font-size: 18px; margin: 4px 0 10px;
+  color: var(--gold); text-shadow: 0 2px 0 #000; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 10px; background: #0b0f18; font-weight: 800; font-size: 12px; }
+.pill.ok { color: var(--green); } .pill.bad { color: var(--red); } .pill.gold { color: var(--gold); }
+.stats { display: flex; gap: 8px; flex-wrap: wrap; font-weight: 800; font-size: 13px; }
+.stats span { background: #0b0f18; border-radius: 8px; padding: 2px 7px; }
+input[type=text] { background: #0b0f18; border: 2px solid var(--line); border-radius: 8px; color: #fff;
+  padding: 7px 10px; font-size: 15px; font-weight: 700; outline: none; }
+input[type=text]:focus { border-color: var(--gold); }
+
+/* ---------- factory ---------- */
+#factoryWrap { position: relative; }
+#factoryCanvas { width: 100%; height: 320px; display: block; border-radius: 14px; border: 3px solid #0a0e17; background: #1a2030; cursor: pointer; }
+#crankBtn { position: absolute; left: 12px; bottom: 12px; }
+.shop { margin-top: 10px; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
+.shop .card p { margin: 2px 0 8px; font-size: 12px; color: var(--dim); min-height: 30px; }
+
+/* ---------- workshop ---------- */
+.ws { display: grid; grid-template-columns: minmax(230px, 300px) 1fr; gap: 12px; }
+@media (max-width: 720px) { .ws { grid-template-columns: 1fr; } }
+#wsPreview { width: 100%; height: 230px; display: block; background: radial-gradient(#34405c, #161c2a); border-radius: 12px; border: 2px solid #0a0e17; }
+.swatches { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+.swatch { width: 26px; height: 26px; border-radius: 50%; border: 3px solid #0a0e17; cursor: pointer; }
+.swatch.on { outline: 3px solid #fff; }
+.slotrow { margin-bottom: 10px; }
+.slotrow .lbl { font-weight: 900; margin-bottom: 4px; }
+.parts { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.part { flex: 0 0 104px; background: #1a2132; border: 2px solid var(--line); border-radius: 12px; padding: 5px; cursor: pointer;
+  text-align: center; position: relative; }
+.part:hover { border-color: #6a7ca3; }
+.part.on { border-color: var(--gold); background: #33300f; box-shadow: 0 0 0 2px #ffcc3366; }
+.part.locked { opacity: .45; cursor: not-allowed; }
+.part canvas { width: 90px; height: 64px; display: block; margin: 0 auto; }
+.part .pn { font-weight: 800; font-size: 11.5px; line-height: 1.15; min-height: 26px; }
+.part .pc { color: var(--gold); font-weight: 800; font-size: 12px; }
+.part .lock { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 11px;
+  font-weight: 800; padding: 6px; background: #0009; border-radius: 10px; color: #fff; }
+
+/* ---------- army ---------- */
+.bot { display: flex; gap: 10px; }
+.bot canvas { width: 86px; height: 96px; flex: 0 0 86px; background: radial-gradient(#34405c, #161c2a); border-radius: 10px; }
+.bot .info { flex: 1; min-width: 0; }
+.bot .nm { font-weight: 900; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bot.broken canvas { filter: grayscale(1) brightness(.6); }
+.bot .acts { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+label.chk { display: inline-flex; gap: 5px; align-items: center; font-weight: 800; cursor: pointer; font-size: 12px; }
+
+/* ---------- campaign ---------- */
+.bases { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.base.locked { opacity: .5; }
+.base.beaten { border-color: #2e7d4a; }
+.base.next { border-color: var(--gold); box-shadow: 0 0 0 2px #ffcc3355, 0 3px 0 #0a0e17; }
+.base .flag { font-size: 26px; float: right; }
+
+/* ---------- research ---------- */
+.res.maxed { border-color: #2e7d4a; }
+.res .ico { font-size: 26px; float: right; }
+
+/* ---------- battle overlay ---------- */
+#battle { position: absolute; inset: 0; background: #0b0f18; display: none; flex-direction: column; z-index: 20; }
+#battle.show { display: flex; }
+#bTop { display: flex; gap: 8px; align-items: center; padding: 6px 8px; background: #151b29; flex-wrap: wrap; }
+#bTeams { flex: 1; display: flex; gap: 8px; min-width: 0; }
+.tbar { flex: 1; min-width: 60px; }
+.tbar .tn { font-size: 11px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tbar .bar { height: 10px; }
+#bTime { font-weight: 900; font-variant-numeric: tabular-nums; min-width: 44px; text-align: center; }
+#bCanvasWrap { flex: 1; position: relative; min-height: 0; }
+#bCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#bBottom { display: flex; gap: 8px; justify-content: center; padding: 6px; background: #151b29; flex-wrap: wrap; }
+.pu { position: relative; min-width: 96px; }
+.pu .n { position: absolute; top: -8px; right: -8px; background: var(--red); border: 2px solid #0a0e17; border-radius: 12px;
+  font-size: 12px; min-width: 22px; height: 22px; line-height: 18px; }
+.pu.armed { outline: 3px solid #fff; animation: bob .5s infinite alternate; }
+#bMsg { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); font-weight: 900; font-size: 16px;
+  background: #000a; padding: 6px 14px; border-radius: 12px; pointer-events: none; display: none; white-space: nowrap; }
+#emotes { position: absolute; right: 8px; top: 8px; display: none; gap: 4px; }
+#emotes button { font-size: 18px; background: #0008; border: 2px solid #fff3; border-radius: 10px; cursor: pointer; padding: 2px 6px; }
+
+/* ---------- modal + toast ---------- */
+#modal { position: absolute; inset: 0; background: #000b; display: none; align-items: center; justify-content: center; z-index: 50; padding: 12px; }
+#modal.show { display: flex; }
+#modalBox { background: linear-gradient(#2c3650, #1c2335); border: 3px solid var(--gold); border-radius: 18px; padding: 16px;
+  max-width: 520px; width: 100%; max-height: 100%; overflow: auto; box-shadow: 0 10px 40px #000; }
+#modalBox h2 { margin: 0 0 10px; font-style: italic; font-weight: 900; }
+#modalBox textarea { width: 100%; height: 90px; background: #0b0f18; color: #b9ffcf; border: 2px solid var(--line); border-radius: 8px;
+  font-family: monospace; font-size: 11px; padding: 6px; resize: none; user-select: text; -webkit-user-select: text; }
+.mbtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+#toasts { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-direction: column;
+  gap: 6px; align-items: center; z-index: 60; pointer-events: none; }
+.toast { background: #0d1320ee; border: 2px solid var(--gold); color: #fff; font-weight: 800; padding: 7px 14px; border-radius: 12px;
+  animation: toastIn .25s ease-out; box-shadow: 0 4px 12px #000a; text-align: center; }
+@keyframes toastIn { from { transform: translateY(20px); opacity: 0; } }
+
+/* ---------- title ---------- */
+#title { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 12px; background: radial-gradient(ellipse at 50% 30%, #2b3a5e, #0b0f18 70%); padding: 12px; overflow: auto; }
+#title canvas { width: min(560px, 96%); height: 170px; }
+.bigLogo { font-size: clamp(28px, 7vw, 56px); font-weight: 900; font-style: italic; text-align: center; line-height: .95;
+  background: linear-gradient(#fff6c2, #ffcc33 45%, #ff7a1c); -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 0 #000) drop-shadow(0 0 20px #ff9d1c55); transform: skew(-6deg); letter-spacing: 1px; }
+.bigLogo small { display: block; font-size: .45em; letter-spacing: 6px; }
+#title .row { justify-content: center; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="top">
+    <span class="logo">🤖 ROBOT ARMY TYCOON</span>
+    <span class="stat" id="coins" title="Coins">💰 <span class="v">0</span></span>
+    <span class="stat" id="income" title="Coins per second">📈 <span class="v">0</span>/s</span>
+    <span class="stat" id="trophies" title="Trophies from Arena and Online battles">🏆 <span class="v">0</span></span>
+    <span class="spacer"></span>
+    <button class="iconbtn" data-act="sound" id="soundBtn" title="Sound on/off">🔊</button>
+    <button class="iconbtn" data-act="savemenu" title="Save code / load code">💾 Save</button>
+  </div>
+  <div id="goal"><span class="g-label">🎯 GOAL:</span><span class="g-text"></span><span class="g-prog"></span><span class="g-rew"></span></div>
+  <div id="tabs">
+    <button data-tab="factory" class="active">🏭 Factory</button>
+    <button data-tab="workshop">🔧 Workshop</button>
+    <button data-tab="army">🤖 Army</button>
+    <button data-tab="battle">⚔️ Battle</button>
+    <button data-tab="research">🔬 Research</button>
+    <button data-tab="online">🌐 Online</button>
+  </div>
+  <div id="main">
+    <div class="screen show" id="s-factory">
+      <div id="factoryWrap">
+        <canvas id="factoryCanvas"></canvas>
+        <button class="btn gold big" id="crankBtn" data-act="crank">⚙️ CRANK! <span class="cost" id="crankVal">+1</span></button>
+      </div>
+      <div class="shop" id="shop"></div>
+    </div>
+    <div class="screen" id="s-workshop"></div>
+    <div class="screen" id="s-army"></div>
+    <div class="screen" id="s-battle"></div>
+    <div class="screen" id="s-research"></div>
+    <div class="screen" id="s-online"></div>
+  </div>
+
+  <div id="battle">
+    <div id="bTop">
+      <div id="bTeams"></div>
+      <span id="bTime">0:00</span>
+      <button class="btn small" data-act="bspeed" id="bSpeed">⏩ 1x</button>
+      <button class="btn small red" data-act="bquit" id="bQuit">🏳️ Retreat</button>
+    </div>
+    <div id="bCanvasWrap"><canvas id="bCanvas"></canvas><div id="bMsg"></div>
+      <div id="emotes"><button data-emo="😂">😂</button><button data-emo="😎">😎</button><button data-emo="😡">😡</button><button data-emo="🔥">🔥</button><button data-emo="👋">👋</button></div>
+    </div>
+    <div id="bBottom"></div>
+  </div>
+
+  <div id="title">
+    <div class="bigLogo">ROBOT ARMY<small>TYCOON</small></div>
+    <canvas id="titleCanvas"></canvas>
+    <div class="row">
+      <button class="btn gold big" data-act="play" id="playBtn">▶ PLAY</button>
+      <button class="btn big" data-act="loadmenu">📂 Load save code</button>
+    </div>
+    <div class="hint" id="saveWarn" style="text-align:center;color:#ffcc33;display:none">⚠️ This page can't save by itself here. Before you stop playing, press <b>💾 Save</b> and copy your save code!</div>
+    <div class="hint" style="text-align:center">Build a factory 🏭 → make money 💰 → build robots 🤖 → win battles ⚔️<br>Play against bots or online with up to 4 friends 🌐</div>
+  </div>
+  <div id="modal"><div id="modalBox"></div></div>
+  <div id="toasts"></div>
+</div>
+<script>
+'use strict';
+// ============================================================
+//  HELPERS
+// ============================================================
+const $ = (id) => document.getElementById(id);
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+const lerp = (a, b, t) => a + (b - a) * t;
+const rand = (a, b) => a + Math.random() * (b - a);
+const pick = (arr) => arr[(Math.random() * arr.length) | 0];
+const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+function fmt(n) {
+  n = Math.floor(n);
+  if (n < 1000) return String(n);
+  const u = ['K', 'M', 'B', 'T', 'Qa', 'Qi'];
+  let i = -1;
+  while (n >= 1000 && i < u.length - 1) { n /= 1000; i++; }
+  return (n >= 100 ? n.toFixed(0) : n >= 10 ? n.toFixed(1) : n.toFixed(2)).replace(/\.0+$/, '') + u[i];
+}
+function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+// seeded random (so every computer can make the same battlefield)
+function mulberry(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+// saving can be blocked inside Google Sites, so every use is wrapped in try/catch
+const Store = {
+  get(k) { try { return window.localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { window.localStorage.setItem(k, v); return true; } catch (e) { return false; } },
+  del(k) { try { window.localStorage.removeItem(k); } catch (e) { /* */ } },
+};
+
+// ============================================================
+//  SOUNDS (made with math, no sound files — same idea as LAB 13)
+// ============================================================
+const Sfx = (function () {
+  let ctx = null, master = null, noiseBuf = null, muted = false, musicGain = null, musicTimer = null, lastPlay = {};
+  function init() {
+    if (ctx) { if (ctx.state === 'suspended') ctx.resume(); return; }
+    try { ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -12; comp.ratio.value = 5; comp.connect(ctx.destination);
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.5; master.connect(comp);
+    musicGain = ctx.createGain(); musicGain.gain.value = 0.35; musicGain.connect(master);
+    noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
+    const d = noiseBuf.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const now = () => ctx.currentTime;
+  function env(g, t0, attack, dur, vol) {
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(vol, t0 + attack);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  }
+  function tone(type, f0, f1, dur, vol, delay = 0, dest) {
+    if (!ctx) return;
+    const t0 = now() + delay;
+    const o = ctx.createOscillator(); o.type = type;
+    o.frequency.setValueAtTime(f0, t0);
+    if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
+    const g = ctx.createGain(); env(g, t0, 0.005, dur, vol);
+    o.connect(g); g.connect(dest || master); o.start(t0); o.stop(t0 + dur + 0.05);
+  }
+  function noise(dur, type, f0, f1, vol, delay = 0, q = 1, dest) {
+    if (!ctx) return;
+    const t0 = now() + delay;
+    const s = ctx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+    const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q;
+    f.frequency.setValueAtTime(f0, t0); if (f1 !== f0) f.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t0 + dur);
+    const g = ctx.createGain(); env(g, t0, 0.004, dur, vol);
+    s.connect(f); f.connect(g); g.connect(dest || master); s.start(t0, Math.random() * 0.5); s.stop(t0 + dur + 0.05);
+  }
+  // don't play the same sound 20 times in one frame
+  function ok(name, gap) {
+    if (!ctx || muted) return false;
+    const t = performance.now();
+    if (lastPlay[name] && t - lastPlay[name] < gap) return false;
+    lastPlay[name] = t; return true;
+  }
+  const S = {
+    click() { if (ok('click', 30)) tone('square', 900, 600, 0.05, 0.12); },
+    crank() { if (ok('crank', 40)) { noise(0.06, 'bandpass', 2500, 1500, 0.3, 0, 4); tone('square', 180, 120, 0.05, 0.08); } },
+    coin() { if (ok('coin', 70)) { tone('square', 1320, 1320, 0.06, 0.06); tone('square', 1760, 1760, 0.1, 0.06, 0.05); } },
+    buy() { if (ok('buy', 60)) { tone('triangle', 520, 520, 0.08, 0.25); tone('triangle', 780, 780, 0.08, 0.25, 0.07); tone('triangle', 1040, 1040, 0.15, 0.25, 0.14); noise(0.12, 'highpass', 5000, 5000, 0.08, 0.14); } },
+    no() { if (ok('no', 120)) { tone('sawtooth', 160, 110, 0.18, 0.15); } },
+    build() { if (!ok('build', 100)) return; for (let i = 0; i < 4; i++) { noise(0.05, 'bandpass', 3000, 2000, 0.35, i * 0.09, 6); tone('square', 200 + i * 60, 150, 0.05, 0.1, i * 0.09); } tone('triangle', 600, 1200, 0.25, 0.2, 0.4); },
+    punch() { if (ok('punch', 50)) { noise(0.08, 'lowpass', 900, 200, 0.4); tone('sine', 140, 60, 0.1, 0.3); } },
+    saw() { if (ok('saw', 60)) { tone('sawtooth', 1600, 1300, 0.08, 0.06); noise(0.06, 'bandpass', 4000, 3000, 0.15, 0, 3); } },
+    blaster() { if (ok('blaster', 45)) { tone('square', 1400, 300, 0.1, 0.09); } },
+    laser() { if (ok('laser', 60)) { tone('sawtooth', 2200, 900, 0.12, 0.07); tone('sine', 3000, 2500, 0.1, 0.05); } },
+    rocket() { if (ok('rocket', 70)) { noise(0.35, 'bandpass', 600, 2400, 0.2, 0, 2); } },
+    boom(big) { if (!ok('boom', 60)) return; noise(big ? 0.9 : 0.5, 'lowpass', big ? 1500 : 2200, 60, big ? 0.9 : 0.55); tone('sine', 110, 35, big ? 0.7 : 0.35, 0.5); },
+    zap() { if (ok('zap', 70)) { for (let i = 0; i < 5; i++) tone('sawtooth', rand(800, 2400), rand(300, 900), 0.04, 0.07, i * 0.025); } },
+    flame() { if (ok('flame', 110)) noise(0.2, 'bandpass', 700, 500, 0.18, 0, 1); },
+    heal() { if (ok('heal', 150)) { tone('sine', 660, 990, 0.2, 0.08); tone('sine', 990, 1320, 0.2, 0.06, 0.08); } },
+    hammer() { if (ok('hammer', 60)) { noise(0.15, 'lowpass', 600, 100, 0.6); tone('square', 90, 40, 0.15, 0.25); } },
+    clank() { if (ok('clank', 40)) { tone('square', rand(700, 1100), 300, 0.06, 0.07); } },
+    die() { if (ok('die', 60)) { noise(0.5, 'lowpass', 3000, 80, 0.45); tone('sawtooth', 600, 60, 0.5, 0.12); } },
+    power() { if (ok('power', 100)) { tone('triangle', 400, 1600, 0.3, 0.25); tone('square', 800, 3200, 0.3, 0.06, 0.05); } },
+    emp() { if (ok('emp', 100)) { tone('sine', 1800, 80, 0.7, 0.35); noise(0.5, 'bandpass', 4000, 300, 0.2, 0, 2); } },
+    siren() { if (ok('siren', 400)) { tone('sawtooth', 500, 900, 0.3, 0.07); tone('sawtooth', 900, 500, 0.3, 0.07, 0.3); } },
+    win() { if (!ok('win', 500)) return; [523, 659, 784, 1047, 784, 1047].forEach((f, i) => tone('square', f, f, i === 5 ? 0.5 : 0.14, 0.12, i * 0.13)); },
+    lose() { if (!ok('lose', 500)) return; [392, 370, 349, 262].forEach((f, i) => tone('triangle', f, f * 0.98, i === 3 ? 0.7 : 0.25, 0.22, i * 0.25)); },
+    level() { if (ok('level', 200)) [660, 880, 1320].forEach((f, i) => tone('square', f, f, 0.1, 0.1, i * 0.08)); },
+    join() { if (ok('join', 200)) { tone('sine', 700, 700, 0.1, 0.2); tone('sine', 1050, 1050, 0.15, 0.2, 0.1); } },
+  };
+  // simple battle music: a bass line and a beat
+  function startMusic(fast) {
+    stopMusic();
+    if (!ctx) return;
+    const bass = [55, 55, 65.4, 55, 73.4, 55, 65.4, 49];
+    let step = 0;
+    const beat = fast ? 0.16 : 0.2;
+    musicTimer = setInterval(() => {
+      if (muted || !ctx) return;
+      const n = bass[(step >> 1) % bass.length];
+      if (step % 2 === 0) tone('sawtooth', n, n, beat * 1.6, 0.14, 0, musicGain);
+      if (step % 4 === 0) { tone('sine', 150, 40, 0.15, 0.5, 0, musicGain); }
+      if (step % 4 === 2) noise(0.08, 'highpass', 3000, 3000, 0.12, 0, 1, musicGain);
+      if (step % 8 === 6 && Math.random() < 0.5) tone('square', n * 4, n * 4, 0.1, 0.03, 0, musicGain);
+      step++;
+    }, beat * 1000);
+  }
+  function stopMusic() { if (musicTimer) clearInterval(musicTimer); musicTimer = null; }
+  return {
+    init, S, startMusic, stopMusic,
+    setMuted(m) { muted = m; if (master) master.gain.value = m ? 0 : 0.5; },
+    get muted() { return muted; },
+  };
+})();
+const S = Sfx.S;
+
+// ============================================================
+//  GAME DATA  (change the numbers to change the game!)
+// ============================================================
+// Every robot is made of 4 parts. Stats:
+//  hp = health, armor = % damage blocked, dmg = damage per hit, rate = seconds between hits,
+//  range = how far it can hit, spd = walking speed
+const PARTS = {
+  // ---------- HEADS ----------
+  h_bolt:    { slot: 'head', name: 'Bolt Head',     cost: 5,      hp: 10,  unlock: 'start' },
+  h_visor:   { slot: 'head', name: 'Laser Visor',   cost: 60,     hp: 20,  range: 25, unlock: 'r:visor' },
+  h_cyclops: { slot: 'head', name: 'Cyclops Eye',   cost: 400,    hp: 30,  crit: 0.15, unlock: 'r:cyclops' },
+  h_dome:    { slot: 'head', name: 'Tank Dome',     cost: 1500,   hp: 120, armor: 0.05, unlock: 'r:dome' },
+  h_brain:   { slot: 'head', name: 'Brain Jar',     cost: 120000,   hp: 60,  atk: 0.1, crit: 0.1, smart: 1, unlock: 'r:brain' },
+  h_skull:   { slot: 'head', name: 'Skull Crusher', cost: 1500000,  hp: 200, atk: 0.25, unlock: 'b:7' },
+  h_crown:   { slot: 'head', name: 'King Crown',    cost: 60000000, hp: 900, atk: 0.3, crit: 0.2, unlock: 'b:10' },
+  // ---------- BODIES ----------
+  b_can:     { slot: 'body', name: 'Tin Can',       cost: 10,     hp: 40,  unlock: 'start' },
+  b_box:     { slot: 'body', name: 'Steel Box',     cost: 45,     hp: 80,  armor: 0.05, unlock: 'r:box' },
+  b_round:   { slot: 'body', name: 'Round Bot',     cost: 250,    hp: 110, regen: 2, unlock: 'r:round' },
+  b_armor:   { slot: 'body', name: 'Heavy Armor',   cost: 900,    hp: 240, armor: 0.15, unlock: 'r:armor' },
+  b_reactor: { slot: 'body', name: 'Reactor Core',  cost: 10000,   hp: 320, armor: 0.1, fast: 0.2, unlock: 'b:4' },
+  b_shield:  { slot: 'body', name: 'Shield Maker',  cost: 800000,  hp: 600, armor: 0.1, shieldGen: 0.3, unlock: 'r:shieldb' },
+  b_titan:   { slot: 'body', name: 'Titan Frame',   cost: 20000000, hp: 3000, armor: 0.25, big: 1, unlock: 'b:9' },
+  // ---------- ARMS (the weapon) ----------
+  a_punch:   { slot: 'arms', name: 'Punch Fists',   cost: 10,     hp: 10,  dmg: 6,   rate: 0.8,  range: 30,  kind: 'punch', unlock: 'start' },
+  a_blaster: { slot: 'arms', name: 'Blasters',      cost: 70,     hp: 5,   dmg: 7,   rate: 0.9,  range: 170, kind: 'blaster', unlock: 'b:1' },
+  a_saw:     { slot: 'arms', name: 'Saw Blades',    cost: 300,    hp: 15,  dmg: 6,   rate: 0.25, range: 30,  kind: 'saw', unlock: 'r:saw' },
+  a_rocket:  { slot: 'arms', name: 'Rockets',       cost: 1800,   hp: 10,  dmg: 60,  rate: 2.4,  range: 240, kind: 'rocket', splash: 55, unlock: 'b:3' },
+  a_hammer:  { slot: 'arms', name: 'Mega Hammer',   cost: 30000,   hp: 40,  dmg: 110, rate: 1.7,  range: 34,  kind: 'hammer', stun: 1.0, splash: 40, unlock: 'r:hammer' },
+  a_medic:   { slot: 'arms', name: 'Repair Beam',   cost: 40000,   hp: 30,  dmg: 0,   heal: 40, rate: 0.6, range: 160, kind: 'medic', unlock: 'r:medic' },
+  a_flame:   { slot: 'arms', name: 'Flamethrower',  cost: 60000,  hp: 30,  dmg: 14,  rate: 0.12, range: 85,  kind: 'flame', burn: 20, unlock: 'b:5' },
+  a_laser:   { slot: 'arms', name: 'Laser Beam',    cost: 300000,  hp: 20,  dmg: 90,  rate: 0.5,  range: 230, kind: 'laser', unlock: 'b:6' },
+  a_tesla:   { slot: 'arms', name: 'Tesla Coil',    cost: 3000000, hp: 60,  dmg: 400, rate: 1.1,  range: 150, kind: 'tesla', chain: 3, unlock: 'r:tesla' },
+  a_plasma:  { slot: 'arms', name: 'Plasma Cannon', cost: 100000000,hp: 150, dmg: 2600,rate: 1.8,  range: 260, kind: 'plasma', splash: 70, unlock: 'b:10' },
+  // ---------- LEGS ----------
+  l_wheels:  { slot: 'legs', name: 'Wheels',        cost: 5,      hp: 10,  spd: 62, unlock: 'start' },
+  l_walker:  { slot: 'legs', name: 'Walker Legs',   cost: 20,     hp: 30,  spd: 48, unlock: 'start' },
+  l_treads:  { slot: 'legs', name: 'Tank Treads',   cost: 500,    hp: 160, spd: 34, armor: 0.1, unlock: 'b:2' },
+  l_spider:  { slot: 'legs', name: 'Spider Legs',   cost: 8000,   hp: 90,  spd: 72, dodge: 0.2, unlock: 'r:spider' },
+  l_jet:     { slot: 'legs', name: 'Jet Hover',     cost: 5000000,  hp: 400, spd: 95, dodge: 0.15, unlock: 'b:8' },
+  l_stomper: { slot: 'legs', name: 'Mega Stompers', cost: 8000000, hp: 1600,spd: 40, armor: 0.1, unlock: 'r:stomper' },
+};
+for (const id in PARTS) PARTS[id].id = id;
+const SLOTS = ['head', 'body', 'arms', 'legs'];
+const SLOT_NAMES = { head: '🤖 Head', body: '🛡️ Body', arms: '💥 Weapon', legs: '🦿 Legs' };
+const COLORS = ['#e8413c', '#2f8cff', '#35c75a', '#ffc629', '#9b5cff', '#ff8a1f', '#1fc8c8', '#ff5fb4', '#b8c2d6', '#3b3f4a'];
+const MAX_LVL = 15;
+const xpNeed = (lvl) => Math.round(40 * Math.pow(lvl, 1.6));
+
+// ---------- the factory ----------
+// what the droppers drop. value = coins when it reaches the seller
+const TIERS = [
+  { name: 'Scrap',       value: 1,    color: '#8a7f72', shape: 'scrap' },
+  { name: 'Bolts',       value: 4,    color: '#c0c8d8', shape: 'bolt' },
+  { name: 'Gears',       value: 15,   color: '#e0a830', shape: 'gear' },
+  { name: 'Chips',       value: 50,   color: '#35d06a', shape: 'chip' },
+  { name: 'Power Cores', value: 160,  color: '#4dc8ff', shape: 'core' },
+  { name: 'Plasma Orbs', value: 500,  color: '#c07bff', shape: 'orb' },
+  { name: 'Star Metal',  value: 1600, color: '#ffe066', shape: 'star' },
+];
+const TIER_UP_COST = [40, 400, 4000, 40000, 400000, 4000000];
+const MAX_DROPPERS = 10;
+const dropperCost = (n) => Math.round(15 * Math.pow(1.7, n));
+const MACHINES = [
+  { name: 'Washer',         mult: 1.5, cost: 150,      color: '#4db8ff', desc: 'Washes the dirt off. Items worth ×1.5' },
+  { name: 'Paint Sprayer',  mult: 1.5, cost: 2500,     color: '#ff5fb4', desc: 'Shiny paint! Items worth ×1.5' },
+  { name: 'Polisher',       mult: 2,   cost: 50000,    color: '#ffe066', desc: 'Spinning brushes. Items worth ×2' },
+  { name: 'Laser Upgrader', mult: 2,   cost: 1000000,  color: '#ff4d5e', desc: 'Zaps items with power. Items worth ×2' },
+  { name: 'Quantum Doubler',mult: 2.5, cost: 15000000, color: '#b57bff', desc: 'Makes items... better? Items worth ×2.5' },
+];
+const BELT = [ // conveyor levels: seconds between drops
+  { every: 2.5, cost: 0 }, { every: 2.2, cost: 120 }, { every: 1.9, cost: 3000 }, { every: 1.6, cost: 60000 },
+  { every: 1.35, cost: 700000 }, { every: 1.1, cost: 7000000 },
+];
+const CRANK = [ // crank levels: coins per click, and % of your income per second
+  { base: 1, pct: 0.02, cost: 0 }, { base: 3, pct: 0.04, cost: 80 }, { base: 10, pct: 0.06, cost: 1500 },
+  { base: 40, pct: 0.08, cost: 30000 }, { base: 150, pct: 0.1, cost: 500000 },
+];
+const BARRACKS = [3, 4, 5, 6, 8, 10, 12];
+const barracksCost = (lvl) => [0, 150, 1500, 12000, 90000, 600000, 4000000][lvl];
+
+// ---------- research ----------
+const RESEARCH = [
+  { id: 'box',     ico: '📦', name: 'Steel Box body',   desc: 'Unlock a tougher body.', cost: [60], need: 1 },
+  { id: 'visor',   ico: '🥽', name: 'Laser Visor head', desc: 'Unlock a head that lets robots shoot further.', cost: [150], need: 1 },
+  { id: 'saw',     ico: '🪚', name: 'Saw Blades',       desc: 'Unlock super fast spinning saws.', cost: [400], need: 2 },
+  { id: 'round',   ico: '⚪', name: 'Round Bot body',   desc: 'Unlock a body that repairs itself slowly.', cost: [500], need: 2 },
+  { id: 'armor',   ico: '🛡️', name: 'Heavy Armor body', desc: 'Unlock a big armored body.', cost: [1500], need: 3 },
+  { id: 'cyclops', ico: '👁️', name: 'Cyclops Eye head', desc: 'Unlock a head that does critical hits (double damage).', cost: [1200], need: 3 },
+  { id: 'spider',  ico: '🕷️', name: 'Spider Legs',      desc: 'Unlock fast legs that can dodge attacks.', cost: [20000], need: 4 },
+  { id: 'dome',    ico: '🔘', name: 'Tank Dome head',   desc: 'Unlock a super tough head.', cost: [3000], need: 4 },
+  { id: 'hammer',  ico: '🔨', name: 'Mega Hammer',      desc: 'Unlock a hammer that stuns enemies.', cost: [90000], need: 5 },
+  { id: 'medic',   ico: '💚', name: 'Repair Beam',      desc: 'Unlock a weapon that HEALS your robots.', cost: [100000], need: 5 },
+  { id: 'brain',   ico: '🧠', name: 'Brain Jar head',   desc: 'Unlock a smart head: it attacks the weakest enemy.', cost: [500000], need: 6 },
+  { id: 'shieldb', ico: '🔰', name: 'Shield Maker body',desc: 'Unlock a body with an energy shield.', cost: [2500000], need: 7 },
+  { id: 'tesla',   ico: '⚡', name: 'Tesla Coil',        desc: 'Unlock lightning that jumps between enemies.', cost: [10000000], need: 8 },
+  { id: 'stomper', ico: '🦶', name: 'Mega Stompers',    desc: 'Unlock giant legs with tons of health.', cost: [30000000], need: 9 },
+  { id: 'plating', ico: '🧱', name: 'Armor Plating',    desc: 'All your robots get +12% health per level.', cost: [200, 3000, 45000, 700000, 10000000], need: 1 },
+  { id: 'weapons', ico: '🎯', name: 'Better Weapons',   desc: 'All your robots do +12% damage per level.', cost: [250, 3500, 50000, 800000, 12000000], need: 1 },
+  { id: 'training',ico: '🎓', name: 'Robot Training',   desc: 'Robots get +40% more XP per level.', cost: [1000, 40000, 2000000], need: 2 },
+  { id: 'charges', ico: '🔋', name: 'Bigger Batteries', desc: '+1 use of each power-up in battle.', cost: [2000, 500000], need: 2 },
+  { id: 'air',     ico: '✈️', name: 'Airstrike',        desc: 'Unlock the AIRSTRIKE power-up.', cost: [5000], need: 3 },
+  { id: 'cheap',   ico: '🧰', name: 'Cheap Repairs',    desc: 'Repairing broken robots costs 25% less per level.', cost: [5000, 500000], need: 3 },
+  { id: 'offline', ico: '🌙', name: 'Night Shift',      desc: 'Earn more while you are away (+25% per level).', cost: [2000, 100000, 5000000], need: 2 },
+];
+const RES = Object.fromEntries(RESEARCH.map((r) => [r.id, r]));
+
+// ---------- the campaign: 10 enemy bases ----------
+// army: [head, body, arms, legs, level, how many]   waves: [seconds, army]
+// hp = base health, turret = turret damage, mult = makes all enemy robots stronger (1.5 = +50%)
+const BASES = [
+  { name: "Rusty's Junkyard", flag: '🗑️', color: '#9a6b3c', hp: 120, turret: 0, mult: 0.8, reward: 120, army: [['h_bolt', 'b_can', 'a_punch', 'l_wheels', 1, 1]], desc: 'A pile of junk and one tiny robot. Easy!' },
+  { name: 'Tin Can Gang', flag: '🥫', color: '#8aa0b8', hp: 250, turret: 0, mult: 0.9, reward: 400, army: [['h_bolt', 'b_can', 'a_punch', 'l_walker', 1, 3], ['h_bolt', 'b_can', 'a_blaster', 'l_wheels', 1, 1]], desc: 'They shoot back now.' },
+  { name: 'Bolt Brothers', flag: '🔩', color: '#d0a040', hp: 1500, turret: 25, mult: 1.3, reward: 2000, army: [['h_bolt', 'b_box', 'a_blaster', 'l_walker', 2, 2], ['h_bolt', 'b_can', 'a_punch', 'l_treads', 2, 2]], waves: [[25, [['h_bolt', 'b_can', 'a_saw', 'l_wheels', 1, 2]]]], desc: 'Their base has a turret!' },
+  { name: 'Gearhead Fortress', flag: '⚙️', color: '#c07030', hp: 3500, turret: 45, mult: 1.6, reward: 8000, army: [['h_visor', 'b_armor', 'a_punch', 'l_treads', 3, 2], ['h_visor', 'b_box', 'a_rocket', 'l_walker', 2, 2]], waves: [[20, [['h_bolt', 'b_round', 'a_saw', 'l_wheels', 3, 2]]]], desc: 'Rockets and big armor.' },
+  { name: 'Circuit City', flag: '💾', color: '#35c75a', hp: 7000, turret: 75, mult: 1.05, reward: 40000, army: [['h_cyclops', 'b_armor', 'a_saw', 'l_treads', 4, 2], ['h_visor', 'b_reactor', 'a_rocket', 'l_walker', 4, 2], ['h_dome', 'b_round', 'a_blaster', 'l_spider', 4, 1]], waves: [[25, [['h_bolt', 'b_armor', 'a_hammer', 'l_treads', 3, 2]]]], desc: 'A city full of crit-hitting robots.' },
+  { name: 'The Iron Wall', flag: '🧱', color: '#7f8a9c', hp: 20000, turret: 100, mult: 1.1, reward: 200000, army: [['h_dome', 'b_reactor', 'a_hammer', 'l_treads', 5, 3], ['h_visor', 'b_armor', 'a_rocket', 'l_walker', 5, 2], ['h_dome', 'b_round', 'a_medic', 'l_walker', 5, 1]], waves: [[25, [['h_cyclops', 'b_reactor', 'a_flame', 'l_spider', 4, 2]]]], desc: 'Tough walls and a medic that heals them.' },
+  { name: 'Laser Lagoon', flag: '🌊', color: '#1fc8c8', hp: 45000, turret: 150, mult: 1.0, reward: 800000, army: [['h_brain', 'b_reactor', 'a_laser', 'l_spider', 6, 3], ['h_dome', 'b_shield', 'a_flame', 'l_treads', 5, 2], ['h_dome', 'b_armor', 'a_medic', 'l_walker', 6, 1]], waves: [[22, [['h_cyclops', 'b_reactor', 'a_hammer', 'l_spider', 6, 3]]]], desc: 'Lasers everywhere. Bring shields!' },
+  { name: 'Skull Factory', flag: '💀', color: '#e8413c', hp: 80000, turret: 220, mult: 1.0, reward: 3500000, army: [['h_skull', 'b_shield', 'a_hammer', 'l_treads', 7, 3], ['h_brain', 'b_reactor', 'a_laser', 'l_spider', 7, 3], ['h_dome', 'b_shield', 'a_medic', 'l_walker', 7, 1]], waves: [[20, [['h_skull', 'b_reactor', 'a_flame', 'l_spider', 6, 3]]]], desc: 'Scary skull robots that hit super hard.' },
+  { name: 'Titan Works', flag: '🏗️', color: '#ffc629', hp: 170000, turret: 400, mult: 1.15, reward: 12000000, army: [['h_skull', 'b_shield', 'a_tesla', 'l_jet', 8, 3], ['h_skull', 'b_shield', 'a_hammer', 'l_stomper', 8, 2], ['h_brain', 'b_shield', 'a_medic', 'l_jet', 8, 1]], waves: [[20, [['h_brain', 'b_reactor', 'a_laser', 'l_jet', 8, 3]]]], desc: 'They build giant robots here...' },
+  { name: 'MEGA-TRON', flag: '👑', color: '#b57bff', hp: 350000, turret: 900, mult: 0.7, reward: 40000000, boss: ['h_skull', 'b_titan', 'a_plasma', 'l_stomper', 10], army: [['h_skull', 'b_shield', 'a_tesla', 'l_jet', 9, 3], ['h_brain', 'b_shield', 'a_medic', 'l_jet', 9, 1]], waves: [[18, [['h_skull', 'b_titan', 'a_hammer', 'l_jet', 8, 2]]]], desc: 'THE FINAL BOSS. A giant robot king.' },
+];
+
+// ---------- goals (the tutorial + things to do) ----------
+const GOALS = [
+  { text: 'Turn the CRANK 10 times', check: (s) => s.stats.cranks, need: 10, reward: 10, tab: 'factory' },
+  { text: 'Buy your first Dropper', check: (s) => s.droppers.length, need: 1, reward: 15, tab: 'factory' },
+  { text: 'Build your first robot in the Workshop', check: (s) => s.stats.built, need: 1, reward: 20, tab: 'workshop' },
+  { text: "Attack Rusty's Junkyard (Battle tab)", check: (s) => s.beaten, need: 1, reward: 50, tab: 'battle' },
+  { text: 'Have 3 Droppers', check: (s) => s.droppers.length, need: 3, reward: 60 },
+  { text: 'Have 3 robots in your army', check: (s) => s.robots.length, need: 3, reward: 80, tab: 'workshop' },
+  { text: 'Upgrade a Dropper to Bolts', check: (s) => Math.max(0, ...s.droppers), need: 1, reward: 100 },
+  { text: 'Beat the Tin Can Gang', check: (s) => s.beaten, need: 2, reward: 200, tab: 'battle' },
+  { text: 'Buy the Washer machine', check: (s) => s.machines, need: 1, reward: 200 },
+  { text: 'Research something (Research tab)', check: (s) => Object.keys(s.research).length, need: 1, reward: 150, tab: 'research' },
+  { text: 'Get a robot to level 3', check: (s) => Math.max(0, ...s.robots.map((r) => r.lvl)), need: 3, reward: 400 },
+  { text: 'Win an Arena battle against bots', check: (s) => s.stats.arenaWins, need: 1, reward: 500, tab: 'battle' },
+  { text: 'Beat Bolt Brothers', check: (s) => s.beaten, need: 3, reward: 800, tab: 'battle' },
+  { text: 'Earn 10K coins in total', check: (s) => s.stats.earned, need: 10000, reward: 1000 },
+  { text: 'Beat Gearhead Fortress', check: (s) => s.beaten, need: 4, reward: 2500, tab: 'battle' },
+  { text: 'Have 6 robots', check: (s) => s.robots.length, need: 6, reward: 5000 },
+  { text: 'Beat Circuit City', check: (s) => s.beaten, need: 5, reward: 8000, tab: 'battle' },
+  { text: 'Get a robot to level 6', check: (s) => Math.max(0, ...s.robots.map((r) => r.lvl)), need: 6, reward: 20000 },
+  { text: 'Beat The Iron Wall', check: (s) => s.beaten, need: 6, reward: 30000, tab: 'battle' },
+  { text: 'Get 100 trophies', check: (s) => s.trophies, need: 100, reward: 50000 },
+  { text: 'Beat Laser Lagoon', check: (s) => s.beaten, need: 7, reward: 100000, tab: 'battle' },
+  { text: 'Beat Skull Factory', check: (s) => s.beaten, need: 8, reward: 400000, tab: 'battle' },
+  { text: 'Beat Titan Works', check: (s) => s.beaten, need: 9, reward: 1500000, tab: 'battle' },
+  { text: 'DEFEAT MEGA-TRON!', check: (s) => s.beaten, need: 10, reward: 5000000, tab: 'battle' },
+  { text: 'Get 1000 trophies (you are a legend)', check: (s) => s.trophies, need: 1000, reward: 20000000 },
+];
+
+// fun robot names
+const NAME_A = ['Rusty', 'Sparky', 'Bolt', 'Turbo', 'Mega', 'Tiny', 'Big', 'Captain', 'Sir', 'Doctor', 'Iron', 'Laser', 'Crusher', 'Zappy', 'Robo', 'Clanky', 'Gizmo', 'Nitro', 'Titan', 'Beep'];
+const NAME_B = ['Boop', 'Smash', 'Bot', 'Tron', 'Max', 'Gears', '3000', 'X', 'Punch', 'Byte', 'Nugget', 'Wrench', 'Blaster', 'Zilla', 'Chomp', 'Dozer', 'Beans', 'McBolt', 'Jr.', 'Prime'];
+const randomName = () => pick(NAME_A) + ' ' + pick(NAME_B);
+
+// ============================================================
+//  DRAWING ROBOTS  (every part is drawn with code)
+//  Robots are drawn facing right, feet at (0,0), about 110 tall.
+// ============================================================
+const INK = '#141821';
+function shade(hex, amt) { // amt -1..1 : darker..lighter
+  let c = hex.replace('#', '');
+  if (c.length === 3) c = c.split('').map((x) => x + x).join('');
+  const n = parseInt(c, 16);
+  let r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  if (amt > 0) { r += (255 - r) * amt; g += (255 - g) * amt; b += (255 - b) * amt; }
+  else { r *= 1 + amt; g *= 1 + amt; b *= 1 + amt; }
+  return '#' + ((1 << 24) | (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b)).toString(16).slice(1);
+}
+function metal(c, col, y0, y1) { // shiny metal gradient, light at the top
+  const g = c.createLinearGradient(0, y0, 0, y1);
+  g.addColorStop(0, shade(col, 0.55)); g.addColorStop(0.35, shade(col, 0.1)); g.addColorStop(1, shade(col, -0.45));
+  return g;
+}
+function rr(c, x, y, w, h, r) { // rounded rectangle path
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
+function fillStroke(c, fill, lw = 3) { c.fillStyle = fill; c.fill(); c.lineWidth = lw; c.strokeStyle = INK; c.stroke(); }
+function circle(c, x, y, r, fill, lw = 3) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); fillStroke(c, fill, lw); }
+function shine(c, x, y, w, h) { c.fillStyle = 'rgba(255,255,255,.35)'; rr(c, x, y, w, h, h / 2); c.fill(); }
+function rivet(c, x, y) { c.fillStyle = '#dfe6f2'; c.beginPath(); c.arc(x, y, 1.8, 0, 7); c.fill(); }
+const STEEL = '#8c96a8', DARK = '#3b4152';
+
+// ---------- LEGS: return the hip height ----------
+function drawLegs(c, id, col, p) {
+  const w = p.walk || 0, t = p.t || 0;
+  if (id === 'l_wheels') {
+    rr(c, -22, -30, 44, 12, 5); fillStroke(c, metal(c, DARK, -30, -18));
+    for (const x of [-13, 13]) {
+      circle(c, x, -11, 11, '#22252d');
+      circle(c, x, -11, 5, metal(c, STEEL, -16, -6), 2);
+      c.save(); c.translate(x, -11); c.rotate(w * 2); c.strokeStyle = '#aab3c4'; c.lineWidth = 2;
+      for (let i = 0; i < 3; i++) { c.rotate(Math.PI * 2 / 3); c.beginPath(); c.moveTo(5, 0); c.lineTo(10, 0); c.stroke(); }
+      c.restore();
+    }
+    return -26;
+  }
+  if (id === 'l_walker' || id === 'l_stomper') {
+    const big = id === 'l_stomper', hip = big ? -44 : -32, th = big ? 13 : 7, seg = big ? 22 : 16;
+    for (let i = 0; i < 2; i++) {
+      const sw = Math.sin(w + i * Math.PI) * (p.moving ? 0.5 : 0.08);
+      const hx = (i ? 5 : -5), kx = hx + Math.sin(sw) * seg, ky = hip + Math.cos(sw) * seg;
+      const lift = Math.max(0, -Math.sin(w + i * Math.PI)) * (p.moving ? 5 : 0);
+      const fx = kx + Math.sin(sw * 0.3) * 4, fy = -lift - (big ? 6 : 4);
+      const legCol = i ? col : shade(col, -0.35);
+      c.lineCap = 'round';
+      c.strokeStyle = INK; c.lineWidth = th + 4; c.beginPath(); c.moveTo(hx, hip); c.lineTo(kx, ky); c.lineTo(fx, fy); c.stroke();
+      c.strokeStyle = i ? shade(STEEL, 0.1) : shade(STEEL, -0.3); c.lineWidth = th; c.beginPath(); c.moveTo(hx, hip); c.lineTo(kx, ky); c.lineTo(fx, fy); c.stroke();
+      circle(c, kx, ky, big ? 8 : 5, legCol, 2);
+      rr(c, fx - (big ? 16 : 9), fy - (big ? 6 : 3), big ? 34 : 20, big ? 12 : 7, 3); fillStroke(c, metal(c, i ? DARK : '#2a2e39', fy - 6, fy + 6), 2);
+    }
+    return hip + 2;
+  }
+  if (id === 'l_treads') {
+    rr(c, -28, -26, 56, 26, 12); fillStroke(c, '#23262e');
+    c.save(); rr(c, -28, -26, 56, 26, 12); c.clip();
+    c.strokeStyle = '#4a4f5c'; c.lineWidth = 3;
+    const off = ((w * 6) % 8 + 8) % 8;
+    for (let x = -32 + off; x < 32; x += 8) { c.beginPath(); c.moveTo(x, -26); c.lineTo(x, -22); c.moveTo(x, -4); c.lineTo(x, 0); c.stroke(); }
+    c.restore();
+    for (const x of [-16, 0, 16]) circle(c, x, -13, 6, metal(c, STEEL, -19, -7), 2);
+    rr(c, -24, -32, 48, 9, 4); fillStroke(c, metal(c, col, -32, -23), 2);
+    return -30;
+  }
+  if (id === 'l_spider') {
+    for (let i = 0; i < 4; i++) {
+      const side = i % 2 ? 1 : -1, back = i < 2;
+      const ph = w * 1.4 + i * 1.7, lift = p.moving ? Math.max(0, Math.sin(ph)) * 6 : 0;
+      const hx = side * 6, hy = -26, kx = side * (18 + (back ? 0 : 6)), ky = -40 - lift * 0.5, fx = side * (26 + (back ? -2 : 8)), fy = -lift;
+      c.lineCap = 'round';
+      c.strokeStyle = INK; c.lineWidth = 8; c.beginPath(); c.moveTo(hx, hy); c.lineTo(kx, ky); c.lineTo(fx, fy); c.stroke();
+      c.strokeStyle = back ? '#555c6c' : '#8c96a8'; c.lineWidth = 4; c.beginPath(); c.moveTo(hx, hy); c.lineTo(kx, ky); c.lineTo(fx, fy); c.stroke();
+      circle(c, kx, ky, 3.5, back ? shade(col, -0.4) : col, 2);
+    }
+    circle(c, 0, -26, 10, metal(c, DARK, -36, -16));
+    return -30;
+  }
+  if (id === 'l_jet') {
+    const bob = Math.sin(t * 5) * 3;
+    // flames
+    const fl = 12 + Math.sin(t * 40) * 4;
+    c.fillStyle = '#ff8a1f'; c.beginPath(); c.moveTo(-10, -12 + bob); c.lineTo(0, -12 + bob + fl + 8); c.lineTo(10, -12 + bob); c.fill();
+    c.fillStyle = '#ffe066'; c.beginPath(); c.moveTo(-5, -12 + bob); c.lineTo(0, -12 + bob + fl); c.lineTo(5, -12 + bob); c.fill();
+    c.beginPath(); c.ellipse(0, -20 + bob, 22, 11, 0, 0, Math.PI * 2); fillStroke(c, metal(c, col, -31 + bob, -9 + bob));
+    rr(c, -12, -15 + bob, 24, 6, 3); fillStroke(c, '#2a2e39', 2);
+    shine(c, -14, -28 + bob, 16, 4);
+    return -28 + bob;
+  }
+  return -26;
+}
+
+// ---------- BODIES: return {neck, shoulder} heights ----------
+function drawBody(c, id, col, hip, p) {
+  const t = p.t || 0;
+  if (id === 'b_can') {
+    rr(c, -19, hip - 44, 38, 46, 10); fillStroke(c, metal(c, col, hip - 44, hip));
+    c.strokeStyle = shade(col, -0.5); c.lineWidth = 2;
+    for (const y of [12, 24]) { c.beginPath(); c.moveTo(-17, hip - 44 + y); c.lineTo(17, hip - 44 + y); c.stroke(); }
+    shine(c, -13, hip - 40, 8, 4);
+    return { neck: hip - 42, sh: hip - 34 };
+  }
+  if (id === 'b_box') {
+    rr(c, -22, hip - 44, 44, 46, 4); fillStroke(c, metal(c, col, hip - 44, hip));
+    c.strokeStyle = shade(col, -0.5); c.lineWidth = 2; rr(c, -14, hip - 34, 28, 22, 3); c.stroke();
+    for (const [x, y] of [[-18, 5], [18, 5], [-18, 40], [18, 40]]) rivet(c, x, hip - 44 + y);
+    shine(c, -16, hip - 41, 12, 4);
+    return { neck: hip - 42, sh: hip - 34 };
+  }
+  if (id === 'b_round') {
+    circle(c, 0, hip - 24, 26, metal(c, col, hip - 50, hip + 2));
+    const pulse = 0.5 + Math.sin(t * 4) * 0.5;
+    circle(c, 6, hip - 22, 7, `rgba(77,255,136,${0.5 + pulse * 0.5})`, 2);
+    shine(c, -14, hip - 42, 12, 5);
+    return { neck: hip - 46, sh: hip - 34 };
+  }
+  if (id === 'b_armor') {
+    c.beginPath(); c.moveTo(-28, hip - 50); c.lineTo(28, hip - 50); c.lineTo(22, hip + 2); c.lineTo(-22, hip + 2); c.closePath();
+    fillStroke(c, metal(c, col, hip - 50, hip));
+    c.strokeStyle = shade(col, -0.55); c.lineWidth = 2;
+    for (const y of [16, 30]) { c.beginPath(); c.moveTo(-25, hip - 50 + y); c.lineTo(25, hip - 50 + y); c.stroke(); }
+    rr(c, -8, hip - 44, 16, 10, 3); fillStroke(c, metal(c, STEEL, hip - 44, hip - 34), 2);
+    shine(c, -22, hip - 47, 16, 4);
+    return { neck: hip - 48, sh: hip - 40 };
+  }
+  if (id === 'b_reactor') {
+    rr(c, -22, hip - 48, 44, 50, 10); fillStroke(c, metal(c, col, hip - 48, hip));
+    const pulse = 0.6 + Math.sin(t * 6) * 0.4;
+    c.save(); c.shadowColor = '#4dc8ff'; c.shadowBlur = 14 * pulse;
+    circle(c, 0, hip - 24, 11, `rgba(120,230,255,${0.6 + pulse * 0.4})`, 3);
+    c.restore();
+    circle(c, 0, hip - 24, 5, '#e8fbff', 0.01);
+    shine(c, -16, hip - 45, 12, 4);
+    return { neck: hip - 46, sh: hip - 38 };
+  }
+  if (id === 'b_shield') {
+    c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.moveTo(-12, hip - 46); c.lineTo(-18, hip - 66); c.stroke();
+    c.save(); c.translate(-18, hip - 68); c.rotate(-0.5); c.beginPath(); c.ellipse(0, 0, 9, 4, 0, 0, Math.PI * 2); fillStroke(c, '#d8e0ee', 2); c.restore();
+    rr(c, -24, hip - 50, 48, 52, 14); fillStroke(c, metal(c, col, hip - 50, hip));
+    c.strokeStyle = 'rgba(120,230,255,.8)'; c.lineWidth = 2;
+    c.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; c.lineTo(Math.cos(a) * 10, hip - 24 + Math.sin(a) * 10); } c.closePath(); c.stroke();
+    shine(c, -17, hip - 46, 14, 4);
+    return { neck: hip - 48, sh: hip - 40 };
+  }
+  if (id === 'b_titan') {
+    rr(c, -30, hip - 62, 60, 64, 10); fillStroke(c, metal(c, col, hip - 62, hip));
+    c.save(); rr(c, -30, hip - 22, 60, 12, 2); c.clip();
+    for (let x = -40; x < 40; x += 12) { c.fillStyle = '#ffcc33'; c.beginPath(); c.moveTo(x, hip - 10); c.lineTo(x + 6, hip - 10); c.lineTo(x + 18, hip - 22); c.lineTo(x + 12, hip - 22); c.fill(); }
+    c.restore(); rr(c, -30, hip - 22, 60, 12, 2); c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
+    circle(c, 0, hip - 42, 9, metal(c, STEEL, hip - 51, hip - 33));
+    for (const [x, y] of [[-24, 6], [24, 6], [-24, 34], [24, 34]]) rivet(c, x, hip - 62 + y);
+    shine(c, -22, hip - 58, 18, 5);
+    return { neck: hip - 60, sh: hip - 52 };
+  }
+  return { neck: hip - 40, sh: hip - 32 };
+}
+
+// ---------- HEADS ----------
+function eyes(c, pts, r, look, glow) {
+  for (const [x, y] of pts) {
+    if (glow) { c.save(); c.shadowColor = glow; c.shadowBlur = 8; circle(c, x, y, r, glow, 2); c.restore(); continue; }
+    circle(c, x, y, r, '#fff', 2);
+    c.fillStyle = INK; c.beginPath(); c.arc(x + look * r * 0.35, y + 0.5, r * 0.5, 0, 7); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(x + look * r * 0.35 + 1, y - 1, r * 0.18, 0, 7); c.fill();
+  }
+}
+function drawHead(c, id, col, neck, p) {
+  const t = p.t || 0, blink = (Math.sin(t * 1.3 + (p.seed || 0)) > 0.985);
+  c.save(); c.translate(2, neck);
+  if (p.hurt > 0.5) c.rotate(-0.15);
+  if (id === 'h_bolt') {
+    c.fillStyle = INK; c.fillRect(-2, -32, 4, 8);
+    c.beginPath(); for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; c.lineTo(Math.cos(a) * 5, -33 + Math.sin(a) * 4); } c.closePath(); fillStroke(c, metal(c, STEEL, -37, -29), 2);
+    rr(c, -13, -26, 28, 26, 7); fillStroke(c, metal(c, col, -26, 0));
+    if (blink) { c.fillStyle = INK; c.fillRect(0, -15, 14, 2); } else eyes(c, [[3, -14], [11, -14]], 4.5, 1);
+    shine(c, -9, -23, 9, 3);
+  } else if (id === 'h_visor') {
+    rr(c, -14, -28, 30, 28, 12); fillStroke(c, metal(c, col, -28, 0));
+    c.save(); c.shadowColor = '#ff4d5e'; c.shadowBlur = 10; rr(c, -2, -19, 20, 8, 4); fillStroke(c, '#ff4d5e', 2); c.restore();
+    c.fillStyle = 'rgba(255,255,255,.7)'; c.fillRect(2 + ((t * 30) % 12), -17, 3, 4);
+    shine(c, -9, -25, 10, 3);
+  } else if (id === 'h_cyclops') {
+    circle(c, 1, -15, 16, metal(c, col, -31, 1));
+    if (blink) { c.fillStyle = INK; c.fillRect(0, -16, 16, 3); } else eyes(c, [[7, -16]], 8.5, 1);
+    shine(c, -9, -26, 8, 3);
+  } else if (id === 'h_dome') {
+    rr(c, -16, -8, 34, 9, 4); fillStroke(c, metal(c, STEEL, -8, 1), 2);
+    c.beginPath(); c.arc(1, -8, 17, Math.PI, 0); c.closePath();
+    c.fillStyle = 'rgba(160,220,255,.35)'; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
+    circle(c, 4, -15, 8, metal(c, col, -23, -7), 2);
+    eyes(c, [[3, -16], [8, -16]], 2.3, 1);
+    c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 2; c.beginPath(); c.arc(1, -8, 13, Math.PI * 1.15, Math.PI * 1.45); c.stroke();
+  } else if (id === 'h_brain') {
+    rr(c, -14, -6, 30, 7, 3); fillStroke(c, metal(c, STEEL, -6, 1), 2);
+    rr(c, -12, -32, 26, 27, 6); c.fillStyle = 'rgba(160,230,255,.25)'; c.fill();
+    c.fillStyle = '#ff8fc8'; for (const [x, y, r] of [[-3, -20, 7], [5, -22, 7], [1, -15, 7], [7, -14, 5]]) { c.beginPath(); c.arc(x, y, r, 0, 7); c.fill(); }
+    c.strokeStyle = '#c0508a'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(1, -28); c.quadraticCurveTo(-2, -20, 2, -12); c.stroke();
+    rr(c, -12, -32, 26, 27, 6); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
+    eyes(c, [[4, -2], [10, -2]], 2.5, 1, '#4dff88');
+    shine(c, -9, -30, 4, 12);
+  } else if (id === 'h_skull') {
+    circle(c, 1, -18, 15, metal(c, '#d9dde6', -33, -3));
+    rr(c, -8, -8, 20, 10, 3); fillStroke(c, metal(c, '#c7ccd6', -8, 2));
+    c.strokeStyle = INK; c.lineWidth = 1.5; for (const x of [-3, 2, 7]) { c.beginPath(); c.moveTo(x, -6); c.lineTo(x, 1); c.stroke(); }
+    c.fillStyle = INK; c.beginPath(); c.ellipse(-2, -18, 4.5, 5, 0, 0, 7); c.ellipse(9, -18, 4.5, 5, 0, 0, 7); c.fill();
+    c.save(); c.shadowColor = '#ff2a2a'; c.shadowBlur = 10; c.fillStyle = '#ff3b3b';
+    c.beginPath(); c.arc(-1, -18, 2, 0, 7); c.arc(10, -18, 2, 0, 7); c.fill(); c.restore();
+  } else if (id === 'h_crown') {
+    rr(c, -14, -26, 30, 26, 8); fillStroke(c, metal(c, col, -26, 0));
+    c.beginPath(); c.moveTo(-13, -26); c.lineTo(-13, -40); c.lineTo(-6, -32); c.lineTo(1, -44); c.lineTo(8, -32); c.lineTo(15, -40); c.lineTo(15, -26); c.closePath();
+    fillStroke(c, metal(c, '#ffcc33', -44, -26), 2);
+    circle(c, 1, -35, 2.5, '#ff4d5e', 1);
+    eyes(c, [[4, -14], [11, -14]], 4, 1);
+    c.strokeStyle = INK; c.lineWidth = 2.5; c.beginPath(); c.moveTo(0, -21); c.lineTo(7, -18); c.moveTo(15, -21); c.lineTo(9, -18); c.stroke();
+  }
+  if (p.stun > 0) { // dizzy stars
+    for (let i = 0; i < 3; i++) {
+      const a = t * 5 + i * 2.1; const x = Math.cos(a) * 16, y = -36 + Math.sin(a) * 4;
+      c.fillStyle = '#ffe066'; c.font = 'bold 10px sans-serif'; c.fillText('★', x - 4, y);
+    }
+  }
+  c.restore();
+}
+
+// ---------- ARMS (weapons) ----------
+function drawArm(c, id, col, sh, p, front) {
+  const t = p.t || 0, a = p.atk || 0;
+  const armCol = front ? STEEL : shade(STEEL, -0.35);
+  const bodyCol = front ? col : shade(col, -0.35);
+  c.save(); c.translate(front ? 4 : -4, sh);
+  const upper = (x, y) => { c.lineCap = 'round'; c.strokeStyle = INK; c.lineWidth = 9; c.beginPath(); c.moveTo(0, 0); c.lineTo(x, y); c.stroke(); c.strokeStyle = armCol; c.lineWidth = 5; c.beginPath(); c.moveTo(0, 0); c.lineTo(x, y); c.stroke(); circle(c, 0, 0, 5, bodyCol, 2); };
+  if (id === 'a_punch') {
+    const reach = front ? a * 16 : 0;
+    upper(12 + reach, 12);
+    circle(c, 16 + reach, 12, 9, metal(c, bodyCol, 3, 21));
+    c.strokeStyle = INK; c.lineWidth = 1.5; for (const y of [8, 12, 16]) { c.beginPath(); c.moveTo(20 + reach, y); c.lineTo(24 + reach, y); c.stroke(); }
+  } else if (id === 'a_blaster') {
+    upper(10, 10);
+    const rec = front ? -a * 4 : 0;
+    rr(c, 4 + rec, 4, 26, 10, 3); fillStroke(c, metal(c, DARK, 4, 14));
+    rr(c, 26 + rec, 6, 8, 6, 2); fillStroke(c, bodyCol, 2);
+    if (front && a > 0.6) { c.fillStyle = '#ffe066'; c.beginPath(); c.arc(38, 9, 6 * a, 0, 7); c.fill(); }
+  } else if (id === 'a_saw') {
+    upper(16, 10);
+    c.save(); c.translate(24, 10); c.rotate(t * (front ? 25 : 18));
+    c.beginPath(); for (let i = 0; i < 16; i++) { const r = i % 2 ? 10 : 14; const an = i / 16 * Math.PI * 2; c.lineTo(Math.cos(an) * r, Math.sin(an) * r); } c.closePath();
+    fillStroke(c, metal(c, '#dfe6f2', -14, 14), 2);
+    circle(c, 0, 0, 4, bodyCol, 2);
+    c.restore();
+  } else if (id === 'a_rocket') {
+    upper(10, 12);
+    if (front) {
+      c.save(); c.translate(-10, -12);
+      rr(c, 0, -10, 30, 16, 4); fillStroke(c, metal(c, bodyCol, -10, 6));
+      for (const y of [-6, 1]) { c.fillStyle = a > 0.5 && y < 0 ? '#333' : '#ff4d5e'; c.beginPath(); c.moveTo(30, y - 2.5); c.lineTo(37, y); c.lineTo(30, y + 2.5); c.fill(); }
+      c.fillStyle = '#ffcc33'; c.fillRect(4, -7, 6, 10);
+      c.restore();
+    } else { circle(c, 12, 12, 6, metal(c, bodyCol, 6, 18), 2); }
+  } else if (id === 'a_hammer') {
+    if (!front) { upper(8, 12); circle(c, 10, 14, 5, bodyCol, 2); c.restore(); return; }
+    const ang = lerp(-1.9, 0.5, a > 0 ? Math.sin(a * Math.PI * 0.5) : 0);
+    upper(8, 8);
+    c.save(); c.translate(8, 8); c.rotate(ang);
+    c.strokeStyle = INK; c.lineWidth = 6; c.beginPath(); c.moveTo(0, 0); c.lineTo(34, 0); c.stroke();
+    c.strokeStyle = '#a0703c'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, 0); c.lineTo(34, 0); c.stroke();
+    rr(c, 28, -12, 16, 24, 3); fillStroke(c, metal(c, DARK, -12, 12));
+    c.fillStyle = '#ffcc33'; c.fillRect(30, -3, 12, 6);
+    c.restore();
+  } else if (id === 'a_medic') {
+    upper(12, 10);
+    rr(c, 8, 3, 20, 13, 5); fillStroke(c, metal(c, '#f2f5fb', 3, 16));
+    c.fillStyle = '#35c75a'; c.fillRect(15, 6, 6, 7); c.fillRect(14.5 + -2, 8, 11, 3);
+    if (front && a > 0.3) { c.save(); c.shadowColor = '#4dff88'; c.shadowBlur = 12; circle(c, 31, 9, 4, '#b8ffcf', 1); c.restore(); }
+  } else if (id === 'a_flame') {
+    upper(12, 12);
+    if (front) { rr(c, -22, -8, 12, 22, 5); fillStroke(c, metal(c, '#e8413c', -8, 14), 2); }
+    rr(c, 8, 6, 22, 9, 3); fillStroke(c, metal(c, DARK, 6, 15), 2);
+    rr(c, 28, 4, 6, 13, 2); fillStroke(c, '#ff8a1f', 2);
+  } else if (id === 'a_laser') {
+    upper(10, 10);
+    const rec = front ? -a * 3 : 0;
+    rr(c, 2 + rec, 3, 34, 12, 6); fillStroke(c, metal(c, '#e8eef8', 3, 15));
+    c.fillStyle = bodyCol; c.fillRect(8 + rec, 5, 8, 8);
+    c.save(); c.shadowColor = '#4dc8ff'; c.shadowBlur = 10 + a * 10; circle(c, 36 + rec, 9, 4 + a * 2, '#9df0ff', 2); c.restore();
+  } else if (id === 'a_tesla') {
+    upper(10, 8);
+    if (front) {
+      rr(c, 6, 0, 10, 14, 2); fillStroke(c, metal(c, DARK, 0, 14), 2);
+      for (let i = 0; i < 4; i++) { c.beginPath(); c.ellipse(11, -3 - i * 5, 9 - i, 3, 0, 0, 7); fillStroke(c, '#c77d3a', 2); }
+      c.save(); c.shadowColor = '#b8e6ff'; c.shadowBlur = 14; circle(c, 11, -26, 6, '#dff6ff', 2); c.restore();
+      if (Math.sin(t * 30) > 0.3 || a > 0.5) { c.strokeStyle = '#b8e6ff'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(11, -26); c.lineTo(11 + rand(-12, 12), -26 + rand(-12, 6)); c.stroke(); }
+    } else circle(c, 10, 10, 5, metal(c, bodyCol, 5, 15), 2);
+  } else if (id === 'a_plasma') {
+    upper(8, 10);
+    if (front) {
+      const rec = -a * 6;
+      rr(c, -6 + rec, -2, 46, 20, 8); fillStroke(c, metal(c, DARK, -2, 18));
+      rr(c, 36 + rec, 1, 10, 14, 3); fillStroke(c, metal(c, bodyCol, 1, 15), 2);
+      c.save(); c.shadowColor = '#c07bff'; c.shadowBlur = 16; circle(c, 12 + rec, 8, 6 + Math.sin(t * 8) * 1.5, '#e4c8ff', 2); c.restore();
+    } else circle(c, 10, 10, 6, metal(c, bodyCol, 4, 16), 2);
+  }
+  c.restore();
+}
+
+// Draw a whole robot. d = {head, body, arms, legs, color}
+// p = {face: 1 or -1, t: time, walk: walk phase, moving, atk: attack animation 1..0, hurt: flash 1..0, stun, alpha}
+function drawRobot(c, d, x, y, scale, p = {}) {
+  // when hit, the robot shakes (canvas filters would be too slow on school laptops)
+  const shake = p.hurt > 0 ? (Math.random() - 0.5) * 6 * p.hurt : 0;
+  c.save(); c.translate(x + shake * scale, y); c.scale(scale * (p.face || 1), scale);
+  if (p.alpha != null) c.globalAlpha = clamp(p.alpha, 0, 1);
+  if (p.shadow !== false) { c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(0, 1, 28, 7, 0, 0, 7); c.fill(); }
+  const col = d.color || '#b8c2d6';
+  const bob = p.moving ? Math.abs(Math.sin(p.walk || 0)) * 2 : Math.sin((p.t || 0) * 2 + (p.seed || 0)) * 0.8;
+  const hip = drawLegs(c, d.legs, col, p) - bob;
+  const pts = bodyPoints(d.body, hip);
+  drawArm(c, d.arms, col, pts.sh, p, false);
+  drawBody(c, d.body, col, hip, p);
+  drawHead(c, d.head, col, pts.neck, p);
+  drawArm(c, d.arms, col, pts.sh, p, true);
+  if (p.hurt > 0) { c.globalAlpha = 0.45 * p.hurt; c.fillStyle = '#fff'; c.beginPath(); c.ellipse(0, (hip + pts.neck) / 2, 30, (hip - pts.neck) / 2 + 22, 0, 0, 7); c.fill(); }
+  c.restore();
+}
+function bodyPoints(body, hip) {
+  const m = { b_can: [42, 34], b_box: [42, 34], b_round: [46, 34], b_armor: [48, 40], b_reactor: [46, 38], b_shield: [48, 40], b_titan: [60, 52] }[body] || [40, 32];
+  return { neck: hip - m[0], sh: hip - m[1] };
+}
+
+// small pictures of a single part (for the workshop cards)
+function drawPartThumb(c, id, col, w, h) {
+  const P = PARTS[id];
+  c.save();
+  const p = { t: 0, walk: 0.6, moving: true };
+  if (P.slot === 'legs') { c.translate(w / 2, h - 5); c.scale(0.95, 0.95); drawLegs(c, id, col, p); }
+  else if (P.slot === 'body') { const s = id === 'b_titan' ? 0.78 : 0.95; c.translate(w / 2, h - 4); c.scale(s, s); drawBody(c, id, col, 0, p); }
+  else if (P.slot === 'head') { c.translate(w / 2 - 2, h - 8); c.scale(1.2, 1.2); drawHead(c, id, col, 0, p); }
+  else { c.translate(w / 2 - 14, h / 2 + 2); c.scale(1.05, 1.05); drawArm(c, id, col, 0, { t: 0.3, atk: 0 }, true); }
+  c.restore();
+}
+// draw a canvas that is sized for the screen (sharp on any screen, but not too slow)
+function fitCanvas(cv) {
+  const r = Math.min(window.devicePixelRatio || 1, 1.5);
+  const w = Math.max(1, Math.round(cv.clientWidth * r)), h = Math.max(1, Math.round(cv.clientHeight * r));
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  return r;
+}
+
+// ============================================================
+//  THE SAVE (everything about your game)
+// ============================================================
+function newState() {
+  return {
+    v: 1, coins: 0, droppers: [], belt: 0, crank: 0, machines: 0, barracks: 0,
+    robots: [], research: {}, beaten: 0, trophies: 0, name: '', muted: false, goal: 0, nextId: 1, last: Date.now(),
+    stats: { cranks: 0, built: 0, earned: 0, arenaWins: 0, wins: 0, losses: 0, onlineWins: 0, kills: 0 },
+    ws: { head: 'h_bolt', body: 'b_can', arms: 'a_punch', legs: 'l_wheels', color: COLORS[1], name: '' },
+  };
+}
+let G = newState();
+
+function fixState(s) { // fill in anything missing (old saves, broken codes)
+  const d = newState();
+  for (const k in d) if (s[k] === undefined || s[k] === null) s[k] = d[k];
+  for (const k in d.stats) if (typeof s.stats[k] !== 'number') s.stats[k] = 0;
+  for (const k in d.ws) if (!s.ws[k]) s.ws[k] = d.ws[k];
+  s.droppers = s.droppers.filter((t) => t >= 0 && t < TIERS.length).slice(0, MAX_DROPPERS);
+  s.robots = s.robots.filter((r) => r && PARTS[r.head] && PARTS[r.body] && PARTS[r.arms] && PARTS[r.legs]);
+  for (const r of s.robots) { r.lvl = clamp(r.lvl | 0 || 1, 1, MAX_LVL); r.xp = r.xp || 0; if (r.squad === undefined) r.squad = true; r.name = String(r.name || randomName()).slice(0, 18); }
+  for (const k of SLOTS) if (!PARTS[s.ws[k]]) s.ws[k] = d.ws[k];
+  s.coins = Math.max(0, +s.coins || 0);
+  s.belt = clamp(s.belt | 0, 0, BELT.length - 1); s.crank = clamp(s.crank | 0, 0, CRANK.length - 1);
+  s.machines = clamp(s.machines | 0, 0, MACHINES.length); s.barracks = clamp(s.barracks | 0, 0, BARRACKS.length - 1);
+  s.beaten = clamp(s.beaten | 0, 0, BASES.length);
+  return s;
+}
+const SAVE_KEY = 'robotArmyTycoon.save';
+function saveLocal() { G.last = Date.now(); return Store.set(SAVE_KEY, JSON.stringify(G)); }
+function checksum(str) { let h = 7; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h.toString(36).slice(-4); }
+function makeSaveCode() {
+  G.last = Date.now();
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(G))));
+  return 'RAT1.' + b64 + '.' + checksum(b64);
+}
+function readSaveCode(code) {
+  code = String(code || '').replace(/\s+/g, '');
+  const m = code.match(/^RAT1\.([A-Za-z0-9+/=]+)\.([a-z0-9]{1,4})$/);
+  if (!m) return null;
+  if (checksum(m[1]) !== m[2]) return null;
+  try { return fixState(JSON.parse(decodeURIComponent(escape(atob(m[1]))))); } catch (e) { return null; }
+}
+
+// ============================================================
+//  MONEY
+// ============================================================
+const machineMult = () => MACHINES.slice(0, G.machines).reduce((m, x) => m * x.mult, 1);
+function incomePerSec() {
+  let v = 0;
+  for (const t of G.droppers) v += TIERS[t].value;
+  return v * machineMult() / BELT[G.belt].every;
+}
+const crankValue = () => Math.max(1, Math.round(CRANK[G.crank].base + incomePerSec() * CRANK[G.crank].pct));
+function earn(n) { G.coins += n; G.stats.earned += n; }
+function spend(n) { if (G.coins + 1e-9 < n) { S.no(); toast('Not enough coins! 💰'); return false; } G.coins -= n; return true; }
+function isUnlocked(id) {
+  const u = PARTS[id].unlock;
+  if (u === 'start') return true;
+  if (u.startsWith('r:')) return (G.research[u.slice(2)] || 0) > 0;
+  if (u.startsWith('b:')) return G.beaten >= +u.slice(2);
+  return false;
+}
+function unlockText(id) {
+  const u = PARTS[id].unlock;
+  if (u.startsWith('r:')) return '🔬 Research it';
+  if (u.startsWith('b:')) return '⚔️ Beat base ' + u.slice(2);
+  return '';
+}
+const resLvl = (id) => G.research[id] || 0;
+const bonusNow = () => ({ plating: resLvl('plating'), weapons: resLvl('weapons') });
+const barracksSize = () => BARRACKS[G.barracks];
+const robotCost = (r) => SLOTS.reduce((s, k) => s + PARTS[r[k]].cost, 0);
+const trainCost = (r) => Math.round(robotCost(r) * 0.4 * Math.pow(1.45, r.lvl - 1));
+const repairCost = (r) => Math.ceil(robotCost(r) * 0.3 * (1 - 0.25 * resLvl('cheap')));
+const powerCharges = () => 1 + resLvl('charges');
+
+// ============================================================
+//  ROBOT STATS
+// ============================================================
+function robotStats(r, bonus = { plating: 0, weapons: 0 }, lvl = r.lvl || 1) {
+  const ps = SLOTS.map((k) => PARTS[r[k]]);
+  const sum = (key) => ps.reduce((s, p) => s + (p[key] || 0), 0);
+  const A = PARTS[r.arms], B = PARTS[r.body], H = PARTS[r.head], L = PARTS[r.legs];
+  const lm = 1 + 0.15 * (lvl - 1);
+  const st = {
+    hp: Math.round(sum('hp') * lm * (1 + 0.12 * bonus.plating)),
+    armor: Math.min(0.6, sum('armor')),
+    dmg: A.dmg * (1 + sum('atk')) * lm * (1 + 0.12 * bonus.weapons),
+    heal: (A.heal || 0) * lm * (1 + 0.12 * bonus.weapons),
+    rate: A.rate * (1 - (B.fast || 0)),
+    range: A.range + (H.range || 0),
+    spd: L.spd, crit: sum('crit'), dodge: sum('dodge'), regen: B.regen || 0, shieldGen: B.shieldGen || 0,
+    smart: !!H.smart, kind: A.kind, splash: A.splash || 0, stun: A.stun || 0, burn: A.burn || 0, chain: A.chain || 0,
+    big: !!B.big,
+  };
+  const dps = st.kind === 'medic' ? st.heal / st.rate * 1.2 : st.dmg * (1 + st.crit) / st.rate * (st.splash ? 1.4 : 1) * (st.chain ? 1.8 : 1);
+  const ehp = st.hp / (1 - st.armor) / (1 - st.dodge) * (1 + st.shieldGen) * (1 + st.regen * 0.05);
+  st.power = Math.max(1, Math.round(Math.sqrt(ehp * dps)));
+  return st;
+}
+const squad = () => G.robots.filter((r) => !r.broken && r.squad);
+const armyPower = (list, bonus = bonusNow()) => list.reduce((s, r) => s + robotStats(r, bonus).power, 0);
+
+// ============================================================
+//  THE FACTORY (droppers -> conveyor -> machines -> seller)
+// ============================================================
+const F = { items: [], timers: [], pops: [], W: 800, H: 300, sell: 0, sellFlash: 0, t: 0 };
+function factoryLayout() {
+  const W = F.W, beltY = 200, beltX0 = 16, sellW = 92, beltX1 = W - sellW - 10;
+  const machZone0 = beltX0 + (beltX1 - beltX0) * 0.62;
+  const dropX = (i) => beltX0 + 40 + i * Math.max(24, (machZone0 - beltX0 - 60) / (MAX_DROPPERS - 1));
+  const machX = (i) => machZone0 + 30 + i * ((beltX1 - machZone0 - 50) / (MACHINES.length - 1));
+  return { W, beltY, beltX0, beltX1, sellX: W - sellW - 6, sellW, dropX, machX };
+}
+const beltSpeed = () => 70 + G.belt * 22;
+function factoryStep(dt) {
+  F.t += dt;
+  const L = factoryLayout();
+  const every = BELT[G.belt].every;
+  while (F.timers.length < G.droppers.length) F.timers.push(Math.random() * every);
+  G.droppers.forEach((tier, i) => {
+    F.timers[i] += dt;
+    if (F.timers[i] >= every) {
+      F.timers[i] -= every;
+      if (F.items.length < 150) F.items.push({ x: L.dropX(i), y: 120, vy: 0, tier, value: TIERS[tier].value, m: 0, onBelt: false, rot: Math.random() * 6 });
+      else earn(TIERS[tier].value * machineMult()); // too many items: just pay
+    }
+  });
+  const sp = beltSpeed();
+  for (let k = F.items.length - 1; k >= 0; k--) {
+    const it = F.items[k];
+    if (!it.onBelt) {
+      it.vy += 900 * dt; it.y += it.vy * dt;
+      if (it.y >= L.beltY - 8) { it.y = L.beltY - 8; it.onBelt = true; }
+    } else {
+      it.x += sp * dt;
+      while (it.m < G.machines && it.x >= L.machX(it.m)) { it.value *= MACHINES[it.m].mult; it.m++; it.flash = 0.3; }
+      // items that dropped before a machine was bought still skip it: that's ok
+      while (it.m < G.machines && it.x >= L.machX(it.m)) it.m++;
+    }
+    if (it.flash) it.flash = Math.max(0, it.flash - dt);
+    if (it.x >= L.sellX + 10) {
+      earn(it.value); F.sell += it.value; F.sellFlash = 0.2;
+      if (F.pops.length < 30) F.pops.push({ x: L.sellX + L.sellW / 2 + rand(-15, 15), y: L.beltY - 40, v: it.value, life: 1 });
+      F.items.splice(k, 1);
+      if (curTab === 'factory' && !battleOpen()) S.coin();
+    }
+  }
+  for (let k = F.pops.length - 1; k >= 0; k--) { const p = F.pops[k]; p.life -= dt; p.y -= 40 * dt; if (p.life <= 0) F.pops.splice(k, 1); }
+  if (F.sellFlash > 0) F.sellFlash -= dt;
+}
+function drawItem(c, it, x, y) {
+  const T = TIERS[it.tier], col = T.color;
+  c.save(); c.translate(x, y); c.rotate(it.onBelt ? 0 : it.rot + F.t * 5);
+  if (it.m > 0) { c.shadowColor = MACHINES[it.m - 1].color; c.shadowBlur = 8; }
+  if (T.shape === 'scrap') { c.beginPath(); c.moveTo(-7, 3); c.lineTo(-4, -6); c.lineTo(5, -5); c.lineTo(8, 4); c.lineTo(0, 7); c.closePath(); fillStroke(c, col, 2); }
+  else if (T.shape === 'bolt') { rr(c, -3, -8, 6, 14, 2); fillStroke(c, col, 2); rr(c, -7, -9, 14, 5, 2); fillStroke(c, col, 2); }
+  else if (T.shape === 'gear') { c.beginPath(); for (let i = 0; i < 16; i++) { const r = i % 2 ? 6 : 9; const a = i / 16 * Math.PI * 2; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); fillStroke(c, col, 2); circle(c, 0, 0, 2.5, '#333', 1); }
+  else if (T.shape === 'chip') { c.fillStyle = '#ccc'; for (let i = -1; i <= 1; i++) { c.fillRect(-11, i * 4 - 1, 22, 2); } rr(c, -8, -7, 16, 14, 2); fillStroke(c, col, 2); }
+  else if (T.shape === 'core') { circle(c, 0, 0, 8, col, 2); circle(c, 0, 0, 3.5, '#e8fbff', 1); }
+  else if (T.shape === 'orb') { circle(c, 0, 0, 9, col, 2); c.fillStyle = 'rgba(255,255,255,.6)'; c.beginPath(); c.arc(-3, -3, 3, 0, 7); c.fill(); }
+  else { c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 4.5 : 10; const a = i / 10 * Math.PI * 2 - Math.PI / 2; c.lineTo(Math.cos(a) * r, Math.sin(a) * r); } c.closePath(); fillStroke(c, col, 2); }
+  c.restore();
+}
+function drawFactory() {
+  const cv = $('factoryCanvas'); if (!cv.clientWidth) return;
+  const r = fitCanvas(cv), c = cv.getContext('2d');
+  F.W = cv.clientWidth; F.H = cv.clientHeight;
+  c.setTransform(r, 0, 0, r, 0, 0);
+  const L = factoryLayout(), W = L.W, H = F.H, t = F.t;
+  // wall + floor
+  let g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#2a3450'); g.addColorStop(0.75, '#1c2336'); g.addColorStop(0.76, '#141926'); g.addColorStop(1, '#10141f');
+  c.fillStyle = g; c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(255,255,255,.04)'; c.lineWidth = 2;
+  for (let x = 0; x < W; x += 60) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, H * 0.75); c.stroke(); }
+  // windows with a night city
+  for (let x = 30; x < W - 120; x += 180) {
+    rr(c, x, 18, 110, 50, 6); c.fillStyle = '#0d1424'; c.fill(); c.lineWidth = 4; c.strokeStyle = '#3a4760'; c.stroke();
+    c.fillStyle = '#ffe06655'; for (let k = 0; k < 6; k++) c.fillRect(x + 10 + k * 16, 40 + (k * 7) % 20, 6, 28 - (k * 7) % 20);
+  }
+  // the pipe that feeds the droppers
+  rr(c, L.beltX0, 78, L.dropX(MAX_DROPPERS - 1) - L.beltX0 + 30, 14, 6); fillStroke(c, metal(c, '#5a6680', 78, 92), 2);
+  // droppers
+  for (let i = 0; i < MAX_DROPPERS; i++) {
+    const x = L.dropX(i), tier = G.droppers[i];
+    if (tier === undefined) {
+      c.setLineDash([4, 4]); c.strokeStyle = 'rgba(255,255,255,.18)'; c.lineWidth = 2; rr(c, x - 14, 92, 28, 30, 5); c.stroke(); c.setLineDash([]);
+      continue;
+    }
+    const col = TIERS[tier].color;
+    const pump = F.timers[i] !== undefined ? Math.max(0, 1 - F.timers[i] / BELT[G.belt].every * 6) : 0;
+    rr(c, x - 15, 90, 30, 26 + pump * 3, 6); fillStroke(c, metal(c, col, 90, 118));
+    rr(c, x - 8, 114 + pump * 3, 16, 8, 3); fillStroke(c, metal(c, '#3b4152', 114, 122), 2);
+    c.fillStyle = '#10141f'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center'; c.fillText(TIERS[tier].name[0], x, 107);
+  }
+  // conveyor belt
+  rr(c, L.beltX0, L.beltY, L.beltX1 - L.beltX0 + 30, 22, 10); fillStroke(c, '#23262e');
+  c.save(); rr(c, L.beltX0, L.beltY, L.beltX1 - L.beltX0 + 30, 22, 10); c.clip();
+  c.strokeStyle = '#555c6c'; c.lineWidth = 3; const off = (t * beltSpeed()) % 18;
+  for (let x = L.beltX0 - 18 + off; x < L.beltX1 + 40; x += 18) { c.beginPath(); c.moveTo(x, L.beltY + 2); c.lineTo(x - 6, L.beltY + 20); c.stroke(); }
+  c.restore();
+  for (let x = L.beltX0 + 12; x < L.beltX1 + 30; x += 34) circle(c, x, L.beltY + 30, 6, metal(c, '#8c96a8', L.beltY + 24, L.beltY + 36), 2);
+  // items
+  for (const it of F.items) drawItem(c, it, it.x, it.y);
+  // machines
+  for (let i = 0; i < MACHINES.length; i++) {
+    const x = L.machX(i), M = MACHINES[i];
+    if (i >= G.machines) {
+      c.setLineDash([4, 4]); c.strokeStyle = 'rgba(255,255,255,.15)'; c.lineWidth = 2; rr(c, x - 22, L.beltY - 70, 44, 62, 8); c.stroke(); c.setLineDash([]);
+      c.fillStyle = 'rgba(255,255,255,.25)'; c.font = 'bold 18px sans-serif'; c.textAlign = 'center'; c.fillText('?', x, L.beltY - 32);
+      continue;
+    }
+    // arch over the belt
+    rr(c, x - 24, L.beltY - 72, 48, 16, 5); fillStroke(c, metal(c, M.color, L.beltY - 72, L.beltY - 56));
+    rr(c, x - 24, L.beltY - 58, 8, 58, 3); fillStroke(c, metal(c, '#5a6680', 0, 300), 2);
+    rr(c, x + 16, L.beltY - 58, 8, 58, 3); fillStroke(c, metal(c, '#5a6680', 0, 300), 2);
+    c.save(); c.globalAlpha = 0.35 + Math.sin(t * 6 + i) * 0.15; c.fillStyle = M.color; c.fillRect(x - 16, L.beltY - 56, 32, 54); c.restore();
+    if (i === 0) { c.fillStyle = '#bfe8ff'; for (let k = 0; k < 4; k++) { c.beginPath(); c.arc(x - 10 + k * 7, L.beltY - 50 + ((t * 60 + k * 13) % 40), 2, 0, 7); c.fill(); } }
+    if (i === 3) { c.strokeStyle = '#ff4d5e'; c.lineWidth = 2; c.beginPath(); c.moveTo(x, L.beltY - 56); c.lineTo(x + Math.sin(t * 20) * 10, L.beltY - 5); c.stroke(); }
+    c.fillStyle = '#fff'; c.font = 'bold 10px sans-serif'; c.textAlign = 'center'; c.fillText('×' + M.mult, x, L.beltY - 60);
+  }
+  // seller (furnace)
+  const sx = L.sellX, sy = L.beltY - 90;
+  rr(c, sx, sy, L.sellW, 112, 10); fillStroke(c, metal(c, '#2e7d4a', sy, sy + 112));
+  rr(c, sx + 12, sy + 52, L.sellW - 24, 44, 8); c.fillStyle = F.sellFlash > 0 ? '#ffe066' : '#ff8a1f'; c.fill(); c.lineWidth = 3; c.strokeStyle = INK; c.stroke();
+  c.fillStyle = '#fff'; c.font = 'bold 22px sans-serif'; c.textAlign = 'center'; c.fillText('💰', sx + L.sellW / 2, sy + 36);
+  c.font = 'bold 11px sans-serif'; c.fillText('SELLER', sx + L.sellW / 2, sy + 108);
+  // floating +coins
+  c.font = 'bold 15px sans-serif';
+  for (const p of F.pops) { c.globalAlpha = clamp(p.life, 0, 1); c.fillStyle = '#4dff88'; c.strokeStyle = '#000'; c.lineWidth = 3; c.strokeText('+' + fmt(p.v), p.x, p.y); c.fillText('+' + fmt(p.v), p.x, p.y); }
+  c.globalAlpha = 1;
+  if (!G.droppers.length) {
+    c.fillStyle = '#ffcc33'; c.font = 'bold 15px sans-serif'; c.textAlign = 'center';
+    c.fillText('Turn the CRANK to make coins, then buy a DROPPER! ⬇', W / 2, 160);
+  }
+}
+
+// ============================================================
+//  BATTLE ENGINE  (robots fight by themselves)
+//  The same engine runs campaign battles, arena vs bots, and online
+//  battles (the host's computer runs it and sends it to everyone).
+// ============================================================
+const FIELD = { w: 1000, h: 560, top: 125, bottom: 535 };
+const WORLD_S = 0.68; // robots are drawn at 68% size on the battlefield
+const TEAM_COLORS = ['#2f8cff', '#ff4d5e', '#35c75a', '#ffc629'];
+const SPAWNS = {
+  2: [[150, 330], [850, 330]],
+  3: [[150, 250], [850, 250], [500, 480]],
+  4: [[150, 200], [850, 200], [150, 460], [850, 460]],
+};
+const POWERS = {
+  repair: { ico: '🔧', name: 'Repair', aim: false, desc: 'Heal all your robots' },
+  shield: { ico: '🛡️', name: 'Shield', aim: false, desc: 'Shield all your robots' },
+  emp:    { ico: '⚡', name: 'EMP',    aim: true,  desc: 'Click to freeze enemies' },
+  air:    { ico: '✈️', name: 'Airstrike', aim: true, desc: 'Click to bomb enemies' },
+};
+
+function createBattle(cfg) {
+  const rng = mulberry(cfg.seed || 1);
+  const b = {
+    mode: cfg.mode, teams: cfg.teams, units: [], projs: [], events: [], time: 0, over: false, winner: -1,
+    limit: cfg.limit || 150, nextId: 1, rng, base: null, pbase: null, waves: [], seed: cfg.seed || 1, baseIdx: cfg.baseIdx,
+  };
+  b.teams.forEach((t) => { t.charges = Object.assign({ repair: 0, shield: 0, emp: 0, air: 0 }, t.charges || {}); t.botTimer = 2; });
+  const n = b.teams.length;
+  const spawns = cfg.mode === 'campaign' ? [[150, 330], [800, 330]] : SPAWNS[Math.max(2, n)];
+  const byTeam = {};
+  for (const d of cfg.units) (byTeam[d.team] = byTeam[d.team] || []).push(d);
+  for (const tm in byTeam) {
+    const list = byTeam[tm], [sx, sy] = spawns[tm];
+    list.forEach((d, i) => {
+      const cols = Math.ceil(list.length / 4), col = Math.floor(i / 4), row = i % 4, rows = Math.min(4, list.length - col * 4);
+      const dirX = sx < 500 ? -1 : 1;
+      const x = sx + dirX * col * 50 + (rng() - 0.5) * 16;
+      const spread = n >= 3 && cfg.mode !== 'campaign' ? 55 : 80;
+      const y = sy + (row - (rows - 1) / 2) * spread + (rng() - 0.5) * 16;
+      addUnit(b, d, x, y);
+    });
+  }
+  if (cfg.mode === 'campaign') {
+    const B = cfg.base;
+    b.base = { isBase: true, team: 1, x: 945, y: 330, r: 55, hp: B.hp, maxHp: B.hp, turret: B.turret, cd: 1, alive: true, armor: 0, dodge: 0, ang: Math.PI };
+    b.pbase = { x: 40, y: 330 };
+    b.waves = (B.waves || []).map(([t, army]) => ({ t, army, done: false }));
+  }
+  return b;
+}
+function addUnit(b, d, x, y) {
+  const st = robotStats(d.design, d.bonus || { plating: 0, weapons: 0 }, d.lvl || 1);
+  const scale = d.boss ? 2.1 : st.big ? 1.3 : 1;
+  const hpMul = (d.boss ? 11 : 1) * (d.mult || 1);
+  const u = Object.assign({}, st, {
+    id: b.nextId++, team: d.team, x, y, design: d.design, name: d.name || '', lvl: d.lvl || 1, robotId: d.robotId, owner: d.owner,
+    maxHp: st.hp * hpMul, hp: st.hp * hpMul, dmg: st.dmg * (d.boss ? 0.45 : 1) * (d.mult || 1), heal: st.heal * (d.mult || 1), rate: st.rate * (d.boss ? 1.5 : 1), scale, r: 19 * scale, boss: !!d.boss,
+    shield: st.hp * hpMul * st.shieldGen, maxShield: st.hp * hpMul * st.shieldGen, pShield: 0, pShieldT: 0,
+    cd: b.rng() * st.rate + 0.3, stunT: 0, burnT: 0, burnDps: 0, calm: 0, alive: true, target: null, retarget: 0,
+    face: x < 500 ? 1 : -1, kills: 0, dmgDone: 0,
+  });
+  b.units.push(u);
+  return u;
+}
+const enemiesOf = (b, u) => b.units.filter((o) => o.alive && o.team !== u.team);
+function nearest(list, u, maxD = 1e9) {
+  let best = null, bd = maxD;
+  for (const o of list) { const d = Math.hypot(o.x - u.x, o.y - u.y) - (o.r || 0); if (d < bd) { bd = d; best = o; } }
+  return best;
+}
+function hurt(b, t, amount, src, opt = {}) {
+  if (!t.alive || amount <= 0) return 0;
+  if (!opt.sure && t.dodge && b.rng() < t.dodge) { b.events.push({ k: 'miss', x: t.x, y: t.y - 75 * (t.scale || 1) }); return 0; }
+  let crit = false;
+  if (!opt.sure && src && src.crit && b.rng() < src.crit) { amount *= 2; crit = true; }
+  amount *= 1 - (t.armor || 0);
+  if (t.pShield > 0) { const a = Math.min(t.pShield, amount); t.pShield -= a; amount -= a; }
+  if (t.shield > 0) { const a = Math.min(t.shield, amount); t.shield -= a; amount -= a; }
+  t.hp -= amount; t.calm = 0;
+  if (src) src.dmgDone = (src.dmgDone || 0) + amount;
+  if (!opt.quiet) b.events.push({ k: 'hit', id: t.id, x: t.x, y: t.y, a: Math.round(amount), crit, big: amount > t.maxHp * 0.08 });
+  if (t.hp <= 0) {
+    t.hp = 0; t.alive = false;
+    if (t.isBase) b.events.push({ k: 'boom', x: t.x, y: t.y, r: 140, big: true });
+    else { b.events.push({ k: 'die', id: t.id, x: t.x, y: t.y, s: t.scale }); if (src) src.kills++; }
+  }
+  return amount;
+}
+function splashHurt(b, x, y, radius, amount, src, team) {
+  for (const o of b.units) if (o.alive && o.team !== team && Math.hypot(o.x - x, o.y - y) < radius + o.r) hurt(b, o, amount, src, { quiet: false });
+  if (b.base && b.base.alive && team !== 1 && Math.hypot(b.base.x - x, b.base.y - y) < radius + b.base.r) hurt(b, b.base, amount, src);
+}
+function muzzle(u) { return { x: u.x + u.face * 22 * u.scale * WORLD_S, y: u.y - 42 * u.scale * WORLD_S }; }
+
+function attack(b, u, t) {
+  u.atkAnim = 1; b.events.push({ k: 'atk', id: u.id, kind: u.kind });
+  const m = muzzle(u);
+  const ty = t.isBase ? t.y : t.y - 25 * (t.scale || 1) * WORLD_S;
+  switch (u.kind) {
+    case 'punch': case 'saw':
+      hurt(b, t, u.dmg, u); b.events.push({ k: 'spark', x: t.x - u.face * 8, y: ty, kind: u.kind }); break;
+    case 'hammer':
+      hurt(b, t, u.dmg, u); if (!t.isBase) t.stunT = Math.max(t.stunT || 0, u.stun);
+      for (const o of b.units) if (o !== t && o.alive && o.team !== u.team && Math.hypot(o.x - t.x, o.y - t.y) < u.splash + o.r) hurt(b, o, u.dmg * 0.5, u);
+      b.events.push({ k: 'slam', x: t.x, y: t.y }); break;
+    case 'blaster':
+      b.projs.push({ kind: 'blaster', x: m.x, y: m.y, tid: t.id, tb: t.isBase, tx: t.x, ty, spd: 520, dmg: u.dmg, src: u.id, team: u.team }); break;
+    case 'rocket':
+      b.projs.push({ kind: 'rocket', x: m.x, y: m.y - 8, tid: t.id, tb: t.isBase, tx: t.x, ty, spd: 300, dmg: u.dmg, splash: u.splash, src: u.id, team: u.team }); break;
+    case 'plasma':
+      b.projs.push({ kind: 'plasma', x: m.x, y: m.y, tid: t.id, tb: t.isBase, tx: t.x, ty, spd: 340, dmg: u.dmg, splash: u.splash, src: u.id, team: u.team }); break;
+    case 'laser':
+      hurt(b, t, u.dmg, u); b.events.push({ k: 'beam', x1: m.x, y1: m.y, x2: t.x, y2: ty, c: '#6fe8ff' }); break;
+    case 'flame':
+      hurt(b, t, u.dmg, u, { quiet: true });
+      if (!t.isBase) { t.burnT = 2; t.burnDps = Math.max(t.burnDps || 0, u.dmg * 1.5); }
+      b.events.push({ k: 'flame', id: u.id, x1: m.x, y1: m.y, x2: t.x, y2: ty }); break;
+    case 'tesla': {
+      const pts = [[m.x, m.y - 14]];
+      let cur = t; const hit = new Set();
+      for (let i = 0; i <= u.chain && cur; i++) {
+        hit.add(cur.id); pts.push([cur.x, cur.isBase ? cur.y : cur.y - 25 * (cur.scale || 1) * WORLD_S]);
+        hurt(b, cur, u.dmg * Math.pow(0.7, i), u);
+        const next = nearest(b.units.filter((o) => o.alive && o.team !== u.team && !hit.has(o.id)), cur, 130);
+        cur = next;
+      }
+      b.events.push({ k: 'zap', pts }); break;
+    }
+    case 'medic':
+      t.hp = Math.min(t.maxHp, t.hp + u.heal); b.events.push({ k: 'heal', id: t.id, x1: m.x, y1: m.y, x2: t.x, y2: ty, a: Math.round(u.heal) }); break;
+  }
+}
+
+function usePower(b, team, kind, x, y) {
+  const tm = b.teams[team];
+  if (b.over || !tm || !tm.charges[kind]) return false;
+  tm.charges[kind]--;
+  const mine = b.units.filter((u) => u.alive && u.team === team);
+  // (the boss is so big that it only gets a little from power-ups)
+  if (kind === 'repair') { for (const u of mine) { u.hp = Math.min(u.maxHp, u.hp + u.maxHp * (u.boss ? 0.08 : 0.4)); u.burnT = 0; } }
+  if (kind === 'shield') { for (const u of mine) { u.pShield = u.maxHp * (u.boss ? 0.08 : 0.5); u.pShieldT = 8; } }
+  if (kind === 'emp') {
+    for (const o of b.units) if (o.alive && o.team !== team && Math.hypot(o.x - x, o.y - y) < 130 + o.r) { o.stunT = Math.max(o.stunT, o.boss ? 2 : 3); hurt(b, o, o.maxHp * (o.boss ? 0.02 : 0.06), null, { sure: true, quiet: true }); }
+  }
+  if (kind === 'air') b.projs.push({ kind: 'bomb', x, y: -40, tx: x, ty: y, t: 0.9, team, src: 0 });
+  b.events.push({ k: 'pu', kind, team, x, y });
+  return true;
+}
+
+// bots (and the campaign enemy) use power-ups too
+function botPowers(b, dt) {
+  b.teams.forEach((tm, ti) => {
+    if (!tm.bot) return;
+    tm.botTimer -= dt; if (tm.botTimer > 0) return;
+    tm.botTimer = 1 + b.rng();
+    const mine = b.units.filter((u) => u.alive && u.team === ti);
+    if (!mine.length) return;
+    const hpPct = mine.reduce((s, u) => s + u.hp / u.maxHp, 0) / mine.length;
+    if (tm.charges.repair && hpPct < 0.45) return usePower(b, ti, 'repair');
+    const foes = b.units.filter((u) => u.alive && u.team !== ti);
+    if (tm.charges.shield && foes.some((f) => mine.some((m) => Math.hypot(f.x - m.x, f.y - m.y) < 120))) return usePower(b, ti, 'shield');
+    for (const kind of ['emp', 'air']) {
+      if (!tm.charges[kind]) continue;
+      let best = null, bestN = 2;
+      for (const f of foes) { const nn = foes.filter((o) => Math.hypot(o.x - f.x, o.y - f.y) < 110).length; if (nn > bestN) { bestN = nn; best = f; } }
+      if (best && b.time > 8) return usePower(b, ti, kind, best.x, best.y);
+    }
+  });
+}
+
+function stepBattle(b, dt) {
+  if (b.over) return;
+  b.time += dt;
+  // enemy reinforcements
+  for (const w of b.waves) if (!w.done && b.time >= w.t && b.base && b.base.alive) {
+    w.done = true; b.events.push({ k: 'wave' });
+    let i = 0;
+    for (const [h, bo, a, l, lvl, cnt] of w.army) for (let k = 0; k < cnt; k++, i++) {
+      addUnit(b, { team: 1, design: { head: h, body: bo, arms: a, legs: l, color: BASES[b.baseIdx].color }, lvl, bonus: enemyBonus(b.baseIdx), mult: BASES[b.baseIdx].mult }, 880 + (i % 2) * 20, 250 + (i * 57) % 170);
+    }
+  }
+  const alive = b.units.filter((u) => u.alive);
+  for (const u of alive) {
+    if (u.atkAnim) u.atkAnim = Math.max(0, u.atkAnim - dt * 4);
+    if (u.burnT > 0) { u.burnT -= dt; hurt(b, u, u.burnDps * dt, null, { sure: true, quiet: true }); if (!u.alive) continue; }
+    if (u.pShieldT > 0) { u.pShieldT -= dt; if (u.pShieldT <= 0) u.pShield = 0; }
+    u.calm += dt;
+    if (u.regen) u.hp = Math.min(u.maxHp, u.hp + u.maxHp * u.regen / 100 * dt);
+    if (u.maxShield && u.calm > 3) u.shield = Math.min(u.maxShield, u.shield + u.maxShield * 0.2 * dt);
+    u.cd -= dt;
+    if (u.stunT > 0) { u.stunT -= dt; continue; }
+    // choose a target
+    u.retarget -= dt;
+    const tgtDead = !u.target || !u.target.alive;
+    if (tgtDead || u.retarget <= 0) {
+      u.retarget = 0.4 + b.rng() * 0.3;
+      const foes = enemiesOf(b, u);
+      if (b.base && b.base.alive && u.team !== 1) foes.push(b.base);
+      if (u.kind === 'medic') {
+        let best = null, low = 0.97;
+        for (const o of b.units) if (o.alive && o.team === u.team && o !== u && o.hp / o.maxHp < low && Math.hypot(o.x - u.x, o.y - u.y) < 450) { low = o.hp / o.maxHp; best = o; }
+        u.healT = best; u.target = nearest(foes, u);
+      } else if (u.smart) {
+        const close = foes.filter((o) => Math.hypot(o.x - u.x, o.y - u.y) < 380 && !o.isBase);
+        u.target = close.length ? close.reduce((a, o) => (o.hp < a.hp ? o : a)) : nearest(foes, u);
+      } else u.target = nearest(foes, u);
+    }
+    let goal = u.kind === 'medic' ? (u.healT && u.healT.alive ? u.healT : null) : u.target;
+    if (u.kind === 'medic' && !goal) { // stay behind friends
+      const friends = b.units.filter((o) => o.alive && o.team === u.team && o !== u);
+      goal = friends.length ? nearest(friends, u) : null;
+      if (goal && Math.hypot(goal.x - u.x, goal.y - u.y) < 70) goal = null;
+    }
+    let moving = false;
+    if (goal) {
+      const dx = goal.x - u.x, dy = goal.y - u.y, d = Math.hypot(dx, dy);
+      const reach = d - (goal.r || 0) - u.r * 0.5;
+      if (Math.abs(dx) > 2) u.face = dx > 0 ? 1 : -1;
+      const inRange = reach <= u.range;
+      if (inRange && (u.kind !== 'medic' || goal === u.healT)) {
+        if (u.cd <= 0) { attack(b, u, goal); u.cd = u.rate; }
+      } else if (d > 1) {
+        const sp = u.spd * dt;
+        u.x += dx / d * sp; u.y += dy / d * sp * 0.9; moving = true;
+      }
+    }
+    // don't stand inside each other
+    for (const o of alive) {
+      if (o === u || !o.alive) continue;
+      const dx = u.x - o.x, dy = (u.y - o.y) * 1.6, d = Math.hypot(dx, dy), min = (u.r + o.r) * 0.9;
+      if (d < min && d > 0.01) { const push = (min - d) * 0.5; u.x += dx / d * push; u.y += dy / d * push * 0.6; }
+    }
+    if (b.base && b.base.alive && u.team !== 1) { // can't walk into the enemy base
+      const dx = u.x - b.base.x, dy = u.y - b.base.y, d = Math.hypot(dx, dy), min = b.base.r + u.r * 0.6;
+      if (d < min) { u.x = b.base.x + dx / d * min; u.y = b.base.y + dy / d * min; }
+    }
+    u.x = clamp(u.x, 20, FIELD.w - 20); u.y = clamp(u.y, FIELD.top, FIELD.bottom);
+    u.moving = moving;
+  }
+  // enemy base turret
+  if (b.base && b.base.alive && b.base.turret) {
+    b.base.cd -= dt;
+    const t = nearest(b.units.filter((u) => u.alive && u.team === 0), b.base, 330);
+    if (t) {
+      b.base.ang = Math.atan2(t.y - (b.base.y - 70), t.x - b.base.x);
+      if (b.base.cd <= 0) { b.base.cd = 1.4; b.projs.push({ kind: 'blaster', x: b.base.x - 20, y: b.base.y - 72, tid: t.id, tx: t.x, ty: t.y - 20, spd: 500, dmg: b.base.turret, src: 0, team: 1, turret: true }); b.events.push({ k: 'turret' }); }
+    }
+  }
+  // bullets and rockets
+  for (let i = b.projs.length - 1; i >= 0; i--) {
+    const p = b.projs[i];
+    if (p.kind === 'bomb') {
+      p.t -= dt; p.y = lerp(p.ty, -40, Math.max(0, p.t / 0.9));
+      if (p.t <= 0) {
+        for (const o of b.units) if (o.alive && o.team !== p.team && Math.hypot(o.x - p.tx, o.y - p.ty) < 110 + o.r) hurt(b, o, o.maxHp * (o.boss ? 0.05 : 0.3) + 40, null, { sure: true });
+        if (b.base && b.base.alive && p.team !== 1 && Math.hypot(b.base.x - p.tx, b.base.y - p.ty) < 110 + b.base.r) hurt(b, b.base, b.base.maxHp * 0.05, null, { sure: true });
+        b.events.push({ k: 'boom', x: p.tx, y: p.ty, r: 110, big: true });
+        b.projs.splice(i, 1);
+      }
+      continue;
+    }
+    const t = p.tb ? b.base : b.units.find((u) => u.id === p.tid);
+    if (t && t.alive) { p.tx = t.x; p.ty = p.tb ? t.y : t.y - 25 * (t.scale || 1) * WORLD_S; }
+    const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy), step = p.spd * dt;
+    if (d <= step + 4) {
+      const src = b.units.find((u) => u.id === p.src) || null;
+      if (p.splash) { splashHurt(b, p.tx, p.ty, p.splash, p.dmg, src, p.team); b.events.push({ k: 'boom', x: p.tx, y: p.ty, r: p.splash, big: p.kind === 'plasma' }); }
+      else if (t && t.alive) { hurt(b, t, p.dmg, src); b.events.push({ k: 'spark', x: p.tx, y: p.ty, kind: 'blaster' }); }
+      b.projs.splice(i, 1);
+    } else { p.x += dx / d * step; p.y += dy / d * step; p.a = Math.atan2(dy, dx); }
+  }
+  botPowers(b, dt);
+  // who won?
+  const teamsAlive = new Set(b.units.filter((u) => u.alive).map((u) => u.team));
+  if (b.mode === 'campaign') {
+    if (!b.base.alive) endBattle(b, 0);
+    else if (!teamsAlive.has(0)) endBattle(b, 1);
+    else if (b.time >= b.limit) endBattle(b, 1, 'time');
+  } else {
+    if (teamsAlive.size <= 1) endBattle(b, teamsAlive.size ? [...teamsAlive][0] : -1);
+    else if (b.time >= b.limit) { // time up: the team with the most health left wins
+      let best = -1, bh = -1;
+      for (const tm of teamsAlive) { const h = b.units.filter((u) => u.alive && u.team === tm).reduce((s, u) => s + u.hp / u.maxHp, 0); if (h > bh) { bh = h; best = tm; } }
+      endBattle(b, best, 'time');
+    }
+  }
+}
+function endBattle(b, winner, why) {
+  b.over = true; b.winner = winner; b.why = why || '';
+  // who got knocked out first (for 3-4 player arenas)
+  b.events.push({ k: 'end', winner });
+}
+function enemyBonus(i) { return { plating: Math.floor(i * 0.6), weapons: Math.floor(i * 0.6) }; }
+function campaignEnemies(i) {
+  const B = BASES[i], list = [];
+  for (const [h, bo, a, l, lvl, cnt] of B.army) for (let k = 0; k < cnt; k++) list.push({ team: 1, design: { head: h, body: bo, arms: a, legs: l, color: B.color }, lvl, bonus: enemyBonus(i), mult: B.mult });
+  if (B.boss) { const [h, bo, a, l, lvl] = B.boss; list.unshift({ team: 1, design: { head: h, body: bo, arms: a, legs: l, color: '#6a3fb0' }, lvl, bonus: enemyBonus(i), boss: true, name: 'MEGA-TRON', mult: B.mult }); }
+  return list;
+}
+function enemyPower(i) {
+  const B = BASES[i]; let p = 0;
+  const add = (arr) => { for (const [h, bo, a, l, lvl, cnt] of arr) p += robotStats({ head: h, body: bo, arms: a, legs: l }, enemyBonus(i), lvl).power * cnt; };
+  add(B.army); for (const w of B.waves || []) add(w[1]);
+  if (B.boss) { const [h, bo, a, l, lvl] = B.boss; p += robotStats({ head: h, body: bo, arms: a, legs: l }, enemyBonus(i), lvl).power * 2.5; }
+  return Math.round(p * B.mult);
+}
+// bots build an army that is about as strong as `power`
+function botArmy(power, maxBots = 6, rng = Math.random) {
+  const avail = Object.values(PARTS).filter((p) => p.unlock === 'start' || (p.unlock.startsWith('b:') && +p.unlock.slice(2) <= Math.max(1, G.beaten)) || (p.unlock.startsWith('r:') && RES[p.unlock.slice(2)].need <= Math.max(1, G.beaten)));
+  const bySlot = (s) => avail.filter((p) => p.slot === s);
+  const count = clamp(Math.round(2 + rng() * (maxBots - 2)), 2, maxBots);
+  const per = power / count, list = [];
+  for (let i = 0; i < count; i++) {
+    let best = null;
+    for (let tries = 0; tries < 30; tries++) {
+      const d = { head: pickR(bySlot('head'), rng).id, body: pickR(bySlot('body'), rng).id, arms: pickR(bySlot('arms'), rng).id, legs: pickR(bySlot('legs'), rng).id };
+      for (let lvl = 1; lvl <= MAX_LVL; lvl++) {
+        const pw = robotStats(d, bonusNow(), lvl).power;
+        const score = Math.abs(pw - per);
+        if (!best || score < best.score) best = { d, lvl, score };
+        if (pw > per) break;
+      }
+    }
+    list.push(best);
+  }
+  return list;
+}
+const pickR = (arr, rng) => arr[Math.floor(rng() * arr.length)];
+
+// ============================================================
+//  BATTLE SCREEN  (drawing + effects + power-up buttons)
+// ============================================================
+const BV = {
+  view: null, local: null, anim: new Map(), parts: [], texts: [], beams: [], shake: 0, bg: null, decals: null,
+  armed: null, mouse: null, speed: 1, myTeam: 0, online: false, ctx: null, acc: 0, hudT: 0, banner: null, sendPower: null,
+};
+const battleOpen = () => !!BV.view;
+
+
+function makeBattleBg(seed, mode, baseIdx) {
+  const cv = document.createElement('canvas'); cv.width = FIELD.w; cv.height = FIELD.h;
+  const c = cv.getContext('2d'), R = mulberry(seed * 7 + 3);
+  let g = c.createLinearGradient(0, 0, 0, 130);
+  g.addColorStop(0, '#1b1030'); g.addColorStop(1, '#5a3a4a');
+  c.fillStyle = g; c.fillRect(0, 0, FIELD.w, 130);
+  // far away factories
+  c.fillStyle = '#23182e';
+  for (let x = 0; x < FIELD.w; x += 40 + R() * 60) { const h = 20 + R() * 55; c.fillRect(x, 125 - h, 30 + R() * 50, h); if (R() < 0.4) c.fillRect(x + 10, 125 - h - 30, 8, 30); }
+  // ground
+  g = c.createLinearGradient(0, 110, 0, FIELD.h);
+  g.addColorStop(0, '#4a4538'); g.addColorStop(1, '#2d2a23');
+  if (mode !== 'campaign') { g = c.createLinearGradient(0, 110, 0, FIELD.h); g.addColorStop(0, '#39414f'); g.addColorStop(1, '#232833'); }
+  c.fillStyle = g; c.fillRect(0, 110, FIELD.w, FIELD.h - 110);
+  c.fillStyle = '#00000030'; c.fillRect(0, 110, FIELD.w, 6);
+  for (let i = 0; i < 90; i++) { c.fillStyle = `rgba(${R() < 0.5 ? '0,0,0' : '255,255,255'},${0.03 + R() * 0.05})`; c.beginPath(); c.ellipse(R() * FIELD.w, 125 + R() * 430, 10 + R() * 40, 4 + R() * 12, 0, 0, 7); c.fill(); }
+  if (mode === 'campaign') {
+    for (let i = 0; i < 7; i++) { const x = 250 + R() * 520, y = 150 + R() * 370; c.fillStyle = '#00000038'; c.beginPath(); c.ellipse(x, y, 26, 9, 0, 0, 7); c.fill(); c.strokeStyle = '#ffffff14'; c.lineWidth = 2; c.stroke(); }
+  } else {
+    c.strokeStyle = '#ffffff18'; c.lineWidth = 4;
+    c.beginPath(); c.ellipse(500, 330, 330, 175, 0, 0, 7); c.stroke();
+    c.beginPath(); c.ellipse(500, 330, 90, 48, 0, 0, 7); c.stroke();
+    c.beginPath(); c.moveTo(500, 130); c.lineTo(500, 540); c.stroke();
+  }
+  // crates and barrels at the edges
+  for (let i = 0; i < 10; i++) {
+    const x = R() * FIELD.w, y = R() < 0.5 ? 118 + R() * 8 : 544 + R() * 10;
+    if (R() < 0.5) { rr(c, x, y - 18, 22, 20, 3); fillStroke(c, '#7a5a34', 2); } else { rr(c, x, y - 20, 14, 22, 4); fillStroke(c, '#8a2e2e', 2); }
+  }
+  return cv;
+}
+function drawBase(c, x, y, col, flag, hp, maxHp, ang, alive, t, isEnemy) {
+  c.save(); c.translate(x, y);
+  if (!alive) {
+    c.fillStyle = '#2a2a2a'; for (let i = 0; i < 9; i++) { c.beginPath(); c.moveTo(-60 + i * 14, 20); c.lineTo(-54 + i * 14, -10 - (i * 7) % 20); c.lineTo(-46 + i * 14, 20); c.fill(); }
+    c.restore(); return;
+  }
+  c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(0, 22, 70, 16, 0, 0, 7); c.fill();
+  rr(c, -55, -70, 110, 92, 8); fillStroke(c, metal(c, col, -70, 22), 4);
+  rr(c, -20, -12, 40, 34, 4); fillStroke(c, '#14161c', 3);
+  c.strokeStyle = '#ffcc33'; c.lineWidth = 3; for (let i = -16; i < 20; i += 8) { c.beginPath(); c.moveTo(i, -12); c.lineTo(i, 22); c.stroke(); }
+  for (const wx of [-40, 26]) { rr(c, wx, -58, 14, 12, 2); c.fillStyle = Math.sin(t * 3 + wx) > 0 ? '#ffe066' : '#ffe06688'; c.fill(); }
+  // chimney + flag
+  rr(c, isEnemy ? 30 : -42, -100, 12, 32, 2); fillStroke(c, metal(c, '#5a6680', -100, -68), 2);
+  c.strokeStyle = INK; c.lineWidth = 3; c.beginPath(); c.moveTo(isEnemy ? -40 : 40, -70); c.lineTo(isEnemy ? -40 : 40, -118); c.stroke();
+  c.font = '22px sans-serif'; c.textAlign = 'center'; c.fillText(flag, isEnemy ? -28 : 52, -100);
+  if (isEnemy && ang !== undefined) { // turret
+    c.save(); c.translate(0, -70); c.rotate(ang); rr(c, 0, -5, 34, 10, 3); fillStroke(c, metal(c, '#3b4152', -5, 5), 2); c.restore();
+    circle(c, 0, -70, 12, metal(c, '#5a6680', -82, -58));
+  }
+  if (maxHp) { rr(c, -50, -132, 100, 10, 4); c.fillStyle = '#0b0f18'; c.fill(); rr(c, -50, -132, 100 * clamp(hp / maxHp, 0, 1), 10, 4); c.fillStyle = '#ff4d5e'; c.fill(); c.lineWidth = 2; c.strokeStyle = '#000'; rr(c, -50, -132, 100, 10, 4); c.stroke(); }
+  c.restore();
+}
+
+// ---------- particles ----------
+function addPart(p) { if (BV.parts.length < 500) BV.parts.push(p); }
+function sparks(x, y, n, col = '#ffe066', sp = 160) { for (let i = 0; i < n; i++) { const a = rand(0, 6.28), v = rand(40, sp); addPart({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, g: 400, life: rand(0.2, 0.45), max: 0.45, s: rand(1.5, 3), col, type: 'spark' }); } }
+function smoke(x, y, n, col = '#555', size = 10) { for (let i = 0; i < n; i++) addPart({ x: x + rand(-8, 8), y: y + rand(-8, 8), vx: rand(-20, 20), vy: rand(-40, -10), g: 0, life: rand(0.6, 1.2), max: 1.2, s: rand(size * 0.6, size * 1.4), col, type: 'smoke' }); }
+function explode(x, y, r, big) {
+  addPart({ x, y, vx: 0, vy: 0, g: 0, life: 0.25, max: 0.25, s: r, col: '#fff3b0', type: 'flash' });
+  for (let i = 0; i < (big ? 26 : 12); i++) { const a = rand(0, 6.28), v = rand(30, r * 3); addPart({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.6, g: 0, life: rand(0.3, 0.7), max: 0.7, s: rand(r * 0.15, r * 0.35), col: pick(['#ff8a1f', '#ffcc33', '#ff4d5e']), type: 'fire' }); }
+  smoke(x, y, big ? 10 : 5, '#3a3a3a', r * 0.3);
+  sparks(x, y, big ? 16 : 8, '#ffcc33', r * 4);
+  BV.shake = Math.min(14, BV.shake + (big ? 10 : 4));
+}
+function floatText(x, y, txt, col, size = 14) { if (BV.texts.length < 60) BV.texts.push({ x: x + rand(-6, 6), y, txt, col, size, life: 0.9 }); }
+
+function handleEvents(evs) {
+  const V = BV.view; if (!V) return;
+  const U = (id) => V.units.find((u) => u.id === id);
+  for (const e of evs) {
+    const A = e.id ? BV.anim.get(e.id) : null;
+    switch (e.k) {
+      case 'atk': {
+        if (A) A.atk = 1;
+        const snd = { punch: 'punch', saw: 'saw', hammer: 'hammer', blaster: 'blaster', rocket: 'rocket', plasma: 'laser', laser: 'laser', tesla: 'zap', flame: 'flame', medic: 'heal' }[e.kind];
+        if (snd) S[snd]();
+        break;
+      }
+      case 'hit': if (A) A.hurt = 1; if (e.crit) floatText(e.x, e.y - 55, 'CRIT ' + fmt(e.a), '#ffcc33', 16); else if (e.big) floatText(e.x, e.y - 50, fmt(e.a), '#fff'); break;
+      case 'miss': floatText(e.x, e.y, 'MISS', '#9fb0cc', 12); break;
+      case 'spark': sparks(e.x, e.y, e.kind === 'saw' ? 6 : 4, e.kind === 'blaster' ? '#ffe066' : '#fff'); if (e.kind !== 'blaster') S.clank(); break;
+      case 'slam': smoke(e.x, e.y, 6, '#8a7f72', 10); addPart({ x: e.x, y: e.y, vx: 0, vy: 0, g: 0, life: 0.3, max: 0.3, s: 50, col: '#fff', type: 'ring' }); BV.shake = Math.min(14, BV.shake + 3); break;
+      case 'beam': BV.beams.push({ pts: [[e.x1, e.y1], [e.x2, e.y2]], col: e.c, life: 0.15, w: 5 }); sparks(e.x2, e.y2, 3, '#9df0ff'); break;
+      case 'zap': { const pts = []; for (let i = 0; i < e.pts.length - 1; i++) { const [x1, y1] = e.pts[i], [x2, y2] = e.pts[i + 1]; for (let k = 0; k <= 6; k++) pts.push([lerp(x1, x2, k / 6) + (k % 6 ? rand(-9, 9) : 0), lerp(y1, y2, k / 6) + (k % 6 ? rand(-9, 9) : 0)]); } BV.beams.push({ pts, col: '#bfe9ff', life: 0.2, w: 3 }); break; }
+      case 'flame': for (let i = 0; i < 3; i++) { const t = rand(0.1, 1); addPart({ x: lerp(e.x1, e.x2, t), y: lerp(e.y1, e.y2, t) + rand(-6, 6), vx: rand(-15, 15), vy: rand(-30, -5), g: 0, life: rand(0.2, 0.4), max: 0.4, s: rand(5, 10), col: pick(['#ff8a1f', '#ffcc33', '#ff4d5e']), type: 'fire' }); } break;
+      case 'heal': BV.beams.push({ pts: [[e.x1, e.y1], [e.x2, e.y2]], col: '#4dff88', life: 0.2, w: 3 }); addPart({ x: e.x2, y: e.y2 - 10, vx: 0, vy: -40, g: 0, life: 0.6, max: 0.6, s: 10, col: '#4dff88', type: 'plus' }); break;
+      case 'boom': explode(e.x, e.y, e.r || 50, e.big); S.boom(e.big); break;
+      case 'die': { explode(e.x, e.y - 20, 40 * (e.s || 1), (e.s || 1) > 1.5); S.die(); for (let i = 0; i < 6; i++) addPart({ x: e.x, y: e.y - 20, vx: rand(-120, 120), vy: rand(-260, -80), g: 600, life: 1.2, max: 1.2, s: rand(3, 6), col: pick(['#8c96a8', '#3b4152', '#b8c2d6']), type: 'debris', floor: e.y + rand(-4, 8) });
+        if (BV.decals) { const c = BV.decals.getContext('2d'); c.fillStyle = 'rgba(0,0,0,.3)'; c.beginPath(); c.ellipse(e.x, e.y, 24 * (e.s || 1), 8 * (e.s || 1), 0, 0, 7); c.fill(); }
+        break; }
+      case 'pu': {
+        S.power();
+        const P = POWERS[e.kind], who = V.teams[e.team] ? V.teams[e.team].name : '';
+        BV.banner = { txt: P.ico + ' ' + (who ? who + ': ' : '') + P.name.toUpperCase() + '!', t: 1.6 };
+        if (e.kind === 'emp') { S.emp(); addPart({ x: e.x, y: e.y, vx: 0, vy: 0, g: 0, life: 0.5, max: 0.5, s: 130, col: '#7df0ff', type: 'ring' }); sparks(e.x, e.y, 20, '#7df0ff', 300); }
+        if (e.kind === 'air') { S.siren(); addPart({ x: e.x, y: e.y, vx: 0, vy: 0, g: 0, life: 0.9, max: 0.9, s: 110, col: '#ff4d5e', type: 'target' }); }
+        if (e.kind === 'repair' || e.kind === 'shield') for (const u of V.units) if (u.alive && u.team === e.team) { addPart({ x: u.x, y: u.y - 30, vx: 0, vy: -50, g: 0, life: 0.8, max: 0.8, s: 12, col: e.kind === 'repair' ? '#4dff88' : '#7df0ff', type: e.kind === 'repair' ? 'plus' : 'ring' }); }
+        break;
+      }
+      case 'wave': BV.banner = { txt: '⚠️ ENEMY REINFORCEMENTS!', t: 2 }; S.siren(); break;
+      case 'turret': S.blaster(); break;
+      case 'emo': { const u = V.units.find((x) => x.alive && x.team === e.team); floatText(u ? u.x : 500, u ? u.y - 80 : 200, e.e, '#fff', 30); break; }
+    }
+  }
+}
+
+function drawBattle(dt) {
+  const V = BV.view, cv = $('bCanvas'); if (!V || !cv.clientWidth) return;
+  const r = fitCanvas(cv), c = cv.getContext('2d');
+  const cw = cv.clientWidth, ch = cv.clientHeight;
+  const s = Math.min(cw / FIELD.w, ch / FIELD.h), ox = (cw - FIELD.w * s) / 2, oy = (ch - FIELD.h * s) / 2;
+  BV.xf = { s, ox, oy };
+  c.setTransform(r, 0, 0, r, 0, 0);
+  c.fillStyle = '#231f1a'; c.fillRect(0, 0, cw, ch);
+  let shx = 0, shy = 0;
+  if (BV.shake > 0) { shx = rand(-BV.shake, BV.shake); shy = rand(-BV.shake, BV.shake); BV.shake = Math.max(0, BV.shake - dt * 40); }
+  c.setTransform(r * s, 0, 0, r * s, r * (ox + shx), r * (oy + shy));
+  c.fillStyle = '#1b1030'; c.fillRect(-600, -400, FIELD.w + 1200, 400);
+  c.fillStyle = '#2d2a23'; c.fillRect(-600, FIELD.h - 2, FIELD.w + 1200, 400);
+  c.drawImage(BV.bg, 0, 0, 1, 130, -600, 0, 600, 130); c.drawImage(BV.bg, FIELD.w - 1, 0, 1, 130, FIELD.w, 0, 600, 130);
+  c.drawImage(BV.bg, 0, 130, 1, FIELD.h - 130, -600, 130, 600, FIELD.h - 130); c.drawImage(BV.bg, FIELD.w - 1, 130, 1, FIELD.h - 130, FIELD.w, 130, 600, FIELD.h - 130);
+  c.drawImage(BV.bg, 0, 0);
+  if (BV.decals) c.drawImage(BV.decals, 0, 0);
+  const t = performance.now() / 1000;
+  // bases
+  if (V.mode === 'campaign') {
+    drawBase(c, 40, 330, '#2f5fa8', '🏳️', 0, 0, undefined, true, t, false);
+    const B = BASES[V.baseIdx], bs = V.base;
+    drawBase(c, bs.x, bs.y, B.color, B.flag, bs.hp, bs.maxHp, bs.ang, bs.alive, t, true);
+  }
+  // team rings on the ground + robots (sorted so the ones in front are drawn last)
+  const units = V.units.filter((u) => u.alive).sort((a, b) => a.y - b.y);
+  for (const u of units) {
+    let A = BV.anim.get(u.id);
+    if (!A) { A = { walk: Math.random() * 6, lx: u.x, ly: u.y, atk: 0, hurt: 0, seed: Math.random() * 10 }; BV.anim.set(u.id, A); }
+    const moved = Math.hypot(u.x - A.lx, u.y - A.ly);
+    A.walk += moved * 0.12; A.lx = u.x; A.ly = u.y;
+    A.atk = Math.max(0, A.atk - dt * 4); A.hurt = Math.max(0, A.hurt - dt * 8);
+    const sc = WORLD_S * u.scale;
+    c.strokeStyle = TEAM_COLORS[u.team] || '#fff'; c.lineWidth = 3; c.globalAlpha = 0.8;
+    c.beginPath(); c.ellipse(u.x, u.y + 1, 22 * sc * 1.1, 7 * sc * 1.1, 0, 0, 7); c.stroke(); c.globalAlpha = 1;
+    drawRobot(c, u.design, u.x, u.y, sc, { face: u.face, t: t + A.seed, walk: A.walk, moving: u.moving, atk: A.atk, hurt: A.hurt, stun: u.stunT > 0 ? 1 : 0, seed: A.seed, shadow: true });
+    if (u.burnT > 0 && Math.random() < 0.3) addPart({ x: u.x + rand(-10, 10), y: u.y - rand(10, 50) * sc, vx: 0, vy: -40, g: 0, life: 0.3, max: 0.3, s: 6, col: '#ff8a1f', type: 'fire' });
+    const sh = (u.shield || 0) + (u.pShield || 0);
+    if (sh > 1) { c.strokeStyle = 'rgba(125,240,255,.6)'; c.lineWidth = 2; c.fillStyle = 'rgba(125,240,255,.08)'; c.beginPath(); c.ellipse(u.x, u.y - 55 * sc, 34 * sc, 62 * sc, 0, 0, 7); c.fill(); c.stroke(); }
+    // health bar
+    const bw = 34 * Math.min(u.scale, 1.6), by = u.y - 118 * sc - 4;
+    c.fillStyle = '#0b0f18'; c.fillRect(u.x - bw / 2 - 1, by - 1, bw + 2, 6);
+    c.fillStyle = u.team === BV.myTeam ? '#4dff88' : TEAM_COLORS[u.team]; c.fillRect(u.x - bw / 2, by, bw * clamp(u.hp / u.maxHp, 0, 1), 4);
+    if (sh > 1) { c.fillStyle = '#7df0ff'; c.fillRect(u.x - bw / 2, by - 3, bw * clamp(sh / u.maxHp, 0, 1), 2); }
+    if (u.lvl > 1 || u.boss) { c.fillStyle = '#ffcc33'; c.font = 'bold 9px sans-serif'; c.textAlign = 'right'; c.fillText(u.boss ? '👑' : u.lvl, u.x - bw / 2 - 2, by + 5); }
+  }
+  // bullets
+  for (const p of V.projs) {
+    if (p.kind === 'blaster') { c.strokeStyle = p.turret ? '#ff4d5e' : '#ffe066'; c.lineWidth = 3; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - Math.cos(p.a || 0) * 12, p.y - Math.sin(p.a || 0) * 12); c.stroke(); }
+    else if (p.kind === 'rocket') {
+      c.save(); c.translate(p.x, p.y); c.rotate(p.a || 0); rr(c, -9, -3, 16, 6, 3); fillStroke(c, '#e8eef8', 1.5); c.fillStyle = '#ff4d5e'; c.beginPath(); c.moveTo(7, -3); c.lineTo(12, 0); c.lineTo(7, 3); c.fill(); c.restore();
+      if (Math.random() < 0.6) addPart({ x: p.x, y: p.y, vx: rand(-10, 10), vy: rand(-10, 10), g: 0, life: 0.5, max: 0.5, s: 5, col: '#999', type: 'smoke' });
+    } else if (p.kind === 'plasma') { c.save(); c.shadowColor = '#c07bff'; c.shadowBlur = 20; circle(c, p.x, p.y, 9, '#e4c8ff', 2); c.restore(); }
+    else if (p.kind === 'bomb') {
+      c.strokeStyle = 'rgba(255,77,94,.8)'; c.lineWidth = 2; c.beginPath(); c.ellipse(p.tx, p.ty, 110, 40, 0, 0, 7); c.stroke();
+      c.save(); c.translate(p.tx, p.y); rr(c, -6, -16, 12, 26, 6); fillStroke(c, '#3b4152', 2); c.restore();
+    }
+  }
+  // beams
+  for (let i = BV.beams.length - 1; i >= 0; i--) {
+    const B = BV.beams[i]; B.life -= dt; if (B.life <= 0) { BV.beams.splice(i, 1); continue; }
+    c.save(); c.shadowColor = B.col; c.shadowBlur = 12; c.strokeStyle = B.col; c.lineWidth = B.w * (B.life / 0.2 + 0.3); c.lineCap = 'round';
+    c.beginPath(); B.pts.forEach(([x, y], k) => (k ? c.lineTo(x, y) : c.moveTo(x, y))); c.stroke();
+    c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.stroke(); c.restore();
+  }
+  // particles
+  for (let i = BV.parts.length - 1; i >= 0; i--) {
+    const p = BV.parts[i]; p.life -= dt; if (p.life <= 0) { BV.parts.splice(i, 1); continue; }
+    p.vy += (p.g || 0) * dt; p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.floor && p.y > p.floor) { p.y = p.floor; p.vy *= -0.3; p.vx *= 0.6; }
+    const k = p.life / p.max; c.globalAlpha = clamp(k, 0, 1);
+    if (p.type === 'spark') { c.strokeStyle = p.col; c.lineWidth = p.s; c.beginPath(); c.moveTo(p.x, p.y); c.lineTo(p.x - p.vx * 0.03, p.y - p.vy * 0.03); c.stroke(); }
+    else if (p.type === 'smoke') { c.fillStyle = p.col; c.beginPath(); c.arc(p.x, p.y, p.s * (1.6 - k), 0, 7); c.fill(); }
+    else if (p.type === 'fire') { c.fillStyle = p.col; c.beginPath(); c.arc(p.x, p.y, p.s * k, 0, 7); c.fill(); }
+    else if (p.type === 'flash') { c.fillStyle = p.col; c.beginPath(); c.arc(p.x, p.y, p.s * (1.3 - k * 0.5), 0, 7); c.fill(); }
+    else if (p.type === 'ring' || p.type === 'target') { c.strokeStyle = p.col; c.lineWidth = 3; c.beginPath(); c.ellipse(p.x, p.y, p.s * (p.type === 'ring' ? 1.2 - k : 1), p.s * 0.4 * (p.type === 'ring' ? 1.2 - k : 1), 0, 0, 7); c.stroke(); }
+    else if (p.type === 'plus') { c.fillStyle = p.col; c.font = 'bold ' + p.s * 1.4 + 'px sans-serif'; c.textAlign = 'center'; c.fillText('+', p.x, p.y); }
+    else if (p.type === 'debris') { c.fillStyle = p.col; c.fillRect(p.x - p.s / 2, p.y - p.s / 2, p.s, p.s); }
+  }
+  c.globalAlpha = 1;
+  // floating numbers
+  c.textAlign = 'center';
+  for (let i = BV.texts.length - 1; i >= 0; i--) {
+    const T = BV.texts[i]; T.life -= dt; T.y -= 35 * dt; if (T.life <= 0) { BV.texts.splice(i, 1); continue; }
+    c.globalAlpha = clamp(T.life * 2, 0, 1); c.font = 'bold ' + T.size + 'px sans-serif';
+    c.lineWidth = 3; c.strokeStyle = '#000'; c.strokeText(T.txt, T.x, T.y); c.fillStyle = T.col; c.fillText(T.txt, T.x, T.y);
+  }
+  c.globalAlpha = 1;
+  // aiming circle for EMP / airstrike
+  if (BV.armed && BV.mouse) {
+    const R = BV.armed === 'emp' ? 130 : 110;
+    c.strokeStyle = BV.armed === 'emp' ? '#7df0ff' : '#ff4d5e'; c.lineWidth = 3; c.setLineDash([8, 6]);
+    c.beginPath(); c.ellipse(BV.mouse.x, BV.mouse.y, R, R * 0.4, 0, 0, 7); c.stroke(); c.setLineDash([]);
+  }
+  // banner
+  const msg = $('bMsg');
+  if (BV.banner) { BV.banner.t -= dt; msg.style.display = BV.banner.t > 0 ? 'block' : 'none'; msg.textContent = BV.banner.txt; if (BV.banner.t <= 0) BV.banner = null; }
+  else if (BV.armed) { msg.style.display = 'block'; msg.textContent = '👆 Click the battlefield to use ' + POWERS[BV.armed].name; }
+  else msg.style.display = 'none';
+}
+
+function battleHud() {
+  const V = BV.view; if (!V) return;
+  const bars = [];
+  if (V.mode === 'campaign') {
+    bars.push({ n: '🔵 Your army', v: teamHp(V, 0), col: '#4dff88' });
+    bars.push({ n: BASES[V.baseIdx].flag + ' ' + BASES[V.baseIdx].name + ' base', v: V.base.hp / V.base.maxHp, col: '#ff4d5e' });
+  } else V.teams.forEach((tm, i) => bars.push({ n: (i === BV.myTeam ? '⭐ ' : '') + tm.name, v: teamHp(V, i), col: TEAM_COLORS[i] }));
+  $('bTeams').innerHTML = bars.map((b) => `<div class="tbar"><div class="tn">${esc(b.n)}</div><div class="bar"><i style="width:${(clamp(b.v, 0, 1) * 100).toFixed(1)}%;background:${b.col}"></i></div></div>`).join('');
+  const left = Math.max(0, Math.ceil(V.limit - V.time));
+  $('bTime').textContent = Math.floor(left / 60) + ':' + String(left % 60).padStart(2, '0');
+  const tm = V.teams[BV.myTeam];
+  if (tm) for (const k in POWERS) { const el = document.querySelector(`.pu[data-pu="${k}"] .n`); if (el) { el.textContent = tm.charges[k] || 0; el.parentElement.classList.toggle('cant', !tm.charges[k]); } }
+}
+function teamHp(V, team) {
+  let h = 0, m = 0;
+  for (const u of V.units) if (u.team === team) { h += Math.max(0, u.hp); m += u.maxHp; }
+  return m ? h / m : 0;
+}
+
+function openBattle(view, opts = {}) {
+  BV.view = view; BV.local = opts.local ? view : null; BV.online = !!opts.online; BV.myTeam = opts.myTeam || 0;
+  BV.anim.clear(); BV.parts = []; BV.texts = []; BV.beams = []; BV.shake = 0; BV.armed = null; BV.acc = 0; BV.banner = null;
+  BV.speed = 1; BV.ctx = opts.ctx || null; BV.sendPower = opts.sendPower || null; BV.onEnd = opts.onEnd || null; BV.ended = false;
+  BV.bg = makeBattleBg(view.seed || 1, view.mode, view.baseIdx);
+  BV.decals = document.createElement('canvas'); BV.decals.width = FIELD.w; BV.decals.height = FIELD.h;
+  $('bSpeed').style.display = BV.online ? 'none' : '';
+  $('bSpeed').textContent = '⏩ 1x';
+  $('bQuit').textContent = BV.online ? '🚪 Leave' : '🏳️ Retreat';
+  $('emotes').style.display = BV.online ? 'flex' : 'none';
+  const tm = view.teams[BV.myTeam];
+  $('bBottom').innerHTML = Object.keys(POWERS).filter((k) => k !== 'air' || resLvl('air') || (tm && tm.charges.air)).map((k) =>
+    `<button class="btn pu ${k === 'emp' ? 'blue' : k === 'air' ? 'red' : k === 'repair' ? 'green' : 'purple'}" data-pu="${k}" title="${POWERS[k].desc}">${POWERS[k].ico} ${POWERS[k].name}<span class="n">0</span></button>`).join('');
+  $('battle').classList.add('show');
+  if (!BV.online && G.stats.wins + G.stats.losses < 3) BV.banner = { txt: '💡 Tip: use the POWER-UPS at the bottom!', t: 4 };
+  Sfx.startMusic(view.mode === 'campaign' && view.baseIdx === 9);
+  battleHud();
+}
+function closeBattle() {
+  BV.view = null; BV.local = null; BV.armed = null;
+  $('battle').classList.remove('show');
+  Sfx.stopMusic();
+}
+function battleTick(dt) {
+  if (!BV.view) return;
+  if (BV.local) {
+    BV.acc += Math.min(dt, 0.1) * BV.speed;
+    const STEP = 1 / 30;
+    while (BV.acc >= STEP) { BV.acc -= STEP; stepBattle(BV.local, STEP); if (BV.hostTick) BV.hostTick(STEP); }
+    const evs = BV.local.events.splice(0);
+    if (BV.hostEvents) BV.hostEvents(evs);
+    handleEvents(evs);
+    if (BV.local.over && !BV.ended) { BV.ended = true; setTimeout(() => { if (BV.onEnd) BV.onEnd(BV.local); }, 1400); }
+  }
+  drawBattle(dt);
+  BV.hudT -= dt; if (BV.hudT <= 0) { BV.hudT = 0.15; battleHud(); }
+}
+function battleClick(ev) {
+  if (!BV.view || !BV.armed || !BV.xf) return;
+  const rect = $('bCanvas').getBoundingClientRect();
+  const x = (ev.clientX - rect.left - BV.xf.ox) / BV.xf.s, y = (ev.clientY - rect.top - BV.xf.oy) / BV.xf.s;
+  firePower(BV.armed, clamp(x, 0, FIELD.w), clamp(y, FIELD.top, FIELD.bottom));
+  BV.armed = null; document.querySelectorAll('.pu').forEach((b) => b.classList.remove('armed'));
+}
+function battleMove(ev) {
+  if (!BV.xf) return;
+  const rect = $('bCanvas').getBoundingClientRect();
+  BV.mouse = { x: (ev.clientX - rect.left - BV.xf.ox) / BV.xf.s, y: (ev.clientY - rect.top - BV.xf.oy) / BV.xf.s };
+}
+function firePower(kind, x, y) {
+  if (BV.sendPower) { BV.sendPower(kind, x, y); return; }
+  if (BV.local && !usePower(BV.local, BV.myTeam, kind, x, y)) S.no();
+}
+function pressPower(kind) {
+  const tm = BV.view && BV.view.teams[BV.myTeam];
+  if (!tm || !tm.charges[kind] || BV.view.over) { S.no(); return; }
+  if (POWERS[kind].aim) {
+    BV.armed = BV.armed === kind ? null : kind;
+    document.querySelectorAll('.pu').forEach((b) => b.classList.toggle('armed', b.dataset.pu === BV.armed));
+  } else firePower(kind, 0, 0);
+}
+
+// ============================================================
+//  POPUPS
+// ============================================================
+function toast(msg, ms = 2200) {
+  const el = document.createElement('div'); el.className = 'toast'; el.innerHTML = msg;
+  $('toasts').appendChild(el);
+  while ($('toasts').children.length > 4) $('toasts').firstChild.remove();
+  setTimeout(() => el.remove(), ms);
+}
+let modalButtons = [];
+function showModal(html, buttons = [{ txt: 'OK', cls: 'gold' }]) {
+  modalButtons = buttons;
+  $('modalBox').innerHTML = html + '<div class="mbtns">' + buttons.map((b, i) => `<button class="btn ${b.cls || ''}" data-modal="${i}">${b.txt}</button>`).join('') + '</div>';
+  $('modal').classList.add('show');
+}
+function closeModal() { $('modal').classList.remove('show'); }
+function modalPress(i) { const b = modalButtons[i]; if (!b) return; if (!b.keep) closeModal(); if (b.fn) b.fn(); }
+
+// ============================================================
+//  BATTLE START + REWARDS
+// ============================================================
+const MAX_SQUAD = 8;
+function myTeamDef(name) {
+  const pc = powerCharges();
+  return { name: name || G.name || 'You', human: true, charges: { repair: pc, shield: pc, emp: pc, air: resLvl('air') ? pc : 0 } };
+}
+function myUnits(team) {
+  return squad().slice(0, MAX_SQUAD).map((r) => ({ team, design: { head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: r.color }, lvl: r.lvl, name: r.name, robotId: r.id, bonus: bonusNow() }));
+}
+function needSquad() {
+  if (squad().length) return true;
+  if (!G.robots.length) { toast('Build a robot in the 🔧 Workshop first!'); setTab('workshop'); }
+  else { toast('All your robots are broken or benched. Repair them in 🤖 Army!'); setTab('army'); }
+  S.no(); return false;
+}
+function startCampaign(i) {
+  if (!needSquad()) return;
+  if (i > G.beaten) return;
+  const B = BASES[i];
+  const ech = { repair: i >= 4 ? 1 : 0, shield: i >= 6 ? 1 : 0, emp: i >= 8 ? 1 : 0, air: i >= 9 ? 1 : 0 };
+  const b = createBattle({
+    mode: 'campaign', base: B, baseIdx: i, seed: (Math.random() * 1e9) | 0, limit: i === 9 ? 210 : 150,
+    teams: [myTeamDef(), { name: B.name, bot: true, charges: ech }],
+    units: myUnits(0).concat(campaignEnemies(i)),
+  });
+  openBattle(b, { local: true, myTeam: 0, onEnd: (bb) => finishCampaign(bb, i) });
+  if (i === 9) toast('👑 MEGA-TRON appears!!', 3000);
+}
+function startArena(bots, diff) {
+  if (!needSquad()) return;
+  const mine = myUnits(0), myPow = armyPower(squad().slice(0, MAX_SQUAD));
+  const mult = [0.75, 1, 1.3][diff];
+  const teams = [myTeamDef()], units = mine.slice();
+  const botNames = ['Bot Bolt', 'Bot Sparky', 'Bot Crusher'];
+  for (let k = 1; k <= bots; k++) {
+    const pc = diff === 2 ? 2 : 1;
+    teams.push({ name: botNames[k - 1], bot: true, charges: { repair: pc, shield: pc, emp: diff ? 1 : 0, air: diff === 2 ? 1 : 0 } });
+    const col = COLORS[(k * 3 + 2) % COLORS.length];
+    for (const a of botArmy(myPow * mult, 6)) units.push({ team: k, design: Object.assign({ color: col }, a.d), lvl: a.lvl, bonus: bonusNow() });
+  }
+  const b = createBattle({ mode: 'arena', seed: (Math.random() * 1e9) | 0, teams, units, limit: 150 });
+  openBattle(b, { local: true, myTeam: 0, onEnd: (bb) => finishArena(bb, bots, diff) });
+}
+function gainXp(r, amt) {
+  let ups = 0;
+  r.xp += Math.round(amt * (1 + 0.4 * resLvl('training')));
+  while (r.lvl < MAX_LVL && r.xp >= xpNeed(r.lvl)) { r.xp -= xpNeed(r.lvl); r.lvl++; ups++; }
+  if (r.lvl >= MAX_LVL) r.xp = 0;
+  return ups;
+}
+function robotReport(b, xpWin, xpLose, canBreak) {
+  const won = b.winner === 0;
+  let html = '<div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px">';
+  for (const u of b.units) {
+    if (u.team !== 0 || !u.robotId) continue;
+    const r = G.robots.find((x) => x.id === u.robotId); if (!r) continue;
+    const ups = gainXp(r, (won ? xpWin : xpLose) * (u.alive ? 1 : 0.5));
+    G.stats.kills += u.kills;
+    if (!u.alive && canBreak) r.broken = true;
+    html += `<div class="card" style="padding:6px"><b>${esc(r.name)}</b> <span class="pill gold">Lv ${r.lvl}</span><br>
+      <span class="small">💥 ${u.kills} KO · ${u.alive ? '<span style="color:#4dff88">OK</span>' : canBreak ? '<span style="color:#ff4d5e">BROKEN 🔧</span>' : 'knocked out'}</span>
+      ${ups ? '<br><b style="color:#ffcc33">⬆ LEVEL UP!</b>' : ''}</div>`;
+    if (ups) S.level();
+  }
+  return html + '</div>';
+}
+function finishCampaign(b, i) {
+  const B = BASES[i], won = b.winner === 0, first = won && G.beaten === i;
+  let coins = 0, extra = '';
+  if (won) {
+    coins = first ? B.reward : Math.round(B.reward * 0.25);
+    earn(coins); G.stats.wins++;
+    if (first) {
+      G.beaten = i + 1;
+      const parts = Object.values(PARTS).filter((p) => p.unlock === 'b:' + (i + 1));
+      const res = RESEARCH.filter((r) => r.need === i + 1);
+      if (parts.length) extra += `<p>📜 <b>New blueprint${parts.length > 1 ? 's' : ''}:</b> ${parts.map((p) => p.name).join(', ')} (in the Workshop)</p>`;
+      if (res.length) extra += `<p>🔬 <b>New research:</b> ${res.map((r) => r.name).join(', ')}</p>`;
+      if (i === 9) extra += '<p style="font-size:18px">👑 <b>YOU BEAT MEGA-TRON! YOU ARE THE ROBOT KING!</b> 👑</p><p>Keep playing: fight friends online, win trophies, and max out your army!</p>';
+    }
+  } else G.stats.losses++;
+  const xp = Math.round(25 * Math.pow(1.6, i));
+  const fought = b.units.filter((u) => u.team === 0 && u.robotId).map((u) => G.robots.find((r) => r.id === u.robotId)).filter(Boolean);
+  const minePow = armyPower(fought);
+  const rep = robotReport(b, xp, Math.round(xp / 3), true);
+  won ? S.win() : S.lose();
+  let tip = '';
+  if (!won) {
+    const theirs = enemyPower(i);
+    tip = `<p class="dim">💡 Your army power: <b>⚡${fmt(minePow)}</b> · Enemy: <b>⚡${fmt(theirs)}</b>. ` +
+      (b.why === 'time' ? 'You ran out of time! Bring more damage.' : 'Try: better parts, more robots, leveling up, Research, or use your power-ups!') + '</p>';
+  }
+  saveLocal();
+  showModal(`<h2>${won ? '🏆 VICTORY!' : b.why === 'retreat' ? '🏳️ RETREAT' : '💥 DEFEAT'}</h2>
+    <p>${won ? `You destroyed <b>${esc(B.name)}</b>!` : `${esc(B.name)} was too strong this time.`}</p>
+    ${coins ? `<p style="font-size:18px">💰 <b style="color:#ffcc33">+${fmt(coins)}</b> coins${first ? '' : ' (replay reward)'}</p>` : ''}
+    ${extra}${tip}${rep}`, [{ txt: 'Continue', cls: 'gold', fn: () => { closeBattle(); renderAll(); } }]);
+}
+function finishArena(b, bots, diff) {
+  const won = b.winner === 0;
+  let troph = 0, coins = 0;
+  if (won) { troph = 8 + bots * 6 + diff * 6; coins = Math.round(Math.max(80, incomePerSec() * 40) * (0.7 + bots * 0.3) * (1 + diff * 0.3)); G.stats.arenaWins++; }
+  else { troph = -Math.min(G.trophies, 4 + diff * 2); coins = Math.round(Math.max(20, incomePerSec() * 8)); }
+  G.trophies += troph; earn(coins);
+  const rep = robotReport(b, Math.round(15 * Math.pow(1.5, G.beaten)), Math.round(5 * Math.pow(1.5, G.beaten)), false);
+  won ? S.win() : S.lose();
+  saveLocal();
+  showModal(`<h2>${won ? '🏆 ARENA WIN!' : '💥 You lost the arena'}</h2>
+    <p>${won ? 'Your robots were the last ones standing!' : (b.winner >= 0 && b.teams[b.winner] ? `<b>${esc(b.teams[b.winner].name)}</b> won this one.` : 'Everyone got knocked out!')}</p>
+    <p style="font-size:17px">🏆 <b>${troph >= 0 ? '+' : ''}${troph}</b> trophies · 💰 <b style="color:#ffcc33">+${fmt(coins)}</b></p>
+    <p class="dim small">Arena robots don't break — it's just for fun and trophies.</p>${rep}`,
+  [{ txt: '🔁 Again', cls: 'green', fn: () => { closeBattle(); startArena(bots, diff); } }, { txt: 'Continue', cls: 'gold', fn: () => { closeBattle(); renderAll(); } }]);
+}
+function retreat() {
+  if (BV.online) { showModal('<h2>Leave the battle?</h2><p>You will leave the online room.</p>', [{ txt: 'Stay' }, { txt: 'Leave', cls: 'red', fn: () => { leaveRoom(); closeBattle(); setTab('online'); } }]); return; }
+  const b = BV.local; if (!b || b.over) return;
+  showModal('<h2>🏳️ Retreat?</h2><p>This counts as a loss.' + (b.mode === 'campaign' ? ' Robots that were destroyed stay broken.' : '') + '</p>',
+    [{ txt: 'Keep fighting', cls: 'green' }, { txt: 'Retreat', cls: 'red', fn: () => { if (b.over) return; b.over = true; b.winner = 1; b.why = 'retreat'; BV.ended = true; BV.onEnd && BV.onEnd(b); } }]);
+}
+
+// ============================================================
+//  SCREENS
+// ============================================================
+let curTab = 'factory';
+function setTab(t) {
+  curTab = t;
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === t));
+  document.querySelectorAll('.screen').forEach((s) => s.classList.toggle('show', s.id === 's-' + t));
+  renderTab();
+}
+function renderTab() {
+  ({ factory: renderShop, workshop: renderWorkshop, army: renderArmy, battle: renderBattleTab, research: renderResearch, online: renderOnline })[curTab]();
+}
+function renderAll() { renderTab(); updateTop(); }
+const costBtn = (act, label, cost, cls = 'gold', extra = '') => `<button class="btn ${cls}" data-act="${act}" data-cost="${cost}" ${extra}>${label} <span class="cost">💰${fmt(cost)}</span></button>`;
+
+// ---------- FACTORY SHOP ----------
+function renderShop() {
+  const n = G.droppers.length, cards = [];
+  cards.push(`<div class="card"><h3>🧲 Droppers <span class="pill">${n}/${MAX_DROPPERS}</span></h3><p>Each dropper drops stuff on the belt. The seller turns it into coins.</p>
+    ${n < MAX_DROPPERS ? costBtn('buyDropper', 'Buy Dropper', dropperCost(n)) : '<span class="pill ok">MAX</span>'}</div>`);
+  const low = n ? Math.min(...G.droppers) : -1;
+  if (n) {
+    const counts = TIERS.map((T, i) => [T, G.droppers.filter((x) => x === i).length]).filter((x) => x[1]).map(([T, c]) => `${c}× ${T.name}`).join(', ');
+    cards.push(`<div class="card"><h3>⬆️ Upgrade Droppers</h3><p>${counts}. Better stuff = more coins!</p>
+      ${low < TIERS.length - 1 ? costBtn('upDropper', `${TIERS[low].name} → ${TIERS[low + 1].name}`, TIER_UP_COST[low]) : '<span class="pill ok">ALL MAX</span>'}</div>`);
+  }
+  cards.push(`<div class="card"><h3>➡️ Conveyor Speed <span class="pill">Lv ${G.belt + 1}</span></h3><p>Droppers drop every ${BELT[G.belt].every}s${G.belt < BELT.length - 1 ? ' → ' + BELT[G.belt + 1].every + 's' : ''}.</p>
+    ${G.belt < BELT.length - 1 ? costBtn('upBelt', 'Speed up', BELT[G.belt + 1].cost) : '<span class="pill ok">MAX</span>'}</div>`);
+  const M = MACHINES[G.machines];
+  cards.push(`<div class="card"><h3>🏗️ Machines <span class="pill">${G.machines}/${MACHINES.length}</span></h3><p>${M ? '<b>' + M.name + '</b>: ' + M.desc : 'You have every machine!'} Now: ×${+machineMult().toFixed(2)}</p>
+    ${M ? costBtn('buyMachine', 'Buy ' + M.name, M.cost) : '<span class="pill ok">MAX</span>'}</div>`);
+  cards.push(`<div class="card"><h3>⚙️ Crank Power <span class="pill">Lv ${G.crank + 1}</span></h3><p>Each crank gives ${fmt(crankValue())} coins${G.crank < CRANK.length - 1 ? ' (+ more of your income)' : ''}.</p>
+    ${G.crank < CRANK.length - 1 ? costBtn('upCrank', 'Upgrade crank', CRANK[G.crank + 1].cost) : '<span class="pill ok">MAX</span>'}</div>`);
+  $('shop').innerHTML = cards.join('');
+  updateAfford();
+}
+
+// ---------- WORKSHOP ----------
+function renderWorkshop() {
+  const el = $('s-workshop'), ws = G.ws;
+  const rf = refitBot();
+  el.innerHTML = `${rf ? `<div class="card" style="margin-bottom:10px;border-color:#ffcc33"><div class="row"><b>🔧 Refitting ${esc(rf.name)} <span class="pill gold">Lv ${rf.lvl}</span></b>
+      <span class="small dim">It keeps its level! You only pay for the parts you change.</span>
+      <button class="btn small" data-act="cancelRefit" style="margin-left:auto">✖ Cancel</button></div></div>` : ''}<div class="ws">
+    <div class="card">
+      <canvas id="wsPreview"></canvas>
+      <div class="row" style="margin-top:8px"><input type="text" id="wsName" maxlength="18" placeholder="Robot name" value="${esc(ws.name)}" style="flex:1;min-width:0">
+        <button class="btn small" data-act="randName" title="Random name">🎲</button></div>
+      <div class="swatches">${COLORS.map((c) => `<div class="swatch ${c === ws.color ? 'on' : ''}" data-color="${c}" style="background:${c}"></div>`).join('')}</div>
+      <div id="wsStats"></div>
+      <div class="row" style="margin-top:8px"><button class="btn gold big" data-act="build" id="buildBtn" style="flex:1">🔨 BUILD</button></div>
+      <div class="hint" id="wsHint"></div>
+    </div>
+    <div>${SLOTS.map((slot) => `<div class="slotrow"><div class="lbl">${SLOT_NAMES[slot]}</div><div class="parts">${
+      Object.values(PARTS).filter((p) => p.slot === slot).map((p) => { const un = isUnlocked(p.id); return `<div class="part ${ws[slot] === p.id ? 'on' : ''} ${un ? '' : 'locked'}" data-part="${p.id}">
+        <canvas width="90" height="64"></canvas><div class="pn">${p.name}</div><div class="pc">💰${fmt(p.cost)}</div>${un ? '' : `<div class="lock">🔒 ${unlockText(p.id)}</div>`}</div>`; }).join('')
+    }</div></div>`).join('')}</div></div>`;
+  el.querySelectorAll('.part canvas').forEach((cv) => drawPartThumb(cv.getContext('2d'), cv.parentElement.dataset.part, ws.color, 90, 64));
+  updateWorkshop();
+}
+function partStatLine(p) {
+  const bits = [];
+  if (p.hp) bits.push('❤' + p.hp);
+  if (p.dmg) bits.push('⚔' + p.dmg);
+  if (p.heal) bits.push('💚' + p.heal);
+  if (p.armor) bits.push('🛡' + Math.round(p.armor * 100) + '%');
+  if (p.spd) bits.push('👟' + p.spd);
+  if (p.crit) bits.push('🎯crit ' + Math.round(p.crit * 100) + '%');
+  if (p.dodge) bits.push('💨dodge ' + Math.round(p.dodge * 100) + '%');
+  if (p.range && p.slot === 'head') bits.push('📏+' + p.range);
+  if (p.atk) bits.push('💪+' + Math.round(p.atk * 100) + '%');
+  return bits.join(' ');
+}
+function updateWorkshop() {
+  const ws = G.ws;
+  for (const k of SLOTS) if (!isUnlocked(ws[k])) ws[k] = { head: 'h_bolt', body: 'b_can', arms: 'a_punch', legs: 'l_wheels' }[k];
+  const rf = refitBot();
+  const st = robotStats(ws, bonusNow(), rf ? rf.lvl : 1), cost = rf ? refitCost(ws, rf) : robotCost(ws);
+  const A = PARTS[ws.arms];
+  const special = { rocket: '💥 splash damage', hammer: '😵 stuns enemies', flame: '🔥 sets enemies on fire', laser: '⚡ instant hit', tesla: '⛓️ hits 4 enemies', medic: '💚 heals your robots', plasma: '💥 huge splash', saw: '🌀 super fast hits' }[A.kind] || '';
+  $('wsStats').innerHTML = `<div class="stats" style="margin-top:6px"><span>❤ ${fmt(st.hp)}</span><span>${st.kind === 'medic' ? '💚 ' + Math.round(st.heal) : '⚔ ' + Math.round(st.dmg)}</span>
+    <span>⏱ ${st.rate.toFixed(2)}s</span><span>📏 ${st.range}</span><span>👟 ${st.spd}</span>${st.armor ? `<span>🛡 ${Math.round(st.armor * 100)}%</span>` : ''}
+    <span style="color:#ffcc33">⚡ ${fmt(st.power)}</span></div>${special ? `<div class="hint">${special}</div>` : ''}
+    <div class="hint">${rf ? 'Level ' + rf.lvl + ' stats' : 'Level 1 stats (+Research). Robots get stronger when they level up in battle.'}</div>`;
+  const full = !rf && G.robots.length >= barracksSize();
+  const bb = $('buildBtn'); bb.dataset.cost = cost; bb.innerHTML = `${rf ? '🔧 REFIT' : '🔨 BUILD'} <span class="cost">💰${fmt(cost)}</span>`;
+  $('wsHint').innerHTML = rf ? 'Tip: 🤖 Army → 🔧 on any robot to refit it.' : full ? `⚠️ Your army is full (${G.robots.length}/${barracksSize()}). Upgrade the barracks in 🤖 Army, or 🔧 refit a robot you have.` : `Army: ${G.robots.length}/${barracksSize()} robots`;
+  document.querySelectorAll('.part').forEach((p) => { const P = PARTS[p.dataset.part]; p.classList.toggle('on', ws[P.slot] === P.id); p.title = P.name + ': ' + partStatLine(P); });
+  updateAfford();
+}
+function drawWorkshopPreview(t) {
+  const cv = $('wsPreview'); if (!cv || !cv.clientWidth || curTab !== 'workshop') return;
+  const r = fitCanvas(cv), c = cv.getContext('2d');
+  c.setTransform(r, 0, 0, r, 0, 0); c.clearRect(0, 0, cv.clientWidth, cv.clientHeight);
+  const W = cv.clientWidth, H = cv.clientHeight;
+  c.fillStyle = 'rgba(0,0,0,.25)'; c.beginPath(); c.ellipse(W / 2, H - 22, 80, 16, 0, 0, 7); c.fill();
+  const big = G.ws.body === 'b_titan' ? 0.85 : 1;
+  drawRobot(c, G.ws, W / 2, H - 22, 1.45 * big * Math.min(1, H / 230), { t, walk: t * 5, moving: false, atk: (t % 2.2) < 0.3 ? 1 - (t % 2.2) / 0.3 : 0, face: 1, shadow: false });
+}
+const refitBot = () => (G.ws.refit ? G.robots.find((r) => r.id === G.ws.refit) || null : null);
+const refitCost = (ws, r) => SLOTS.reduce((s, k) => s + (ws[k] !== r[k] ? PARTS[ws[k]].cost : 0), 0);
+function buildRobot() {
+  const ws = G.ws, rf = refitBot();
+  if (rf) {
+    for (const k of SLOTS) if (!isUnlocked(ws[k])) { S.no(); return; }
+    if (!spend(refitCost(ws, rf))) return;
+    for (const k of SLOTS) rf[k] = ws[k];
+    rf.color = ws.color; rf.name = (($('wsName') && $('wsName').value.trim()) || rf.name).slice(0, 18);
+    ws.refit = null; ws.name = '';
+    S.build(); toast(`🔧 <b>${esc(rf.name)}</b> got new parts!`); saveLocal(); renderWorkshop(); return;
+  }
+  if (G.robots.length >= barracksSize()) { S.no(); toast('Army full! Upgrade the barracks in 🤖 Army.'); return; }
+  for (const k of SLOTS) if (!isUnlocked(ws[k])) { S.no(); return; }
+  if (!spend(robotCost(ws))) return;
+  const name = ($('wsName') && $('wsName').value.trim()) || randomName();
+  G.robots.push({ id: G.nextId++, name: name.slice(0, 18), head: ws.head, body: ws.body, arms: ws.arms, legs: ws.legs, color: ws.color, lvl: 1, xp: 0, broken: false, squad: squad().length < MAX_SQUAD });
+  G.stats.built++; ws.name = '';
+  S.build(); toast(`🤖 <b>${esc(name)}</b> joined your army!`);
+  saveLocal(); renderWorkshop();
+}
+
+// ---------- ARMY ----------
+function renderArmy() {
+  const el = $('s-army');
+  const broken = G.robots.filter((r) => r.broken), repAll = broken.reduce((s, r) => s + repairCost(r), 0);
+  const nextB = G.barracks < BARRACKS.length - 1;
+  el.innerHTML = `<div class="section-title">🤖 YOUR ARMY <span class="pill">${G.robots.length}/${barracksSize()}</span> <span class="pill gold">⚡ Squad power ${fmt(armyPower(squad().slice(0, MAX_SQUAD)))}</span></div>
+    <div class="row" style="margin-bottom:10px">
+      ${nextB ? costBtn('upBarracks', `🏠 Bigger barracks (${BARRACKS[G.barracks + 1]} robots)`, barracksCost(G.barracks + 1)) : '<span class="pill ok">Barracks MAX</span>'}
+      ${broken.length ? costBtn('repairAll', `🔧 Repair all (${broken.length})`, repAll, 'green') : ''}
+    </div>
+    <div class="hint" style="margin-bottom:8px">✅ Fight = goes to battle (max ${MAX_SQUAD}). Broken robots can't fight until repaired. Robots level up by fighting, or 🎓 train them with coins. 🔧 Refit changes parts and keeps the level.</div>
+    ${G.robots.length ? '' : '<div class="card">No robots yet! Go to the <b>🔧 Workshop</b> and build one.</div>'}
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">${G.robots.map((r) => {
+      const st = robotStats(r, bonusNow()), need = xpNeed(r.lvl);
+      return `<div class="card bot ${r.broken ? 'broken' : ''}"><canvas width="86" height="96" data-bot="${r.id}"></canvas><div class="info">
+        <div class="nm">${esc(r.name)} <span class="pill gold">Lv ${r.lvl}</span></div>
+        <div class="bar xp" title="XP"><i style="width:${r.lvl >= MAX_LVL ? 100 : (r.xp / need * 100).toFixed(0)}%"></i></div>
+        <div class="stats small" style="margin-top:4px"><span>❤${fmt(st.hp)}</span><span>${st.kind === 'medic' ? '💚' + Math.round(st.heal) : '⚔' + fmt(st.dmg)}</span><span style="color:#ffcc33">⚡${fmt(st.power)}</span></div>
+        <div class="acts">
+          ${r.broken ? costBtn('repair', '🔧 Repair', repairCost(r), 'green small', `data-id="${r.id}"`) : `<label class="chk"><input type="checkbox" data-squad="${r.id}" ${r.squad ? 'checked' : ''}> Fight</label>`}
+          ${r.lvl < MAX_LVL ? costBtn('train', '🎓 +1 Lv', trainCost(r), 'purple small', `data-id="${r.id}" title="Pay to train this robot one level up"`) : '<span class="pill gold">MAX LV</span>'}
+          <button class="btn small blue" data-act="refit" data-id="${r.id}" title="Change its parts (keeps its level)">🔧 Refit</button>
+          <button class="btn small" data-act="rename" data-id="${r.id}" title="Rename">✏️</button>
+          <button class="btn small red" data-act="scrap" data-id="${r.id}" title="Sell for scrap">♻️</button>
+        </div></div></div>`;
+    }).join('')}</div>`;
+  el.querySelectorAll('canvas[data-bot]').forEach((cv) => {
+    const r = G.robots.find((x) => x.id === +cv.dataset.bot), c = cv.getContext('2d');
+    drawRobot(c, r, 43, 88, r.body === 'b_titan' ? 0.6 : 0.7, { t: 0.5, face: 1 });
+  });
+  updateAfford();
+}
+
+// ---------- BATTLE TAB ----------
+let arenaBots = 1, arenaDiff = 1;
+function renderBattleTab() {
+  const el = $('s-battle'), sq = squad().slice(0, MAX_SQUAD), myPow = armyPower(sq);
+  el.innerHTML = `<div class="section-title">⚔️ BATTLE</div>
+    <div class="card" style="margin-bottom:10px"><b>Your squad:</b> ${sq.length} robot${sq.length === 1 ? '' : 's'} · <span class="pill gold">⚡ ${fmt(myPow)}</span>
+      <span class="dim small">(change it in 🤖 Army)</span></div>
+    <div class="section-title" style="font-size:15px">🗺️ CAMPAIGN — destroy the 10 enemy bases</div>
+    <div class="bases">${BASES.map((B, i) => {
+      const beaten = i < G.beaten, next = i === G.beaten, locked = i > G.beaten, ep = enemyPower(i);
+      const bp = Object.values(PARTS).filter((p) => p.unlock === 'b:' + (i + 1)).map((p) => p.name).join(', ');
+      const ratio = myPow / ep, feel = ratio > 1.3 ? '<span class="pill ok">Easy</span>' : ratio > 0.85 ? '<span class="pill gold">Fair fight</span>' : '<span class="pill bad">Very hard</span>';
+      return `<div class="card base ${beaten ? 'beaten' : ''} ${next ? 'next' : ''} ${locked ? 'locked' : ''}"><span class="flag">${B.flag}</span>
+        <h3>${i + 1}. ${esc(B.name)}</h3><div class="small dim">${esc(B.desc)}</div>
+        <div class="small" style="margin:6px 0">Enemy ⚡${fmt(ep)} ${locked ? '' : feel}<br>Reward: 💰${fmt(beaten ? B.reward * 0.25 : B.reward)}${!beaten && bp ? ' + 📜 ' + bp : ''}</div>
+        ${locked ? '<span class="pill">🔒 Beat the base before</span>' : `<button class="btn ${next ? 'red' : ''}" data-act="attack" data-i="${i}">${beaten ? '🔁 Replay' : '⚔️ ATTACK!'}</button>`}
+        ${beaten ? ' <span class="pill ok">✔ Beaten</span>' : ''}</div>`;
+    }).join('')}</div>
+    <div class="section-title" style="font-size:15px;margin-top:16px">🏟️ ARENA — everyone fights everyone</div>
+    <div class="card"><p class="small dim" style="margin-top:0">Fight bot armies for 🏆 trophies and coins. Robots don't break in the arena.</p>
+      <div class="row"><b>Bots:</b>${[1, 2, 3].map((n) => `<button class="btn small ${arenaBots === n ? 'gold' : ''}" data-act="abots" data-n="${n}">${n}</button>`).join('')}
+      <b style="margin-left:10px">Difficulty:</b>${['Easy', 'Normal', 'Hard'].map((d, i) => `<button class="btn small ${arenaDiff === i ? 'gold' : ''}" data-act="adiff" data-n="${i}">${d}</button>`).join('')}
+      <button class="btn red" data-act="arena" style="margin-left:auto">🏟️ FIGHT!</button></div></div>
+    <div class="card" style="margin-top:10px"><b>🌐 Want to fight your friends?</b> Go to the <a href="#" data-tab="online" style="color:#ffcc33">Online</a> tab.</div>`;
+}
+
+// ---------- RESEARCH ----------
+function renderResearch() {
+  const el = $('s-research');
+  el.innerHTML = `<div class="section-title">🔬 RESEARCH LAB</div><div class="grid">${RESEARCH.map((r) => {
+    const lvl = resLvl(r.id), max = r.cost.length, locked = G.beaten < r.need;
+    return `<div class="card res ${lvl >= max ? 'maxed' : ''}"><span class="ico">${r.ico}</span><h3>${r.name}</h3>
+      <div class="small dim" style="min-height:32px">${r.desc}</div>
+      <div style="margin-top:6px">${max > 1 ? `<span class="pill">Lv ${lvl}/${max}</span> ` : ''}${
+        lvl >= max ? '<span class="pill ok">✔ Done</span>' : locked ? `<span class="pill">🔒 Beat base ${r.need}</span>` : costBtn('research', 'Research', r.cost[lvl], 'purple', `data-id="${r.id}"`)}</div></div>`;
+  }).join('')}</div>`;
+  updateAfford();
+}
+
+// ---------- top bar, goal, affordability ----------
+function updateTop() {
+  document.querySelector('#coins .v').textContent = fmt(G.coins);
+  const inc = incomePerSec();
+  document.querySelector('#income .v').textContent = inc < 10 ? inc.toFixed(1) : fmt(inc);
+  document.querySelector('#trophies .v').textContent = fmt(G.trophies);
+  $('crankVal').textContent = '+' + fmt(crankValue());
+}
+function updateAfford() {
+  document.querySelectorAll('[data-cost]').forEach((b) => b.classList.toggle('cant', G.coins < +b.dataset.cost));
+  if (curTab === 'workshop' && $('buildBtn') && G.robots.length >= barracksSize()) $('buildBtn').classList.add('cant');
+}
+function goalTick() {
+  const g = GOALS[G.goal];
+  if (!g) { $('goal').style.display = 'none'; return; }
+  const v = g.check(G);
+  if (v >= g.need) {
+    earn(g.reward); S.buy(); toast(`🎯 Goal done: <b>${g.text}</b><br>💰 +${fmt(g.reward)}`, 3000);
+    G.goal++; saveLocal(); return goalTick();
+  }
+  $('goal').querySelector('.g-text').textContent = g.text;
+  $('goal').querySelector('.g-prog').textContent = g.need > 1 ? `${fmt(Math.min(v, g.need))}/${fmt(g.need)}` : '';
+  $('goal').querySelector('.g-rew').textContent = '💰+' + fmt(g.reward);
+  document.querySelectorAll('#tabs button').forEach((b) => b.classList.toggle('pulse', !!g.tab && b.dataset.tab === g.tab && curTab !== g.tab));
+}
+
+// ---------- the save menu ----------
+function saveMenu() {
+  const code = makeSaveCode(), ok = saveLocal();
+  showModal(`<h2>💾 Save</h2>
+    <p class="small">${ok ? '✅ Your game also saves by itself on this computer.' : '⚠️ This page can\'t save by itself here, so <b>use a save code!</b>'}
+    Copy this code and keep it somewhere safe (like a Google Doc). Paste it on the title screen to keep playing on any computer.</p>
+    <textarea id="saveCode" readonly>${code}</textarea>
+    <p class="small dim">The code changes as you play, so copy a new one when you stop.</p>`,
+  [{ txt: '📋 Copy code', cls: 'gold', keep: true, fn: () => copyText($('saveCode')) }, { txt: '📂 Load a code', fn: loadMenu }, { txt: '🗑️ New game', cls: 'red', fn: resetMenu }, { txt: 'Close' }]);
+}
+function copyText(ta) {
+  ta.focus(); ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch (e) { /* */ }
+  if (!ok && navigator.clipboard) navigator.clipboard.writeText(ta.value).then(() => toast('📋 Copied!'), () => toast('Select the code and press Ctrl+C'));
+  else toast(ok ? '📋 Copied!' : 'Select the code and press Ctrl+C');
+}
+function loadMenu() {
+  showModal(`<h2>📂 Load a save code</h2><p class="small">Paste your code here (Ctrl+V):</p><textarea id="loadCode" placeholder="RAT1...."></textarea>`,
+    [{ txt: 'Load', cls: 'gold', keep: true, fn: () => {
+      const s = readSaveCode($('loadCode').value);
+      if (!s) { S.no(); toast('❌ That code does not work. Check you copied all of it.'); return; }
+      closeModal(); G = s; afterLoad(true); toast('✅ Save loaded!');
+    } }, { txt: 'Cancel' }]);
+}
+function resetMenu() {
+  showModal('<h2>🗑️ Start a new game?</h2><p>This deletes your progress on this computer! Make a save code first if you want to keep it.</p>',
+    [{ txt: 'Cancel', cls: 'green' }, { txt: 'Delete and restart', cls: 'red', fn: () => { const nm = G.name; G = newState(); G.name = nm; F.items = []; F.timers = []; saveLocal(); renderAll(); toast('New game started!'); } }]);
+}
+function offlineEarnings() {
+  const away = Math.min(2 * 3600, (Date.now() - (G.last || Date.now())) / 1000);
+  if (away < 60) return;
+  const pct = 0.2 + 0.25 * resLvl('offline');
+  const got = Math.floor(incomePerSec() * away * pct);
+  if (got < 1) return;
+  earn(got);
+  showModal(`<h2>🌙 Welcome back!</h2><p>While you were away (${Math.floor(away / 60)} min), your factory made:</p><p style="font-size:26px;color:#ffcc33;font-weight:900">💰 ${fmt(got)}</p>
+    <p class="small dim">Research <b>Night Shift</b> to earn more while you're away.</p>`, [{ txt: 'Nice!', cls: 'gold' }]);
+}
+function afterLoad(fromCode) {
+  F.items = []; F.timers = [];
+  Sfx.setMuted(!!G.muted); $('soundBtn').textContent = G.muted ? '🔇' : '🔊';
+  hideTitle(); renderAll(); offlineEarnings(); goalTick();
+  if (fromCode) saveLocal();
+}
+
+// ============================================================
+//  ONLINE  (room codes, up to 4 players)
+//  A free public "matchmaker" server (PeerJS) helps the computers find
+//  each other, then they talk directly with WebRTC.
+//  The host's computer runs the battle and sends it to everyone.
+// ============================================================
+const NET_VERSION = 1;
+const Net = (function () {
+  const CFG = { url: 'wss://0.peerjs.com/peerjs', key: 'peerjs', ice: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+  try { const m = location.search.match(/[?&]signal=([^&]+)/); if (m) CFG.url = decodeURIComponent(m[1]); } catch (e) { /* */ }
+  if (window.RAT_SIGNAL) CFG.url = window.RAT_SIGNAL;
+  let ws = null, hb = null, myId = null, hostId = null, role = null, joinTimer = null;
+  const peers = new Map();
+  const H = {};
+  const emit = (ev, ...a) => { if (H[ev]) H[ev](...a); };
+  const rid = (n) => Array.from({ length: n }, () => 'abcdefghijkmnpqrstuvwxyz23456789'[(Math.random() * 32) | 0]).join('');
+  function sig(type, dst, payload) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type, dst, payload })); }
+  function connectSignal(id) {
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const fail = (why) => { if (!done) { done = true; reject(why); } };
+      try { ws = new WebSocket(`${CFG.url}?key=${CFG.key}&id=${id}&token=${rid(10)}&version=1.5.4`); } catch (e) { fail('blocked'); return; }
+      const to = setTimeout(() => fail('timeout'), 10000);
+      ws.onmessage = (e) => {
+        let m; try { m = JSON.parse(e.data); } catch (er) { return; }
+        if (m.type === 'OPEN') { done = true; clearTimeout(to); resolve(); hb = setInterval(() => { if (ws && ws.readyState === 1) ws.send('{"type":"HEARTBEAT"}'); }, 5000); return; }
+        if (m.type === 'ID-TAKEN') { clearTimeout(to); fail('taken'); return; }
+        if (m.type === 'ERROR') { clearTimeout(to); fail('error'); return; }
+        onSignal(m);
+      };
+      ws.onerror = () => { clearTimeout(to); fail('blocked'); };
+      ws.onclose = () => { clearTimeout(to); fail('blocked'); if (done && role) emit('signalLost'); };
+    });
+  }
+  function newPeer(pid) {
+    const pc = new RTCPeerConnection({ iceServers: CFG.ice });
+    const P = { pid, pc, dc: null, queue: [], remoteSet: false, open: false };
+    peers.set(pid, P);
+    pc.onicecandidate = (e) => { if (e.candidate) sig('CANDIDATE', pid, { c: e.candidate.toJSON ? e.candidate.toJSON() : e.candidate }); };
+    pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState)) drop(pid); };
+    pc.ondatachannel = (e) => wire(P, e.channel);
+    return P;
+  }
+  function wire(P, dc) {
+    P.dc = dc;
+    dc.onopen = () => { P.open = true; if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; } emit('open', P.pid); };
+    dc.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (er) { return; } emit('msg', P.pid, m); };
+    dc.onclose = () => drop(P.pid);
+  }
+  function drop(pid) {
+    const P = peers.get(pid); if (!P) return;
+    peers.delete(pid);
+    try { P.dc && P.dc.close(); } catch (e) { /* */ }
+    try { P.pc.close(); } catch (e) { /* */ }
+    emit('close', pid, P.open);
+  }
+  async function flush(P) { P.remoteSet = true; for (const c of P.queue) { try { await P.pc.addIceCandidate(c); } catch (e) { /* */ } } P.queue = []; }
+  async function onSignal(m) {
+    const src = m.src, pl = m.payload || {};
+    if (m.type === 'OFFER' && role === 'host') {
+      if (peers.size >= 3) { sig('ANSWER', src, { full: true }); return; }
+      const P = newPeer(src);
+      try {
+        await P.pc.setRemoteDescription(pl.sdp); await flush(P);
+        const ans = await P.pc.createAnswer(); await P.pc.setLocalDescription(ans);
+        sig('ANSWER', src, { sdp: P.pc.localDescription });
+      } catch (e) { drop(src); }
+    } else if (m.type === 'ANSWER' && role === 'guest') {
+      if (pl.full) { emit('fail', 'full'); return; }
+      const P = peers.get(src); if (!P) return;
+      try { await P.pc.setRemoteDescription(pl.sdp); await flush(P); } catch (e) { emit('fail', 'rtc'); }
+    } else if (m.type === 'CANDIDATE') {
+      const P = peers.get(src); if (!P || !pl.c) return;
+      if (P.remoteSet) { try { await P.pc.addIceCandidate(pl.c); } catch (e) { /* */ } } else P.queue.push(pl.c);
+    } else if (m.type === 'EXPIRE' || m.type === 'LEAVE') {
+      if (role === 'guest' && src === hostId && !(peers.get(src) || {}).open) emit('fail', 'noroom');
+    }
+  }
+  return {
+    on(ev, fn) { H[ev] = fn; },
+    get role() { return role; },
+    get url() { return CFG.url; },
+    async host(code) {
+      role = 'host'; myId = 'ratroom' + code.toLowerCase();
+      await connectSignal(myId);
+    },
+    async join(code) {
+      role = 'guest'; myId = 'ratp' + rid(12); hostId = 'ratroom' + code.toLowerCase();
+      await connectSignal(myId);
+      const P = newPeer(hostId);
+      wire(P, P.pc.createDataChannel('game'));
+      const offer = await P.pc.createOffer(); await P.pc.setLocalDescription(offer);
+      sig('OFFER', hostId, { sdp: P.pc.localDescription, v: NET_VERSION });
+      joinTimer = setTimeout(() => { if (!(peers.get(hostId) || {}).open) emit('fail', 'p2p'); }, 20000);
+    },
+    send(pid, obj) { const P = peers.get(pid); if (P && P.open && P.dc.readyState === 'open') try { P.dc.send(JSON.stringify(obj)); } catch (e) { /* */ } },
+    broadcast(obj) { const s = JSON.stringify(obj); for (const P of peers.values()) if (P.open && P.dc.readyState === 'open') try { P.dc.send(s); } catch (e) { /* */ } },
+    get hostId() { return hostId; },
+    leave() {
+      role = null; if (joinTimer) clearTimeout(joinTimer); joinTimer = null;
+      for (const pid of [...peers.keys()]) drop(pid);
+      if (hb) clearInterval(hb); hb = null;
+      if (ws) { try { ws.onclose = null; ws.close(); } catch (e) { /* */ } } ws = null;
+    },
+  };
+})();
+
+// ---------- the online lobby + game ----------
+const OL = { state: 'menu', code: '', players: [], me: null, msg: '', err: '', battle: null, snapT: 0, evBuf: [], teamOf: {}, busy: false, inBattle: false };
+const NET_FAIL = {
+  blocked: "Couldn't reach the online server. Your school's network might block online games. 😢 You can still play Campaign and Arena!",
+  timeout: 'The online server is not answering. Check your internet and try again.',
+  taken: 'That room code is already used. Try again!',
+  error: 'The online server said no. Try again in a minute.',
+  noroom: "Room not found. Check the code (and that your friend's room is still open).",
+  full: 'That room is full (4 players max).',
+  p2p: "Found the room, but couldn't connect to your friend directly. School networks sometimes block this. 😢",
+  rtc: 'Connection problem. Try again.',
+  closed: 'The host closed the room.',
+  version: 'Your friend has a different version of the game. Both of you need the newest one.',
+};
+function myArmyPayload() {
+  const sq = squad().slice(0, MAX_SQUAD);
+  return { v: NET_VERSION, name: G.name || 'Player', robots: sq.map((r) => ({ head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: r.color, lvl: r.lvl, name: r.name })), bonus: bonusNow(), charges: myTeamDef().charges, power: armyPower(sq) };
+}
+function cleanArmy(a) { // don't trust other computers too much
+  const robots = (Array.isArray(a.robots) ? a.robots : []).slice(0, MAX_SQUAD).filter((r) => r && SLOTS.every((k) => PARTS[r[k]] && PARTS[r[k]].slot === k))
+    .map((r) => ({ head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: /^#[0-9a-f]{6}$/i.test(r.color) ? r.color : '#b8c2d6', lvl: clamp(r.lvl | 0, 1, MAX_LVL), name: String(r.name || 'Bot').slice(0, 18) }));
+  const b = a.bonus || {}, ch = a.charges || {};
+  return { name: String(a.name || 'Player').slice(0, 16), robots, bonus: { plating: clamp(b.plating | 0, 0, 5), weapons: clamp(b.weapons | 0, 0, 5) },
+    charges: { repair: clamp(ch.repair | 0, 0, 3), shield: clamp(ch.shield | 0, 0, 3), emp: clamp(ch.emp | 0, 0, 3), air: clamp(ch.air | 0, 0, 3) } };
+}
+function lobbyList() { return OL.players.map((p) => ({ pid: p.pid, name: p.name, power: p.power, bot: !!p.bot, n: p.robots.length })); }
+function sendLobby() {
+  for (const p of OL.players) if (!p.bot && p.pid !== 'host') Net.send(p.pid, { t: 'lobby', players: lobbyList(), you: p.pid, code: OL.code });
+  renderOnline();
+}
+Net.on('open', (pid) => {
+  if (Net.role === 'guest') { OL.state = 'lobby'; OL.err = ''; Net.send(pid, Object.assign({ t: 'hello' }, myArmyPayload())); S.join(); renderOnline(); }
+});
+Net.on('fail', (why) => { Net.leave(); OL.state = 'menu'; OL.busy = false; OL.msg = ''; OL.err = NET_FAIL[why] || NET_FAIL.error; renderOnline(); });
+Net.on('signalLost', () => { if (Net.role === 'host' && OL.state === 'lobby' && !OL.inBattle) toast('⚠️ Lost the online server — new friends can\'t join right now.'); });
+Net.on('close', (pid, wasOpen) => {
+  if (Net.role === 'host') {
+    const p = OL.players.find((x) => x.pid === pid);
+    if (p) { OL.players = OL.players.filter((x) => x !== p); toast(`👋 ${esc(p.name)} left`); sendLobby(); }
+  } else if (Net.role === 'guest' && pid === Net.hostId) {
+    const inB = OL.inBattle; Net.leave(); OL.state = 'menu'; OL.inBattle = false;
+    OL.err = wasOpen ? 'The host left the room.' : NET_FAIL.p2p;
+    if (inB && battleOpen()) closeBattle();
+    if (curTab !== 'online') setTab('online'); else renderOnline();
+  }
+});
+Net.on('msg', (pid, m) => {
+  if (Net.role === 'host') {
+    if (m.t === 'hello') {
+      if (m.v !== NET_VERSION) { Net.send(pid, { t: 'err', why: 'version' }); return; }
+      if (OL.players.length >= 4 || OL.inBattle) { Net.send(pid, { t: 'err', why: 'full' }); return; }
+      const a = cleanArmy(m);
+      OL.players = OL.players.filter((p) => p.pid !== pid);
+      OL.players.push(Object.assign({ pid, power: armyPower(a.robots, a.bonus) }, a));
+      S.join(); toast(`🎉 ${esc(a.name)} joined!`); sendLobby();
+    } else if (m.t === 'pu' && OL.battle && POWERS[m.k]) {
+      const tm = OL.teamOf[pid];
+      if (tm !== undefined) usePower(OL.battle, tm, m.k, +m.x || 0, +m.y || 0);
+    } else if (m.t === 'emo' && OL.battle) {
+      const tm = OL.teamOf[pid]; if (tm !== undefined) OL.battle.events.push({ k: 'emo', team: tm, e: String(m.e).slice(0, 4) });
+    }
+  } else {
+    if (m.t === 'lobby') { OL.state = 'lobby'; OL.players = m.players; OL.me = m.you; OL.code = m.code; renderOnline(); }
+    else if (m.t === 'err') { Net.leave(); OL.state = 'menu'; OL.err = NET_FAIL[m.why] || NET_FAIL.error; renderOnline(); }
+    else if (m.t === 'start') guestStart(m);
+    else if (m.t === 's') guestSnap(m);
+    else if (m.t === 'end') onlineEnd(m.winner, m.names);
+  }
+});
+async function createRoom() {
+  if (OL.busy) return;
+  if (!needSquad()) return;
+  saveName(); OL.busy = true; OL.err = ''; OL.msg = 'Connecting to the online server...'; renderOnline();
+  for (let tries = 0; tries < 3; tries++) {
+    const code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]).join('');
+    try {
+      await Net.host(code);
+      OL.code = code; OL.state = 'lobby'; OL.busy = false; OL.msg = '';
+      const a = cleanArmy(myArmyPayload());
+      OL.players = [Object.assign({ pid: 'host', power: armyPower(a.robots, a.bonus) }, a)];
+      OL.me = 'host'; S.join(); sendLobby(); return;
+    } catch (why) { Net.leave(); if (why !== 'taken') { OL.busy = false; OL.msg = ''; OL.err = NET_FAIL[why] || NET_FAIL.error; renderOnline(); return; } }
+  }
+  OL.busy = false; OL.err = NET_FAIL.error; renderOnline();
+}
+async function joinRoom() {
+  if (OL.busy) return;
+  const code = ($('joinCode').value || '').toUpperCase().replace(/[^A-Z]/g, '');
+  if (code.length !== 4) { OL.err = 'Room codes have 4 letters.'; renderOnline(); return; }
+  if (!needSquad()) return;
+  saveName(); OL.busy = true; OL.err = ''; OL.msg = 'Joining room ' + code + '...'; renderOnline();
+  try { await Net.join(code); OL.code = code; OL.msg = 'Connecting to your friend...'; renderOnline(); }
+  catch (why) { Net.leave(); OL.err = NET_FAIL[why] || NET_FAIL.error; OL.msg = ''; renderOnline(); }
+  OL.busy = false;
+}
+function leaveRoom() {
+  if (Net.role === 'host') Net.broadcast({ t: 'err', why: 'closed' });
+  Net.leave(); OL.state = 'menu'; OL.players = []; OL.msg = ''; OL.inBattle = false; OL.battle = null; OL.guestView = null; BV.hostTick = null; BV.hostEvents = null;
+  renderOnline();
+}
+function addBot() {
+  if (OL.players.length >= 4) return;
+  const avg = OL.players.filter((p) => !p.bot).reduce((s, p) => s + p.power, 0) / Math.max(1, OL.players.filter((p) => !p.bot).length);
+  const k = OL.players.filter((p) => p.bot).length;
+  const robots = botArmy(avg, 6).map((a) => Object.assign({ color: COLORS[(k * 3 + 2) % COLORS.length], lvl: a.lvl, name: 'Bot' }, a.d));
+  OL.players.push({ pid: 'bot' + k + rid4(), bot: true, name: ['Bot Bolt', 'Bot Sparky', 'Bot Crusher'][k % 3], robots, bonus: bonusNow(), charges: { repair: 1, shield: 1, emp: 1, air: 0 }, power: Math.round(avg) });
+  sendLobby();
+}
+const rid4 = () => Math.random().toString(36).slice(2, 6);
+function removeBot() { const i = OL.players.map((p) => p.bot).lastIndexOf(true); if (i >= 0) { OL.players.splice(i, 1); sendLobby(); } }
+function saveName() { const el = $('olName'); if (el) { G.name = el.value.trim().slice(0, 16) || G.name || 'Player'; saveLocal(); } }
+
+// host: start the battle and stream it to everyone
+function hostStart() {
+  if (OL.players.length < 2) { toast('You need at least 2 players (add a bot!)'); S.no(); return; }
+  const teams = [], units = [];
+  OL.teamOf = {};
+  OL.players.forEach((p, ti) => {
+    OL.teamOf[p.pid] = ti;
+    teams.push({ name: p.name, bot: !!p.bot, charges: Object.assign({}, p.charges) });
+    for (const r of p.robots) units.push({ team: ti, design: { head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: r.color }, lvl: r.lvl, name: r.name, bonus: p.bonus, robotId: p.pid === 'host' ? findMyRobotId(r) : undefined });
+  });
+  const b = createBattle({ mode: 'arena', seed: (Math.random() * 1e9) | 0, teams, units, limit: 150 });
+  b.online = true; OL.battle = b; OL.inBattle = true; OL.snapT = 0; OL.evBuf = [];
+  const setup = { seed: b.seed, limit: b.limit, teams: teams.map((t) => ({ name: t.name, charges: t.charges })), units: b.units.map((u) => ({ id: u.id, team: u.team, design: u.design, lvl: u.lvl, scale: u.scale, maxHp: u.maxHp, r: u.r, x: u.x, y: u.y, boss: u.boss })) };
+  for (const p of OL.players) if (!p.bot && p.pid !== 'host') Net.send(p.pid, { t: 'start', setup, you: OL.teamOf[p.pid] });
+  BV.hostTick = (dt) => { OL.snapT -= dt; if (OL.snapT <= 0) { OL.snapT = 1 / 12; hostSnap(); } };
+  BV.hostEvents = (evs) => { for (const e of evs) if (e.k !== 'hit' || e.crit || e.big || OL.evBuf.length < 40) OL.evBuf.push(e); };
+  openBattle(b, { local: true, online: true, myTeam: 0, onEnd: (bb) => { hostSnap(); const names = bb.teams.map((t) => t.name); Net.broadcast({ t: 'end', winner: bb.winner, names }); onlineEnd(bb.winner, names); } });
+}
+function findMyRobotId(r) { const m = squad().find((x) => x.head === r.head && x.body === r.body && x.arms === r.arms && x.legs === r.legs && x.name === r.name); return m ? m.id : undefined; }
+function hostSnap() {
+  const b = OL.battle; if (!b) return;
+  const r1 = (v) => Math.round(v);
+  const msg = {
+    t: 's', tm: +b.time.toFixed(2),
+    u: b.units.map((u) => [u.id, r1(u.x), r1(u.y), r1(u.hp), r1(u.shield + u.pShield), (u.alive ? 1 : 0) | (u.moving ? 2 : 0) | (u.stunT > 0 ? 4 : 0) | (u.burnT > 0 ? 8 : 0), u.face]),
+    p: b.projs.map((p) => [p.kind, r1(p.x), r1(p.y), +(p.a || 0).toFixed(2), r1(p.tx || 0), r1(p.ty || 0), p.turret ? 1 : 0]),
+    ch: b.teams.map((t) => [t.charges.repair, t.charges.shield, t.charges.emp, t.charges.air]),
+    e: OL.evBuf.splice(0, 80),
+  };
+  Net.broadcast(msg);
+}
+// guest: show what the host sends
+function guestStart(m) {
+  const s = m.setup;
+  const view = {
+    mode: 'arena', seed: s.seed, limit: s.limit, time: 0, over: false, projs: [],
+    teams: s.teams.map((t) => ({ name: t.name, charges: Object.assign({}, t.charges) })),
+    units: s.units.map((u) => Object.assign({}, u, { hp: u.maxHp, alive: true, moving: false, face: u.x < 500 ? 1 : -1, tx: u.x, ty: u.y, shield: 0, pShield: 0, stunT: 0, burnT: 0 })),
+  };
+  OL.inBattle = true; OL.guestView = view;
+  closeModal();
+  openBattle(view, { online: true, myTeam: m.you, sendPower: (k, x, y) => Net.send(Net.hostId, { t: 'pu', k, x, y }) });
+}
+function guestSnap(m) {
+  const V = OL.guestView; if (!V || BV.view !== V) return;
+  V.time = m.tm;
+  const byId = new Map(V.units.map((u) => [u.id, u]));
+  for (const [id, x, y, hp, sh, fl, face] of m.u) {
+    const u = byId.get(id); if (!u) continue;
+    u.tx = x; u.ty = y; u.hp = hp; u.shield = sh; u.alive = !!(fl & 1); u.moving = !!(fl & 2); u.stunT = fl & 4 ? 1 : 0; u.burnT = fl & 8 ? 1 : 0; u.face = face;
+    if (Math.hypot(u.x - x, u.y - y) > 120) { u.x = x; u.y = y; }
+  }
+  V.projs = m.p.map(([kind, x, y, a, tx, ty, tur]) => ({ kind, x, y, a, tx, ty, turret: !!tur }));
+  m.ch.forEach((c, i) => { if (V.teams[i]) V.teams[i].charges = { repair: c[0], shield: c[1], emp: c[2], air: c[3] }; });
+  handleEvents(m.e || []);
+}
+function guestTick(dt) { // smooth movement between snapshots
+  const V = OL.guestView; if (!V || BV.view !== V) return;
+  const k = Math.min(1, dt * 12);
+  for (const u of V.units) { u.x += (u.tx - u.x) * k; u.y += (u.ty - u.y) * k; }
+  for (const p of V.projs) if (p.kind !== 'bomb') { const dx = p.tx - p.x, dy = p.ty - p.y, d = Math.hypot(dx, dy); if (d > 1) { const st = Math.min(d, 400 * dt); p.x += dx / d * st; p.y += dy / d * st; } }
+}
+function onlineEnd(winner, names) {
+  const myTeam = BV.myTeam, won = winner === myTeam;
+  OL.inBattle = false; OL.battle = null; BV.hostTick = null; BV.hostEvents = null;
+  if (BV.view) BV.view.over = true;
+  const troph = won ? 25 + (names.length - 2) * 10 : 3, coins = Math.round(Math.max(100, incomePerSec() * (won ? 60 : 20)));
+  G.trophies += troph; earn(coins); if (won) G.stats.onlineWins++;
+  for (const r of squad().slice(0, MAX_SQUAD)) gainXp(r, Math.round((won ? 20 : 8) * Math.pow(1.5, G.beaten)));
+  saveLocal();
+  won ? S.win() : S.lose();
+  setTimeout(() => {
+    showModal(`<h2>${won ? '🏆 YOU WON!' : winner >= 0 ? '💥 ' + esc(names[winner] || '?') + ' won!' : '🤝 Nobody won!'}</h2>
+      <p style="font-size:17px">🏆 <b>+${troph}</b> trophies · 💰 <b style="color:#ffcc33">+${fmt(coins)}</b></p>
+      <p class="small dim">Online robots never break. Your squad got some XP!</p>`,
+    [{ txt: 'Back to the room', cls: 'gold', fn: () => { closeBattle(); OL.guestView = null; setTab('online'); } }]);
+  }, 1200);
+}
+function sendEmote(e) {
+  if (!OL.inBattle) return;
+  if (Net.role === 'host' && OL.battle) OL.battle.events.push({ k: 'emo', team: 0, e });
+  else Net.send(Net.hostId, { t: 'emo', e });
+}
+
+function renderOnline() {
+  const el = $('s-online');
+  if (curTab !== 'online') return;
+  const name = esc(G.name || '');
+  if (OL.state === 'menu' || !Net.role) {
+    OL.state = 'menu';
+    el.innerHTML = `<div class="section-title">🌐 ONLINE BATTLE</div>
+      <div class="card" style="margin-bottom:10px"><div class="row"><b>Your name:</b><input type="text" id="olName" maxlength="16" value="${name}" placeholder="Your name"></div>
+      <div class="hint">Up to 4 players, everyone against everyone. Each player brings their own army (the robots with ✅ in 🤖 Army). Empty spots can be filled with bots.</div></div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(260px,1fr))">
+        <div class="card"><h3>🏠 Make a room</h3><p class="small dim">You get a 4-letter code. Tell it to your friends!</p>
+          <button class="btn gold big" data-act="olCreate" ${OL.busy ? 'disabled' : ''}>Create room</button></div>
+        <div class="card"><h3>🚪 Join a room</h3><p class="small dim">Type the code your friend got:</p>
+          <div class="row"><input type="text" id="joinCode" maxlength="4" placeholder="ABCD" style="width:110px;text-transform:uppercase;letter-spacing:4px;font-size:20px">
+          <button class="btn green big" data-act="olJoin" ${OL.busy ? 'disabled' : ''}>Join</button></div></div>
+      </div>
+      ${OL.msg ? `<div class="card" style="margin-top:10px">⏳ ${esc(OL.msg)}</div>` : ''}
+      ${OL.err ? `<div class="card" style="margin-top:10px;border-color:#ff4d5e">❌ ${OL.err}</div>` : ''}
+      <p class="hint">Online needs the internet and a network that allows online games. If it doesn't work at school, the 🏟️ Arena with bots always works.</p>`;
+    return;
+  }
+  const host = Net.role === 'host';
+  el.innerHTML = `<div class="section-title">🌐 ROOM <span style="font-size:30px;letter-spacing:6px;color:#fff">${esc(OL.code)}</span></div>
+    <div class="card" style="margin-bottom:10px">${host ? '📣 Tell your friends to open the game, go to 🌐 Online, and type <b>' + esc(OL.code) + '</b>.' : '✅ Connected! Waiting for the host to start the battle...'}</div>
+    <div class="grid" style="grid-template-columns:repeat(auto-fill,minmax(200px,1fr))">${[0, 1, 2, 3].map((i) => {
+      const p = OL.players[i];
+      if (!p) return `<div class="card" style="opacity:.5"><h3>Empty spot</h3><div class="small dim">Waiting for a player...</div></div>`;
+      return `<div class="card" style="border-color:${TEAM_COLORS[i]}"><h3>${p.bot ? '🤖' : '🧑'} ${esc(p.name)}${p.pid === OL.me ? ' (you)' : ''}${p.pid === 'host' ? ' 👑' : ''}</h3>
+        <div class="small">⚡ Power ${fmt(p.power)}${p.n !== undefined || p.robots ? ' · ' + (p.n !== undefined ? p.n : p.robots.length) + ' robots' : ''}</div></div>`;
+    }).join('')}</div>
+    <div class="row" style="margin-top:12px">
+      ${host ? `<button class="btn" data-act="olAddBot" ${OL.players.length >= 4 ? 'disabled' : ''}>➕ Add bot</button>
+        <button class="btn" data-act="olDelBot" ${OL.players.some((p) => p.bot) ? '' : 'disabled'}>➖ Remove bot</button>
+        <button class="btn red big" data-act="olStart" ${OL.players.length < 2 ? 'disabled' : ''}>⚔️ START BATTLE</button>` : ''}
+      <button class="btn" data-act="olLeave" style="margin-left:auto">🚪 Leave room</button></div>`;
+}
+
+// ============================================================
+//  BUTTONS
+// ============================================================
+const ACTIONS = {
+  play() { Sfx.init(); const raw = Store.get(SAVE_KEY); let loaded = false; if (raw) { try { G = fixState(JSON.parse(raw)); loaded = true; } catch (e) { G = newState(); } } afterLoad(false); if (!loaded) setTimeout(() => toast('👋 Welcome! Follow the 🎯 GOAL bar at the top.', 3500), 400); },
+  loadmenu() { Sfx.init(); loadMenu(); },
+  savemenu: saveMenu,
+  sound() { G.muted = !G.muted; Sfx.setMuted(G.muted); $('soundBtn').textContent = G.muted ? '🔇' : '🔊'; saveLocal(); },
+  crank(el, ev) {
+    const v = crankValue(); earn(v); G.stats.cranks++; S.crank();
+    const r = $('factoryWrap').getBoundingClientRect(), b = el.getBoundingClientRect();
+    F.pops.push({ x: b.left - r.left + b.width / 2 + rand(-20, 20), y: b.top - r.top - 4, v, life: 0.8 });
+    el.style.transform = 'rotate(' + rand(-4, 4) + 'deg) scale(.96)'; setTimeout(() => (el.style.transform = ''), 70);
+  },
+  buyDropper() { const n = G.droppers.length; if (n >= MAX_DROPPERS || !spend(dropperCost(n))) return; G.droppers.push(0); S.buy(); renderShop(); saveLocal(); },
+  upDropper() { const low = Math.min(...G.droppers), i = G.droppers.indexOf(low); if (low >= TIERS.length - 1 || !spend(TIER_UP_COST[low])) return; G.droppers[i]++; S.buy(); toast(`⬆️ A dropper now makes <b>${TIERS[low + 1].name}</b>!`); renderShop(); saveLocal(); },
+  upBelt() { if (G.belt >= BELT.length - 1 || !spend(BELT[G.belt + 1].cost)) return; G.belt++; S.buy(); renderShop(); saveLocal(); },
+  buyMachine() { const M = MACHINES[G.machines]; if (!M || !spend(M.cost)) return; G.machines++; S.buy(); toast(`🏗️ <b>${M.name}</b> installed!`); renderShop(); saveLocal(); },
+  upCrank() { if (G.crank >= CRANK.length - 1 || !spend(CRANK[G.crank + 1].cost)) return; G.crank++; S.buy(); renderShop(); saveLocal(); },
+  randName() { $('wsName').value = randomName(); G.ws.name = $('wsName').value; S.click(); },
+  build: buildRobot,
+  upBarracks() { if (G.barracks >= BARRACKS.length - 1 || !spend(barracksCost(G.barracks + 1))) return; G.barracks++; S.buy(); renderArmy(); saveLocal(); },
+  repair(el) { const r = G.robots.find((x) => x.id === +el.dataset.id); if (!r || !r.broken || !spend(repairCost(r))) return; r.broken = false; S.build(); renderArmy(); saveLocal(); },
+  repairAll() { const br = G.robots.filter((r) => r.broken), c = br.reduce((s, r) => s + repairCost(r), 0); if (!br.length || !spend(c)) return; br.forEach((r) => (r.broken = false)); S.build(); renderArmy(); saveLocal(); },
+  scrap(el) {
+    const r = G.robots.find((x) => x.id === +el.dataset.id); if (!r) return;
+    const back = Math.floor(robotCost(r) * 0.5);
+    showModal(`<h2>♻️ Scrap ${esc(r.name)}?</h2><p>You get back 💰${fmt(back)} (half of what it cost). It will be gone forever!</p>`,
+      [{ txt: 'Keep it', cls: 'green' }, { txt: 'Scrap it', cls: 'red', fn: () => { G.robots = G.robots.filter((x) => x !== r); if (G.ws.refit === r.id) G.ws.refit = null; earn(back); S.clank(); renderArmy(); saveLocal(); } }]);
+  },
+  rename(el) {
+    const r = G.robots.find((x) => x.id === +el.dataset.id); if (!r) return;
+    showModal(`<h2>✏️ Rename</h2><input type="text" id="renameIn" maxlength="18" value="${esc(r.name)}" style="width:100%">`,
+      [{ txt: '🎲', keep: true, fn: () => ($('renameIn').value = randomName()) }, { txt: 'Save', cls: 'gold', fn: () => { r.name = ($('renameIn').value.trim() || r.name).slice(0, 18); renderArmy(); saveLocal(); } }]);
+    setTimeout(() => $('renameIn') && $('renameIn').focus(), 50);
+  },
+  train(el) { const r = G.robots.find((x) => x.id === +el.dataset.id); if (!r || r.lvl >= MAX_LVL || !spend(trainCost(r))) return; r.lvl++; r.xp = 0; S.level(); toast(`🎓 <b>${esc(r.name)}</b> is now level ${r.lvl}!`); renderArmy(); saveLocal(); },
+  refit(el) { const r = G.robots.find((x) => x.id === +el.dataset.id); if (!r) return; G.ws = { head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: r.color, name: r.name, refit: r.id }; setTab('workshop'); },
+  cancelRefit() { G.ws.refit = null; G.ws.name = ''; renderWorkshop(); },
+  attack(el) { startCampaign(+el.dataset.i); },
+  abots(el) { arenaBots = +el.dataset.n; renderBattleTab(); },
+  adiff(el) { arenaDiff = +el.dataset.n; renderBattleTab(); },
+  arena() { startArena(arenaBots, arenaDiff); },
+  research(el) {
+    const R = RES[el.dataset.id], lvl = resLvl(R.id);
+    if (lvl >= R.cost.length || G.beaten < R.need || !spend(R.cost[lvl])) return;
+    G.research[R.id] = lvl + 1; S.buy(); toast(`🔬 <b>${R.name}</b> researched!`); renderResearch(); saveLocal();
+  },
+  bspeed() { BV.speed = BV.speed >= 3 ? 1 : BV.speed + 1; $('bSpeed').textContent = '⏩ ' + BV.speed + 'x'; },
+  bquit: retreat,
+  olCreate: createRoom, olJoin: joinRoom, olLeave: leaveRoom, olAddBot: addBot, olDelBot: removeBot, olStart: hostStart,
+};
+document.addEventListener('click', (ev) => {
+  Sfx.init();
+  const t = ev.target;
+  const m = t.closest('[data-modal]'); if (m) { S.click(); modalPress(+m.dataset.modal); return; }
+  const tab = t.closest('[data-tab]'); if (tab) { ev.preventDefault(); S.click(); setTab(tab.dataset.tab); return; }
+  const a = t.closest('[data-act]');
+  if (a) { if (a.disabled) return; if (a.dataset.act !== 'crank') S.click(); ACTIONS[a.dataset.act] && ACTIONS[a.dataset.act](a, ev); updateTop(); return; }
+  const part = t.closest('[data-part]');
+  if (part) { const P = PARTS[part.dataset.part]; if (!isUnlocked(P.id)) { S.no(); toast('🔒 ' + unlockText(P.id) + ' to unlock ' + P.name); return; } G.ws[P.slot] = P.id; S.clank(); updateWorkshop(); return; }
+  const col = t.closest('[data-color]');
+  if (col) { G.ws.color = col.dataset.color; S.click(); renderWorkshop(); return; }
+  const pu = t.closest('[data-pu]'); if (pu) { pressPower(pu.dataset.pu); return; }
+  const emo = t.closest('[data-emo]'); if (emo) { sendEmote(emo.dataset.emo); return; }
+});
+document.addEventListener('change', (ev) => {
+  const sq = ev.target.closest('[data-squad]');
+  if (sq) {
+    const r = G.robots.find((x) => x.id === +sq.dataset.squad);
+    if (sq.checked && squad().length >= MAX_SQUAD) { sq.checked = false; toast(`Max ${MAX_SQUAD} robots can fight at once.`); S.no(); return; }
+    r.squad = sq.checked; saveLocal(); renderArmy();
+  }
+});
+document.addEventListener('input', (ev) => { if (ev.target.id === 'wsName') G.ws.name = ev.target.value; });
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter' && ev.target.id === 'joinCode') joinRoom();
+  if (ev.key === 'Escape' && BV.armed) { BV.armed = null; document.querySelectorAll('.pu').forEach((b) => b.classList.remove('armed')); }
+});
+$('bCanvas').addEventListener('pointerdown', battleClick);
+$('bCanvas').addEventListener('pointermove', battleMove);
+$('factoryCanvas').addEventListener('pointerdown', () => ACTIONS.crank($('crankBtn')));
+
+// ============================================================
+//  TITLE SCREEN
+// ============================================================
+let titleOn = true;
+const titleBots = [];
+function hideTitle() { titleOn = false; $('title').style.display = 'none'; }
+function drawTitle(t) {
+  const cv = $('titleCanvas'); if (!cv.clientWidth) return;
+  const r = fitCanvas(cv), c = cv.getContext('2d'); c.setTransform(r, 0, 0, r, 0, 0);
+  const W = cv.clientWidth, H = cv.clientHeight;
+  c.clearRect(0, 0, W, H);
+  if (!titleBots.length) {
+    const heads = ['h_bolt', 'h_visor', 'h_cyclops', 'h_dome', 'h_brain', 'h_skull', 'h_crown'], bodies = ['b_can', 'b_box', 'b_round', 'b_armor', 'b_reactor', 'b_shield'];
+    const arms = ['a_punch', 'a_blaster', 'a_saw', 'a_rocket', 'a_hammer', 'a_laser', 'a_tesla', 'a_flame', 'a_plasma'], legs = ['l_wheels', 'l_walker', 'l_treads', 'l_spider', 'l_jet', 'l_stomper'];
+    for (let i = 0; i < 7; i++) titleBots.push({ d: { head: heads[i % heads.length], body: bodies[i % bodies.length], arms: arms[(i * 2) % arms.length], legs: legs[i % legs.length], color: COLORS[i] }, x: i * 110 });
+  }
+  c.fillStyle = '#ffffff10'; c.fillRect(0, H - 22, W, 3);
+  const span = 7 * 110;
+  for (const b of titleBots) {
+    const x = ((b.x + t * 40) % span) - 60;
+    drawRobot(c, b.d, x * (W + 120) / span, H - 22, 0.95, { t, walk: t * 6 + b.x, moving: true, face: 1, atk: Math.sin(t * 2 + b.x) > 0.95 ? 1 : 0 });
+  }
+}
+
+// ============================================================
+//  MAIN LOOP
+// ============================================================
+let lastT = performance.now(), slowT = 0, goalT = 0, saveT = 0;
+function frame(now) {
+  const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  const t = now / 1000;
+  try {
+    if (titleOn) drawTitle(t);
+    else {
+      factoryStep(dt);
+      if (battleOpen()) { guestTick(dt); battleTick(dt); }
+      else if (curTab === 'factory') drawFactory();
+      else if (curTab === 'workshop') drawWorkshopPreview(t);
+      updateTop();
+      slowT -= dt; if (slowT <= 0) { slowT = 0.25; updateAfford(); }
+      goalT -= dt; if (goalT <= 0) { goalT = 1; goalTick(); }
+      saveT -= dt; if (saveT <= 0) { saveT = 10; saveLocal(); }
+    }
+  } catch (e) { console.error(e); }
+  requestAnimationFrame(frame);
+}
+window.addEventListener('beforeunload', () => { if (!titleOn) saveLocal(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden && !titleOn) saveLocal(); });
+// for testing (window.RAT lets a test script look inside the game)
+window.RAT = { get G() { return G; }, set G(v) { G = v; }, PARTS, BASES, createBattle, stepBattle, robotStats, campaignEnemies, enemyPower, armyPower, botArmy, startCampaign, startArena, makeSaveCode, readSaveCode, incomePerSec, BV, OL, Net, ACTIONS, setTab, fixState, afterLoad };
+// title screen: CONTINUE if there is a save, and a warning if this page can't save
+const CAN_SAVE = Store.set('robotArmyTycoon.test', '1');
+if (Store.get(SAVE_KEY)) $('playBtn').textContent = '▶ CONTINUE';
+if (!CAN_SAVE) $('saveWarn').style.display = '';
+let remindT = 600;
+setInterval(() => { if (!CAN_SAVE && !titleOn) { remindT -= 5; if (remindT <= 0) { remindT = 600; toast('💾 Don\'t forget: press <b>Save</b> and copy your save code!', 4000); } } }, 5000);
+requestAnimationFrame(frame);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Test</title>
+<!--
+  ROBOT ARMY TYCOON - ONLINE TEST
+  Paste this into Google Sites (Insert > Embed > Embed code) to check if online play
+  works on your school network. It uses the same online code as the game.
+-->
+<style>
+  body { margin: 0; padding: 14px; background: #0f1420; color: #eef3ff; font: 15px system-ui, "Segoe UI", Roboto, Arial, sans-serif; }
+  h1 { margin: 0 0 4px; font-style: italic; color: #ffcc33; font-size: 22px; }
+  .card { background: #1f2738; border: 2px solid #3a4760; border-radius: 12px; padding: 10px; margin: 10px 0; }
+  button { font: inherit; font-weight: 800; border: 2px solid #0a0e17; border-bottom-width: 4px; border-radius: 10px; padding: 7px 14px; cursor: pointer; background: linear-gradient(#ffd84d, #ff9d1c); color: #2a1a00; }
+  button.g { background: linear-gradient(#5dff9a, #1fb85a); color: #03250f; }
+  button.b { background: linear-gradient(#6fd0ff, #2b86d6); color: #fff; }
+  input { font: inherit; font-weight: 700; background: #0b0f18; border: 2px solid #3a4760; border-radius: 8px; color: #fff; padding: 6px 9px; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .step { margin: 4px 0; } .dim { color: #9fb0cc; font-size: 13px; }
+  #code { font-size: 30px; letter-spacing: 6px; font-weight: 900; }
+  #log { max-height: 180px; overflow: auto; font-size: 13px; }
+</style>
+</head>
+<body>
+<h1>🌐 Online Test</h1>
+<div class="dim">Checks if Robot Army Tycoon online battles can work here. Try it with a friend on another computer!</div>
+<div class="card">
+  <div class="row"><b>Name:</b><input id="name" maxlength="16" value="Player"></div>
+  <div class="row" style="margin-top:8px"><button id="create">🏠 Create room</button> <span class="dim">or</span>
+    <input id="join" maxlength="4" placeholder="ABCD" style="width:90px;text-transform:uppercase;letter-spacing:3px"> <button class="g" id="joinBtn">🚪 Join</button></div>
+</div>
+<div class="card">
+  <div class="step" id="s1">⚪ Step 1: reach the online server</div>
+  <div class="step" id="s2">⚪ Step 2: connect to a friend</div>
+  <div class="step" id="s3">⚪ Step 3: send messages</div>
+  <div id="roomBox" style="display:none;margin-top:8px">Room code: <span id="code"></span> <span class="dim">(tell your friend)</span></div>
+  <div class="row" style="margin-top:8px"><button class="b" id="ping" disabled>📡 Ping friends</button> <button class="b" id="wave" disabled>👋 Wave</button></div>
+</div>
+<div class="card"><b>What happened:</b><div id="log"></div></div>
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+function log(t) { const d = document.createElement('div'); d.textContent = new Date().toLocaleTimeString() + '  ' + t; $('log').prepend(d); }
+function step(n, ok, txt) { $('s' + n).textContent = (ok === true ? '✅ ' : ok === false ? '❌ ' : '⏳ ') + txt; }
+const NET_VERSION = 1;
+const Net = (function () {
+  const CFG = { url: 'wss://0.peerjs.com/peerjs', key: 'peerjs', ice: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] };
+  try { const m = location.search.match(/[?&]signal=([^&]+)/); if (m) CFG.url = decodeURIComponent(m[1]); } catch (e) { /* */ }
+  if (window.RAT_SIGNAL) CFG.url = window.RAT_SIGNAL;
+  let ws = null, hb = null, myId = null, hostId = null, role = null, joinTimer = null;
+  const peers = new Map();
+  const H = {};
+  const emit = (ev, ...a) => { if (H[ev]) H[ev](...a); };
+  const rid = (n) => Array.from({ length: n }, () => 'abcdefghijkmnpqrstuvwxyz23456789'[(Math.random() * 32) | 0]).join('');
+  function sig(type, dst, payload) { if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type, dst, payload })); }
+  function connectSignal(id) {
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const fail = (why) => { if (!done) { done = true; reject(why); } };
+      try { ws = new WebSocket(`${CFG.url}?key=${CFG.key}&id=${id}&token=${rid(10)}&version=1.5.4`); } catch (e) { fail('blocked'); return; }
+      const to = setTimeout(() => fail('timeout'), 10000);
+      ws.onmessage = (e) => {
+        let m; try { m = JSON.parse(e.data); } catch (er) { return; }
+        if (m.type === 'OPEN') { done = true; clearTimeout(to); resolve(); hb = setInterval(() => { if (ws && ws.readyState === 1) ws.send('{"type":"HEARTBEAT"}'); }, 5000); return; }
+        if (m.type === 'ID-TAKEN') { clearTimeout(to); fail('taken'); return; }
+        if (m.type === 'ERROR') { clearTimeout(to); fail('error'); return; }
+        onSignal(m);
+      };
+      ws.onerror = () => { clearTimeout(to); fail('blocked'); };
+      ws.onclose = () => { clearTimeout(to); fail('blocked'); if (done && role) emit('signalLost'); };
+    });
+  }
+  function newPeer(pid) {
+    const pc = new RTCPeerConnection({ iceServers: CFG.ice });
+    const P = { pid, pc, dc: null, queue: [], remoteSet: false, open: false };
+    peers.set(pid, P);
+    pc.onicecandidate = (e) => { if (e.candidate) sig('CANDIDATE', pid, { c: e.candidate.toJSON ? e.candidate.toJSON() : e.candidate }); };
+    pc.onconnectionstatechange = () => { if (['failed', 'closed'].includes(pc.connectionState)) drop(pid); };
+    pc.ondatachannel = (e) => wire(P, e.channel);
+    return P;
+  }
+  function wire(P, dc) {
+    P.dc = dc;
+    dc.onopen = () => { P.open = true; if (joinTimer) { clearTimeout(joinTimer); joinTimer = null; } emit('open', P.pid); };
+    dc.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (er) { return; } emit('msg', P.pid, m); };
+    dc.onclose = () => drop(P.pid);
+  }
+  function drop(pid) {
+    const P = peers.get(pid); if (!P) return;
+    peers.delete(pid);
+    try { P.dc && P.dc.close(); } catch (e) { /* */ }
+    try { P.pc.close(); } catch (e) { /* */ }
+    emit('close', pid, P.open);
+  }
+  async function flush(P) { P.remoteSet = true; for (const c of P.queue) { try { await P.pc.addIceCandidate(c); } catch (e) { /* */ } } P.queue = []; }
+  async function onSignal(m) {
+    const src = m.src, pl = m.payload || {};
+    if (m.type === 'OFFER' && role === 'host') {
+      if (peers.size >= 3) { sig('ANSWER', src, { full: true }); return; }
+      const P = newPeer(src);
+      try {
+        await P.pc.setRemoteDescription(pl.sdp); await flush(P);
+        const ans = await P.pc.createAnswer(); await P.pc.setLocalDescription(ans);
+        sig('ANSWER', src, { sdp: P.pc.localDescription });
+      } catch (e) { drop(src); }
+    } else if (m.type === 'ANSWER' && role === 'guest') {
+      if (pl.full) { emit('fail', 'full'); return; }
+      const P = peers.get(src); if (!P) return;
+      try { await P.pc.setRemoteDescription(pl.sdp); await flush(P); } catch (e) { emit('fail', 'rtc'); }
+    } else if (m.type === 'CANDIDATE') {
+      const P = peers.get(src); if (!P || !pl.c) return;
+      if (P.remoteSet) { try { await P.pc.addIceCandidate(pl.c); } catch (e) { /* */ } } else P.queue.push(pl.c);
+    } else if (m.type === 'EXPIRE' || m.type === 'LEAVE') {
+      if (role === 'guest' && src === hostId && !(peers.get(src) || {}).open) emit('fail', 'noroom');
+    }
+  }
+  return {
+    on(ev, fn) { H[ev] = fn; },
+    get role() { return role; },
+    get url() { return CFG.url; },
+    async host(code) {
+      role = 'host'; myId = 'ratroom' + code.toLowerCase();
+      await connectSignal(myId);
+    },
+    async join(code) {
+      role = 'guest'; myId = 'ratp' + rid(12); hostId = 'ratroom' + code.toLowerCase();
+      await connectSignal(myId);
+      const P = newPeer(hostId);
+      wire(P, P.pc.createDataChannel('game'));
+      const offer = await P.pc.createOffer(); await P.pc.setLocalDescription(offer);
+      sig('OFFER', hostId, { sdp: P.pc.localDescription, v: NET_VERSION });
+      joinTimer = setTimeout(() => { if (!(peers.get(hostId) || {}).open) emit('fail', 'p2p'); }, 20000);
+    },
+    send(pid, obj) { const P = peers.get(pid); if (P && P.open && P.dc.readyState === 'open') try { P.dc.send(JSON.stringify(obj)); } catch (e) { /* */ } },
+    broadcast(obj) { const s = JSON.stringify(obj); for (const P of peers.values()) if (P.open && P.dc.readyState === 'open') try { P.dc.send(s); } catch (e) { /* */ } },
+    get hostId() { return hostId; },
+    leave() {
+      role = null; if (joinTimer) clearTimeout(joinTimer); joinTimer = null;
+      for (const pid of [...peers.keys()]) drop(pid);
+      if (hb) clearInterval(hb); hb = null;
+      if (ws) { try { ws.onclose = null; ws.close(); } catch (e) { /* */ } } ws = null;
+    },
+  };
+})();
+
+
+const FAIL = {
+  blocked: "Can't reach the online server. The school network probably blocks it. (Campaign and Arena still work!)",
+  timeout: 'The online server did not answer. Try again.', taken: 'That code is taken, try again.', error: 'The server said no. Try again later.',
+  noroom: 'Room not found. Check the code.', full: 'Room is full.', rtc: 'Connection problem.',
+  p2p: "Found the room, but the computers can't connect to each other. The school network probably blocks direct connections.",
+};
+const names = {};
+let isHost = false;
+Net.on('open', (pid) => {
+  step(2, true, 'Step 2: connected to a friend! 🎉'); $('ping').disabled = false; $('wave').disabled = false;
+  Net.send(pid, { t: 'hi', name: $('name').value });
+});
+Net.on('msg', (pid, m) => {
+  if (m.t === 'hi') { names[pid] = String(m.name).slice(0, 16); log('🎉 ' + names[pid] + ' is connected'); }
+  if (m.t === 'ping') Net.send(pid, { t: 'pong', at: m.at });
+  if (m.t === 'pong') { step(3, true, 'Step 3: messages work! Online battles should work here. ✅'); log('📡 ' + (names[pid] || 'friend') + ' answered in ' + Math.round(performance.now() - m.at) + ' ms'); }
+  if (m.t === 'wave') { log('👋 ' + (names[pid] || 'friend') + ' waved!'); step(3, true, 'Step 3: messages work! Online battles should work here. ✅'); }
+});
+Net.on('close', (pid) => log('👋 ' + (names[pid] || 'friend') + ' left'));
+Net.on('fail', (why) => { Net.leave(); step(2, false, 'Step 2: ' + (FAIL[why] || why)); log('❌ ' + (FAIL[why] || why)); });
+$('create').onclick = async () => {
+  Net.leave(); isHost = true; step(1, null, 'Step 1: reaching the online server...');
+  const code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[(Math.random() * 24) | 0]).join('');
+  try { await Net.host(code); step(1, true, 'Step 1: online server works!'); step(2, null, 'Step 2: waiting for a friend to join...'); $('roomBox').style.display = ''; $('code').textContent = code; log('Room ' + code + ' is open'); }
+  catch (why) { step(1, false, 'Step 1: ' + (FAIL[why] || why)); log('❌ ' + (FAIL[why] || why)); }
+};
+$('joinBtn').onclick = async () => {
+  const code = $('join').value.toUpperCase().replace(/[^A-Z]/g, '');
+  if (code.length !== 4) { log('Codes have 4 letters'); return; }
+  Net.leave(); isHost = false; step(1, null, 'Step 1: reaching the online server...');
+  try { await Net.join(code); step(1, true, 'Step 1: online server works!'); step(2, null, 'Step 2: connecting to your friend...'); }
+  catch (why) { step(1, false, 'Step 1: ' + (FAIL[why] || why)); log('❌ ' + (FAIL[why] || why)); }
+};
+$('ping').onclick = () => { Net.broadcast({ t: 'ping', at: performance.now() }); };
+$('wave').onclick = () => { Net.broadcast({ t: 'wave' }); log('👋 you waved'); };
+</script>
+</body>
+</html>

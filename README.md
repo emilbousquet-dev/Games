@@ -1,3 +1,14 @@
+# Games 🎮
+
+| Game | What it is |
+|---|---|
+| **LAB 13** 👽 (this page) | 3D co-op survival horror. Open `index.html`. |
+| **[Robot Army Tycoon](robot-tycoon/)** 🤖 | Build a factory, build robots, win battles, play online with friends. One file you can paste into Google Sites. |
+
+More ideas for games: [GAME_IDEAS.md](GAME_IDEAS.md)
+
+---
+
 # LAB 13 👽🩸
 
 A **3D co-op survival horror game** that runs in your web browser.
