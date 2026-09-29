@@ -327,6 +327,10 @@
 <script>
   // let the loading screen show up before the heavy work starts
   setTimeout(() => {
+    if (!window.DA || !window.THREE) {
+      document.getElementById('loading').innerHTML = 'OOPS<small>The game files next to this page could not load.<br>Open <b>dead-acres.html</b> instead: it has everything inside one file.</small>';
+      return;
+    }
     try { DA.Game.start(); }
     catch (e) {
       console.error(e);

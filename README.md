@@ -3,7 +3,7 @@
 | Game | What it is | How to play |
 |---|---|---|
 | **LAB 13** 👽 | 3D co-op survival horror in an underground lab (1-2 players, split screen) | open `index.html` (read below) |
-| **DEAD ACRES** 🧟 | 3D open-world zombie survival: craft, build, survive (1-3 players online) | open `survival/index.html` ([read more](survival/README.md)) |
+| **DEAD ACRES** 🧟 | 3D open-world zombie survival: craft, build, survive (1-3 players online) | open `survival/dead-acres.html` ([read more](survival/README.md)) |
 
 ---
 

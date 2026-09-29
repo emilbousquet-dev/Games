@@ -9,7 +9,9 @@ Play **alone**, or **online with up to 3 players**.
 
 ## How to play
 
-1. Open **`survival/index.html`** in Chrome, Edge or Firefox (just double-click it).
+1. Open **`survival/dead-acres.html`** in Chrome, Edge or Firefox (just double-click it).
+   It's the whole game in ONE file, so it works anywhere, and you can send it to friends.
+   (`index.html` works too, but only when the `js` and `lib` folders are next to it.)
 2. Type your name and click **NEW WORLD**.
 3. Click the game to use the mouse. Put on headphones. 🎧
 
@@ -75,13 +77,17 @@ and press `E`. Then survive one last, very big night... and get on the helicopte
 Everyone needs internet for online games. The game uses the free PeerJS service to connect
 the computers directly to each other. Solo games work without internet.
 
-**Friends need the game too.** The easiest way is to put the game on the web with **GitHub Pages**:
+**Friends need the game too.** You can just send them `dead-acres.html` (email, USB stick, chat...).
+Everyone needs the **same version** of the game to play together. Another way is to put the game on the web with **GitHub Pages**:
 on GitHub, open the repository's **Settings → Pages**, choose **Deploy from a branch**, pick the main branch
 and the root folder, and click **Save**. After a minute the game is at
 `https://<your-github-name>.github.io/<repository-name>/survival/`.
 (GitHub Pages needs the repository to be public.)
 
 ## Change the game!
+
+After changing anything, run `python3 make-single-file.py` in the `survival` folder
+to update `dead-acres.html` (or just ask Claude to do it).
 
 - **`js/map.js`**: move the town, the houses, the cars, the roads and the lake.
 - **`js/items.js`**: change what food does, how strong weapons are, the crafting recipes, and what you find in cupboards.
@@ -91,6 +97,7 @@ and the root folder, and click **Save**. After a minute the game is at
 
 | File | What's inside |
 |---|---|
+| `dead-acres.html` | the whole game packed into one file (made by `make-single-file.py`) |
 | `index.html` | the page, menus and screens |
 | `js/map.js` | the world map (edit me!) |
 | `js/items.js` | items, crafting and loot (edit me!) |
