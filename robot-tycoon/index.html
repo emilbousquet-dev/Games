@@ -930,6 +930,7 @@ function fixState(s) { // fill in anything missing (old saves, broken codes)
   s.robots = s.robots.filter((r) => r && PARTS[r.head] && PARTS[r.body] && PARTS[r.arms] && PARTS[r.legs]);
   for (const r of s.robots) { r.lvl = clamp(r.lvl | 0 || 1, 1, MAX_LVL); r.xp = r.xp || 0; if (r.squad === undefined) r.squad = true; r.name = String(r.name || randomName()).slice(0, 18); }
   for (const k of SLOTS) if (!PARTS[s.ws[k]]) s.ws[k] = d.ws[k];
+  s.nextId = Math.max(s.nextId | 0, ...s.robots.map((r) => (r.id | 0) + 1), 1);
   s.coins = Math.max(0, +s.coins || 0);
   s.belt = clamp(s.belt | 0, 0, BELT.length - 1); s.crank = clamp(s.crank | 0, 0, CRANK.length - 1);
   s.machines = clamp(s.machines | 0, 0, MACHINES.length); s.barracks = clamp(s.barracks | 0, 0, BARRACKS.length - 1);
