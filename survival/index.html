@@ -148,14 +148,22 @@
   .bottomBtns { margin-top: 12px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   #onlineWarn { display: none; color: #fa4; font-size: 12px; }
   #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; flex-direction: column; background: #0a0a08; z-index: 40; font-family: Impact, "Arial Black", sans-serif; letter-spacing: 4px; font-size: 28px; color: #d8d0a8; }
-  #loading small { font-family: Arial, sans-serif; font-size: 13px; letter-spacing: 1px; color: var(--dim); margin-top: 10px; }
+  #loading small { font-family: Arial, sans-serif; font-size: 14px; letter-spacing: 1px; color: var(--dim); margin-top: 12px; text-align: center; max-width: 90vw; line-height: 1.4; }
+  #loading small b { color: var(--ink); }
+  #loadBox { width: min(320px, 80vw); height: 8px; margin-top: 12px; border: 1px solid rgba(232,224,200,0.4); border-radius: 4px; overflow: hidden; }
+  #loadBar { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.2s; }
+  #loadHelp .err { color: #ff8060; font-family: monospace; font-size: 12px; }
   @media (max-width: 700px) { .slot { width: 46px; height: 46px; } #msgs { top: 90px; } }
 </style>
 </head>
 <body>
 <canvas id="game"></canvas>
 
-<div id="loading">DEAD ACRES<small>Building the world...</small></div>
+<div id="loading">DEAD ACRES
+  <small id="loadStep">Loading...</small>
+  <div id="loadBox"><i id="loadBar"></i></div>
+  <small id="loadHelp"></small>
+</div>
 
 <!-- ============ TITLE ============ -->
 <div id="title">
@@ -329,18 +337,33 @@
 <script src="js/hud.js"></script>
 <script src="js/game.js"></script>
 <script>
-  // let the loading screen show up before the heavy work starts
-  setTimeout(() => {
-    if (!window.DA || !window.THREE) {
-      document.getElementById('loading').innerHTML = 'OOPS<small>The game files next to this page could not load.<br>Open <b>dead-acres.html</b> instead: it has everything inside one file.</small>';
-      return;
-    }
-    try { DA.Game.start(); }
-    catch (e) {
-      console.error(e);
-      document.getElementById('loading').innerHTML = 'OOPS<small>Something went wrong: ' + String(e.message).replace(/</g, '&lt;') + '</small>';
-    }
-  }, 30);
+  // show any problem on the loading screen (instead of getting stuck)
+  (function () {
+    const help = document.getElementById('loadHelp');
+    const oops = (msg) => {
+      if (!window.DA || !window.DA.Game || window.DA.Game.mode === 'loading') {
+        document.getElementById('loadStep').textContent = 'OOPS, something went wrong while loading.';
+        help.innerHTML = /WebGL/i.test(msg)
+          ? 'Your browser can\'t draw 3D graphics right now (WebGL is off).<br>Try <b>Chrome</b> or <b>Edge</b>, and in the browser settings turn on<br><b>"Use graphics acceleration when available"</b>, then restart the browser.<br><span class="err"></span>'
+          : 'Please tell Claude this message:<br><span class="err"></span>';
+        help.querySelector('.err').textContent = msg;
+      }
+    };
+    window.addEventListener('error', (e) => oops(String(e.message || e.error)));
+    window.addEventListener('unhandledrejection', (e) => oops(String(e.reason && (e.reason.stack || e.reason.message) || e.reason)));
+    setTimeout(() => {
+      if (window.DA && DA.Game && DA.Game.mode === 'loading' && !help.textContent) {
+        help.innerHTML = 'This is taking a long time...<br>If it stays stuck, tell Claude which step it stopped on.<br>You can also try <b>dead-acres.html?low</b> (low graphics).';
+      }
+    }, 30000);
+    setTimeout(() => {
+      if (!window.DA || !window.THREE) {
+        document.getElementById('loadStep').innerHTML = 'The game files next to this page could not load.<br>Open <b>dead-acres.html</b> instead: it has everything inside one file.';
+        return;
+      }
+      window.DA.Game.start().catch((e) => { console.error(e); oops(String(e.stack || e.message || e)); });
+    }, 30);
+  })();
 </script>
 </body>
 </html>

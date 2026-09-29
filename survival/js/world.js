@@ -146,6 +146,40 @@ DA.World = (function () {
   // ============================================================
   //  THE GROUND MESH + its painted colors
   // ============================================================
+  // painting the ground asks "how far to a road?" a million times.
+  // So we work it out once every 2 m, and blend between those.
+  let roadGrid = null, dirtGrid = null, padGrid = null;
+  function buildPaintGrids() {
+    const n = TN + 1;
+    roadGrid = new Float32Array(n * n); dirtGrid = new Uint8Array(n * n); padGrid = new Int16Array(n * n).fill(-1);
+    for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) {
+      const x = -HALF + i * TG, z = -HALF + j * TG, k = j * n + i;
+      const rd = roadDist(x, z);
+      roadGrid[k] = rd.d; dirtGrid[k] = rd.road && rd.road.dirt ? 1 : 0;
+      const p = inPad(x, z, 2.5);
+      if (p) padGrid[k] = W.pads.indexOf(p);
+    }
+  }
+  function roadAt(x, z) {
+    const n = TN + 1;
+    const gx = U.clamp((x + HALF) / TG, 0, TN - 0.001), gz = U.clamp((z + HALF) / TG, 0, TN - 0.001);
+    const i = Math.floor(gx), j = Math.floor(gz), fx = gx - i, fz = gz - j, k = j * n + i;
+    const d = (roadGrid[k] * (1 - fx) + roadGrid[k + 1] * fx) * (1 - fz) + (roadGrid[k + n] * (1 - fx) + roadGrid[k + n + 1] * fx) * fz;
+    return { d, dirt: dirtGrid[Math.round(gz) * n + Math.round(gx)] === 1 };
+  }
+  function padAt(x, z) {
+    const n = TN + 1;
+    const i = Math.round((x + HALF) / TG), j = Math.round((z + HALF) / TG);
+    if (i < 0 || j < 0 || i > TN || j > TN) return null;
+    const idx = padGrid[j * n + i];
+    if (idx < 0) return null;
+    const p = W.pads[idx];
+    const dx = x - p.x, dz = z - p.z;
+    const lx = dx * p.c - dz * p.s, lz = dx * p.s + dz * p.c;
+    if (Math.abs(lx) < p.hw && Math.abs(lz) < p.hd) return p;
+    return inPad(x, z); // pads next to each other: check them all (rare)
+  }
+
   function paintGround(res) {
     const cv = document.createElement('canvas');
     cv.width = cv.height = res;
@@ -179,16 +213,16 @@ DA.World = (function () {
         if (row) { r = 92 + n2 * 10; gg = 70; b = 44; } else { r = 96; gg = 120 + n2 * 10; b = 40; }
       }
       // roads
-      const rd = roadDist(x, z);
+      const rd = roadAt(x, z);
       if (rd.d < 1.5) {
         const edge = U.smooth(1.5, -0.4, rd.d);
         let rr, rg, rb;
-        if (rd.road.dirt) { rr = 118 + n2 * 10; rg = 96 + n2 * 8; rb = 66; }
+        if (rd.dirt) { rr = 118 + n2 * 10; rg = 96 + n2 * 8; rb = 66; }
         else { const v = 76 + n2 * 8 + (U.hash(i, j, 3) < 0.02 ? -20 : 0); rr = v; rg = v; rb = v + 3; }
         r = U.lerp(r, rr, edge); gg = U.lerp(gg, rg, edge); b = U.lerp(b, rb, edge);
       }
       // concrete pads, parking lots, dirt yards
-      const p = inPad(x, z);
+      const p = padAt(x, z);
       if (p) {
         let v;
         if (p.kind === 'asphalt') { v = 78 + n2 * 8; r = v; gg = v; b = v + 2; if (p.lines && Math.abs(((x - p.x) * p.c - (z - p.z) * p.s) % 3) < 0.12) { r = gg = b = 200; } }
@@ -560,23 +594,26 @@ DA.World = (function () {
   // ============================================================
   //  BUILD EVERYTHING
   // ============================================================
-  W.build = function (scene) {
-    W.scene = scene;
-    C.clear();
-    buildHeights();
-    DA.Buildings.build(scene, W);   // houses, cars... (they add pads and containers)
-    buildTypeGrid();
-    scene.add(buildGroundMesh());
-    scene.add(buildWater());
-    placeVegetation(scene);
-    buildGrass(scene);
-    buildSky(scene);
-    // invisible fence around the world
-    const B = MAP.border;
-    for (const [x, z, hw, hd] of [[0, -B - 1, B + 2, 1], [0, B + 1, B + 2, 1], [-B - 1, 0, 1, B + 2], [B + 1, 0, 1, B + 2]]) {
-      C.add({ shape: 'box', x, z, hw, hd, rot: 0, y0: -50, y1: 200, kind: 'fence', hit: false });
-    }
+  // the world is built in steps, so the loading screen can show what's happening
+  W.buildSteps = function (scene) {
+    return [
+      ['Raising the hills', () => { W.scene = scene; C.clear(); buildHeights(); }],
+      ['Building the town', () => DA.Buildings.build(scene, W)],
+      ['Mapping roads and fields', () => { buildTypeGrid(); buildPaintGrids(); }],
+      ['Painting the ground', () => { scene.add(buildGroundMesh()); scene.add(buildWater()); }],
+      ['Planting the forests', () => placeVegetation(scene)],
+      ['Growing grass, lighting the sky', () => {
+        buildGrass(scene);
+        buildSky(scene);
+        // invisible fence around the world
+        const B = MAP.border;
+        for (const [x, z, hw, hd] of [[0, -B - 1, B + 2, 1], [0, B + 1, B + 2, 1], [-B - 1, 0, 1, B + 2], [B + 1, 0, 1, B + 2]]) {
+          C.add({ shape: 'box', x, z, hw, hd, rot: 0, y0: -50, y1: 200, kind: 'fence', hit: false });
+        }
+      }],
+    ];
   };
+  W.build = function (scene) { for (const [, f] of W.buildSteps(scene)) f(); };
 
   W.update = function (dt, cam) {
     updateGrass(cam.position.x, cam.position.z);

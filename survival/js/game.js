@@ -45,36 +45,45 @@ DA.Game = (function () {
   // ============================================================
   //  SETUP
   // ============================================================
-  function setup() {
-    renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: !DA.lowGfx, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(DA.lowGfx ? Math.min(1, devicePixelRatio) : Math.min(1.5, devicePixelRatio));
-    renderer.shadowMap.enabled = !DA.lowGfx;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.autoClear = false;
-    scene = new THREE.Scene();
-    cam = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.08, 480);
-    cam.rotation.order = 'YXZ';
-    scene.add(cam);
-    clock = new THREE.Clock();
-    window.addEventListener('resize', resize);
-    resize();
-    DA.Input.init($('game'));
-    W.build(scene);
-    Z = DA.Zombies; B = DA.Build; FX = DA.Effects; P = DA.Player; me = P.me;
-    Z.init(W, scene); B.init(W, scene); FX.init(scene);
-    setupLights();
-    Inv.makeIcons();
-    Inv.UI.init();
-    Inv.onChange = () => HUD.drawHotbar();
-    P.init(W, scene, cam);
-    setupMenus();
-    Net.onMessage = onNetMessage;
-    Net.onLeave = onFriendLeft;
-    Net.onClose = (why) => { if (G.mode === 'play' && !G.isHost) toTitle(why); };
-    G.onHurt = (dmg) => HUD.hurt(dmg);
+  // everything that happens once, while the loading screen is up
+  function setupSteps() {
+    return [
+      ['Starting the 3D engine', () => {
+        renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: !DA.lowGfx, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(DA.lowGfx ? Math.min(1, devicePixelRatio) : Math.min(1.5, devicePixelRatio));
+        renderer.shadowMap.enabled = !DA.lowGfx;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
+        renderer.autoClear = false;
+        scene = new THREE.Scene();
+        cam = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.08, 480);
+        cam.rotation.order = 'YXZ';
+        scene.add(cam);
+        clock = new THREE.Clock();
+        window.addEventListener('resize', resize);
+        resize();
+        DA.Input.init($('game'));
+      }],
+      ...W.buildSteps(null).map(([label], i) => [label, () => W.buildSteps(scene)[i][1]()]),
+      ['Waking up the zombies', () => {
+        Z = DA.Zombies; B = DA.Build; FX = DA.Effects; P = DA.Player; me = P.me;
+        Z.init(W, scene); B.init(W, scene); FX.init(scene);
+        setupLights();
+      }],
+      ['Drawing the items', () => {
+        try { Inv.makeIcons(); } catch (e) { console.warn('item pictures failed', e); }
+        Inv.UI.init();
+        Inv.onChange = () => HUD.drawHotbar();
+        P.init(W, scene, cam);
+        setupMenus();
+        Net.onMessage = onNetMessage;
+        Net.onLeave = onFriendLeft;
+        Net.onClose = (why) => { if (G.mode === 'play' && !G.isHost) toTitle(why); };
+        G.onHurt = (dmg) => HUD.hurt(dmg);
+      }],
+    ];
   }
 
   function resize() {
@@ -1180,8 +1189,17 @@ DA.Game = (function () {
   // ============================================================
   //  GO!
   // ============================================================
-  G.start = function () {
-    setup();
+  G.start = async function () {
+    const steps = setupSteps();
+    const status = $('loadStep'), bar = $('loadBar');
+    const t0 = performance.now();
+    for (let i = 0; i < steps.length; i++) {
+      status.textContent = steps[i][0] + '...';
+      bar.style.width = Math.round((i / steps.length) * 100) + '%';
+      await new Promise((r) => setTimeout(r, 20)); // let the screen show the new text
+      steps[i][1]();
+    }
+    console.log('World built in ' + Math.round(performance.now() - t0) + ' ms');
     G.state = freshState();
     G.mode = 'title';
     $('loading').style.display = 'none';
