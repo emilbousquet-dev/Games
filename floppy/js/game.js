@@ -42,7 +42,7 @@ FP.Game = (function () {
   const everyone = () => players.concat(matchBots);
 
   function freeColor(list = everyone()) {
-    for (let i = 0; i < FP.Look.COLORS.length; i++) if (!list.some((p) => p.colorIndex === i)) return i;
+    for (let i = 0; i < FP.Look.COLORS.length; i++) if (!FP.Look.COLORS[i].special && !list.some((p) => p.colorIndex === i)) return i;
     return 0;
   }
   function nextPlayerName() {
@@ -238,7 +238,7 @@ FP.Game = (function () {
       ],
     });
     const card = document.querySelector('.screen.title .card');
-    if (card) card.insertAdjacentHTML('beforeend', `<p class="title-coins">${FP.Profile.coinLine()}</p>`);
+    if (card) card.insertAdjacentHTML('beforeend', `<p class="title-coins">${FP.Profile.coinLine()} &nbsp; ${FP.Profile.levelLine()}</p>`);
     if (card && FP.Season.info) card.querySelector('.logo').insertAdjacentHTML('afterend', `<div class="season-tag season-${FP.Season.id}">${FP.Season.info.name}!</div>`);
     if (!seasonWelcomed) { seasonWelcomed = true; FP.Season.welcome(); }
   }
@@ -428,15 +428,17 @@ FP.Game = (function () {
       const mine = !client || p.source.kind === 'me';
       const arrows = (act) => (mine ? [`<button class="arrow" data-act="${act}" data-dir="-1" data-i="${i}" title="Previous">${ICON.left}</button>`, `<button class="arrow" data-act="${act}" data-dir="1" data-i="${i}" title="Next">${ICON.right}</button>`] : ['', '']);
       const [cl, cr] = arrows('color'), [hl, hr] = arrows('hat'), [ol, or] = arrows('outfit');
-      const [fl, fr] = arrows('face'), [dl, dr] = arrows('dance'), [tl, tr] = arrows('trail');
+      const [fl, fr] = arrows('face'), [dl, dr] = arrows('dance'), [tl, tr] = arrows('trail'), [pl, pr] = arrows('pet'), [gl, gr] = arrows('tag');
       slots.push(`<div class="slot" style="--c:${hex(col.body)};--l:${hex(col.light)}">
-        <div class="slot-head"><span class="slot-num">P${i + 1}</span>${!client && isLocalSource(p.source) ? `<button class="name-btn" data-act="rename" data-i="${i}" title="Change your name">${esc(p.name)}${ICON.pencil}</button>` : `<b>${esc(p.name)}</b>`}${i > 0 && !client ? `<button class="leave" data-act="remove" data-i="${i}" title="Remove this player">Leave</button>` : ''}</div>
+        <div class="slot-head"><span class="slot-num">P${i + 1}</span>${!client && isLocalSource(p.source) ? `<span class="slot-lv" title="Your level">Lv ${FP.Profile.levelInfo().level}</span>` : ''}${!client && isLocalSource(p.source) ? `<button class="name-btn" data-act="rename" data-i="${i}" title="Change your name">${esc(p.name)}${ICON.pencil}</button>` : `<b>${esc(p.name)}</b>`}${i > 0 && !client ? `<button class="leave" data-act="remove" data-i="${i}" title="Remove this player">Leave</button>` : ''}</div>
         <div class="slot-row"><span class="lbl">Color</span>${cl}<span class="val"><i class="dot"></i>${col.name}</span>${cr}</div>
         <div class="slot-row"><span class="lbl">Hat</span>${hl}<span class="val">${FP.UI.HAT_NAMES[p.hat]}</span>${hr}</div>
         <div class="slot-row"><span class="lbl">Outfit</span>${ol}<span class="val">${FP.Look.OUTFIT_NAMES[p.outfit || 'none']}</span>${or}</div>
         <div class="slot-row"><span class="lbl">Face</span>${fl}<span class="val">${FP.Style.FACE_NAMES[p.face || 'none']}</span>${fr}</div>
         <div class="slot-row"><span class="lbl">Dance</span>${dl}<span class="val">${FP.Style.DANCE_NAMES[p.dance || 'none']}</span>${dr}</div>
         <div class="slot-row"><span class="lbl">Trail</span>${tl}<span class="val">${FP.Style.TRAIL_NAMES[p.trail || 'none']}</span>${tr}</div>
+        <div class="slot-row"><span class="lbl">Pet</span>${pl}<span class="val">${FP.Style.PET_NAMES[p.pet || 'none']}</span>${pr}</div>
+        <div class="slot-row"><span class="lbl">Tag</span>${gl}<span class="val">${FP.Style.TAG_NAMES[p.tag || 'none']}</span>${gr}</div>
         ${mine && !client ? `<div class="slot-row"><span class="lbl">Emotes</span><button class="emo-btn" data-act="emotes" data-i="${i}">Change</button></div>` : ''}
         <div class="slot-foot">${controlsText(p)}<br><span class="keys">${colorKeys(p)}</span></div>
       </div>`);
@@ -464,7 +466,7 @@ FP.Game = (function () {
     if (act === 'color' && p) cycleColor(p, dir);
     else if (act === 'hat' && p) cycleHat(p, dir);
     else if (act === 'outfit' && p) cycleOutfit(p, dir);
-    else if ((act === 'face' || act === 'dance' || act === 'trail') && p) cycleStyle(p, act, dir);
+    else if (['face', 'dance', 'trail', 'pet', 'tag'].includes(act) && p) cycleStyle(p, act, dir);
     else if (act === 'remove' && p) removePlayer(p);
     else if (act === 'rename' && p) renamePlayer(i);
     else if (act === 'emotes' && p) emotePicker(i);
@@ -499,8 +501,11 @@ FP.Game = (function () {
   function cycleColor(p, dir = 1) {
     const n = FP.Look.COLORS.length;
     let c = p.colorIndex;
-    for (let k = 0; k < n; k++) { c = (c + dir + n) % n; if (!players.some((q) => q !== p && q.colorIndex === c)) break; }
+    // (special colors like Gold only once you unlocked them by leveling up)
+    for (let k = 0; k < n; k++) { c = (c + dir + n) % n; const sp = FP.Look.COLORS[c].special; if (sp && !FP.Profile.owns('color:' + sp)) continue; if (!players.some((q) => q !== p && q.colorIndex === c)) break; }
     if (c === p.colorIndex) return;
+    const spc = FP.Look.COLORS[c].special;
+    if (spc && !FP.Profile.owns('color:' + spc)) return;
     p.colorIndex = c; spawnInLobby(p); refreshLobby();
     if (FP.Net) FP.Net.playersChanged();
   }
@@ -524,14 +529,14 @@ FP.Game = (function () {
     if (FP.Net) FP.Net.playersChanged();
   }
   // face paint, victory dance and trail (only the ones you have)
-  const STYLE_ACTS = ['color', 'hat', 'outfit', 'face', 'dance', 'trail'];
+  const STYLE_ACTS = ['color', 'hat', 'outfit', 'face', 'dance', 'trail', 'pet', 'tag'];
   function cycleStyle(p, what, dir = 1) {
-    const L = what === 'face' ? FP.Style.FACES : what === 'dance' ? FP.Style.DANCES : FP.Style.TRAILS, n = L.length;
+    const L = { face: FP.Style.FACES, dance: FP.Style.DANCES, trail: FP.Style.TRAILS, pet: FP.Style.PETS, tag: FP.Style.TAG_STYLES }[what], n = L.length;
     let i = Math.max(0, L.indexOf(p[what] || 'none'));
     for (let k = 0; k < n; k++) { i = (i + dir + n) % n; if (FP.Profile.owns(what, L[i])) break; }
-    if (L[i] === p[what]) { FP.UI.toast('Buy more in the Shop!'); return; }
+    if (L[i] === p[what]) { FP.UI.toast(what === 'pet' || what === 'tag' ? 'Level up to unlock more!' : 'Buy more in the Shop!'); return; }
     p[what] = L[i];
-    if (what === 'face') spawnInLobby(p);
+    if (what === 'face' || what === 'tag') spawnInLobby(p);
     if (what === 'dance') { const c = chars.find((q) => q.player === p); if (c && FP.Style.DANCE_EMOTE[p.dance]) c.emote = { k: FP.Style.DANCE_EMOTE[p.dance], t: 0, hop: 0.2 }; }
     refreshLobby();
     if (FP.Net) FP.Net.playersChanged();
@@ -1613,23 +1618,69 @@ FP.Game = (function () {
     if (e.code === 'Escape') { e.preventDefault(); endPhoto(); }
     else if (e.code === 'KeyF') nextFilter();
   }
+  // stickers for your photo: a frame, a speech bubble, and little stickers
+  const FRAMES = ['none', 'gold', 'party', 'film', 'hearts'];
+  const BUBBLES = ['', 'WOW!', 'YEET!', 'I WIN!', 'BEST DAY EVER!', 'OOPS!', 'HA HA!'];
+  function drawSticker(g, kind, x, y, r) {
+    g.save(); g.translate(x, y); g.lineWidth = r * 0.12; g.strokeStyle = '#2a2140';
+    g.beginPath();
+    if (kind === 'star') { for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? r * 0.45 : r; g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.fillStyle = '#ffcf33'; }
+    else if (kind === 'heart') { g.moveTo(0, r * 0.8); g.bezierCurveTo(-r * 1.4, -r * 0.2, -r * 0.6, -r * 1.2, 0, -r * 0.4); g.bezierCurveTo(r * 0.6, -r * 1.2, r * 1.4, -r * 0.2, 0, r * 0.8); g.fillStyle = '#ff7eb6'; }
+    else if (kind === 'crown') { g.moveTo(-r, r * 0.5); g.lineTo(-r, -r * 0.4); g.lineTo(-r * 0.5, 0); g.lineTo(0, -r * 0.7); g.lineTo(r * 0.5, 0); g.lineTo(r, -r * 0.4); g.lineTo(r, r * 0.5); g.fillStyle = '#ffcf33'; }
+    else { g.arc(0, 0, r * 0.8, 0, Math.PI * 2); g.fillStyle = '#6fd35a'; } // a smiley
+    g.closePath(); g.fill(); g.stroke();
+    if (kind === 'smile') { g.fillStyle = '#2a2140'; g.beginPath(); g.arc(-r * 0.28, -r * 0.2, r * 0.1, 0, 7); g.arc(r * 0.28, -r * 0.2, r * 0.1, 0, 7); g.fill(); g.beginPath(); g.arc(0, 0, r * 0.45, 0.3, Math.PI - 0.3); g.stroke(); }
+    g.restore();
+  }
+  function renderPhoto(base, st) {
+    const cv = document.createElement('canvas'); cv.width = base.width; cv.height = base.height;
+    const g = cv.getContext('2d'), W = cv.width, H = cv.height, u = Math.min(W, H) / 100;
+    g.drawImage(base, 0, 0);
+    for (const k of st.stickers) drawSticker(g, k.kind, k.x * W, k.y * H, k.r * u);
+    const b = BUBBLES[st.bubble];
+    if (b) {
+      g.font = `900 ${Math.round(u * 7)}px Fredoka, Arial, sans-serif`;
+      const tw = g.measureText(b).width, bx = W * 0.5 - tw / 2 - u * 3, by = H * 0.08, bw = tw + u * 6, bh = u * 11;
+      g.fillStyle = '#fff'; g.strokeStyle = '#2a2140'; g.lineWidth = u * 0.8;
+      g.beginPath(); g.roundRect ? g.roundRect(bx, by, bw, bh, u * 4) : g.rect(bx, by, bw, bh); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(W * 0.5 - u * 2, by + bh); g.lineTo(W * 0.5, by + bh + u * 4); g.lineTo(W * 0.5 + u * 2, by + bh); g.fill();
+      g.fillStyle = '#2a2140'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(b, W * 0.5, by + bh / 2 + u * 0.5);
+    }
+    const fr = FRAMES[st.frame];
+    if (fr !== 'none') {
+      const t = u * 4;
+      g.lineWidth = t * 2;
+      if (fr === 'gold') { g.strokeStyle = '#e0b030'; g.strokeRect(0, 0, W, H); g.lineWidth = u; g.strokeStyle = '#fff3b0'; g.strokeRect(t * 1.5, t * 1.5, W - t * 3, H - t * 3); }
+      else if (fr === 'party') { const cols = ['#ff5a5f', '#ffcf33', '#6fd35a', '#4aa8ff', '#9b6bff']; for (let i = 0; i < 40; i++) { g.fillStyle = cols[i % 5]; const along = (i / 40) * 2 * (W + H); let x, y; if (along < W) { x = along; y = 0; } else if (along < W + H) { x = W; y = along - W; } else if (along < 2 * W + H) { x = 2 * W + H - along; y = H; } else { x = 0; y = 2 * (W + H) - along; } g.beginPath(); g.arc(x, y, t * 1.1, 0, 7); g.fill(); } }
+      else if (fr === 'film') { g.fillStyle = '#1a1a1a'; g.fillRect(0, 0, W, t * 2.5); g.fillRect(0, H - t * 2.5, W, t * 2.5); g.fillStyle = '#fff'; for (let x = t; x < W; x += t * 2.5) { g.fillRect(x, t * 0.7, t, t); g.fillRect(x, H - t * 1.7, t, t); } }
+      else if (fr === 'hearts') { for (let x = t; x < W; x += t * 3.2) { drawSticker(g, 'heart', x, t, t * 0.9); drawSticker(g, 'heart', x, H - t, t * 0.9); } for (let y = t * 4; y < H - t * 2; y += t * 3.2) { drawSticker(g, 'heart', t, y, t * 0.9); drawSticker(g, 'heart', W - t, y, t * 0.9); } }
+    }
+    g.font = `900 ${Math.round(H * 0.04)}px Fredoka, Arial, sans-serif`; g.fillStyle = 'rgba(255,255,255,0.9)'; g.textAlign = 'right'; g.textBaseline = 'alphabetic';
+    g.fillText('Floppy Party', W - 20 - (fr !== 'none' ? u * 6 : 0), H - 20 - (fr !== 'none' ? u * 6 : 0));
+    return cv;
+  }
   function capturePhoto() {
     const src = FP.Stage.renderer.domElement;
-    const cv = document.createElement('canvas'); cv.width = src.width; cv.height = src.height;
-    const g = cv.getContext('2d');
+    const base = document.createElement('canvas'); base.width = src.width; base.height = src.height;
+    const g = base.getContext('2d');
     g.filter = FILTERS[photo ? photo.filter : 0][1];
     g.drawImage(src, 0, 0);
     g.filter = 'none';
-    g.font = `900 ${Math.round(cv.height * 0.04)}px Fredoka, Arial, sans-serif`; g.fillStyle = 'rgba(255,255,255,0.9)'; g.textAlign = 'right';
-    g.fillText('Floppy Party', cv.width - 20, cv.height - 20);
-    let url = '';
+    const st = { frame: 0, bubble: 0, stickers: [] };
+    let cv = renderPhoto(base, st), url = '';
     try { url = cv.toDataURL('image/png'); } catch (e) { FP.UI.toast('Could not take the picture here'); return; }
     FP.Audio.play('coin');
     const flash = document.createElement('div'); flash.className = 'photo-flash'; document.body.append(flash); setTimeout(() => flash.remove(), 400);
     document.querySelectorAll('.photo-preview').forEach((el) => el.remove());
     const prev = document.createElement('div'); prev.className = 'photo-preview';
-    prev.innerHTML = `<img src="${url}" alt="Your photo"><div><button class="btn small" data-save>Save picture</button> <button class="btn small" data-close>Keep going</button></div>`;
+    prev.innerHTML = `<img src="${url}" alt="Your photo"><div class="photo-tools"><button class="btn small" data-frame>Frame</button> <button class="btn small" data-bubble>Speech bubble</button> <button class="btn small" data-sticker>Add sticker</button> <button class="btn small" data-clear>Clear</button></div><div><button class="btn small go" data-save>Save picture</button> <button class="btn small" data-close>Keep going</button></div>`;
     document.body.append(prev);
+    const img = prev.querySelector('img');
+    const redraw = () => { cv = renderPhoto(base, st); url = cv.toDataURL('image/png'); img.src = url; FP.Audio.play('tick'); };
+    prev.querySelector('[data-frame]').addEventListener('click', () => { st.frame = (st.frame + 1) % FRAMES.length; redraw(); });
+    prev.querySelector('[data-bubble]').addEventListener('click', () => { st.bubble = (st.bubble + 1) % BUBBLES.length; redraw(); });
+    prev.querySelector('[data-sticker]').addEventListener('click', () => { if (st.stickers.length < 12) st.stickers.push({ kind: ['star', 'heart', 'crown', 'smile'][Math.floor(Math.random() * 4)], x: 0.1 + Math.random() * 0.8, y: 0.2 + Math.random() * 0.65, r: 4 + Math.random() * 4 }); redraw(); });
+    prev.querySelector('[data-clear]').addEventListener('click', () => { st.frame = 0; st.bubble = 0; st.stickers = []; redraw(); });
     prev.querySelector('[data-close]').addEventListener('click', () => prev.remove());
     prev.querySelector('[data-save]').addEventListener('click', () => savePhoto(cv, url));
   }
@@ -1716,6 +1767,64 @@ FP.Game = (function () {
   });
 
   // ------------------------------------------------------------
+  //  PETS: a little friend follows you in the lobby, and cheers when you win
+  // ------------------------------------------------------------
+  const petObjs = new Map();
+  function petMesh(kind) {
+    const L = FP.Look, g = new THREE.Group(), T = (c) => L.toon(c);
+    const ball = (r, col, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = L.mesh(new THREE.SphereGeometry(r, 14, 10), T(col), 0.02); m.position.set(x, y, z); m.scale.set(sx, sy, sz); g.add(m); return m; };
+    const eyes = (y, z, gap = 0.07) => { for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.SphereGeometry(0.03, 8, 6), new THREE.MeshBasicMaterial({ color: 0x1a1030 })); e.position.set(s * gap, y, z); g.add(e); } };
+    if (kind === 'cat') {
+      ball(0.17, 0xffa64d, 0, 0.17, 0, 1, 0.9, 1.2); ball(0.14, 0xffa64d, 0, 0.36, 0.14); eyes(0.39, 0.26);
+      for (const s of [-1, 1]) { const ear = L.mesh(new THREE.ConeGeometry(0.05, 0.1, 6), T(0xffa64d), 0.01); ear.position.set(s * 0.08, 0.5, 0.12); g.add(ear); }
+      const tail = L.mesh(new THREE.CylinderGeometry(0.025, 0.02, 0.3, 6), T(0xffa64d), 0.01); tail.position.set(0, 0.3, -0.2); tail.rotation.x = -0.6; g.add(tail);
+    } else if (kind === 'duck') {
+      ball(0.17, 0xffd23f, 0, 0.17, 0, 1, 0.9, 1.15); ball(0.12, 0xffd23f, 0, 0.36, 0.1); eyes(0.4, 0.2, 0.06);
+      const beak = L.mesh(new THREE.ConeGeometry(0.05, 0.12, 8), T(0xff9a3c), 0.01); beak.rotation.x = Math.PI / 2; beak.position.set(0, 0.35, 0.25); g.add(beak);
+    } else if (kind === 'robot') {
+      const b = L.boxMesh(0.28, 0.24, 0.24, T(0xb8c2cc), 0.02); b.position.y = 0.16; g.add(b);
+      const h = L.boxMesh(0.22, 0.18, 0.2, T(0xdfe4ea), 0.02); h.position.y = 0.38; g.add(h);
+      for (const s of [-1, 1]) { const e = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.04, 0.02), new THREE.MeshBasicMaterial({ color: 0x4ae0ff })); e.position.set(s * 0.05, 0.39, 0.11); g.add(e); }
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: 0xff3a3a })); bulb.position.y = 0.55; g.add(bulb);
+    } else if (kind === 'dog') {
+      ball(0.18, 0xc98b58, 0, 0.18, 0, 1, 0.9, 1.25); ball(0.14, 0xc98b58, 0, 0.37, 0.16); eyes(0.4, 0.28);
+      ball(0.04, 0x2a2140, 0, 0.35, 0.3);
+      for (const s of [-1, 1]) { const ear = L.boxMesh(0.05, 0.14, 0.08, T(0x8a5a3a), 0.01); ear.position.set(s * 0.13, 0.36, 0.14); ear.rotation.z = s * 0.3; g.add(ear); }
+    } else if (kind === 'dragon') {
+      ball(0.18, 0x6fd35a, 0, 0.18, 0, 1, 0.9, 1.3); ball(0.14, 0x6fd35a, 0, 0.38, 0.16); eyes(0.41, 0.28);
+      for (const s of [-1, 1]) { const w = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.25, 3), new THREE.MeshBasicMaterial({ color: 0xb07bff })); w.position.set(s * 0.2, 0.3, -0.02); w.rotation.z = s * 1.2; g.add(w); }
+      for (let k = 0; k < 3; k++) { const sp = L.mesh(new THREE.ConeGeometry(0.03, 0.08, 5), T(0xffcf33), 0.005); sp.position.set(0, 0.35 - k * 0.07, -0.05 - k * 0.1); g.add(sp); }
+    }
+    return g;
+  }
+  function updatePets(dt) {
+    const show = ['lobby', 'results', 'clientResults'].includes(state);
+    for (const [c, o] of petObjs) if (!show || !chars.includes(c) || !c.player || c.player.pet !== o.kind) { FP.Stage.scene.remove(o.g); petObjs.delete(c); }
+    if (!show) return;
+    const now = performance.now() / 1000;
+    for (const c of chars) {
+      const kind = c.player && c.player.pet;
+      if (!kind || kind === 'none') continue;
+      const t = c.parts.torso.position;
+      let o = petObjs.get(c);
+      if (!o) { o = { g: petMesh(kind), kind, x: t.x + 0.8, z: t.z + 0.6, y: 0, vy: 0 }; FP.Stage.scene.add(o.g); petObjs.set(c, o); }
+      const podium = state !== 'lobby';
+      const feet = Math.max(0, t.y - FP.Ragdoll.STAND - 0.05);
+      // lobby: follow behind you. Podium: sit in front of you
+      const tx = podium ? t.x + 0.45 : t.x - Math.sin(c.yaw) * 0.8 + Math.cos(c.yaw) * 0.7;
+      const tz = podium ? t.z + 0.75 : t.z - Math.cos(c.yaw) * 0.8 - Math.sin(c.yaw) * 0.7;
+      const dx = tx - o.x, dz = tz - o.z, d = Math.hypot(dx, dz);
+      if (d > 3) { o.x = tx; o.z = tz; } else if (d > 0.15) { const sp = Math.min(d, (1 + d * 3) * dt); o.x += (dx / d) * sp; o.z += (dz / d) * sp; }
+      // hop along while walking, and jump for joy when you win
+      const cheering = c.podiumWinner || (c.emote && c.emote.k === 3);
+      o.vy -= 20 * dt; o.y += o.vy * dt;
+      if (o.y <= 0) { o.y = 0; o.vy = cheering ? 4.5 : d > 0.3 ? 2.2 : 0; }
+      o.g.position.set(o.x, feet + o.y, o.z);
+      o.g.rotation.y = d > 0.3 ? Math.atan2(dx, dz) : Math.atan2(t.x - o.x, t.z - o.z) + Math.sin(now * 2) * 0.2;
+    }
+  }
+
+  // ------------------------------------------------------------
   //  THE LOOP
   // ------------------------------------------------------------
   function inputFor(c) {
@@ -1751,6 +1860,7 @@ FP.Game = (function () {
     FP.Camera.setShift(state === 'title' && innerWidth > 800 ? 3.2 : 0);
     FP.Props.animate(dt);
     FP.Season.update(dt); // falling snow in winter
+    updatePets(dt);
     if (!paused && state !== 'replay') FP.Style.update(dt, chars); // sparkly trails
     const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
     FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));

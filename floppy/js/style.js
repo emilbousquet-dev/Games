@@ -19,6 +19,13 @@ FP.Style = (function () {
   const DANCE_NAMES = { none: 'Wiggle', disco: 'Disco', robot: 'Robot', flip: 'Backflip', spin: 'Spin', floss: 'Floss', chicken: 'Chicken', champ: 'Champion' };
   const DANCE_EMOTE = { disco: 5, robot: 6, flip: 7, spin: 8, floss: 9, chicken: 10, champ: 11 };
 
+  // pets that follow you around (unlocked by leveling up)
+  const PETS = ['none', 'cat', 'duck', 'robot', 'dog', 'dragon'];
+  const PET_NAMES = { none: 'No pet', cat: 'Cat', duck: 'Duck', robot: 'Robot', dog: 'Puppy', dragon: 'Dragon' };
+  // name tag styles (unlocked by leveling up)
+  const TAG_STYLES = ['none', 'gold', 'rainbow', 'fire', 'galaxy'];
+  const TAG_NAMES = { none: 'Normal', gold: 'Gold', rainbow: 'Rainbow', fire: 'Fire', galaxy: 'Galaxy' };
+
   // emotes you can put on your 4 emote buttons (pick them in the lobby)
   const EMOTES = ['wave', 'dance', 'cheer', 'laugh', 'sad', 'beckon', 'point', 'clap'];
   const EMOTE_NAMES = { wave: 'Wave', dance: 'Dance', cheer: 'Cheer', laugh: 'Laugh', sad: 'Sad', beckon: 'Come here', point: 'Point', clap: 'Clap' };
@@ -99,5 +106,5 @@ FP.Style = (function () {
     }
   }
 
-  return { EMOTES, EMOTE_NAMES, EMOTE_KIND, DEFAULT_EMOTES, FACES, FREE_FACES, FACE_NAMES, DANCES, FREE_DANCES, DANCE_NAMES, DANCE_EMOTE, TRAILS, FREE_TRAILS, TRAIL_NAMES, TOUR_ONLY, applyFace, update };
+  return { PETS, PET_NAMES, TAG_STYLES, TAG_NAMES, EMOTES, EMOTE_NAMES, EMOTE_KIND, DEFAULT_EMOTES, FACES, FREE_FACES, FACE_NAMES, DANCES, FREE_DANCES, DANCE_NAMES, DANCE_EMOTE, TRAILS, FREE_TRAILS, TRAIL_NAMES, TOUR_ONLY, applyFace, update };
 })();

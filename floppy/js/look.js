@@ -83,6 +83,11 @@ FP.Look = (function () {
     { name: 'Bubblegum', body: 0xff8fc8, light: 0xffd2ea },
     { name: 'Orange', body: 0xff9a3c, light: 0xffd3a8 },
     { name: 'Mint', body: 0x3fd6c1, light: 0xb4f2e9 },
+    // special colors you unlock by leveling up
+    { name: 'Gold', body: 0xffc629, light: 0xfff1a8, special: 'gold' },
+    { name: 'Glitter', body: 0xf0a0ff, light: 0xffe6ff, special: 'glitter' },
+    { name: 'Glow', body: 0x7dff6a, light: 0xe8ffe0, special: 'glow' },
+    { name: 'Midnight', body: 0x4a4aa8, light: 0xa8a8f0, special: 'midnight' },
   ];
   const FREE_HATS = ['party', 'beanie', 'crown', 'cowboy', 'tophat', 'propeller', 'bunny', 'chef'];
   const SHOP_HATS = ['headphones', 'flowers', 'wizard', 'antlers', 'pirate', 'viking', 'halo', 'astronaut']; // bought with party coins

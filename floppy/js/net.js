@@ -230,7 +230,7 @@ FP.Net = (function () {
       } else if (msg.t === 'vote') {
         const c = conns.get(conn.peer);
         if (c) setVote(c.pid, msg.v, msg.n);
-      } else if (['color', 'hat', 'outfit', 'face', 'dance', 'trail'].includes(msg.t)) {
+      } else if (['color', 'hat', 'outfit', 'face', 'dance', 'trail', 'pet', 'tag'].includes(msg.t)) {
         const c = conns.get(conn.peer);
         const p = c && FP.Game.players.find((q) => q.id === c.pid);
         if (p && FP.Game.state === 'lobby') FP.Game.cycle(p, msg.t, msg.dir === -1 ? -1 : 1);
@@ -250,7 +250,7 @@ FP.Net = (function () {
     for (let i = 0; i < n; i++) party.emit('fp', { t: 'ch', id, i, n, s: text.slice(i * MAX_BYTES, (i + 1) * MAX_BYTES) }).catch(() => {});
   }
   const hasFriends = () => conns.size > 0;
-  const playerList = () => FP.Game.everyone.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, face: p.face, dance: p.dance, trail: p.trail, team: p.team, kind: p.source.kind, peer: p.source.kind === 'remote' ? p.source.peer : undefined }));
+  const playerList = () => FP.Game.everyone.map((p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, face: p.face, dance: p.dance, trail: p.trail, pet: p.pet, tag: p.tag, team: p.team, kind: p.source.kind, peer: p.source.kind === 'remote' ? p.source.peer : undefined }));
 
   // what a remote player is pressing (presses are counted so none get lost)
   function inputOf(pid) {
@@ -482,7 +482,7 @@ FP.Net = (function () {
       if (msg.n === clientResultsNo && Array.isArray(msg.list)) showVotes(msg.list);
     }
   }
-  const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, face: p.face, dance: p.dance, trail: p.trail, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
+  const fromList = (p) => ({ id: p.id, name: p.name, colorIndex: p.colorIndex, hat: p.hat, outfit: p.outfit, face: p.face, dance: p.dance, trail: p.trail, pet: p.pet, tag: p.tag, team: p.team, source: { kind: p.id === myId ? 'me' : (p.kind === 'keys' || p.kind === 'pad' ? 'host' : p.kind) } });
 
   function applyEvents(list) {
     const byKey = keyMap();

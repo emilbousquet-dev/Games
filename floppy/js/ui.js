@@ -253,6 +253,7 @@ FP.UI = (function () {
           // team mode: a red or blue border (real team games like Soccer show their teams another way)
           const gm = FP.Game && FP.Game.mode;
           if (c.team !== undefined && gm && !(gm.teams && !gm.base)) t.classList.add('team' + c.team);
+          if (c.player.tag && c.player.tag !== 'none') t.classList.add('tag-' + c.player.tag); // (fancy name tags from leveling up)
           tags.append(t);
           tagEls.set(c, t);
         }

@@ -71,6 +71,42 @@ FP.Profile = (function () {
     data.stats.kos++; save(); check();
   });
 
+  // ---------------- player level: every game gives XP, every level gives a reward ----------------
+  const LEVEL_REWARDS = {
+    2: { coins: 50 }, 3: { id: 'pet:cat' }, 4: { id: 'tag:gold' }, 5: { id: 'color:gold', coins: 100 }, 6: { id: 'pet:duck' },
+    7: { id: 'tag:rainbow' }, 8: { id: 'color:glitter' }, 9: { id: 'pet:robot' }, 10: { id: 'tag:fire', coins: 200 }, 11: { id: 'color:glow' },
+    12: { id: 'pet:dog' }, 13: { id: 'tag:galaxy' }, 14: { id: 'color:midnight' }, 15: { id: 'pet:dragon', coins: 300 },
+  };
+  const needFor = (lv) => 100 + (lv - 1) * 50;
+  function levelInfo() { let xp = data.xp || 0, level = 1; while (xp >= needFor(level)) { xp -= needFor(level); level++; } return { level, into: xp, need: needFor(level) }; }
+  function rewardName(id) {
+    const [k, item] = splitId(id);
+    if (k === 'pet') return `${FP.Style.PET_NAMES[item]} pet`;
+    if (k === 'tag') return `${FP.Style.TAG_NAMES[item]} name tag`;
+    if (k === 'color') { const c = FP.Look.COLORS.find((x) => x.special === item); return `${c ? c.name : item} color`; }
+    return itemName(id);
+  }
+  const rewardOf = (lv) => LEVEL_REWARDS[lv] || { coins: 50 * lv };
+  function addXp(n) {
+    if (!n) return;
+    const before = levelInfo().level;
+    data.xp = (data.xp || 0) + n;
+    save();
+    const after = levelInfo().level;
+    for (let lv = before + 1; lv <= after; lv++) {
+      const r = rewardOf(lv);
+      if (r.id) grant(r.id);
+      if (r.coins) earn(r.coins);
+      FP.UI.achievement(`Level ${lv}!`, r.id ? `New: ${rewardName(r.id)}! Pick it in the lobby.` : 'Bonus party coins!', r.coins || 0, 'Level up!');
+      FP.Audio.play('fanfare');
+    }
+    FP.bus.emit('coins', data.coins);
+  }
+  function levelLine() {
+    const L = levelInfo();
+    return `<span class="lvl"><b>Level ${L.level}</b><span class="lvl-bar"><i style="width:${Math.round((L.into / L.need) * 100)}%"></i></span><small>${L.into} / ${L.need} XP</small></span>`;
+  }
+
   // a mini-game ended. places: [[players in 1st], [2nd], [3rd], [everyone else]]. Returns coins per local player id
   function matchEnded({ mode, places, skill, funCount, bots, online, extra = {} }) {
     data.stats.games++;
@@ -97,6 +133,10 @@ FP.Profile = (function () {
     });
     if (extra.survivor && ['keys', 'pad', 'touch'].includes(extra.survivor.source && extra.survivor.source.kind)) unlock('survivor');
     if (funCount >= 3) unlock('silly');
+    // XP for playing (more for a better place)
+    const localPlaces = places.map((g, i) => (g.some((p) => ['keys', 'pad', 'touch'].includes(p.source && p.source.kind)) ? i : 99));
+    const best = Math.min(...localPlaces, 99);
+    if (best < 99) addXp(30 + ([40, 25, 15][best] || 5));
     if (online) unlock('online');
     save();
     earn(total);
@@ -131,6 +171,8 @@ FP.Profile = (function () {
   function owns(id, name) {
     // owns('wizard'), owns('outfit:tutu') or owns('outfit', 'tutu')
     const [kid, item] = name !== undefined ? [id, name] : splitId(id);
+    // level-up rewards (special colors, pets, name tag styles) are not in the shop
+    if (kid === 'color' || kid === 'pet' || kid === 'tag') return item === 'none' || item == null || data.owned.includes(kid + ':' + item);
     const kind = kindOf(kid);
     if (!kind || item === 'none' || item == null) return true;
     if (kind.free().includes(item)) return true;
@@ -299,7 +341,9 @@ FP.Profile = (function () {
     try { const story = JSON.parse(localStorage.getItem('floppy-story') || '{}'); stars = Object.values((story && story.stars) || {}).reduce((a, b) => a + (+b || 0), 0); } catch (e) { /* no saving */ }
     const total = FP.Game && FP.Game.MODES ? FP.Game.MODES().length : 0;
     const box = (n, lbl) => `<div class="stat"><b>${n}</b><small>${lbl}</small></div>`;
-    const statsHtml = `<div class="stats">${box(st.games || 0, 'games played')}${box(st.wins || 0, 'wins')}${box(st.kos || 0, 'knockouts')}${box(st.throws || 0, 'throws')}${box(`${data.played.length}/${total}`, 'mini-games tried')}${box(stars, 'World Tour stars')}${box(st.earned || 0, 'coins earned')}${box(fav ? FP.UI.escapeHtml(FP.Modes[fav].name) : '-', 'favorite game')}</div>`;
+    const L = levelInfo();
+    const next = [1, 2, 3].map((k) => L.level + k).map((lv) => { const r = rewardOf(lv); return `<span class="prize">Level ${lv}: <b>${r.id ? rewardName(r.id) : `${r.coins} coins`}</b></span>`; }).join('');
+    const statsHtml = `<p class="stats-level">${levelLine()}</p><div class="prizes">${next}</div><div class="stats">${box(st.games || 0, 'games played')}${box(st.wins || 0, 'wins')}${box(st.kos || 0, 'knockouts')}${box(st.throws || 0, 'throws')}${box(`${data.played.length}/${total}`, 'mini-games tried')}${box(stars, 'World Tour stars')}${box(st.earned || 0, 'coins earned')}${box(fav ? FP.UI.escapeHtml(FP.Modes[fav].name) : '-', 'favorite game')}</div>`;
     FP.UI.screen({
       cls: 'achievements',
       title: 'Stats and achievements',
@@ -311,5 +355,5 @@ FP.Profile = (function () {
     if (card) card.scrollTop = 0; // start at the top (your stats)
   }
 
-  return { PRICES, ACH, KINDS, owns, buy, grant, itemName, earn, unlock, matchEnded, shopScreen, achievementsScreen, hatThumb, coinLine, get coins() { return data.coins; }, get data() { return data; }, isLocal };
+  return { levelInfo, levelLine, addXp, rewardName, PRICES, ACH, KINDS, owns, buy, grant, itemName, earn, unlock, matchEnded, shopScreen, achievementsScreen, hatThumb, coinLine, get coins() { return data.coins; }, get data() { return data; }, isLocal };
 })();
