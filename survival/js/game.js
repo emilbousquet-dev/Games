@@ -1140,7 +1140,16 @@ DA.Game = (function () {
     try { $('nameInput').value = localStorage.getItem(NAME_KEY) || ''; } catch (e) { /* no storage */ }
     const click = (id, f) => $(id).addEventListener('click', () => { A.init(); A.click(); f(); });
     click('btnNew', () => {
-      if (loadSave() && !confirm('Start a NEW world? Your old world will be gone forever.')) return;
+      // with a saved world, the first click asks, the second click starts over
+      const btn = $('btnNew');
+      if (loadSave() && !btn.dataset.sure) {
+        btn.dataset.sure = '1';
+        btn.textContent = 'CLICK AGAIN TO ERASE YOUR OLD WORLD';
+        btn.classList.add('danger');
+        setTimeout(() => { delete btn.dataset.sure; btn.textContent = 'NEW WORLD'; btn.classList.remove('danger'); }, 4000);
+        return;
+      }
+      delete btn.dataset.sure; btn.textContent = 'NEW WORLD'; btn.classList.remove('danger');
       G.myName = getName();
       const s = freshState();
       startHost(s, $('hostToggle').checked);

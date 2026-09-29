@@ -101,6 +101,7 @@
   .btn { background: #2a2e22; color: var(--ink); border: 1px solid rgba(200,216,96,0.5); padding: 9px 16px; border-radius: 5px; font-weight: bold; letter-spacing: 1px; }
   .btn:hover { background: #3a4028; border-color: var(--accent); }
   .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.danger { background: #5a1a12; border-color: #ff6040; color: #ffd0c0; font-size: 13px; }
   .btn.small { padding: 6px 10px; font-size: 12px; }
   .hint { color: var(--dim); font-size: 12px; margin-top: 8px; }
 
@@ -6823,7 +6824,16 @@ DA.Game = (function () {
     try { $('nameInput').value = localStorage.getItem(NAME_KEY) || ''; } catch (e) { /* no storage */ }
     const click = (id, f) => $(id).addEventListener('click', () => { A.init(); A.click(); f(); });
     click('btnNew', () => {
-      if (loadSave() && !confirm('Start a NEW world? Your old world will be gone forever.')) return;
+      // with a saved world, the first click asks, the second click starts over
+      const btn = $('btnNew');
+      if (loadSave() && !btn.dataset.sure) {
+        btn.dataset.sure = '1';
+        btn.textContent = 'CLICK AGAIN TO ERASE YOUR OLD WORLD';
+        btn.classList.add('danger');
+        setTimeout(() => { delete btn.dataset.sure; btn.textContent = 'NEW WORLD'; btn.classList.remove('danger'); }, 4000);
+        return;
+      }
+      delete btn.dataset.sure; btn.textContent = 'NEW WORLD'; btn.classList.remove('danger');
       G.myName = getName();
       const s = freshState();
       startHost(s, $('hostToggle').checked);
