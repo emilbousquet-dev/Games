@@ -696,7 +696,7 @@ FP.Game = (function () {
       let who = humans().map((p) => FP.UI.playerPill(p)).join('') + Array.from({ length: n }, (_, i) => `<span class="pill bot">Bot ${i + 1}</span>`).join('');
       if (m.teams) who += `<p class="small">Teams are split up automatically: Red and Blue.</p>`;
       const why = min > 0 ? `<p class="small">This game needs at least ${m.minTotal || 2} players, so you need at least ${min} bot${min > 1 ? 's' : ''}.</p>` : '<p class="small">You can play with no bots at all.</p>';
-      const teamRow = TEAMABLE.includes(m.id) && total >= 3 ? `<div class="skill"><span class="lbl">Teams</span><button class="chip${!teamPlay[m.id] ? ' on' : ''}" data-team="0">Everyone for themselves</button><button class="chip${teamPlay[m.id] ? ' on' : ''}" data-team="1">Red vs Blue</button></div>` : '';
+      const teamRow = TEAMABLE.includes(m.id) && (!m.teamOk || m.teamOk()) && total >= 3 ? `<div class="skill"><span class="lbl">Teams</span><button class="chip${!teamPlay[m.id] ? ' on' : ''}" data-team="0">Everyone for themselves</button><button class="chip${teamPlay[m.id] ? ' on' : ''}" data-team="1">Red vs Blue</button></div>` : '';
       const html = `<div class="setup-art">${m.art || ''}</div><p>${m.desc}</p>${m.setupHtml ? m.setupHtml() : ''}${teamRow}
         <div class="counter"><span class="lbl">Bots</span>
           <button class="round" data-bots="-1" ${n <= min ? 'disabled' : ''} title="Fewer bots">${ICON.minus}</button>
@@ -747,7 +747,7 @@ FP.Game = (function () {
     const { min, max } = botLimits(m);
     const n = Math.min(max, Math.max(min, botCount[m.id] !== undefined ? botCount[m.id] : min));
     // team mode: the same game, but Red against Blue
-    if (teamPlay[m.id] && TEAMABLE.includes(m.id) && humans().length + n >= 3 && !tour && !story && !daily && !tourney) {
+    if (teamPlay[m.id] && TEAMABLE.includes(m.id) && (!m.teamOk || m.teamOk()) && humans().length + n >= 3 && !tour && !story && !daily && !tourney) {
       mode = Object.create(m);
       Object.assign(mode, { base: m, teams: true, name: m.name + ': Teams', roundsToWin: Math.max(2, m.roundsToWin) });
     }
