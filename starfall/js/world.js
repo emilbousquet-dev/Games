@@ -161,7 +161,7 @@ SF.World = (function () {
     // ---------- SIGNAL TOWERS ----------
     L.towers.forEach((tw, i) => {
       let base = Infinity;
-      for (let a = 0; a < 6.28; a += 0.5) base = Math.min(base, T.heightAt(tw.x + Math.cos(a) * 3, tw.z + Math.sin(a) * 3));
+      for (let a = 0; a < 6.28; a += 0.2) for (const r of [3, 5, 6.3]) base = Math.min(base, T.heightAt(tw.x + Math.cos(a) * r, tw.z + Math.sin(a) * r));
       base = Math.min(base, T.heightAt(tw.x, tw.z));
       const steps = [];
       for (let k = 0; k < 66; k++) {

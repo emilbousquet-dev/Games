@@ -385,7 +385,7 @@ SF.Player = class {
         if (g - p.y > Ph.STEP) return false;                 // a wall or a big step
         if (!onPlatform && g > p.y + 0.02 && T.slopeAt(nx, nz) > SLOPE_MAX && !Ph.arenaAt(nx, nz)) return false; // too steep to walk up
       } else {
-        if (g > p.y + 0.35) return false;                     // bumped into a cliff while jumping
+        if (g > p.y + (this.swimming ? 1.1 : 0.35)) return false; // bumped into a cliff (you can climb out of water)
       }
       p.x = nx; p.z = nz;
       return true;

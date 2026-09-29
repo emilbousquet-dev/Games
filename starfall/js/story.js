@@ -47,10 +47,12 @@ SF.Story = (function () {
   function update(dt, time) {
     const P = SF.Game.player;
     if (!zib || !P) return;
-    const side = new THREE.Vector3(Math.cos(P.facing) * -0.9, 0, -Math.sin(P.facing) * -0.9);
-    const behind = new THREE.Vector3(-Math.sin(P.facing) * 1.1, 0, -Math.cos(P.facing) * 1.1);
-    const want = P.pos.clone().add(side).add(behind);
-    want.y += 2.1 + Math.sin(time * 2) * 0.15;
+    // float next to your shoulder (seen from the camera), not in front of you
+    const cy = P.camYaw;
+    const side = new THREE.Vector3(Math.cos(cy) * -1.5, 0, -Math.sin(cy) * -1.5);
+    const ahead = new THREE.Vector3(-Math.sin(cy) * 0.6, 0, -Math.cos(cy) * 0.6);
+    const want = P.pos.clone().add(side).add(ahead);
+    want.y += 2.2 + Math.sin(time * 2) * 0.15;
     if (zibPos.distanceTo(want) > 30) zibPos.copy(want);
     zibPos.lerp(want, 1 - Math.exp(-dt * 3));
     zibBounce = Math.max(0, zibBounce - dt);

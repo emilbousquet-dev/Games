@@ -77,7 +77,7 @@ SF.Terrain = (function () {
     // rivers
     for (const rv of L.rivers) {
       const rd = distToPath(x, z, rv);
-      if (rd < 16) h = U.lerp(-1.8, h, U.smooth(3.5, 13, rd));
+      if (rd < 24) h = U.lerp(-1.8, h, U.smooth(3, 22, rd));
     }
 
     // flat places: the crash site, the village and the temple plazas
