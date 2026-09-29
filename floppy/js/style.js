@@ -16,7 +16,7 @@ FP.Style = (function () {
   // victory dances (they are emotes number 5 and up)
   const DANCES = ['none', 'disco', 'robot', 'flip', 'spin', 'floss', 'chicken', 'champ'];
   const FREE_DANCES = ['none', 'disco'];
-  const DANCE_NAMES = { none: 'Surprise', disco: 'Disco', robot: 'Robot', flip: 'Backflip', spin: 'Spin', floss: 'Floss', chicken: 'Chicken', champ: 'Champion' };
+  const DANCE_NAMES = { none: 'Wiggle', disco: 'Disco', robot: 'Robot', flip: 'Backflip', spin: 'Spin', floss: 'Floss', chicken: 'Chicken', champ: 'Champion' };
   const DANCE_EMOTE = { disco: 5, robot: 6, flip: 7, spin: 8, floss: 9, chicken: 10, champ: 11 };
 
   const TRAILS = ['none', 'sparkles', 'hearts', 'bubbles', 'rainbow', 'fire', 'gold'];

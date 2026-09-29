@@ -147,7 +147,7 @@ It works online too: your friends get your arena automatically.
   - **Hats**: Headphones, Flower crown, Wizard hat, Antlers, Pirate hat, Viking helmet, Halo, Space helmet.
   - **Outfits**: Tutu, Tuxedo, Superhero, Space suit, Hoodie, Jersey.
   - **Face paint**: Whiskers, Stars, Shades, Tiger, Clown nose.
-  - **Victory dances**: Robot, Backflip, Spin, Floss, Chicken. Your winner does it on the podium!
+  - **Victory dances**: Robot, Backflip, Spin, Floss, Chicken. Your winner does it on the podium, and the dance button (`2`, `9` or left stick click) does it any time!
   - **Trails**: Sparkles, Hearts, Bubbles, Rainbow, Fire. They follow you when you run.
 - Pick what you own in the lobby (rows for hat, outfit, face, dance and trail).
 - The **Stats** page shows your games played, wins, knockouts, throws, World Tour stars and your favorite mini-game, above your achievements.
@@ -156,7 +156,7 @@ It works online too: your friends get your arena automatically.
 
 ## Other nice things
 
-- **Emotes:** wave, dance and cheer at your friends. Bots sometimes show off after knocking someone out.
+- **Emotes:** wave, dance and cheer at your friends. The dance button does the dance you picked in the lobby (Backflip, Robot, Floss...). Bots sometimes show off after knocking someone out.
 - **Music:** 7 songs made with code (party, tense, race, chill, spooky, circus and the menu song), with drums and chords.
 - **Slow motion** on the final knockout of a round. The knockout that wins the whole game also gets a **replay** from a moving camera (press jump to skip, or switch replays off in Settings).
 - **Photo mode** (in the pause menu): move the camera around, pick a filter (black and white, old photo, super colors, dreamy) and take a picture you can save.

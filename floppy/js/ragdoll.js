@@ -16,6 +16,7 @@ FP.Ragdoll = (function () {
   const STAND = 0.94;          // how high the middle of the body floats above the ground
   const SPEED = 5.2;           // walking speed
   const JUMP = 8.8;
+  const FLIP_TIME = 0.62;       // how long a backflip takes (seconds)
   const MASS = { torso: 4, head: 1, arm: 0.35, leg: 0.5 };
   const TOTAL = MASS.torso + MASS.head + MASS.arm * 2 + MASS.leg * 2;
   const SHOULDER = [new Vec3(-0.41, 0.17, 0), new Vec3(0.41, 0.17, 0)];
@@ -187,12 +188,18 @@ FP.Ragdoll = (function () {
     const grabbing = c.hands[0] || c.hands[1];
 
     // emotes: 1 wave, 2 dance, 3 cheer. Moving, punching or grabbing stops them
-    if (input.emote && s > 0.9 && !c.grabbedBy) { c.emote = { k: input.emote, t: 0, hop: 0.2 }; FP.bus.emit('emote', c); }
+    // the dance button does the dance you picked in the lobby (Backflip, Robot, Floss...)
+    if (input.emote && s > 0.9 && !c.grabbedBy) {
+      let k = input.emote;
+      if (k === 2 && c.player && FP.Style && FP.Style.DANCE_EMOTE[c.player.dance]) k = FP.Style.DANCE_EMOTE[c.player.dance];
+      c.emote = { k, t: 0, hop: 0.2 }; FP.bus.emit('emote', c);
+    }
     if (c.emote) {
       c.emote.t += dt;
       const moving = Math.hypot(input.x || 0, input.z || 0) > 0.3;
       if (c.emote.t > 2.6 || c.ko > 0 || c.grabbedBy || input.punchPressed || grabbing || (moving && c.emote.t > 0.3)) c.emote = null;
     }
+    if ((!c.emote || c.ko > 0 || c.grabbedBy) && c.flipT > 0) c.flipT = 0; // (a flip stops if the dance stops)
 
     // being carried: mash jump to wriggle free!
     if (c.grabbedBy && input.jumpPressed) {
@@ -255,9 +262,16 @@ FP.Ragdoll = (function () {
       // reaching to grab something (but not holding anything yet)? bend forward to reach low things
       const reaching = grabbing && !c.grab[0] && !c.grab[1];
       const leanQ = new Quaternion().setFromAxisAngle(new Vec3(1, 0, 0), reaching ? 0.45 : 0.12 * Math.min(1, dir));
-      const target = yawQ.mult(leanQ);
-      orient(t, target, 13, 0.75, tall);
-      orient(c.parts.head, yawQ, 9, 0.5, tall * 0.8);
+      let target = yawQ.mult(leanQ);
+      // backflip: the balance itself turns you head over heels (backwards), then lands you upright again
+      const flipping = c.flipT > 0;
+      if (flipping) {
+        c.flipT -= dt;
+        const k = Math.min(1, 1 - c.flipT / FLIP_TIME);
+        target = yawQ.mult(new Quaternion().setFromAxisAngle(new Vec3(1, 0, 0), -Math.PI * 2 * (k * k * (3 - 2 * k))));
+      }
+      orient(t, target, flipping ? 34 : 13, 0.75, tall);
+      orient(c.parts.head, flipping ? target : yawQ, flipping ? 26 : 9, 0.5, tall * 0.8);
 
       // walking force
       const speed = SPEED * ((FP.Fun && FP.Fun.speed) || 1) * (c.speedMul || 1) * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
@@ -283,7 +297,7 @@ FP.Ragdoll = (function () {
       if (c.emote && HOP[c.emote.k] && c.grounded && (c.emote.hop -= dt) <= 0) {
         c.emote.hop = HOP[c.emote.k][0];
         for (const b of c.bodies) b.velocity.y += HOP[c.emote.k][1];
-        if (c.emote.k === 7) { t.angularVelocity.x += -Math.cos(c.yaw) * 14; t.angularVelocity.z += Math.sin(c.yaw) * 14; } // backflip!
+        if (c.emote.k === 7) c.flipT = FLIP_TIME; // backflip!
       }
       legs(c, dt, s, groundVel);
       arms(c, input, dt, s);

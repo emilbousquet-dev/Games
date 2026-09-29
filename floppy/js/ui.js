@@ -71,7 +71,7 @@ FP.UI = (function () {
       <tr><td>Punch</td><td>${K(0,'punch')}</td><td>${K(1,'punch')}</td><td><kbd>X</kbd> or <kbd>B</kbd></td></tr>
       <tr><td>Grab with both hands (hold)</td><td>${K(0,'grab')}</td><td>${K(1,'grab')}</td><td><kbd>LB</kbd> + <kbd>RB</kbd></td></tr>
       <tr><td>Left hand / right hand</td><td>${K(0,'grabL')} / ${K(0,'grabR')}</td><td>${K(1,'grabL')} / ${K(1,'grabR')}</td><td><kbd>LB</kbd> / <kbd>RB</kbd></td></tr>
-      <tr><td>Emotes: wave, dance, cheer</td><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td><kbd>8</kbd> <kbd>9</kbd> <kbd>0</kbd></td><td><kbd>Back</kbd> <kbd>L3</kbd> <kbd>Y</kbd></td></tr>
+      <tr><td>Emotes: wave, dance (the dance you picked in the lobby), cheer</td><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td><kbd>8</kbd> <kbd>9</kbd> <kbd>0</kbd></td><td><kbd>Back</kbd> <kbd>L3</kbd> <kbd>Y</kbd></td></tr>
       <tr><td>Color, hat, outfit (lobby)</td><td><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd></td><td><kbd>K</kbd> <kbd>L</kbd> <kbd>J</kbd></td><td><kbd>Back</kbd> <kbd>Y</kbd> <kbd>R3</kbd></td></tr>
     </table>
     <ul>
