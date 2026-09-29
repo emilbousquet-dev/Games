@@ -110,7 +110,13 @@ SF.Game = (function () {
     $('btnContinue').onclick = () => { click(); startSolo(readSave()); };
     $('btnNew').onclick = () => {
       click();
-      if (readSave() && !confirm('Start a new game? Your old adventure will be deleted!')) return;
+      // press twice to erase an old adventure (pop-up questions don't work everywhere)
+      if (readSave() && !G.confirmNew) {
+        G.confirmNew = true;
+        $('btnNew').textContent = 'CLICK AGAIN TO ERASE YOUR SAVE';
+        setTimeout(() => { G.confirmNew = false; if (G.mode === 'title') $('btnNew').textContent = 'NEW GAME'; }, 4000);
+        return;
+      }
       try { localStorage.removeItem('starfall.save'); } catch (e) {}
       startSolo(null);
     };
@@ -133,8 +139,9 @@ SF.Game = (function () {
       if (SF.Input.mouse.intentional) { SF.Input.mouse.intentional = false; return; }
       if (G.mode === 'play' && !SF.HUD.modalOpen && !G.cutscene && $('credits').style.display !== 'flex') pause();
     });
-    const msg = sessionStorage.getItem('starfall.msg');
-    if (msg) { sessionStorage.removeItem('starfall.msg'); setTimeout(() => ($('titleMsg').textContent = msg), 100); }
+    let msg = null;
+    try { msg = sessionStorage.getItem('starfall.msg'); sessionStorage.removeItem('starfall.msg'); } catch (e) {}
+    if (msg) setTimeout(() => ($('titleMsg').textContent = msg), 100);
   }
 
   // ---------- starting a game ----------
@@ -262,6 +269,7 @@ SF.Game = (function () {
     const dt = Math.min(0.05, clock.getDelta());
     time += dt;
     if (G.mode === 'loading') return;
+    SF.Input.mouse.active = G.mode === 'play' && !G.paused && !G.menuOpen && !SF.HUD.modalOpen;
     const inp = SF.Input.read(dt);
 
     if (G.mode === 'title') {

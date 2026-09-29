@@ -6,14 +6,15 @@ window.SF = window.SF || {};
 SF.Input = (function () {
   const keys = new Set();
   const pressed = new Set();       // keys pressed this frame
-  const mouse = { dx: 0, dy: 0, locked: false, left: false, right: false, leftPressed: false };
+  const mouse = { dx: 0, dy: 0, moved: 0, clickStart: false, locked: false, left: false, right: false, leftPressed: false, fallback: false, active: false };
   let padPrev = [];
   let listeners = [];
   let sensitivity = 1;
   try { sensitivity = parseFloat(localStorage.getItem('starfall.sens')) || 1; } catch (e) {}
 
   const K = {
-    fwd: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
+    fwd: ['KeyW'], back: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
+    camL: ['ArrowLeft'], camR: ['ArrowRight'], camU: ['ArrowUp'], camD: ['ArrowDown'],
     jump: ['Space'], sprint: ['ShiftLeft', 'ShiftRight'], use: ['KeyE', 'KeyF'], map: ['KeyM', 'Tab'],
     aim: ['KeyQ'], pause: ['Escape', 'KeyP'], attack: ['KeyJ'], block: ['KeyK'],
   };
@@ -28,23 +29,34 @@ SF.Input = (function () {
     window.addEventListener('keyup', (e) => keys.delete(e.code));
     window.addEventListener('blur', () => { keys.clear(); mouse.left = mouse.right = false; });
     document.addEventListener('mousemove', (e) => {
-      if (mouse.locked) { mouse.dx += e.movementX; mouse.dy += e.movementY; }
+      // with the mouse grabbed, moving it turns the camera.
+      // if the page can't grab the mouse, hold a button and drag instead
+      if (mouse.locked || (mouse.fallback && mouse.active && e.buttons)) { mouse.dx += e.movementX; mouse.dy += e.movementY; mouse.moved += Math.abs(e.movementX) + Math.abs(e.movementY); }
     });
     canvas.addEventListener('mousedown', (e) => {
-      if (!mouse.locked) return;
+      if (!mouse.locked && !(mouse.fallback && mouse.active)) return;
+      mouse.moved = 0;
+      // in drag mode a quick click swings the sword (a drag only turns the camera)
+      if (e.button === 0 && !mouse.locked) { mouse.clickStart = true; return; }
       if (e.button === 0) { mouse.left = true; mouse.leftPressed = true; }
       if (e.button === 2) mouse.right = true;
     });
     document.addEventListener('mouseup', (e) => {
+      if (e.button === 0 && mouse.clickStart) { mouse.clickStart = false; if (mouse.moved < 8) mouse.leftPressed = true; }
       if (e.button === 0) mouse.left = false;
       if (e.button === 2) mouse.right = false;
     });
     document.addEventListener('contextmenu', (e) => e.preventDefault());
     document.addEventListener('pointerlockchange', () => { mouse.locked = document.pointerLockElement === canvas; });
+    document.addEventListener('pointerlockerror', () => { mouse.fallback = true; });
   }
 
   function lock(canvas) {
-    try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
+    try {
+      if (!canvas.requestPointerLock) { mouse.fallback = true; return; }
+      const p = canvas.requestPointerLock();
+      if (p && p.catch) p.catch(() => { mouse.fallback = true; });
+    } catch (e) { mouse.fallback = true; }
   }
   // the game lets go of the mouse on purpose (menus): this is not a pause
   function unlock() { if (document.pointerLockElement) { mouse.intentional = true; document.exitPointerLock(); } }
@@ -76,6 +88,11 @@ SF.Input = (function () {
     if (down(K.right)) s.mx += 1;
     s.lookX = mouse.dx * 0.0024 * sensitivity;
     s.lookY = mouse.dy * 0.0024 * sensitivity;
+    // arrow keys turn the camera too (so you can play with just the keyboard)
+    if (down(K.camL)) s.lookX -= 2.4 * dt * sensitivity;
+    if (down(K.camR)) s.lookX += 2.4 * dt * sensitivity;
+    if (down(K.camU)) s.lookY -= 1.4 * dt * sensitivity;
+    if (down(K.camD)) s.lookY += 1.4 * dt * sensitivity;
     mouse.dx = mouse.dy = 0;
 
     const p = pad();

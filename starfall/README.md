@@ -21,7 +21,7 @@ Press **CONTINUE** on the title screen to keep playing.
 | | Keyboard + mouse | 🎮 Controller |
 |---|---|---|
 | Move | `W` `A` `S` `D` | Left stick |
-| Look around | Mouse (click the game first) | Right stick |
+| Look around | Mouse (click the game first), or the arrow keys | Right stick |
 | Jump / glide / double jump | `Space` | A |
 | Sword | Left click | X |
 | Shield (block) | Right click (hold) | LT |
