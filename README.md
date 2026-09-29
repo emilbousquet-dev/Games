@@ -1,3 +1,12 @@
+# Our Games 🎮
+
+| Game | What it is | How to play |
+|---|---|---|
+| 👽 **LAB 13** | 3D co-op survival horror | open `index.html` |
+| 🔱 **ATLANTIS DIVER** | 2D treasure diving in the lost city of Atlantis | open `atlantis/index.html` ([read me](atlantis/README.md)) |
+
+---
+
 # LAB 13 👽🩸
 
 > 🆕 **Also in this folder: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
