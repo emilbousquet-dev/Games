@@ -1,5 +1,8 @@
 # LAB 13 👽🩸
 
+> 🆕 **Also in this folder: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
+> Open `monster-hotel/index.html` to play.
+
 A **3D co-op survival horror game** that runs in your web browser.
 Play **alone** or with a **friend** in split screen, using the keyboard or controllers.
 

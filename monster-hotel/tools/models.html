@@ -1,0 +1,69 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Monster Hotel — Model Viewer</title>
+<style>body{margin:0;background:#1a1024;color:#ddd;font-family:sans-serif;overflow:hidden}#l{position:fixed;left:10px;top:10px;z-index:2}canvas{display:block}</style></head>
+<body><div id="l">Monster Hotel model viewer — drag to spin · ?m=vampire,ghost to show some models</div>
+<script src="../../lib/three.min.js"></script>
+<script src="../js/util.js"></script>
+<script src="../js/map.js"></script>
+<script src="../js/textures.js"></script>
+<script src="../js/models.js"></script>
+<script>
+const Mo = MH.Models;
+const list = {
+  vampire: () => Mo.vampire(0), vampire2: () => Mo.vampire(1), vampireLady: () => Mo.vampire(2), werewolf: () => Mo.werewolf(0), werewolf2: () => Mo.werewolf(1),
+  mummy: () => Mo.mummy(0), pharaoh: () => Mo.mummy(1), ghost: () => Mo.ghost(0), ghost2: () => Mo.ghost(2), frankie: () => Mo.frankie(0), frankieLady: () => Mo.frankie(2),
+  blob: () => Mo.blob(0), blob2: () => Mo.blob(1), human: () => Mo.human(0),
+  items: () => { const g = new THREE.Group(); Object.keys(MH.ITEMS).forEach((k, i) => { const m = Mo.item(k); m.scale.setScalar(4); m.position.set((i % 4) * 1.2 - 1.8, 0.2 + Math.floor(i / 4) * 1.2, 0); g.add(m); }); return g; },
+  hands: () => { const g = new THREE.Group(); ['vampire', 'werewolf', 'mummy', 'frankie'].forEach((b, i) => { const v = Mo.viewModel(b); v.scale.setScalar(2.5); v.position.set(i * 1.6 - 2.4, 1.5, 1); v.rotation.y = Math.PI; g.add(v); }); return g; },
+  desk: () => Mo.frontDesk(5.5), keyRack: () => Mo.keyRack(5), fireplace: () => Mo.fireplace(2.6), sofa: () => Mo.sofa(2.6), table: () => Mo.roundTable(), plant: () => Mo.plant(), armor: () => Mo.armor(), clock: () => Mo.grandClock(),
+  coffin: () => Mo.coffinBed(), nightstand: () => Mo.nightstand(), wardrobe: () => Mo.wardrobe(), door: () => Mo.roomDoor(3), frontDoors: () => { const d = Mo.frontDoors(); d.scale.setScalar(0.5); return d; },
+  chandelier: () => { const c = Mo.chandelier(1); c.position.y = 0.6; return c; }, cauldron: () => Mo.cauldron(), sink: () => Mo.sink(), stationBlood: () => Mo.station('blood'), shelfTowel: () => Mo.station('towel', true),
+  mess0: () => Mo.mess(0), mess1: () => Mo.mess(1), mess2: () => Mo.mess(2), portrait: () => { const p = Mo.portraitFrame('vampire'); p.position.y = 1; return p; },
+  armchair: () => Mo.armchair(0x2a6a5a),
+};
+const only = new URLSearchParams(location.search).get('m');
+const names = only ? only.split(',') : Object.keys(list);
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+MH.maxAniso = r.capabilities.getMaxAnisotropy();
+r.setSize(innerWidth, innerHeight); r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.1;
+document.body.appendChild(r.domElement);
+const s = new THREE.Scene(); s.background = new THREE.Color(0x2a1a3a);
+s.add(new THREE.HemisphereLight(0xc8b8ff, 0x3a2030, 1.2));
+const d = new THREE.DirectionalLight(0xffe8d0, 2.4); d.position.set(3, 6, 8); s.add(d);
+const d2 = new THREE.DirectionalLight(0x8a6aff, 1.2); d2.position.set(-6, 3, -4); s.add(d2);
+const cols = Math.min(names.length, Math.ceil(Math.sqrt(names.length * 1.6))), sp = 3.2;
+const holders = [];
+names.forEach((n, i) => {
+  const h = new THREE.Group();
+  const m = list[n]();
+  h.add(m);
+  h.position.set((i % cols - (cols - 1) / 2) * sp, 0, -Math.floor(i / cols) * sp);
+  s.add(h);
+  holders.push(h);
+  m.userData.mood = 0.6;
+});
+const rows = Math.ceil(names.length / cols);
+const cam = new THREE.PerspectiveCamera(40, innerWidth / innerHeight, 0.05, 200);
+const single = names.length === 1;
+const dist = single ? 4.2 : Math.max(cols, rows) * 3.4;
+const zc = -(rows - 1) * sp / 2; cam.position.set(0, single ? 1.3 : dist * 0.45, dist + zc); cam.lookAt(0, single ? 0.95 : 0.8, zc);
+let rot = 0.35, drag = false, px = 0;
+addEventListener('mousedown', (e) => { drag = true; px = e.clientX; });
+addEventListener('mouseup', () => drag = false);
+addEventListener('mousemove', (e) => { if (drag) { rot += (e.clientX - px) * 0.01; px = e.clientX; } });
+const clock = new THREE.Clock();
+let moodT = 0;
+function loop() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  moodT += dt;
+  holders.forEach((h) => {
+    h.rotation.y = rot;
+    const m = h.children[0];
+    if (m.userData.rig) Mo.animate(m, dt, { speed: 0, mood: Math.sin(moodT * 0.5) > -0.3 ? 0.6 : -0.7, talk: false });
+  });
+  r.render(s, cam);
+  requestAnimationFrame(loop);
+}
+loop();
+window.__ready = true;
+</script></body></html>
