@@ -961,6 +961,7 @@ FP.Game = (function () {
       tour.kingKos++;
       tour.bonus[by.player.id] = (tour.bonus[by.player.id] || 0) + 1;
       FP.UI.toast(`${by.player.name} knocked out the King! +1 party point`, 2.2);
+      if (FP.Profile.isLocal(by)) FP.Profile.unlock('regicide');
       FP.Audio.play('ding');
     }
   });
@@ -1463,7 +1464,7 @@ FP.Game = (function () {
     let c = chars.find((q) => q.player === p);
     if (!c) { c = makeChar(p, { x: 0, y: 0.1, z: 3, yaw: 0 }); FP.Camera.snap(chars.map(FP.Ragdoll.center)); } // (a bot champion comes to the island too)
     if (c) { c.cheer = 30; c.expression = 'happy'; c.exprTimer = 30; c.podiumWinner = true; }
-    if (mine) { FP.Profile.earn(150); FP.Profile.addXp(100); }
+    if (mine) { FP.Profile.earn(150); FP.Profile.addXp(100); FP.Profile.unlock('tourney'); }
     FP.UI.screen({
       cls: 'results', title: 'Tournament Champion!',
       html: `<div class="champ">${ICON.trophy}</div><p class="winner">${esc(p.name)} is the Tournament Champion!</p>${mine ? `<p>${ICON.coin} <b>+150</b> party coins and <b>+100</b> XP!</p>` : '<p>A bot won this time. Try again!</p>'}`,
@@ -1684,6 +1685,7 @@ FP.Game = (function () {
           res.speedDone = { t, record: !sd.best || t < sd.best, old: sd.best };
           if (res.speedDone.record) sd.best = t;
           sd.runs = (sd.runs || 0) + 1;
+          FP.Profile.unlock('speedrun');
           sd.run = null; speedRun = null;
           saveSpeed(sd);
         } else saveSpeedRun();
@@ -1802,6 +1804,7 @@ FP.Game = (function () {
     showReplayBars(`<b>REPLAY</b><small><span>Move: turn and zoom the camera</span> <span>JUMP: slow motion</span> <span>PUNCH: follow someone</span> <span>GRAB or ESC: done</span></small><span class="rp-info"></span><span class="rp-bar"><i></i></span>`);
     if (FP.Net) FP.Net.banner('REPLAY', 'The host is watching the replay');
     FP.Audio.play('whoosh');
+    FP.Profile.unlock('director');
   }
   function directorFrame(dt) {
     const r = replay;

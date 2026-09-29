@@ -19,11 +19,14 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 |---|---|---|---|
 | Move | `W` `A` `S` `D` | Arrows | Left stick |
 | Jump | `Space` | `/` | A |
-| Punch | `F` | `.` | X or B |
+| Punch | `F` | `.` | X |
 | Grab with both hands (hold) | `G` | `,` | LB + RB |
 | Left hand / right hand (hold) | `Q` / `E` | `;` / `'` | LB or LT / RB or RT |
-| Emotes: wave / dance / cheer | `1` / `2` / `3` | `8` / `9` / `0` | Back / left stick click / Y |
+| Emotes 1 to 4 (pick your 4 favorites in the lobby) | `1` `2` `3` `4` | `8` `9` `0` `-` | Back / left stick click / Y / right stick click |
+| Play dead (go floppy on purpose) | `R` | `O` | B |
 | Color / hat / outfit (lobby) | `Z` / `X` / `C` | `K` / `L` / `J` | Back / Y / right stick click |
+| Quick Chat: "Nice!" / "Oops!" / "Rematch?" | `5` / `6` / `7` | | |
+| Watch the replay (when a round ends) | `V` | `V` | Back |
 
 `H` help, `Esc` pause (or **Start** on a controller), `M` music on or off. You can change the keys in **Settings > Controls**.
 
@@ -32,7 +35,7 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 **Player 1 with a controller:** press **A** on the controller to pick *Play on this computer*, and Player 1 uses the controller.
 Or, in the lobby, press **A** on the controller before touching the keyboard.
 
-**Phones and tablets:** a joystick appears on the left, and Jump, Punch, Grab and Emote buttons on the right. The pause button is at the top right.
+**Phones and tablets:** a joystick appears on the left, and Jump, Punch, Grab, Emote and Play dead buttons on the right. The pause button is at the top right.
 In the lobby you can also click the arrows on your player card to change your color, hat and outfit.
 
 - **Punch** someone 3 times quickly to **knock them out**. They go completely floppy!
@@ -88,7 +91,7 @@ In the lobby you can also click the arrows on your player card to change your co
 | **Cooking Chaos** | Cook soups together: run into crates for ingredients, into pots to fill them (3 of a kind or 3 different), then bring the soup to the SERVE window. Don't let it burn, watch out for spills. | 1 to 4 |
 | **Hide and Seek** | Hiders get 12 seconds to hide: **grab** next to furniture to hide inside. The seeker **punches** furniture to look inside. Hidden furniture wiggles sometimes. Everyone takes a turn seeking. | 2 to 4 |
 | **Water Balloon Wars** | Red vs Blue in a backyard. **Punch** to lob water balloons that splash everyone nearby, refill at your team's tap. Wet = slippery! | 2 to 4 |
-| **My Arena** | Knockout on an arena **you built** in the Level Editor. Jump pads, ice, lava and walls. Last one standing wins. First to 3. | 2 to 4 |
+| **My Arena** | Play on an arena **you built** in the Level Editor, with the rule you picked: **Knockout** (last one standing, first to 3), **Coin Grab** (most coins in 60 seconds) or **King of the Hill** (stay on the gold hill, first to 30). | 2 to 4 |
 
 After picking a mini-game you choose the number of bots. Some games (The Heist, Coin Grab, Paint Party, Obstacle Race, Kart Racing, Bowling)
 can be played alone with no bots. The other games need at least 2 players, so if you play alone you get at least 1 bot.
@@ -104,7 +107,13 @@ step back after punching, and get revenge on whoever hit them. Every bot also ha
 - **Party Tour**: play 3, 5 or 7 random mini-games in a row, or **your own playlist** (press *Pick my playlist* and click the games you want, in order; it's saved).
   Every game gives party points (4 for 1st, 3 for 2nd, 2 for 3rd, 1 for everyone else).
   Most points at the end is the **Party Champion**!
+  **King of the Party** (switch it on or off on the Party Tour screen): the leader wears a big floating crown.
+  Knock out the King for **+1 party point**, and if the King wins a game they get +1 too.
+- **Tournament**: 8 players in a bracket (bots fill the empty spots). Every match is 1 against 1 in a random mini-game.
+  Win the quarterfinal, the semifinal and the final to be the **Tournament Champion** (+150 coins and +100 XP).
+  When two bots meet, their match is decided in a flash.
 - **Surprise me!**: a spinning wheel of mini-games stops on a random one.
+- **Team mode**: many brawl games (Knockout Arena, Sumo, Tile Drop, Bumper Bash...) can be played **Red vs Blue** with 3 or more players. Pick it on the setup screen.
 - **Daily Challenge** (title screen, *Daily and Weekly Challenges*): a new mini-game with a twist every day, like *Moon Gravity Bowling* or *Disco Soccer*, sometimes against hard bots. Win it for 150 or 200 bonus coins and keep your streak going.
 - **Weekly Challenges** (same screen): 3 bigger goals every week, like *Win 4 Brawl games* or *Throw 10 characters*. Each one gives 100 coins, and finishing all 3 gives a **mystery prize** from the Shop. New challenges every Monday.
 
@@ -127,15 +136,24 @@ green **tractor beam** (get caught and you float up and get dropped), **punch th
 the red **laser stripes** before they zap. When it gets tired it lands: **punch the glowing lights on its edge!**
 Beat it to win the **Alien antennas** and finish the whole World Tour.
 
+Lava Land, the Robot Factory and Outer Space each have **their own song**.
+
+**Speedrun** (button under the map): play all 24 levels in a row on Normal, as fast as you can. The clock only runs while you
+play, and if you lose a level you have to try it again (so the clock keeps going). You can stop and continue later.
+Your best time is saved.
+
 ## Level Editor
 
 Press **Level Editor** on the title screen (or **Edit** on the My Arena setup screen). Build an arena on a 14 by 14 grid:
-floor, blocks, walls, jump pads, ice, lava and up to 4 start spots. You see it in 3D while you build.
-There are 3 save slots, and you can name each arena. Then press **Play it!** to fight on it with friends and bots.
-It works online too: your friends get your arena automatically.
+floor, blocks, walls, jump pads, ice, lava, gold **Hill** squares and up to 4 start spots. You see it in 3D while you build.
+There are 3 save slots, and you can name each arena. Pick the **rule**: Knockout, Coin Grab or King of the Hill.
+Then press **Play it!** to play on it with friends and bots. It works online too: your friends get your arena automatically.
+
+The **Gallery** has 8 ready-made arenas to load and change: Donut, Ice Rink, Sky Islands, Lava Maze, Gold Rush,
+Bouncy Castle, Hill Top and Two Hills.
 
 - Mouse or touch: click or drag to paint, right-click to erase.
-- Keyboard: arrow keys move, **Space** paints, **Backspace** erases, **1 to 8** (or Q and E) pick a tool, **Enter** plays.
+- Keyboard: arrow keys move, **Space** paints, **Backspace** erases, **1 to 9** (or Q and E) pick a tool, **Enter** plays.
 - Controller: stick or d-pad moves, **A** paints, **X** erases, **LB / RB** pick a tool, **Start** plays.
 - **Share code**: gives you a code for your arena (like `FP1.X31F6...`). Send it to a friend.
   They press **Load a code** in their Level Editor, paste it, and get your arena.
@@ -151,14 +169,25 @@ It works online too: your friends get your arena automatically.
   - **Trails**: Sparkles, Hearts, Bubbles, Rainbow, Fire. They follow you when you run.
 - Pick what you own in the lobby (rows for hat, outfit, face, dance and trail).
 - The **Stats** page shows your games played, wins, knockouts, throws, World Tour stars and your favorite mini-game, above your achievements.
-- **Achievements** (14 of them) give 50 bonus coins each, like "Yeet Master" (throw 10 people) or "Party Champion" (win a Party Tour).
+- **Achievements** (18 of them) give 50 bonus coins each, like "Yeet Master" (throw 10 people), "Tournament Champion" or "Crown Snatcher" (knock out the King of the Party).
+- **Levels:** every game gives XP (more for winning). Level up to unlock pets (they follow you in the lobby and sit by you on the podium),
+  fancy **name tags** (gold, rainbow, fire, galaxy) and **special colors** (Gold, Glitter, Glow, Midnight).
 - Coins, everything you own, World Tour stars, your arenas and achievements are saved on this computer.
 
 ## Other nice things
 
 - **Emotes:** wave, dance and cheer at your friends. The dance button does the dance you picked in the lobby (Backflip, Robot, Floss...). Bots sometimes show off after knocking someone out.
-- **Music:** 7 songs made with code (party, tense, race, chill, spooky, circus and the menu song), with drums and chords.
+- **Music:** 10 songs made with code (party, tense, race, chill, spooky, circus, lava, factory, space and the menu song), with drums and chords.
 - **Slow motion** on the final knockout of a round. The knockout that wins the whole game also gets a **replay** from a moving camera (press jump to skip, or switch replays off in Settings).
+- **Director replay:** when a round ends, press **V** (or **Back** on a controller, or click the button) to watch the last 10 seconds again.
+  Move to turn and zoom the camera, **jump** for slow motion, **punch** to follow someone, **grab** (or Esc) when you're done.
+- **Commentator:** a funny voice in the corner shouts things like "WHAT A THROW!", "Down goes Pickle!" or "It's down to Bonkers and Noodle!"
+- **Quick Chat:** press **5**, **6** or **7** to say "Nice!", "Oops!" or "Rematch?" over your character. Friends online see it too.
+- **Controller rumble:** controllers shake when you get punched, thrown or knocked out (if yours can).
+- **Knockout Arena extras:** **? crates** give powers (giant fists, speed, super bounce), and from round 2 a **hazard** joins in (wind, a giant hand, or an earthquake).
+- **Taunts:** do the **Laugh** emote near someone: they get angry (their punches get stronger) but you get a speed boost. **Play dead** to trick the bots!
+- **Photo stickers:** in Photo mode, add a frame, a speech bubble and stickers to your picture.
+- **Loading screen** with a drawing and a random tip.
 - **Photo mode** (in the pause menu): move the camera around, pick a filter (black and white, old photo, super colors, dreamy) and take a picture you can save.
 
 - **Hits feel strong:** big punches and knockouts freeze the action for a split second, and hard landings kick up dust.
@@ -176,7 +205,8 @@ It works online too: your friends get your arena automatically.
 - **Controls:** in Settings, press **Controls** to pick your own keys for both keyboard players.
 - **Colorblind shapes** (Settings): Color Panic tiles also get shapes (circle, star, triangle, square, diamond).
   Chicken pens show their owner's name.
-- **Settings** (title screen or pause menu): volume, music, sound effects, screen shake, graphics (Pretty or Fast), name tags, fullscreen.
+- **Settings** (title screen or pause menu): volume, music, sound effects, screen shake, graphics (Pretty or Fast), name tags, replays,
+  commentator, Quick Chat, controller rumble, colorblind shapes and fullscreen.
 
 ## Fun options
 
@@ -223,6 +253,8 @@ All sounds and music are made with code.
 | `js/style.js` | Face paint, victory dances and trails |
 | `js/editor.js` | The Level Editor |
 | `js/settings.js` | The settings screen |
+| `js/caster.js` | The commentator, Quick Chat and controller rumble |
+| `js/season.js` / `js/weekly.js` | Special events, and the weekly challenges |
 | `js/bots.js` | Computer players |
 | `js/net.js` | Online play (the claude.ai room, or PeerJS with room codes) |
 | `js/physics.js` | The physics world |

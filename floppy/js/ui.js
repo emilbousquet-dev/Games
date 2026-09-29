@@ -74,6 +74,8 @@ FP.UI = (function () {
       <tr><td>Emotes 1 to 4 (pick them in the lobby)</td><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td><kbd>8</kbd> <kbd>9</kbd> <kbd>0</kbd> <kbd>-</kbd></td><td><kbd>Back</kbd> <kbd>L3</kbd> <kbd>Y</kbd> <kbd>R3</kbd></td></tr>
       <tr><td>Play dead (go floppy on purpose)</td><td>${K(0, 'flop')}</td><td>${K(1, 'flop')}</td><td><kbd>B</kbd></td></tr>
       <tr><td>Color, hat, outfit (lobby)</td><td><kbd>Z</kbd> <kbd>X</kbd> <kbd>C</kbd></td><td><kbd>K</kbd> <kbd>L</kbd> <kbd>J</kbd></td><td><kbd>Back</kbd> <kbd>Y</kbd> <kbd>R3</kbd></td></tr>
+      <tr><td>Quick Chat: "Nice!", "Oops!", "Rematch?"</td><td><kbd>5</kbd> <kbd>6</kbd> <kbd>7</kbd></td><td></td><td></td></tr>
+      <tr><td>Watch the replay (when a round ends)</td><td><kbd>V</kbd></td><td><kbd>V</kbd></td><td><kbd>Back</kbd></td></tr>
     </table>
     <ul>
       <li><b>Punch</b> 3 times quickly to knock someone out. They go floppy!</li>
@@ -81,6 +83,7 @@ FP.UI = (function () {
       <li>Grabbed? <b>Mash jump</b> to wriggle free.</li>
       <li>You can grab edges and walls to hang on.</li>
       <li>Grab with <b>just one hand</b> (Q or E, or one bumper) and keep the other hand free. Let go of one hand and the other keeps holding.</li>
+      <li>In the <b>replay</b>, move to turn and zoom the camera, JUMP for slow motion, PUNCH to follow someone, GRAB to finish.</li>
     </ul>
     <p class="small">Player 1 can use a controller: press A on it to start (on the title screen, or in the lobby).</p>
     <p class="small">You can change your keys in <b>Settings</b>, then <b>Controls</b>.</p>

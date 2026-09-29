@@ -25,6 +25,10 @@ FP.Profile = (function () {
     { id: 'silly', name: 'So Silly', desc: 'Play a game with 3 fun options on.' },
     { id: 'online', name: 'Party People', desc: 'Play a game in an online party.' },
     { id: 'games50', name: 'Party Animal', desc: 'Play 50 mini-games.', stat: 'games', goal: 50 },
+    { id: 'tourney', name: 'Tournament Champion', desc: 'Win a Tournament.' },
+    { id: 'regicide', name: 'Crown Snatcher', desc: 'Knock out the King of the Party.' },
+    { id: 'speedrun', name: 'Speedrunner', desc: 'Finish the World Tour speedrun.' },
+    { id: 'director', name: 'Movie Director', desc: 'Watch a replay from your own camera angle.' },
   ];
 
   let data = { coins: 0, owned: [], stats: { throws: 0, kos: 0, earned: 0, games: 0, wins: 0 }, played: [], plays: {}, ach: [] };
