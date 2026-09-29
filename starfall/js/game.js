@@ -309,7 +309,8 @@ SF.Game = (function () {
     else if (G.hadCutscene) { G.hadCutscene = false; P.frozen = false; }
 
     P.update(dt, busy && !G.cutscene ? { ...inp, mx: 0, mz: 0, jumpPressed: false, attackPressed: false, block: false, aim: false, sprint: false } : inp);
-    SF.Creatures.update(dt, time);
+    // like in Zelda, the monsters wait while you talk or shop
+    if (!busy || G.cutscene) SF.Creatures.update(dt, time);
     SF.World.update(dt, time);
     SF.Story.update(dt, time);
     SF.Sky.update(dt, G.camera, P.pos, G.scene, time);

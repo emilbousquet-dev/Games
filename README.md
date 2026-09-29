@@ -1,3 +1,12 @@
+# Games 🎮
+
+| Game | What is it? | How to play |
+|---|---|---|
+| **LAB 13** 👽🩸 | A scary co-op survival horror game in a secret underground lab | open `index.html` |
+| **STARFALL** 🌠 | An open world adventure on an alien planet, like Zelda | open `starfall/index.html` ([read me](starfall/README.md)) |
+
+---
+
 # LAB 13 👽🩸
 
 A **3D co-op survival horror game** that runs in your web browser.

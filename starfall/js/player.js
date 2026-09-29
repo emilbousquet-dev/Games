@@ -496,7 +496,7 @@ SF.Player = class {
     const want = tgt.clone().addScaledVector(dir, d);
     if (a) {
       const dx = want.x - a.x, dz = want.z - a.z, dd = Math.hypot(dx, dz);
-      if (dd > a.r - 0.8) { want.x = a.x + dx / dd * (a.r - 0.8); want.z = a.z + dz / dd * (a.r - 0.8); }
+      if (dd > a.r - 2.6) { want.x = a.x + dx / dd * (a.r - 2.6); want.z = a.z + dz / dd * (a.r - 2.6); }
     }
     if (!this.camInit) { cam.position.copy(want); this.camInit = true; }
     cam.position.lerp(want, 1 - Math.exp(-dt * 18));

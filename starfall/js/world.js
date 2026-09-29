@@ -442,10 +442,10 @@ SF.World = (function () {
     }
     // exit portal
     const portal = Mo.portal(c.glow);
-    portal.position.set(a.x, a.y, a.z + a.r - 2);
+    portal.position.set(a.x, a.y, a.z + a.r - 0.4);
     scene.add(portal);
     a.portal = portal;
-    addInteract({ x: a.x, z: a.z + a.r - 2, y: a.y, r: 3, label: () => 'Leave the temple', act: () => leaveTemple(i) });
+    addInteract({ x: a.x, z: a.z + a.r - 1.5, y: a.y, r: 3.2, label: () => 'Leave the temple', act: () => leaveTemple(i) });
     // the reward (appears when the boss is beaten)
     const rw = new THREE.Group();
     const part = Mo.shipPart(i);
@@ -480,7 +480,7 @@ SF.World = (function () {
     const a = arenas[i];
     SF.Game.fade(() => {
       const p = SF.Game.player;
-      p.place(a.x, a.z + a.r - 5, a.y);
+      p.place(a.x, a.z + a.r - 7, a.y);
       p.camYaw = 0; p.facing = Math.PI; p.camInit = false;
       SF.Sky.S.indoor = { fog: [0x10261e, 0x2a1a10, 0x101a2a, 0x1a0806][i] };
       arenaLight.position.set(a.x, a.y + 12, a.z);

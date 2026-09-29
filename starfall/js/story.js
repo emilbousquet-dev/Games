@@ -191,12 +191,13 @@ SF.Story = (function () {
       'Shoot its glowing eye to bring it down! Jump over the rings of fire!',
     ];
     SF.Audio.setMusic('temple');
+    const here = () => { const P = SF.Game.player, a = SF.Phys.arenaAt(P.pos.x, P.pos.z); return a && a.i === i; };
     setTimeout(() => {
-      if (W().bosses[i]) return;
+      if (W().bosses[i] || !here()) return;
       SF.HUD.bossTitle(names[L.temples[i].boss]);
       SF.Audio.sfx('roar');
       SF.Audio.setMusic('boss');
-      setTimeout(() => SF.HUD.toast('ZIB: ' + hints[i], 0xc8b0ff, 6), 2600);
+      setTimeout(() => here() && SF.HUD.toast('ZIB: ' + hints[i], 0xc8b0ff, 6), 2600);
     }, 1500);
   }
 
