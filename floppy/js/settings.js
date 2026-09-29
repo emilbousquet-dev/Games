@@ -82,7 +82,7 @@ FP.Settings = (function () {
   }
 
   // ---------------- CONTROLS: pick your own keys ----------------
-  const ACT_NAMES = { up: 'Up', down: 'Down', left: 'Left', right: 'Right', jump: 'Jump', punch: 'Punch', grab: 'Grab (both hands)', grabL: 'Left hand', grabR: 'Right hand' };
+  const ACT_NAMES = { up: 'Up', down: 'Down', left: 'Left', right: 'Right', jump: 'Jump', punch: 'Punch', grab: 'Grab (both hands)', grabL: 'Left hand', grabR: 'Right hand', flop: 'Play dead' };
   let waiting = null;
   function controls(back, sel = 0, msg = '') {
     const I = FP.Input, A = I.BINDABLE;

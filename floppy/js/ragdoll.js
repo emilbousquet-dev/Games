@@ -175,7 +175,7 @@ FP.Ragdoll = (function () {
     if (c.ko > 0) {
       c.ko -= dt;
       c.strength = 0;
-      if (c.ko <= 0) { c.ko = 0; c.getUp = 0.7; FP.bus.emit('wakeUp', c); }
+      if (c.ko <= 0) { c.ko = 0; c.getUp = 0.7; c.playDead = false; FP.bus.emit('wakeUp', c); }
     } else if (c.getUp > 0) {
       c.getUp -= dt;
       c.strength = 1 - Math.max(0, c.getUp) / 0.7;
@@ -188,11 +188,26 @@ FP.Ragdoll = (function () {
     const grabbing = c.hands[0] || c.hands[1];
 
     // emotes: 1 wave, 2 dance, 3 cheer. Moving, punching or grabbing stops them
-    // the dance button does the dance you picked in the lobby (Backflip, Robot, Floss...)
-    if (input.emote && s > 0.9 && !c.grabbedBy) {
-      let k = input.emote;
-      if (k === 2 && c.player && FP.Style && FP.Style.DANCE_EMOTE[c.player.dance]) k = FP.Style.DANCE_EMOTE[c.player.dance];
+    // emote buttons 1 to 4 do the emotes you picked in the lobby. "Dance" does your dance (Backflip, Robot, Floss...)
+    // (mini-games can ask for one exact emote with input.emoteK)
+    if ((input.emote || input.emoteK) && s > 0.9 && !c.grabbedBy) {
+      let k = input.emoteK;
+      if (!k) {
+        const list = (c.player && c.player.emotes) || FP.Style.DEFAULT_EMOTES;
+        const name = list[input.emote - 1] || FP.Style.DEFAULT_EMOTES[input.emote - 1] || 'wave';
+        k = FP.Style.EMOTE_KIND[name] || 1;
+      }
+      if (k === 2 && c.player && FP.Style.DANCE_EMOTE[c.player.dance]) k = FP.Style.DANCE_EMOTE[c.player.dance];
       c.emote = { k, t: 0, hop: 0.2 }; FP.bus.emit('emote', c);
+      if (k === 12) taunt(c);
+    }
+    c.boostT = Math.max(0, (c.boostT || 0) - dt); c.angryT = Math.max(0, (c.angryT || 0) - dt);
+    // play dead: go floppy on purpose (bots leave you alone for a moment)
+    c.flopCool = Math.max(0, (c.flopCool || 0) - dt);
+    if (input.flopPressed && c.ko <= 0 && c.flopCool <= 0 && !c.grabbedBy && c.alive !== false) {
+      c.ko = 1.8; c.playDead = true; c.flopCool = 4; c.emote = null;
+      releaseGrab(c);
+      FP.FX.word(c.parts.head.position, 'PLAYING DEAD', '#8f86a3', 1.2);
     }
     if (c.emote) {
       c.emote.t += dt;
@@ -274,7 +289,7 @@ FP.Ragdoll = (function () {
       orient(c.parts.head, flipping ? target : yawQ, flipping ? 26 : 9, 0.5, tall * 0.8);
 
       // walking force
-      const speed = SPEED * ((FP.Fun && FP.Fun.speed) || 1) * (c.speedMul || 1) * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
+      const speed = SPEED * ((FP.Fun && FP.Fun.speed) || 1) * (c.speedMul || 1) * (c.boostT > 0 ? 1.2 : 1) * (c.dizzy > 2 ? 0.6 : 1) * (c.grab[0] || c.grab[1] ? 0.8 : 1);
       const wantX = input.x * speed + groundVel.x, wantZ = input.z * speed + groundVel.z;
       c.stagger = Math.max(0, (c.stagger || 0) - dt);
       const accel = (c.grounded ? ((FP.Fun && FP.Fun.slip) || c.onIce ? 2.2 : 14) : 3.5) * (c.stagger > 0 ? 0.15 : 1);
@@ -283,7 +298,7 @@ FP.Ragdoll = (function () {
       // jump
       if (c.jumpBuf > 0 && (c.grounded || c.coyote > 0) && c.jumpCool <= 0 && !c.grabbedBy) {
         c.jumpBuf = 0; c.coyote = 0;
-        for (const b of c.bodies) b.velocity.y = Math.max(b.velocity.y, Math.min(groundVel.y, 4)) + JUMP * ((FP.Fun && FP.Fun.jump) || 1);
+        for (const b of c.bodies) b.velocity.y = Math.max(b.velocity.y, Math.min(groundVel.y, 4)) + JUMP * ((FP.Fun && FP.Fun.jump) || 1) * (c.jumpMul || 1);
         c.jumpCool = 0.35;
         FP.bus.emit('jump', c);
       }
@@ -293,7 +308,7 @@ FP.Ragdoll = (function () {
       // dances: spins, robot turns, and hops (how often, how high)
       if (c.emote && c.emote.k === 8) c.yaw += dt * 9;
       if (c.emote && c.emote.k === 6 && Math.floor(c.emote.t * 2) !== Math.floor((c.emote.t - dt) * 2)) c.yaw += (Math.floor(c.emote.t * 2) % 2 ? 0.6 : -0.6);
-      const HOP = { 2: [0.5, 3], 3: [0.65, 5], 5: [0.5, 2.5], 6: [0.9, 1], 7: [1.1, 7.5], 8: [0.8, 2], 9: [0.4, 2], 10: [0.35, 2.5], 11: [0.45, 4] };
+      const HOP = { 12: [0.22, 1.4], 16: [0.6, 1.2], 2: [0.5, 3], 3: [0.65, 5], 5: [0.5, 2.5], 6: [0.9, 1], 7: [1.1, 7.5], 8: [0.8, 2], 9: [0.4, 2], 10: [0.35, 2.5], 11: [0.45, 4] };
       if (c.emote && HOP[c.emote.k] && c.grounded && (c.emote.hop -= dt) <= 0) {
         c.emote.hop = HOP[c.emote.k][0];
         for (const b of c.bodies) b.velocity.y += HOP[c.emote.k][1];
@@ -382,8 +397,21 @@ FP.Ragdoll = (function () {
         pull(arm, HAND, target, 20, 0.6, s, t.velocity);
         continue;
       }
+      // laugh, sad, come here, point, clap (emotes 12 to 16)
+      if (em && em.k >= 12 && !(c.hands && (c.hands[0] || c.hands[1]))) {
+        const tt = em.t;
+        let target;
+        if (em.k === 12) target = new Vec3(t.position.x + f.x * 0.42 + out.x * 0.12, t.position.y - 0.18 + Math.sin(tt * 22) * 0.04, t.position.z + f.z * 0.42 + out.z * 0.12); // laugh: hold your tummy
+        else if (em.k === 13) target = new Vec3(sh.x + f.x * 0.12, sh.y - 0.62, sh.z + f.z * 0.12); // sad: arms hang down
+        else if (em.k === 14) { const curl = 0.5 + 0.5 * Math.sin(tt * 9); target = i === 0 ? new Vec3(sh.x + f.x * (0.35 + curl * 0.3), sh.y + 0.05 + curl * 0.25, sh.z + f.z * (0.35 + curl * 0.3)) : new Vec3(sh.x + out.x * 0.1, sh.y - 0.45, sh.z + out.z * 0.1); } // come here!
+        else if (em.k === 15) target = i === 0 ? new Vec3(sh.x + f.x * 0.75, sh.y + 0.12, sh.z + f.z * 0.75) : new Vec3(sh.x + out.x * 0.25 - f.x * 0.05, sh.y - 0.3, sh.z + out.z * 0.25 - f.z * 0.05); // point
+        else { const apart = 0.5 + 0.5 * Math.cos(tt * 14); target = new Vec3(t.position.x + f.x * 0.5 + out.x * (0.05 + apart * 0.22), sh.y + 0.05, t.position.z + f.z * 0.5 + out.z * (0.05 + apart * 0.22)); // clap
+          if (i === 0 && Math.cos(tt * 14) < -0.95 && !em.clapped) { em.clapped = true; FP.Audio.play('clap'); } else if (Math.cos(tt * 14) > 0) em.clapped = false; }
+        pull(arm, HAND, target, 20, 0.6, s, t.velocity);
+        continue;
+      }
       // victory dances (emotes 5 and up): each one moves the arms its own way
-      if (em && em.k >= 5 && !(c.hands && (c.hands[0] || c.hands[1]))) {
+      if (em && em.k >= 5 && em.k < 12 && !(c.hands && (c.hands[0] || c.hands[1]))) {
         const rx = -f.z, rz = f.x; // the character's right
         const tt = em.t;
         let ox = 0, oy = 0, oz = 0;
@@ -509,8 +537,25 @@ FP.Ragdoll = (function () {
     FP.bus.emit('breakFree', c);
   }
 
+  // laughing at someone near you: you get a little speed boost, but they get ANGRY (their punches hit you harder)
+  function taunt(c) {
+    const p = c.parts.torso.position;
+    let any = false;
+    for (const o of all) {
+      if (o === c || o.alive === false || o.ko > 0 || (c.team !== undefined && o.team === c.team)) continue;
+      const q = o.parts.torso.position;
+      if (Math.hypot(q.x - p.x, q.z - p.z) > 4.5) continue;
+      o.angryT = 5; o.angryAt = c; o.expression = 'angry'; o.exprTimer = 1.5;
+      FP.FX.word(o.parts.head.position, 'GRRR!', '#ff5a5f', 1.1);
+      any = true;
+    }
+    if (any) { c.boostT = 4; FP.FX.word(c.parts.head.position, 'HA HA!', '#ffcf33', 1.2); }
+    FP.Audio.voice(c, 'laugh');
+  }
+
   // get hit: fly back, get dizzy, maybe get knocked out
   function hit(victim, dir, power, by) {
+    if (by && by.angryT > 0 && by.angryAt === victim) power *= 1.4; // you laughed at them: they punch you harder!
     const t = victim.parts.torso;
     t.applyImpulse(new Vec3(dir.x * 22 * power, 5 * power, dir.z * 22 * power));
     victim.stagger = 0.45; // stumble: can't fight back against the push for a moment
@@ -573,6 +618,8 @@ FP.Ragdoll = (function () {
     else if (c.exprTimer > 0) e = c.expression;
     else if (c.punchT < 0.5 || (c.grab[0] || c.grab[1])) e = 'angry';
     else if (c.airTime > 0.6 || c.grabbedBy) e = 'oh';
+    else if (c.emote && (c.emote.k === 13)) e = 'sad';
+    else if (c.emote && c.emote.k === 15) e = 'angry';
     else if (c.cheer > 0 || c.emote) e = 'happy';
     c.cheer = Math.max(0, (c.cheer || 0) - dt);
     c.faceExpr = e;

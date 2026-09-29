@@ -20,6 +20,9 @@ FP.Game = (function () {
   let chars = [];       // ragdolls in the world right now
   let state = 'title', mode = null, scores = {}, round = 0, timer = 0, count = 0;
   let paused = false, botCount = {}, nextId = 1, lobbyPanel = null, outTimers = [];
+  // team mode: games where the last one standing wins can also be played in 2 teams (Red and Blue)
+  const TEAMABLE = ['arena', 'tiles', 'color', 'sweeper', 'sumo', 'meteor', 'conveyor', 'wall', 'bumpers', 'boulder', 'custom', 'balloons', 'boxing'];
+  const teamPlay = {};
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
   const VERSION = '1.3';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
@@ -62,6 +65,38 @@ FP.Game = (function () {
     } catch (e) { /* no saving */ }
   }
   const isLocalSource = (src) => ['keys', 'pad', 'touch'].includes(src && src.kind);
+  // your 4 emote buttons (saved on this computer, one list for each player slot)
+  function savedEmotes(i) {
+    try { const l = (JSON.parse(localStorage.getItem('floppy-emotes') || '[]') || [])[i]; if (Array.isArray(l) && l.length === 4 && l.every((e) => FP.Style.EMOTES.includes(e))) return l.slice(); } catch (e) { /* no saving */ }
+    return FP.Style.DEFAULT_EMOTES.slice();
+  }
+  function saveEmotes(i, list) { try { const all = JSON.parse(localStorage.getItem('floppy-emotes') || '[]') || []; all[i] = list; localStorage.setItem('floppy-emotes', JSON.stringify(all)); } catch (e) { /* no saving */ } }
+  function emotePicker(i) {
+    const p = players[i];
+    if (!p) return;
+    if (!p.emotes) p.emotes = savedEmotes(i);
+    const k = p.source.kind, m = p.source.map;
+    const keyOf = (n) => (k === 'pad' ? ['Back', 'L3', 'Y', 'R3'][n] : k === 'touch' ? `Emote x${n + 1}` : m === 1 ? ['8', '9', '0', '-'][n] : String(n + 1));
+    const rows = p.emotes.map((cur, n) => `<div class="emo-row"><span class="lbl"><kbd>${keyOf(n)}</kbd></span>${FP.Style.EMOTES.map((e) => `<button class="chip${e === cur ? ' on' : ''}" data-slot="${n}" data-emo="${e}">${FP.Style.EMOTE_NAMES[e]}${e === 'dance' && FP.Style.DANCE_EMOTE[p.dance] ? ` (${FP.Style.DANCE_NAMES[p.dance]})` : ''}</button>`).join('')}</div>`).join('');
+    const card = FP.UI.screen({
+      cls: 'setup emotes', title: `${esc(p.name)}'s emotes`,
+      html: `<p class="small">Pick what each emote button does. <b>Laugh</b> at someone close to get a little speed boost (but they get angry and punch harder!).</p>${rows}`,
+      buttons: [{ label: `${ICON.check} Done`, action: () => { FP.UI.closeScreen(); refreshLobby(); }, cls: 'go' }],
+      back: () => { FP.UI.closeScreen(); refreshLobby(); },
+    });
+    card.querySelectorAll('[data-emo]').forEach((b) => {
+      b.addEventListener('mousedown', (e) => e.preventDefault());
+      b.addEventListener('click', () => {
+        p.emotes[+b.dataset.slot] = b.dataset.emo;
+        if (isLocalSource(p.source)) saveEmotes(i, p.emotes);
+        const c = chars.find((q) => q.player === p);
+        if (c) c.emote = null;
+        FP.Audio.play('menu');
+        emotePicker(i);
+        if (c) { c.emote = { k: FP.Style.EMOTE_KIND[b.dataset.emo] === 2 && FP.Style.DANCE_EMOTE[p.dance] ? FP.Style.DANCE_EMOTE[p.dance] : FP.Style.EMOTE_KIND[b.dataset.emo], t: 0, hop: 0.2 }; }
+      });
+    });
+  }
 
   function addPlayer(source, opts = {}) {
     if (players.length >= MAX_PLAYERS) return null;
@@ -72,6 +107,7 @@ FP.Game = (function () {
       outfit: opts.outfit || FP.Look.FREE_OUTFITS[(players.length + 1) % FP.Look.FREE_OUTFITS.length],
       face: opts.face || 'none', dance: opts.dance || 'none', trail: opts.trail || 'none',
       name: opts.name || (isLocalSource(source) && savedName(players.length)) || nextPlayerName(),
+      emotes: isLocalSource(source) ? savedEmotes(players.length) : undefined,
     };
     players.push(p);
     if (state === 'lobby') { spawnInLobby(p); FP.Audio.play('voice'); refreshLobby(); }
@@ -300,7 +336,7 @@ FP.Game = (function () {
     clearChars();
     // Player 1 uses whatever picked "Play on this computer": the keyboard, a controller or the touch screen
     const dev = FP.UI.lastDevice();
-    if (!players.length) players.push({ id: nextId++, source: FP.Touch.available && dev.kind !== 'pad' ? { kind: 'touch' } : { ...dev }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: savedName(0) || 'Player 1' });
+    if (!players.length) players.push({ id: nextId++, source: FP.Touch.available && dev.kind !== 'pad' ? { kind: 'touch' } : { ...dev }, colorIndex: 0, hat: 'party', outfit: 'overalls', name: savedName(0) || 'Player 1', emotes: savedEmotes(0) });
     players.forEach((p) => spawnInLobby(p));
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     showLobbyPanel();
@@ -401,6 +437,7 @@ FP.Game = (function () {
         <div class="slot-row"><span class="lbl">Face</span>${fl}<span class="val">${FP.Style.FACE_NAMES[p.face || 'none']}</span>${fr}</div>
         <div class="slot-row"><span class="lbl">Dance</span>${dl}<span class="val">${FP.Style.DANCE_NAMES[p.dance || 'none']}</span>${dr}</div>
         <div class="slot-row"><span class="lbl">Trail</span>${tl}<span class="val">${FP.Style.TRAIL_NAMES[p.trail || 'none']}</span>${tr}</div>
+        ${mine && !client ? `<div class="slot-row"><span class="lbl">Emotes</span><button class="emo-btn" data-act="emotes" data-i="${i}">Change</button></div>` : ''}
         <div class="slot-foot">${controlsText(p)}<br><span class="keys">${colorKeys(p)}</span></div>
       </div>`);
     }
@@ -430,6 +467,7 @@ FP.Game = (function () {
     else if ((act === 'face' || act === 'dance' || act === 'trail') && p) cycleStyle(p, act, dir);
     else if (act === 'remove' && p) removePlayer(p);
     else if (act === 'rename' && p) renamePlayer(i);
+    else if (act === 'emotes' && p) emotePicker(i);
     else if (act === 'start') chooseMode();
     else if (act === 'shop') { lobbyPanel.hidden = true; FP.Profile.shopScreen(() => { FP.UI.closeScreen(); showLobbyPanel(); refreshLobby(); }); }
     else if (act === 'back') { if (FP.Net) FP.Net.leave(); titleScreen(); }
@@ -649,7 +687,8 @@ FP.Game = (function () {
       let who = humans().map((p) => FP.UI.playerPill(p)).join('') + Array.from({ length: n }, (_, i) => `<span class="pill bot">Bot ${i + 1}</span>`).join('');
       if (m.teams) who += `<p class="small">Teams are split up automatically: Red and Blue.</p>`;
       const why = min > 0 ? `<p class="small">This game needs at least ${m.minTotal || 2} players, so you need at least ${min} bot${min > 1 ? 's' : ''}.</p>` : '<p class="small">You can play with no bots at all.</p>';
-      const html = `<div class="setup-art">${m.art || ''}</div><p>${m.desc}</p>${m.setupHtml ? m.setupHtml() : ''}
+      const teamRow = TEAMABLE.includes(m.id) && total >= 3 ? `<div class="skill"><span class="lbl">Teams</span><button class="chip${!teamPlay[m.id] ? ' on' : ''}" data-team="0">Everyone for themselves</button><button class="chip${teamPlay[m.id] ? ' on' : ''}" data-team="1">Red vs Blue</button></div>` : '';
+      const html = `<div class="setup-art">${m.art || ''}</div><p>${m.desc}</p>${m.setupHtml ? m.setupHtml() : ''}${teamRow}
         <div class="counter"><span class="lbl">Bots</span>
           <button class="round" data-bots="-1" ${n <= min ? 'disabled' : ''} title="Fewer bots">${ICON.minus}</button>
           <b class="count">${n}</b>
@@ -676,6 +715,7 @@ FP.Game = (function () {
         },
       });
       card.querySelectorAll('[data-bots]').forEach((b) => b.addEventListener('click', () => change(+b.dataset.bots)));
+      card.querySelectorAll('[data-team]').forEach((b) => { b.addEventListener('mousedown', (e) => e.preventDefault()); b.addEventListener('click', () => { teamPlay[m.id] = b.dataset.team === '1'; FP.Audio.play('menu'); draw(); }); });
       if (m.setupWire) m.setupWire(card, draw);
       card.querySelectorAll('[data-skill]').forEach((b) => {
         b.addEventListener('mousedown', (e) => e.preventDefault());
@@ -689,6 +729,7 @@ FP.Game = (function () {
   //  MATCHES AND ROUNDS
   // ------------------------------------------------------------
   function startMatch(m) {
+    if (m && m.base) m = m.base; // (Play again in team mode: start from the real mini-game)
     FP.UI.closeScreen();
     FP.UI.help.hidden = true;
     if (lobbyPanel) lobbyPanel.hidden = true;
@@ -696,12 +737,17 @@ FP.Game = (function () {
     mode = m;
     const { min, max } = botLimits(m);
     const n = Math.min(max, Math.max(min, botCount[m.id] !== undefined ? botCount[m.id] : min));
+    // team mode: the same game, but Red against Blue
+    if (teamPlay[m.id] && TEAMABLE.includes(m.id) && humans().length + n >= 3 && !tour && !story && !daily) {
+      mode = Object.create(m);
+      Object.assign(mode, { base: m, teams: true, name: m.name + ': Teams', roundsToWin: Math.max(2, m.roundsToWin) });
+    }
     if (tour) { if (!tour.bots) { makeBots(tour.botCount); tour.bots = matchBots; } matchBots = tour.bots; tour.awarded = false; } else makeBots(n);
     const list = everyone();
-    list.forEach((p, i) => { p.team = m.teams ? i % 2 : undefined; });
+    list.forEach((p, i) => { p.team = mode.teams ? i % 2 : undefined; });
     scores = {};
     list.forEach((p) => { scores[p.id] = 0; });
-    if (m.teams) scores = { team0: 0, team1: 0 };
+    if (mode.teams) scores = { team0: 0, team1: 0 };
     round = 0;
     resetStats();
     FP.Camera.setLift(0);
@@ -719,6 +765,7 @@ FP.Game = (function () {
     FP.Bots.reset();
     FP.Camera.fix(null);
     outTimers = [];
+    FP.Fun.hazard = null; // (a mini-game can switch on a hazard when it builds, like the Knockout Arena)
     const list = everyone();
     mode.build(list);
     list.forEach((p, i) => makeChar(p, mode.spawn(i, list.length, p)));
@@ -946,6 +993,8 @@ FP.Game = (function () {
       FP.Audio.play('whoosh');
     }
     let text = 'Nobody wins!';
+    // team games: if all the winners are on one team, that team wins the round
+    if (mode.teams && res.team === undefined && res.winners && res.winners.length && res.winners.every((c) => c.team === res.winners[0].team) && res.winners[0].team !== undefined) res.team = res.winners[0].team;
     roundWinners = (res.winners || []).map((c) => c.player && c.player.id);
     const center = new THREE.Vector3();
     if (mode.teams && res.team !== undefined) {

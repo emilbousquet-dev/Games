@@ -19,6 +19,12 @@ FP.Style = (function () {
   const DANCE_NAMES = { none: 'Wiggle', disco: 'Disco', robot: 'Robot', flip: 'Backflip', spin: 'Spin', floss: 'Floss', chicken: 'Chicken', champ: 'Champion' };
   const DANCE_EMOTE = { disco: 5, robot: 6, flip: 7, spin: 8, floss: 9, chicken: 10, champ: 11 };
 
+  // emotes you can put on your 4 emote buttons (pick them in the lobby)
+  const EMOTES = ['wave', 'dance', 'cheer', 'laugh', 'sad', 'beckon', 'point', 'clap'];
+  const EMOTE_NAMES = { wave: 'Wave', dance: 'Dance', cheer: 'Cheer', laugh: 'Laugh', sad: 'Sad', beckon: 'Come here', point: 'Point', clap: 'Clap' };
+  const EMOTE_KIND = { wave: 1, dance: 2, cheer: 3, laugh: 12, sad: 13, beckon: 14, point: 15, clap: 16 };
+  const DEFAULT_EMOTES = ['wave', 'dance', 'cheer', 'laugh'];
+
   const TRAILS = ['none', 'sparkles', 'hearts', 'bubbles', 'rainbow', 'fire', 'gold'];
   const FREE_TRAILS = ['none'];
   const TRAIL_NAMES = { none: 'Nothing', sparkles: 'Sparkles', hearts: 'Hearts', bubbles: 'Bubbles', rainbow: 'Rainbow', fire: 'Fire', gold: 'Gold stars' };
@@ -93,5 +99,5 @@ FP.Style = (function () {
     }
   }
 
-  return { FACES, FREE_FACES, FACE_NAMES, DANCES, FREE_DANCES, DANCE_NAMES, DANCE_EMOTE, TRAILS, FREE_TRAILS, TRAIL_NAMES, TOUR_ONLY, applyFace, update };
+  return { EMOTES, EMOTE_NAMES, EMOTE_KIND, DEFAULT_EMOTES, FACES, FREE_FACES, FACE_NAMES, DANCES, FREE_DANCES, DANCE_NAMES, DANCE_EMOTE, TRAILS, FREE_TRAILS, TRAIL_NAMES, TOUR_ONLY, applyFace, update };
 })();

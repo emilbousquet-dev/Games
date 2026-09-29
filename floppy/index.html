@@ -409,6 +409,7 @@
     .tbtn.punch { right: 100px; bottom: 10px; width: 76px; height: 76px; background: #ff7a7f; }
     .tbtn.grab { right: 20px; bottom: 100px; width: 76px; height: 76px; background: #4aa8ff; }
     .tbtn.emote { right: 115px; bottom: 105px; width: 58px; height: 58px; background: #ffcf33; font-size: 12px; }
+    .tbtn.flop { right: 180px; bottom: 60px; width: 52px; height: 52px; background: #d9c7ff; font-size: 12px; }
     .tpause { position: absolute; right: 14px; top: 14px; width: 46px; height: 46px; border-radius: 14px; border: 3px solid var(--ink); background: rgba(255,255,255,.9); font: 800 16px var(--font); pointer-events: auto; }
     @media (pointer: coarse) { .corner { display: none; } .lobby-coins { right: 72px; } }
     /* short screens (phones sideways): a smaller lobby */
@@ -478,6 +479,14 @@
     .vote-count { font-size: 13px; font-weight: 800; background: var(--ink); color: #fff; border-radius: 999px; padding: 0 8px; }
     .vote-count:empty { display: none; }
     .btn.vote-btn.voted { background: #c9f2b8; border-color: #5cc44a; }
+    .tag.team0 { border-color: #ff5a5f; box-shadow: 0 0 0 2px #ff5a5f, 0 2px 0 rgba(0,0,0,.18); }
+    .tag.team1 { border-color: #4aa8ff; box-shadow: 0 0 0 2px #4aa8ff, 0 2px 0 rgba(0,0,0,.18); }
+    .emo-btn { flex: 1; font: 800 13px var(--font); border: 2px solid var(--ink); border-radius: 10px; background: #fff; cursor: pointer; padding: 1px 6px; }
+    .emo-btn:hover { background: var(--yellow); }
+    .emo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; justify-content: center; margin: 6px 0; }
+    .emo-row .lbl { min-width: 70px; }
+    .emo-row .chip { font-size: 14px; padding: 3px 9px; }
+    .emotes .card { width: min(720px, 100%); }
     /* polish: match awards, between-round scores, animations */
     .place, .award { animation: rise .42s cubic-bezier(.2, 1.3, .4, 1) both; animation-delay: calc(.35s + var(--k, 0) * .13s); }
     .award { animation-delay: calc(.9s + var(--k, 0) * .22s); }

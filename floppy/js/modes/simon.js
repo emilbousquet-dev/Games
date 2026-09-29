@@ -74,7 +74,8 @@ FP.Modes.simon = (function () {
   const on = () => FP.Kit.live(self) && phase === 'order';
   FP.bus.on('jump', (c) => { if (on() && c && c.parts) mark(c, 'jump'); });
   FP.bus.on('punch', (c) => { if (on() && c && c.parts) mark(c, 'punch'); });
-  FP.bus.on('emote', (c) => { if (on() && c && c.emote) mark(c, ['', 'wave', 'dance', 'cheer', 'nose'][c.emote.k] || ''); });
+  // (any dance counts as "dance", like your Backflip or Robot)
+  FP.bus.on('emote', (c) => { if (on() && c && c.emote) { const k = c.emote.k; mark(c, k >= 5 && k <= 11 ? 'dance' : ['', 'wave', 'dance', 'cheer', 'nose'][k] || ''); } });
 
   // it gets harder: less time, more tricks, two moves at once, and "Flappy says"
   function nextOrder(chars) {
@@ -188,7 +189,7 @@ FP.Modes.simon = (function () {
       if (o === 'grab') input.grab = true;
       if (o === 'left') { input.grabL = true; input.grabR = false; }
       if (o === 'right') { input.grabR = true; input.grabL = false; }
-      if (['wave', 'dance', 'cheer', 'nose'].includes(o) && !b.sDone[o]) { input.emote = { wave: 1, dance: 2, cheer: 3, nose: 4 }[o]; b.sDone[o] = 1; }
+      if (['wave', 'dance', 'cheer', 'nose'].includes(o) && !b.sDone[o]) { input.emoteK = { wave: 1, dance: 2, cheer: 3, nose: 4 }[o]; b.sDone[o] = 1; }
       if (o === 'spin') { const a = b.sT * 7 + c.index; input.x = Math.cos(a); input.z = Math.sin(a); }
       if (o === 'run') { const a = b.sT * 1.5 + c.index * 2; input.x = Math.cos(a); input.z = Math.sin(a); }
       if (o === 'hug') {

@@ -8,7 +8,7 @@ window.FP = window.FP || {};
 FP.Touch = (function () {
   const available = (navigator.maxTouchPoints > 0 || 'ontouchstart' in window) && !!(window.matchMedia && matchMedia('(pointer: coarse)').matches);
   const state = { x: 0, z: 0, jump: false, punch: false, grab: false };
-  const taps = { jump: 0, punch: 0, emote: 0 };
+  const taps = { jump: 0, punch: 0, emote: 0, flop: 0 };
   let emoteKind = 0, box = null, knob = null, stickId = null, stickCenter = null;
 
   function build() {
@@ -19,6 +19,7 @@ FP.Touch = (function () {
       <div class="stick"><div class="knob"></div></div>
       <div class="tbtns">
         <button class="tbtn emote" data-b="emote">Emote</button>
+        <button class="tbtn flop" data-b="flop">Flop</button>
         <button class="tbtn grab" data-b="grab">Grab</button>
         <button class="tbtn punch" data-b="punch">Punch</button>
         <button class="tbtn jump" data-b="jump">Jump</button>
@@ -58,7 +59,8 @@ FP.Touch = (function () {
         e.preventDefault();
         b.classList.add('down');
         if (name === 'pause') { window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' })); return; }
-        if (name === 'emote') { emoteKind = (emoteKind % 3) + 1; taps.emote++; return; }
+        if (name === 'emote') { emoteKind = (emoteKind % 4) + 1; taps.emote++; return; }
+        if (name === 'flop') { taps.flop++; return; }
         state[name] = true;
         if (taps[name] !== undefined) taps[name]++;
       }, { passive: false });
@@ -75,7 +77,7 @@ FP.Touch = (function () {
     const p = seen[id] || { ...taps };
     const out = {
       x: state.x, z: state.z, jump: state.jump, punch: state.punch, grab: state.grab,
-      jumpPressed: taps.jump > p.jump, punchPressed: taps.punch > p.punch, emote: taps.emote > p.emote ? emoteKind : 0,
+      jumpPressed: taps.jump > p.jump, punchPressed: taps.punch > p.punch, flopPressed: taps.flop > (p.flop || 0), emote: taps.emote > p.emote ? emoteKind : 0,
       colorPressed: false, hatPressed: false, outfitPressed: false, startPressed: false,
     };
     seen[id] = { ...taps };

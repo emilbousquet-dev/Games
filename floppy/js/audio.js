@@ -68,6 +68,7 @@ FP.Audio = (function () {
     alarm: () => { for (let i = 0; i < 4; i++) tone('sawtooth', i % 2 ? 600 : 800, i % 2 ? 600 : 800, 0.18, 0.06, i * 0.2); },
     menu: () => tone('square', 660, 880, 0.05, 0.07),
     tick: () => tone('sine', 1500, 1300, 0.025, 0.035),
+    clap: () => noise(0.06, 0.35, 2600, 0, null, 1.2),
     pop: () => tone('sine', 420, 880, 0.07, 0.06),
     buy: () => { [1047, 1319, 1568, 2093].forEach((f, i) => tone('square', f, f, 0.08, 0.07, i * 0.06)); noise(0.05, 0.12, 5000, 0.26); },
     star: () => { tone('triangle', 1568, 2093, 0.18, 0.1); tone('sine', 3136, 3136, 0.16, 0.04, 0.05); },
@@ -104,6 +105,7 @@ FP.Audio = (function () {
     else if (kind === 'hup') syll(330 * p, 470 * p, 0.07, 0, 0.035);
     else if (kind === 'wee') syll(380 * p, 950 * p, 0.45, 0, 0.06);
     else if (kind === 'eep') syll(700 * p, 840 * p, 0.08, 0, 0.05);
+    else if (kind === 'laugh') { for (let i = 0; i < 4; i++) syll(560 * p, 470 * p, 0.09, i * 0.13, 0.055); }
     else if (kind === 'yay') { syll(440 * p, 660 * p, 0.12, 0, 0.06); syll(660 * p, 900 * p, 0.2, 0.13, 0.06); }
   }
   FP.bus.on('punchHit', (e) => { if (e && e.victim) voice(e.victim, 'hurt'); });
@@ -111,7 +113,7 @@ FP.Audio = (function () {
   FP.bus.on('jump', (c) => { if (Math.random() < 0.35) voice(c, 'hup'); });
   FP.bus.on('throw', (e) => { if (e && e.who && e.who.bodies) voice(e.who, 'wee'); });
   FP.bus.on('grab', (e) => { if (e && e.victim) voice(e.victim, 'eep'); });
-  FP.bus.on('emote', (c) => { if (c && c.emote && c.emote.k === 3) voice(c, 'yay'); });
+  FP.bus.on('emote', (c) => { if (c && c.emote && c.emote.k === 3) voice(c, 'yay'); if (c && c.emote && c.emote.k === 13) voice(c, 'hurt'); });
 
   // the music gets quieter while the game is paused
   let ducked = false;

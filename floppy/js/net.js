@@ -22,7 +22,7 @@ FP.Net = (function () {
   let peer = null, role = null, code = '', conns = new Map(), hostConn = null, myId = null, myName = '';
   const inputs = {}, prevCount = {};
   let sendTimer = 0, keyTimer = 0, beatTimer = 0, inTimer = 0, lastHud = '', lastState = '', events = [], lastMovers = [];
-  let snap = null, clientState = 'lobby', clientMode = null, pressCount = { jump: 0, punch: 0 }, actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0 };
+  let snap = null, clientState = 'lobby', clientMode = null, pressCount = { jump: 0, punch: 0, flop: 0 }, actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0 };
   let roundNo = 0, clientRoundNo = -1, resultsHtml = '', resultsNo = 0, clientResultsNo = -1;
   // rematch vote after a game: friends vote "play again" or "new game", the host sees the votes
   const votes = new Map();
@@ -186,7 +186,7 @@ FP.Net = (function () {
       const c = conns.get(p.peer);
       const pr = p.presence && p.presence.fp;
       if (!c || !pr) continue;
-      inputs[c.pid] = { x: +pr.x || 0, z: +pr.z || 0, jump: !!pr.j, grab: !!pr.g, gl: pr.gl, gr: pr.gr, jc: pr.jc | 0, pc: pr.pc | 0, em: pr.em | 0, ek: pr.ek | 0 };
+      inputs[c.pid] = { x: +pr.x || 0, z: +pr.z || 0, jump: !!pr.j, grab: !!pr.g, gl: pr.gl, gr: pr.gr, jc: pr.jc | 0, pc: pr.pc | 0, fl: pr.fl | 0, em: pr.em | 0, ek: pr.ek | 0 };
       const last = lastActs[p.peer] || { c: 0, h: 0, o: 0, f: 0, d: 0, t: 0 };
       const pl = FP.Game.players.find((q) => q.id === c.pid);
       if (pl && FP.Game.state === 'lobby') {
@@ -256,9 +256,9 @@ FP.Net = (function () {
   function inputOf(pid) {
     const m = inputs[pid];
     if (!m) return { x: 0, z: 0 };
-    const prev = prevCount[pid] || { j: m.jc, p: m.pc, e: m.em | 0 };
-    const out = { x: m.x || 0, z: m.z || 0, jump: !!m.jump, grab: !!m.grab, ...(m.gl !== undefined ? { grabL: !!m.gl, grabR: !!m.gr } : {}), jumpPressed: m.jc > prev.j, punchPressed: m.pc > prev.p, emote: (m.em | 0) > (prev.e | 0) ? Math.max(0, Math.min(4, m.ek | 0)) : 0 };
-    prevCount[pid] = { j: m.jc, p: m.pc, e: m.em | 0 };
+    const prev = prevCount[pid] || { j: m.jc, p: m.pc, f: m.fl | 0, e: m.em | 0 };
+    const out = { x: m.x || 0, z: m.z || 0, jump: !!m.jump, grab: !!m.grab, ...(m.gl !== undefined ? { grabL: !!m.gl, grabR: !!m.gr } : {}), jumpPressed: m.jc > prev.j, punchPressed: m.pc > prev.p, flopPressed: (m.fl | 0) > (prev.f | 0), emote: (m.em | 0) > (prev.e | 0) ? Math.max(0, Math.min(4, m.ek | 0)) : 0 };
+    prevCount[pid] = { j: m.jc, p: m.pc, f: m.fl | 0, e: m.em | 0 };
     return out;
   }
 
@@ -393,7 +393,7 @@ FP.Net = (function () {
     }
     role = 'client';
     joinWait = 8;
-    pressCount = { jump: 0, punch: 0 }; actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0 };
+    pressCount = { jump: 0, punch: 0, flop: 0 }; actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0 };
     party.presence({ fp: { name: myName, x: 0, z: 0, j: false, g: false, jc: 0, pc: 0, cc: 0, hc: 0, oc: 0 } });
     unsub.push(party.on('fp', (m) => { if (m.sameTab) return; hostPeer = m.peer; onRoomMessage(m.data); }, () => {}));
     unsub.push(party.onPeers((ch) => {
@@ -511,6 +511,7 @@ FP.Net = (function () {
     const x = Math.max(-1, Math.min(1, a.x + b.x + pad.x)), z = Math.max(-1, Math.min(1, a.z + b.z + pad.z));
     if (a.jumpPressed || b.jumpPressed || pad.jumpPressed) pressCount.jump++;
     if (a.punchPressed || b.punchPressed || pad.punchPressed) pressCount.punch++;
+    if (a.flopPressed || b.flopPressed || pad.flopPressed) pressCount.flop++;
     const emote = a.emote || b.emote || pad.emote;
     if (emote) { pressCount.em = (pressCount.em || 0) + 1; pressCount.ek = emote; }
     if (clientState === 'lobby' && (a.colorPressed || b.colorPressed || pad.colorPressed)) send({ t: 'color' });
@@ -520,7 +521,7 @@ FP.Net = (function () {
     const gl = !!(a.grabL || b.grabL || (pad.grabL !== undefined ? pad.grabL : pad.grab)), gr = !!(a.grabR || b.grabR || (pad.grabR !== undefined ? pad.grabR : pad.grab));
     if (kind === 'room') {
       // the room sends presence about 30 times a second by itself: just keep it up to date
-      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit, fc: actCount.face, dc: actCount.dance, tc: actCount.trail, vt: myVote || '', vn: clientResultsNo } }).catch(() => {});
+      party.presence({ fp: { name: myName, x: r2(x), z: r2(z), j: jump, g: grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, fl: pressCount.flop, em: pressCount.em || 0, ek: pressCount.ek || 0, cc: actCount.color, hc: actCount.hat, oc: actCount.outfit, fc: actCount.face, dc: actCount.dance, tc: actCount.trail, vt: myVote || '', vn: clientResultsNo } }).catch(() => {});
       if (myId === null) {
         joinWait -= dt;
         if (joinWait <= 0) { FP.UI.toast(hostPeer ? 'That party is full (4 players)' : 'Nobody is hosting that party right now', 3); leave(); menu(); return; }
@@ -529,7 +530,7 @@ FP.Net = (function () {
       inTimer -= dt;
       if (inTimer <= 0 && hostConn && hostConn.open) {
         inTimer = 1 / 30;
-        hostConn.send({ t: 'in', x, z, jump, grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, em: pressCount.em || 0, ek: pressCount.ek || 0 });
+        hostConn.send({ t: 'in', x, z, jump, grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, fl: pressCount.flop, em: pressCount.em || 0, ek: pressCount.ek || 0 });
       }
     }
     // move everything to where the host says (smoothly)

@@ -72,7 +72,8 @@ FP.Bots = (function () {
   }
 
   function enemies(c, chars) {
-    return chars.filter((o) => o !== c && o.alive && !(c.team !== undefined && o.team === c.team));
+    // (someone playing dead is left alone for a moment)
+    return chars.filter((o) => o !== c && o.alive && !(c.team !== undefined && o.team === c.team) && !(o.playDead && o.ko > 0));
   }
 
   // default brain: pick someone, circle around them, punch, grab and throw them off

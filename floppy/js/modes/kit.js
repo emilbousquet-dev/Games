@@ -17,9 +17,14 @@ FP.Kit = (function () {
     for (const c of chars) if (c.alive && c.parts.torso.position.y < belowY) game.eliminate(c, how);
   }
 
-  // last one standing wins (or nobody, if everyone is out)
+  // last one standing wins (or nobody, if everyone is out). In team games: the last TEAM standing
   function lastStanding(chars) {
     const alive = chars.filter((c) => c.alive);
+    if (FP.Game && FP.Game.mode && FP.Game.mode.teams && chars.some((c) => c.team !== undefined)) {
+      const teams = new Set(alive.map((c) => c.team));
+      if (chars.length > 1 && teams.size <= 1) return teams.size ? { winners: alive, team: [...teams][0] } : { winners: [] };
+      return null;
+    }
     if (chars.length > 1 && alive.length <= 1) return { winners: alive };
     if (chars.length === 1 && alive.length === 0) return { winners: [] };
     return null;
@@ -111,7 +116,7 @@ FP.Kit = (function () {
   }
 
   // is this mini-game running right now on this computer (and not just watched online)?
-  function live(m) { return !!(FP.Game && FP.Game.mode === m && FP.Game.state === 'play' && !(FP.Net && FP.Net.isClient && FP.Net.isClient())); }
+  function live(m) { const gm = FP.Game && FP.Game.mode; return !!(gm && (gm === m || gm.base === m) && FP.Game.state === 'play' && !(FP.Net && FP.Net.isClient && FP.Net.isClient())); }
 
   return { live, clock, fallOut, lastStanding, mostPoints, respawner, nearest, punchNearby, ring, coinMesh, ball };
 })();
