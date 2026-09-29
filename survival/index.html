@@ -38,10 +38,31 @@
   #barWater i { background: linear-gradient(90deg, #104a7a, #40a0e0); }
   #barSta { height: 6px; } #barSta i { background: #d8d8b0; } #barSta span, #barSta b { display: none; }
   .bar.low { animation: blink 0.6s infinite; }
+  #xpRow { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  #lvl { font-weight: bold; font-size: 13px; color: var(--accent); text-shadow: 0 0 3px #000; min-width: 40px; }
+  #xpBar { position: relative; flex: 1; height: 10px; background: rgba(0,0,0,0.55); border: 1px solid rgba(200,216,96,0.5); border-radius: 5px; overflow: hidden; }
+  #xpFill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: linear-gradient(90deg, #6a8a20, #c8d860); transition: width 0.3s; }
+  #xpText { position: absolute; right: 5px; top: -2px; font-size: 9px; font-weight: normal; text-shadow: 0 0 2px #000; }
+  #floaters { position: absolute; inset: 0; overflow: hidden; }
+  .float { position: absolute; left: 0; top: 0; font-weight: bold; font-size: 20px; text-shadow: 0 0 4px #000, 0 0 2px #000; white-space: nowrap; will-change: transform; }
+  .zbar { position: absolute; left: 0; top: 0; width: 50px; height: 6px; background: rgba(0,0,0,0.6); border: 1px solid rgba(0,0,0,0.8); border-radius: 3px; overflow: hidden; display: none; }
+  .zbar i { display: block; height: 100%; background: linear-gradient(90deg, #a01810, #e04030); }
+  #hitmark { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -52%); font-size: 26px; font-weight: bold; color: #fff; text-shadow: 0 0 4px #f40; opacity: 0; transition: opacity 0.08s; }
+  #pops { position: absolute; left: 0; right: 0; top: 64%; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .pop { font-weight: bold; font-size: 16px; text-shadow: 0 0 4px #000, 0 0 2px #000; animation: popUp 1.6s forwards; }
+  @keyframes popUp { 0% { transform: translateY(8px) scale(0.8); opacity: 0; } 12% { transform: none; opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
+  #bossBar { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: min(460px, 70vw); display: none; text-align: center; text-shadow: 0 0 4px #000; }
+  #bossBar b { color: #ff6040; letter-spacing: 3px; font-size: 14px; }
+  #bossBar div { height: 12px; margin-top: 3px; background: rgba(0,0,0,0.6); border: 1px solid #ff6040; border-radius: 6px; overflow: hidden; }
+  #bossBar i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #6a0a0a, #ff3020); transition: width 0.2s; }
   @keyframes blink { 50% { border-color: #ff4030; } }
   #hotbarWrap { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); text-align: center; }
   #heldName { font-size: 13px; font-weight: bold; text-shadow: 0 0 4px #000, 0 0 2px #000; margin-bottom: 6px; min-height: 16px; }
   #hotbar { display: flex; gap: 5px; }
+  #mats { position: absolute; right: 16px; bottom: 16px; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .mat { display: flex; align-items: center; gap: 4px; font-weight: bold; font-size: 15px; text-shadow: 0 0 3px #000, 0 0 2px #000; background: rgba(0,0,0,0.45); padding: 1px 8px 1px 2px; border-radius: 12px; font-variant-numeric: tabular-nums; }
+  .mat img { width: 26px; height: 26px; }
+  .mat.none { opacity: 0.45; }
   .slot { position: relative; width: 58px; height: 58px; background: rgba(0,0,0,0.55); border: 2px solid rgba(255,255,255,0.18); border-radius: 6px; }
   .slot img { position: absolute; inset: 3px; width: calc(100% - 6px); height: calc(100% - 6px); pointer-events: none; }
   .slot .n { position: absolute; right: 4px; bottom: 2px; font-size: 13px; font-weight: bold; text-shadow: 0 0 3px #000, 0 0 2px #000; pointer-events: none; }
@@ -208,7 +229,11 @@
   <div id="clockBox"><div id="clock"></div><div id="clockWarn"></div></div>
   <div id="msgs"></div>
   <div id="banner"></div>
+  <div id="floaters"></div>
   <div id="crosshair"></div>
+  <div id="hitmark">✕</div>
+  <div id="pops"></div>
+  <div id="bossBar"><b>👑 HORDE BOSS</b><div><i id="bossFill"></i></div></div>
   <div id="prompt"></div>
   <div class="progress" id="pickBar"><i></i></div>
   <div class="progress" id="useBar"><i></i></div>
@@ -217,8 +242,10 @@
     <div class="bar" id="barFood"><i></i><span>🍖 FOOD</span><b></b></div>
     <div class="bar" id="barWater"><i></i><span>💧 WATER</span><b></b></div>
     <div class="bar" id="barSta"><i></i><span></span><b></b></div>
+    <div id="xpRow"><span id="lvl">LV 1</span><div id="xpBar"><i id="xpFill"></i><b id="xpText"></b></div></div>
   </div>
   <div id="hotbarWrap"><div id="heldName"></div><div id="hotbar"></div></div>
+  <div id="mats"></div>
 </div>
 
 <div id="chatBox"><input type="text" id="chatInput" maxlength="120" placeholder="Say something... (Enter to send)"></div>
@@ -303,7 +330,11 @@
     <p>🌳 Punch trees for wood, then craft a <b>Stone Axe</b> and a <b>Pickaxe</b>. Everything you can make is in the CRAFT list.</p>
     <p>🌙 At night zombies are faster and there are more of them. Build walls and a door, put spikes outside, and light a campfire.</p>
     <p>🛏 Build a <b>Bed</b>: when you die, you wake up there. Your backpack stays where you died.</p>
-    <p>☠ Every 5th night, a <b>HORDE</b> attacks!</p>
+    <p>☠ Every 5th night, a <b>HORDE</b> attacks, led by a giant <b>HORDE BOSS</b>. Beat it for great loot!</p>
+    <p>⭐ Kill zombies, chop trees and survive nights to get <b>XP</b>. Every level gives you more health and stronger hits.</p>
+    <p>📦 Every day at noon a plane drops a <b>SUPPLY CRATE</b>. Follow the 📦 on your compass (and watch out, the noise brings zombies).</p>
+    <p>🐕 Three <b>dogs</b> are hiding in the world (look at the map). Press E to make friends. Your dog follows you and bites zombies!</p>
+    <p>🧨 Throw <b>firecrackers</b>: zombies run to the noise... then BOOM.</p>
     <h3>Escape</h3>
     <p>📡 Find the 3 <b>RADIO PARTS</b> (police station, gas station, hunter's cabin), bring them to the radio tower on Radio Hill,
        survive one last night... and get on the rescue helicopter!</p>
@@ -333,6 +364,7 @@
 <script src="js/inventory.js"></script>
 <script src="js/building.js"></script>
 <script src="js/zombies.js"></script>
+<script src="js/dogs.js"></script>
 <script src="js/player.js"></script>
 <script src="js/net.js"></script>
 <script src="js/hud.js"></script>

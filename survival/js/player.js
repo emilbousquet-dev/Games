@@ -16,7 +16,7 @@ DA.Player = (function () {
 
   const me = {
     x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, yaw: 0, pitch: 0,
-    hp: 100, food: 80, water: 80, stamina: 100, alive: true,
+    hp: 100, maxHp: 100, xp: 0, level: 1, food: 80, water: 80, stamina: 100, alive: true,
     onGround: true, inWater: false, swimming: false, crouch: false, sprinting: false,
     eye: EYE, bob: 0, stepT: 0, swingT: 0, swingDur: 0, swingHit: false, useT: 0, drawT: 0,
     noiseT: 0, hurtT: 0, staminaDelay: 0, fallV: 0, shake: 0, flags: 0, lastGround: 'grass',
@@ -72,6 +72,7 @@ DA.Player = (function () {
     else if (id === 'spear') { g.rotation.set(-1.45, 0, 0); g.position.set(0, 0, 0.3); g.scale.setScalar(0.7); }
     else if (id === 'torch' || id === 'flashlight') { g.rotation.set(-0.6, 0, 0); g.scale.setScalar(0.65); if (id === 'torch') g.add(vm.flame); }
     else if (id === 'bow') { g.rotation.set(0, Math.PI / 2, 0.1); g.scale.setScalar(0.55); }
+    else if (d && d.kind === 'throw') { g.scale.setScalar(0.3); g.rotation.set(0.2, 0.3, -0.3); g.position.set(0, 0.04, -0.04); }
     else if (d && d.kind === 'build') { g.scale.setScalar(0.4); g.rotation.set(0.3, 0.5, 0); g.position.set(0, 0.06, -0.04); }
     else { g.scale.setScalar(0.42); g.rotation.set(0.3, 0.5, 0); g.position.set(0, 0.06, -0.04); }
     vm.hold.add(g);
@@ -226,7 +227,9 @@ DA.Player = (function () {
     const hit = C.ray(eyePos.x, eyePos.y, eyePos.z, lookDir.x, lookDir.y, lookDir.z, REACH, (o) => o.kind !== 'fence' && o.kind !== 'floor');
     const z = Z.rayTarget(eyePos.x, eyePos.y, eyePos.z, lookDir.x, lookDir.y, lookDir.z, hit ? hit.d : REACH);
     let t = null;
-    if (z) t = { kind: z.isAnimal ? 'animal' : 'zombie', e: z.e, d: z.d };
+    const dog = DA.Dogs.rayTarget(eyePos.x, eyePos.y, eyePos.z, lookDir.x, lookDir.y, lookDir.z, Math.min(z ? z.d : REACH, hit ? hit.d : REACH));
+    if (dog) t = { kind: 'dog', dog: dog.d, d: dog.dist };
+    else if (z) t = { kind: z.isAnimal ? 'animal' : 'zombie', e: z.e, d: z.d };
     else if (hit) t = { kind: hit.o.kind, o: hit.o, ref: hit.o.ref, d: hit.d };
     // water under us or in front
     if (!t || t.d > 1.5) {
@@ -251,6 +254,13 @@ DA.Player = (function () {
     const B = DA.Build;
     switch (t.kind) {
       case 'container': return `[E] Search ${t.ref.name}`;
+      case 'drop': return '[E] Open the SUPPLY CRATE!';
+      case 'dog': {
+        const dg = t.dog;
+        if (!dg.owner) return `[E] Make friends with ${dg.name} 🐕`;
+        if (dg.owner === G.myName) return `[E] ${dg.name}: ${dg.sit ? 'come, follow me!' : 'sit and stay'}`;
+        return `${dg.name} (${dg.owner}'s dog)`;
+      }
       case 'bush': return G.state.gone.bush[t.ref.id] !== undefined || !t.ref.berries ? '' : '[E] Pick berries';
       case 'water': return held === 'bottle' ? '[E] Fill bottle' : '[E] Drink water';
       case 'radio': {
@@ -285,6 +295,8 @@ DA.Player = (function () {
     if (!t) return;
     switch (t.kind) {
       case 'container': G.openContainer('c' + t.ref.id, t.ref.name); A.loot(t.ref.x, t.ref.z); break;
+      case 'drop': G.openContainer('d' + t.ref.id, 'Supply crate'); A.loot(t.ref.x, t.ref.z); break;
+      case 'dog': G.act({ t: 'dog', i: t.dog.i }); break;
       case 'bag': G.openContainer('g' + t.ref.id, (t.ref.owner || 'Someone') + '\'s backpack'); A.loot(t.ref.x, t.ref.z); break;
       case 'bush':
         if (t.ref.berries && G.state.gone.bush[t.ref.id] === undefined) { G.act({ t: 'pick', id: t.ref.id }); FX.berries(t.ref.x, W.heightAt(t.ref.x, t.ref.z) + 0.6, t.ref.z); A.pickup(); }
@@ -342,7 +354,7 @@ DA.Player = (function () {
   function doHit() {
     const s = Inv.held(), d = s ? ITEMS[s.id] : null;
     const tool = d && (d.kind === 'tool' || d.kind === 'weapon' || d.kind === 'light') && !d.ranged ? d : null;
-    const dmg = tool ? tool.dmg : 7;
+    const dmg = Math.round((tool ? tool.dmg : 7) * dmgMult());
     const reach = tool ? tool.reach : 2.1;
     cam.getWorldPosition(eyePos); cam.getWorldDirection(lookDir);
     const hit = C.ray(eyePos.x, eyePos.y, eyePos.z, lookDir.x, lookDir.y, lookDir.z, reach, (o) => o.kind !== 'fence' && o.kind !== 'bush' && o.kind !== 'floor');
@@ -353,6 +365,8 @@ DA.Player = (function () {
       const hx = eyePos.x + lookDir.x * z.d, hy = eyePos.y + lookDir.y * z.d, hz = eyePos.z + lookDir.z * z.d;
       FX.blood(hx, hy, hz);
       A.hitFlesh(hx, hz);
+      DA.HUD.floatText(hx, hy + 0.3, hz, '-' + dmg, '#ff7050');
+      DA.HUD.hitMarker();
       const kx = lookDir.x, kz = lookDir.z;
       const push = s && s.id === 'bat' ? 1.6 : 1;
       if (z.isAnimal) G.act({ t: 'hitA', id: e.id, dmg });
@@ -367,14 +381,14 @@ DA.Player = (function () {
     const o = hit.o;
     const hx = eyePos.x + lookDir.x * hit.d, hy = eyePos.y + lookDir.y * hit.d, hz = eyePos.z + lookDir.z * hit.d;
     if (o.kind === 'tree') {
-      const power = tool ? tool.wood || 1 : 1;
+      const power = (tool ? tool.wood || 1 : 1) + gatherBonus();
       FX.wood(hx, hy, hz); if (Math.random() < 0.5) FX.leaves(o.x, hy + 3, o.z);
       A.hitWood(hx, hz);
       G.act({ t: 'hitRes', kind: 'tree', id: o.ref.id, power, fx: me.x, fz: me.z });
       G.fx('wood', hx, hy, hz);
       me.shake = 0.05;
     } else if (o.kind === 'rock') {
-      const power = tool ? tool.stone || 1 : 1;
+      const power = (tool ? tool.stone || 1 : 1) + gatherBonus();
       FX.rock(hx, hy, hz); A.hitRock(hx, hz);
       G.act({ t: 'hitRes', kind: 'rock', id: o.ref.id, power });
       G.fx('rock', hx, hy, hz);
@@ -394,7 +408,7 @@ DA.Player = (function () {
     Inv.remove('arrow', 1);
     cam.getWorldPosition(eyePos); cam.getWorldDirection(lookDir);
     const speed = 22 + 40 * power;
-    const dmg = Math.round(ITEMS.bow.dmg * (0.35 + 0.65 * power));
+    const dmg = Math.round(ITEMS.bow.dmg * (0.35 + 0.65 * power) * dmgMult());
     A.bowShoot();
     me.noiseT = 0.5;
     const fire = (ox, oy, oz, dx, dy, dz, L) => {
@@ -406,6 +420,8 @@ DA.Player = (function () {
         else G.act({ t: 'hitZ', id: e.id, dmg, kx: dx * 0.5, kz: dz * 0.5 });
         FX.blood(ox + dx * z.d, oy + dy * z.d, oz + dz * z.d);
         A.hitFlesh(ox, oz);
+        DA.HUD.floatText(ox + dx * z.d, oy + dy * z.d + 0.3, oz + dz * z.d, '-' + dmg, '#ff7050');
+        DA.HUD.hitMarker();
         return { t: z.d / L, gone: true };
       }
       if (h) { A.arrowHit(ox, oz); return { t: h.d / L }; }
@@ -424,11 +440,56 @@ DA.Player = (function () {
     Inv.removeAt(i, 1);
     if (d.food) me.food = U.clamp(me.food + d.food, 0, 100);
     if (d.water) me.water = U.clamp(me.water + d.water, 0, 100);
-    if (d.hp) { if (d.hp < 0) hurt(-d.hp, null, null, 'food'); else me.hp = Math.min(100, me.hp + d.hp); }
+    if (d.hp) { if (d.hp < 0) hurt(-d.hp, null, null, 'food'); else me.hp = Math.min(me.maxHp, me.hp + d.hp); }
     if (d.empty && Inv.add(d.empty, 1) > 0) G.dropItems([[d.empty, 1]]);
     if (d.kind === 'med') A.heal(); else if (d.water > d.food || !d.food) A.drink(); else A.eat();
     if (s.id === 'rawmeat') G.msg('Raw meat made you sick! Cook it on a campfire.', '#fa4');
     return true;
+  }
+
+  // ============================================================
+  //  EXPERIENCE AND LEVELS
+  //  Every level: +10 max health and you hit 6% harder.
+  //  Every 3 levels: you get 1 more wood / stone per hit.
+  // ============================================================
+  const xpForLevel = (lv) => 40 + lv * 35;          // XP needed to go from lv to lv+1
+  const dmgMult = () => 1 + (me.level - 1) * 0.06;
+  const gatherBonus = () => Math.floor((me.level - 1) / 3);
+  function setLevel(lv, xp) {
+    me.level = Math.max(1, lv | 0); me.xp = Math.max(0, xp | 0);
+    me.maxHp = 100 + (me.level - 1) * 10;
+    me.hp = Math.min(me.hp, me.maxHp);
+  }
+  function addXp(n, why) {
+    if (!n || !me.alive) return;
+    me.xp += n;
+    DA.HUD.popup(`+${n} XP${why ? ' · ' + why : ''}`, '#c8d860');
+    A.xp();
+    while (me.xp >= xpForLevel(me.level)) {
+      me.xp -= xpForLevel(me.level);
+      me.level++;
+      me.maxHp = 100 + (me.level - 1) * 10;
+      me.hp = me.maxHp; // a level up heals you!
+      A.levelUp();
+      const perk = me.level % 3 === 1 ? 'You chop and mine faster!' : 'More health, stronger hits!';
+      DA.HUD.banner(`LEVEL ${me.level}!`, `${perk} (max health ${me.maxHp})`, '#c8d860', 4);
+      G.levelUp(me.level);
+    }
+  }
+
+  // ============================================================
+  //  THROWING (firecrackers)
+  // ============================================================
+  function throwHeld() {
+    const s = Inv.held();
+    if (!s) return;
+    Inv.removeAt(Inv.sel, 1);
+    eyePos.set(me.x, me.y + me.eye, me.z);
+    lookDir.set(-Math.sin(me.yaw) * Math.cos(me.pitch), Math.sin(me.pitch), -Math.cos(me.yaw) * Math.cos(me.pitch));
+    const p = 13;
+    G.act({ t: 'throw', x: U.round(eyePos.x + lookDir.x * 0.6), y: U.round(eyePos.y + lookDir.y * 0.6 - 0.1), z: U.round(eyePos.z + lookDir.z * 0.6), vx: U.round(lookDir.x * p + me.vx * 0.5), vy: U.round(lookDir.y * p + 3.5), vz: U.round(lookDir.z * p + me.vz * 0.5) });
+    A.throwIt();
+    me.swingDur = 0.45; me.swingT = 0.45; me.swingHit = true;
   }
 
   // ============================================================
@@ -464,6 +525,7 @@ DA.Player = (function () {
     G.act({ t: 'build', b: { type: s.type, x: U.round(s.x), y: U.round(s.y), z: U.round(s.z), rot: U.round(s.rot, 1000), bottom: s.bottom !== undefined ? U.round(s.bottom) : undefined }, item });
     A.build(s.x, s.z);
     FX.dust(s.x, s.y + 0.2, s.z, 12);
+    addXp(2);
   }
 
   // ============================================================
@@ -500,7 +562,8 @@ DA.Player = (function () {
       if (inp.attack) { me.useT += dt; if (me.useT > (d.kind === 'med' ? 1.2 : 0.8)) { consume(Inv.sel); me.useT = 0; } }
       else me.useT = 0;
     } else me.useT = 0;
-    if (d && d.kind === 'build') { updateBuild(inp); if (inp.attackPressed) placeBuild(); }
+    if (d && d.kind === 'throw') { if (inp.attackPressed && me.swingT <= 0) throwHeld(); }
+    else if (d && d.kind === 'build') { updateBuild(inp); if (inp.attackPressed) placeBuild(); }
     else if (!(d && d.ranged) && !(d && (d.kind === 'food' || d.kind === 'med')) && inp.attack && me.swingT <= 0) startSwing();
     if (me.swingT > 0 && !me.swingHit && me.swingT < me.swingDur * 0.6) { me.swingHit = true; doHit(); }
     if (!d || d.kind !== 'build') updateBuild(inp);
@@ -511,7 +574,7 @@ DA.Player = (function () {
     if (me.food <= 0 || me.water <= 0) {
       me.starveT += dt;
       if (me.starveT > 2) { me.starveT = 0; hurt((me.food <= 0 ? 2 : 0) + (me.water <= 0 ? 2 : 0), null, null, 'starve'); }
-    } else if (me.food > 50 && me.water > 50 && me.hp < 100) me.hp = Math.min(100, me.hp + dt * 0.35);
+    } else if (me.food > 50 && me.water > 50 && me.hp < me.maxHp) me.hp = Math.min(me.maxHp, me.hp + dt * 0.35);
     me.noiseT -= dt; me.hurtT -= dt;
     me.lightOn = !!(d && d.light);
     me.flags = (me.sprinting ? 1 : 0) | (me.noiseT > 0 ? 2 : 0) | (me.lightOn && W.darkness(G.hour) > 0.4 ? 4 : 0) | (me.crouch ? 16 : 0) | (me.swingT > 0 ? 32 : 0) | (me.useT > 0 ? 64 : 0) | (me.drawT > 0 ? 128 : 0);
@@ -603,7 +666,7 @@ DA.Player = (function () {
   }
 
   return {
-    me, Remote, update, hurt, spawnAt, consume, interact,
+    me, Remote, update, hurt, spawnAt, consume, interact, addXp, setLevel,
     init(world, sc, camera) {
       W = world; scene = sc; cam = camera;
       A = DA.Audio; FX = DA.Effects; Z = DA.Zombies; G = DA.Game;
@@ -611,6 +674,6 @@ DA.Player = (function () {
     },
     get vm() { return vm; },
     get buildErr() { return buildErr; },
-    resetStats() { me.hp = 100; me.food = 75; me.water = 75; me.stamina = 100; me.alive = true; me.swingT = 0; me.useT = 0; me.drawT = 0; },
+    resetStats() { me.hp = me.maxHp; me.food = 75; me.water = 75; me.stamina = 100; me.alive = true; me.swingT = 0; me.useT = 0; me.drawT = 0; },
   };
 })();

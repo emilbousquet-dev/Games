@@ -15,8 +15,11 @@ DA.Zombies = (function () {
     walker: { hp: 60, walk: 0.9, chase: 2.3, nightChase: 3.1, dmg: 12, reach: 1.5, r: 0.35, smash: 14, sight: 26 },
     runner: { hp: 45, walk: 1.4, chase: 5.0, nightChase: 5.6, dmg: 9, reach: 1.4, r: 0.32, smash: 9, sight: 32 },
     brute: { hp: 240, walk: 0.8, chase: 2.1, nightChase: 2.6, dmg: 30, reach: 2.0, r: 0.55, smash: 50, sight: 22 },
+    boss: { hp: 1000, walk: 0.9, chase: 2.5, nightChase: 2.9, dmg: 38, reach: 2.8, r: 0.8, smash: 140, sight: 40 },   // comes with the horde
   };
-  const KIND_NAMES = ['walker', 'runner', 'brute'];
+  const KIND_NAMES = ['walker', 'runner', 'brute', 'boss'];
+  // experience points you get for each kill
+  Object.assign(KINDS.walker, { xp: 10 }); Object.assign(KINDS.runner, { xp: 15 }); Object.assign(KINDS.brute, { xp: 40 }); Object.assign(KINDS.boss, { xp: 200 });
   const ANIMALS = {
     deer: { hp: 40, walk: 1.2, run: 7.5, scare: 18, r: 0.45, drops: [['rawmeat', 3], ['hide', 2]] },
     rabbit: { hp: 10, walk: 0.6, run: 5.5, scare: 9, r: 0.2, drops: [['rawmeat', 1]] },
@@ -61,11 +64,12 @@ DA.Zombies = (function () {
       this.tx = 0; this.ty = 0; this.tz = 0; this.try = 0;
       this.lean = U.rand(-0.15, 0.15);
       this.speed = 0;
+      this.hpPct = 100; this.hpShowT = 0;
       scene.add(this.root);
     }
     place(x, y, z, ry) { this.root.position.set(x, y, z); this.root.rotation.y = ry; this.tx = x; this.ty = y; this.tz = z; this.try = ry; }
     remove() { scene.remove(this.root); }
-    hit() { this.hitT = 0.3; }
+    hit() { this.hitT = 0.3; this.hpShowT = 4; }
 
     update(dt, smooth) {
       const r = this.root;
@@ -82,6 +86,7 @@ DA.Zombies = (function () {
         this.prevAnim = this.anim; this.animT = 0;
       }
       this.animT += dt;
+      this.hpShowT -= dt;
       if (this.isAnimal) return this.updateAnimal(dt);
       const p = this.p, a = this.anim;
       // groans
@@ -90,7 +95,7 @@ DA.Zombies = (function () {
         this.groanT = a === 2 ? U.rand(2, 4) : U.rand(5, 14);
         A.zombie(r.position.x, r.position.z, this.kind, a === 2);
       }
-      const runner = this.kind === 'runner', brute = this.kind === 'brute';
+      const runner = this.kind === 'runner', brute = this.kind === 'brute' || this.kind === 'boss';
       let legA = 0, armBase = 1.35, armSwing = 0.12, lean = 0.12 + this.lean * 0.3, freq = 5;
       if (a === 1) { legA = 0.42; freq = brute ? 3.6 : 4.6; }
       if (a === 2) { legA = runner ? 0.95 : 0.6; freq = runner ? 11 : 6.5; lean = runner ? 0.45 : 0.25; armSwing = runner ? 0.5 : 0.2; armBase = runner ? 1.0 : 1.4; }
@@ -298,6 +303,11 @@ DA.Zombies = (function () {
         if (U.dist(zb.x, zb.z, gx, gz) < k.r + 1.1) { zb.smash = zb.wall.id; zb.smashT = 0.4; zb.wall = null; }
       }
     }
+    // a firecracker! everyone goes to look (unless someone is right in front of them)
+    if (zb.lureT > 0) {
+      zb.lureT -= dt;
+      if (!tp || U.dist(zb.x, zb.z, tp.x, tp.z) > 5) { gx = zb.lureX; gz = zb.lureZ; speed = Math.max(speed, k.chase * 1.4); zb.smash = null; }
+    }
     let dx = gx - zb.x, dz = gz - zb.z;
     const dist = Math.hypot(dx, dz);
     // --- attack the player
@@ -345,7 +355,7 @@ DA.Zombies = (function () {
       if (zb.onSpikes) sp *= 0.5;
       const ox = zb.x, oz = zb.z;
       let nx = zb.x + sx * sp * dt + ax * 0.5 + zb.kvx * dt, nz = zb.z + sz * sp * dt + az * 0.5 + zb.kvz * dt;
-      [nx, nz] = C.resolve(nx, nz, k.r, zb.y, zb.y + 1.8 * (zb.kind === 'brute' ? 1.3 : 1));
+      [nx, nz] = C.resolve(nx, nz, k.r, zb.y, zb.y + 1.8 * (zb.kind === 'boss' ? 1.9 : zb.kind === 'brute' ? 1.3 : 1));
       if (!W.inside(nx, nz)) { nx = ox; nz = oz; }
       zb.x = nx; zb.z = nz;
       const moved = Math.hypot(nx - ox, nz - oz);
@@ -360,7 +370,7 @@ DA.Zombies = (function () {
         }
         if (zb.stuckT > 3 && zb.state === 'wander') { zb.wanderT = 0; zb.stuckT = 0; }
       } else zb.stuckT = 0;
-      zb.anim = zb.state === 'chase' ? 2 : 1;
+      zb.anim = zb.state === 'chase' || zb.lureT > 0 ? 2 : 1;
     } else if (!zb.smash) zb.anim = 0;
     if (zb.atkT > 0) zb.anim = 3;
     zb.kvx *= Math.max(0, 1 - dt * 6); zb.kvz *= Math.max(0, 1 - dt * 6);
@@ -389,6 +399,7 @@ DA.Zombies = (function () {
     zb.stagger = zb.kind === 'brute' ? 0.1 : 0.35;
     zb.hitFlag = 1;
     zb.avatar.hit();
+    zb.avatar.hpPct = Math.max(0, Math.round(zb.hp / zb.k.hp * 100));
     if (byPid && DA.Game.players.get(byPid)) { zb.target = byPid; zb.aware = 10; const p = DA.Game.players.get(byPid); zb.lastX = p.x; zb.lastZ = p.z; }
     if (zb.hp <= 0) {
       zb.state = 'dead'; zb.anim = 4; zb.avatar.anim = 4; zb.deadT = 0;
@@ -479,7 +490,8 @@ DA.Zombies = (function () {
     if (night) return r < 0.58 ? 'walker' : r < 0.9 ? 'runner' : 'brute';
     return r < 0.88 ? 'walker' : r < 0.95 ? 'runner' : 'brute';
   }
-  Z.startHorde = function (n) { hordeLeft = n; hordeT = 0; };
+  let bossPending = false;
+  Z.startHorde = function (n, boss) { hordeLeft = n; hordeT = 0; bossPending = !!boss; };
 
   Z.hostUpdate = function (dt, hour) {
     const night = W.isNight(hour);
@@ -490,7 +502,7 @@ DA.Zombies = (function () {
     for (const zb of Z.zombies.values()) {
       let near = false;
       for (const p of alive) if (U.dist(zb.x, zb.z, p.x, p.z) < 115) near = true;
-      if (!near && zb.state !== 'dead') { zb.farT += dt; if (zb.farT > 8 || !alive.length) removeZombie(zb.id); } else zb.farT = 0;
+      if (!near && zb.state !== 'dead' && zb.kind !== 'boss') { zb.farT += dt; if (zb.farT > 8 || !alive.length) removeZombie(zb.id); } else zb.farT = 0;
     }
     for (const an of Z.animals.values()) {
       let near = false;
@@ -505,6 +517,10 @@ DA.Zombies = (function () {
       hordeT -= 1;
       if (hordeT <= 0) {
         hordeT = 4;
+        if (bossPending) {
+          const s = randomSpot(U.pick(alive), 40, 55);
+          if (s) { bossPending = false; spawnZombie('boss', s[0], s[1], true); DA.Game.bossSpawned(); }
+        }
         for (let i = 0; i < 5 && hordeLeft > 0; i++) {
           const p = U.pick(alive);
           const s = randomSpot(p, 35, 50);
@@ -542,14 +558,14 @@ DA.Zombies = (function () {
   Z.snapshot = function () {
     const zs = [], as = [];
     const R = U.round;
-    for (const zb of Z.zombies.values()) zs.push([zb.id, KIND_NAMES.indexOf(zb.kind), zb.v, R(zb.x), R(zb.y), R(zb.z), R(zb.ry), zb.anim, zb.hitFlag]);
+    for (const zb of Z.zombies.values()) zs.push([zb.id, KIND_NAMES.indexOf(zb.kind), zb.v, R(zb.x), R(zb.y), R(zb.z), R(zb.ry), zb.anim, zb.hitFlag, Math.max(0, Math.round(zb.hp / zb.k.hp * 100))]);
     for (const an of Z.animals.values()) as.push([an.id, ANIMAL_NAMES.indexOf(an.kind), R(an.x), R(an.y), R(an.z), R(an.ry), an.anim]);
     return { z: zs, a: as };
   };
   // clients: update the bodies from the host's picture
   Z.applySnapshot = function (zs, as) {
     const seen = new Set();
-    for (const [id, ki, v, x, y, z, ry, anim, hit] of zs) {
+    for (const [id, ki, v, x, y, z, ry, anim, hit, pct] of zs) {
       seen.add(id);
       let zb = Z.zombies.get(id);
       if (!zb) {
@@ -560,6 +576,7 @@ DA.Zombies = (function () {
       zb.x = x; zb.y = y; zb.z = z; zb.dead = anim === 4;
       const a = zb.avatar; a.tx = x; a.ty = y; a.tz = z; a.try = ry; a.anim = anim;
       if (hit) a.hit();
+      if (pct !== undefined) a.hpPct = pct;
     }
     for (const id of [...Z.zombies.keys()]) if (!seen.has(id)) removeZombie(id);
     const seenA = new Set();
@@ -592,7 +609,7 @@ DA.Zombies = (function () {
         const pos = e.avatar.root.position;
         const kind = isAnimal ? ANIMALS[e.kind] : KINDS[e.kind];
         const r = (kind ? kind.r : 0.4) + 0.15;
-        const h = isAnimal ? (e.kind === 'deer' ? 1.5 : 0.45) : (e.kind === 'brute' ? 2.3 : 1.8);
+        const h = isAnimal ? (e.kind === 'deer' ? 1.5 : 0.45) : (e.kind === 'boss' ? 3.4 : e.kind === 'brute' ? 2.3 : 1.8);
         const d = C.rayHit({ shape: 'circle', x: pos.x, z: pos.z, r, y0: pos.y, y1: pos.y + h }, ox, oy, oz, dx, dy, dz, bestD);
         if (d >= 0 && d < bestD) { bestD = d; best = { e, isAnimal, d }; }
       }
@@ -602,10 +619,29 @@ DA.Zombies = (function () {
     return best;
   };
 
+  // make zombies near (x, z) walk over there (host)
+  Z.lure = function (x, z, radius, time) {
+    for (const zb of Z.zombies.values()) {
+      if (zb.state === 'dead' || U.dist(zb.x, zb.z, x, z) > radius) continue;
+      zb.lureX = x + U.rand(-1.5, 1.5); zb.lureZ = z + U.rand(-1.5, 1.5); zb.lureT = time;
+    }
+  };
+  // an explosion hurts every zombie and animal close by (host)
+  Z.blast = function (x, z, radius, dmg, byPid) {
+    for (const zb of [...Z.zombies.values()]) {
+      const d = U.dist(zb.x, zb.z, x, z);
+      if (d > radius || zb.state === 'dead') continue;
+      const k = 1 - d / radius * 0.6;
+      Z.hit(zb.id, Math.round(dmg * k), (zb.x - x) / (d || 1) * 2.5, (zb.z - z) / (d || 1) * 2.5, byPid);
+    }
+    for (const an of [...Z.animals.values()]) if (U.dist(an.x, an.z, x, z) < radius) Z.hitAnimal(an.id, dmg, byPid);
+  };
+  Z.boss = function () { for (const zb of Z.zombies.values()) if (zb.kind === 'boss' && !zb.dead && zb.state !== 'dead') return zb; return null; };
+
   Z.clear = function () {
     for (const id of [...Z.zombies.keys()]) removeZombie(id);
     for (const id of [...Z.animals.keys()]) removeAnimal(id);
-    hordeLeft = 0;
+    hordeLeft = 0; bossPending = false;
   };
   Z.init = function (world, sc) { W = world; scene = sc; A = DA.Audio; };
   Z.nearestZombie = function (x, z) {

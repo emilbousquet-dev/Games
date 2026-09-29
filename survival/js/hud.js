@@ -25,6 +25,13 @@ DA.HUD = (function () {
     let h = '';
     for (let i = 0; i < Inv.HOT; i++) h += Inv.slotHTML(Inv.slots[i], i, i === Inv.sel ? 'sel' : '').replace('class="slot', `data-k="${i + 1}" class="slot`);
     $('hotbar').innerHTML = h;
+    // how much wood, stone... you have (always on screen)
+    let m = '';
+    for (const id of ['wood', 'stone', 'scrap', 'nails', 'cloth', 'rope', 'hide', 'arrow', 'radiopart']) {
+      const n = Inv.count(id);
+      if (n || id === 'wood' || id === 'stone') m += `<span class="mat${n ? '' : ' none'}" title="${U.esc(Inv.def(id).name)}"><img src="${Inv.iconOf(id)}" alt="">${n}</span>`;
+    }
+    $('mats').innerHTML = m;
     const s = Inv.held();
     $('heldName').textContent = s ? Inv.def(s.id).name + (Inv.def(s.id).kind === 'build' ? '  (click to place, R to turn)' : Inv.def(s.id).ranged ? `  (${Inv.count('arrow')} arrows)` : '') : '';
   };
@@ -49,6 +56,51 @@ DA.HUD = (function () {
     el.style.opacity = 1;
     bannerT = time;
   };
+
+  // ---------- numbers that float up from where you hit ----------
+  const floats = [];
+  const v3 = new THREE.Vector3();
+  H.floatText = function (x, y, z, text, color = '#fff') {
+    const el = document.createElement('div');
+    el.className = 'float';
+    el.textContent = text; el.style.color = color;
+    $('floaters').appendChild(el);
+    floats.push({ el, x, y, z, t: 0 });
+    while (floats.length > 20) floats.shift().el.remove();
+  };
+  // quick messages in the middle ("+3 Wood", "+10 XP")
+  H.popup = function (text, color = '#fff') {
+    const el = document.createElement('div');
+    el.className = 'pop'; el.innerHTML = text; el.style.color = color;
+    const box = $('pops');
+    box.appendChild(el);
+    while (box.children.length > 4) box.firstChild.remove();
+    setTimeout(() => el.remove(), 1600);
+  };
+  let markT = 0;
+  H.hitMarker = function () { markT = 0.18; };
+
+  // health bars over hurt zombies
+  const bars = [];
+  function zombieBars(cam) {
+    let n = 0;
+    const W = innerWidth, Hh = innerHeight;
+    for (const zb of DA.Zombies.zombies.values()) {
+      const a = zb.avatar;
+      if (!a || a.hpShowT <= 0 || zb.dead || zb.state === 'dead' || zb.kind === 'boss') continue;
+      const pos = a.root.position;
+      if (pos.distanceToSquared(cam.position) > 35 * 35) continue;
+      v3.set(pos.x, pos.y + (zb.kind === 'brute' ? 2.6 : 2.1), pos.z).project(cam);
+      if (v3.z > 1) continue;
+      let el = bars[n];
+      if (!el) { el = document.createElement('div'); el.className = 'zbar'; el.innerHTML = '<i></i>'; $('floaters').appendChild(el); bars.push(el); }
+      el.style.display = 'block';
+      el.style.transform = `translate(${(v3.x * 0.5 + 0.5) * W - 25}px, ${(-v3.y * 0.5 + 0.5) * Hh}px)`;
+      el.firstChild.style.width = a.hpPct + '%';
+      n++;
+    }
+    for (let i = n; i < bars.length; i++) bars[i].style.display = 'none';
+  }
 
   let hurtFlash = 0;
   H.hurt = function (amount) { hurtFlash = Math.min(1, hurtFlash + 0.3 + amount / 40); };
@@ -117,7 +169,35 @@ DA.HUD = (function () {
   // ---------- every frame ----------
   H.update = function (dt, o) {
     const me = o.me;
-    setBar('barHp', me.hp); setBar('barFood', me.food); setBar('barWater', me.water); setBar('barSta', me.stamina);
+    setBar('barHp', me.hp / me.maxHp * 100);
+    const hb = $('barHp').querySelector('b'); if (hb) hb.textContent = Math.ceil(me.hp) + (me.maxHp > 100 ? ' / ' + me.maxHp : '');
+    // experience
+    const need = 40 + me.level * 35;
+    const xpKey = me.level + ':' + me.xp;
+    if (last.xp !== xpKey) { last.xp = xpKey; $('xpFill').style.width = Math.min(100, me.xp / need * 100) + '%'; $('lvl').textContent = 'LV ' + me.level; $('xpText').textContent = `${me.xp} / ${need} XP`; }
+    // floating numbers
+    const cam = o.cam;
+    if (cam) {
+      for (let i = floats.length - 1; i >= 0; i--) {
+        const f = floats[i];
+        f.t += dt;
+        if (f.t > 1.1) { f.el.remove(); floats.splice(i, 1); continue; }
+        v3.set(f.x, f.y + f.t * 0.8, f.z).project(cam);
+        if (v3.z > 1) { f.el.style.display = 'none'; continue; }
+        f.el.style.display = 'block';
+        f.el.style.opacity = Math.min(1, (1.1 - f.t) * 3);
+        f.el.style.transform = `translate(${(v3.x * 0.5 + 0.5) * innerWidth}px, ${(-v3.y * 0.5 + 0.5) * innerHeight}px) translate(-50%, -50%)`;
+      }
+      zombieBars(cam);
+    }
+    markT -= dt;
+    $('hitmark').style.opacity = markT > 0 ? 1 : 0;
+    // the boss
+    const boss = DA.Zombies.boss();
+    const showBoss = boss && boss.avatar && boss.avatar.root.position.distanceTo(cam ? cam.position : new THREE.Vector3()) < 70;
+    $('bossBar').style.display = showBoss ? 'block' : 'none';
+    if (showBoss) $('bossFill').style.width = boss.avatar.hpPct + '%';
+ setBar('barFood', me.food); setBar('barWater', me.water); setBar('barSta', me.stamina);
     // clock
     const hour = o.hour;
     const hh = Math.floor(hour), mm = Math.floor((hour - hh) * 60 / 10) * 10;

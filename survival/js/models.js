@@ -19,6 +19,8 @@ DA.Models = (function () {
     vcShiny: () => mat('vcShiny', () => new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.35, metalness: 0.5 })),
     glass: () => mat('glass', () => new THREE.MeshStandardMaterial({ color: 0x223038, roughness: 0.05, metalness: 0.6, transparent: true, opacity: 0.55 })),
     eyes: () => mat('eyes', () => new THREE.MeshStandardMaterial({ color: 0xd8d890, emissive: 0xb0b060, emissiveIntensity: 0.8 })),
+    bossEyes: () => mat('bossEyes', () => new THREE.MeshStandardMaterial({ color: 0xff4020, emissive: 0xff2000, emissiveIntensity: 2.5 })),
+    parachute: () => mat('parachute', () => new THREE.MeshStandardMaterial({ color: 0xe86020, roughness: 0.8, side: THREE.DoubleSide })),
     fire: () => mat('fire', () => new THREE.MeshBasicMaterial({ color: 0xffa030 })),
     redLight: () => mat('redLight', () => new THREE.MeshBasicMaterial({ color: 0xff2020 })),
     planks: () => mat('planks', () => new THREE.MeshStandardMaterial({ map: T.planks(), roughness: 0.9 })),
@@ -211,7 +213,7 @@ DA.Models = (function () {
       const e = kit();
       e.box(0.03, 0.025, 0.01, 0xffffff, -0.06, 0.21, -0.142);
       e.box(0.03, 0.025, 0.01, 0xffffff, 0.06, 0.21, -0.142);
-      const em = new THREE.Mesh(e.geo(), M.eyes()); head.add(em);
+      const em = new THREE.Mesh(e.geo(), o.boss ? M.bossEyes() : M.eyes()); head.add(em);
     }
     // arms (the group turns at the shoulder)
     const arm = (side) => {
@@ -272,6 +274,7 @@ DA.Models = (function () {
       };
       if (kind === 'runner') { o.thin = 0.85; o.bareArms = true; o.shirt = [0x6a2a2a, 0x2a2a2a, 0x7a7a70][Math.floor(rnd() * 3)]; }
       if (kind === 'brute') { o.scale = 1.3; o.fat = 1.45; o.vest = rnd() < 0.5 ? 0xb89020 : null; o.hair = null; }
+      if (kind === 'boss') { o.scale = 1.9; o.fat = 1.6; o.boss = true; o.hair = null; o.shirt = 0x3a1a1a; o.pants = 0x1a1a1a; o.skin = 0x7a8a68; o.vest = 0x5a5a5a; o.cap = null; }
       if (rnd() < 0.15) o.cap = 0x7a2a1a;
       return humanoid(o);
     },
@@ -314,6 +317,34 @@ DA.Models = (function () {
       k.ball(0.05, 0xf0f0f0, 0, 0.2, 0.2, 1, 1, 1, 0);
       body.add(k.mesh()); body.name = 'body';
       return { root, body, head: body, legs: [] };
+    },
+
+    // your dog buddy
+    dog(color = 0x9a6a3a) {
+      const root = new THREE.Group();
+      const body = new THREE.Group(); root.add(body); body.name = 'body';
+      const k = kit();
+      k.box(0.3, 0.3, 0.7, color, 0, 0.5, 0);
+      k.box(0.26, 0.12, 0.5, 0xe8d8b8, 0, 0.36, -0.02); // light belly
+      body.add(k.mesh());
+      const head = at(new THREE.Group(), 0, 0.68, -0.38); body.add(head); head.name = 'head';
+      const hk = kit();
+      hk.box(0.26, 0.24, 0.26, color, 0, 0.04, -0.04);
+      hk.box(0.14, 0.12, 0.16, 0xe8d8b8, 0, -0.02, -0.22);
+      hk.box(0.07, 0.05, 0.04, 0x1a1a1a, 0, 0.02, -0.31);
+      hk.box(0.05, 0.05, 0.02, 0x1a1a1a, -0.07, 0.1, -0.175); hk.box(0.05, 0.05, 0.02, 0x1a1a1a, 0.07, 0.1, -0.175);
+      hk.box(0.07, 0.14, 0.05, 0x5a3a1a, -0.13, 0.12, 0.02, 0, 0, 0.5); hk.box(0.07, 0.14, 0.05, 0x5a3a1a, 0.13, 0.12, 0.02, 0, 0, -0.5);
+      hk.box(0.2, 0.05, 0.1, 0xd02020, 0, -0.1, 0.06); // red collar
+      head.add(hk.mesh());
+      const tail = at(new THREE.Group(), 0, 0.6, 0.35); body.add(tail); tail.name = 'tail';
+      const tk = kit(); tk.box(0.06, 0.06, 0.3, color, 0, 0.08, 0.12, -0.6, 0, 0); tail.add(tk.mesh());
+      const legs = [];
+      for (const [x, z] of [[-0.1, -0.25], [0.1, -0.25], [-0.1, 0.25], [0.1, 0.25]]) {
+        const g = at(new THREE.Group(), x, 0.38, z);
+        const lk = kit(); lk.box(0.08, 0.38, 0.08, color, 0, -0.19, 0); lk.box(0.09, 0.05, 0.11, 0xe8d8b8, 0, -0.37, -0.01);
+        g.add(lk.mesh()); body.add(g); legs.push(g); g.name = 'leg' + legs.length;
+      }
+      return { root, body, head, tail, legs };
     },
 
     // a dropped backpack (your stuff after you die)
@@ -523,6 +554,47 @@ DA.Models = (function () {
       k.box(0.3, 0.02, 0.4, 0x5a1a1a, 0.1, 0.25, 0.1);
       return group(k.mesh());
     },
+    // the supply plane
+    plane() {
+      const root = new THREE.Group();
+      const k = kit();
+      k.cyl(0.9, 0.7, 12, 0x6a7a5a, 0, 0, 0, Math.PI / 2, 0, 0, 10);
+      k.cone(0.9, 2, 0x6a7a5a, 0, 0, -7, -Math.PI / 2, 0, 0, 10);
+      k.box(22, 0.25, 2.4, 0x5a6a4a, 0, 0.3, -1);
+      k.box(7, 0.2, 1.4, 0x5a6a4a, 0, 0.4, 5.5);
+      k.box(0.2, 2.4, 1.6, 0x5a6a4a, 0, 1.4, 5.6);
+      for (const x of [-6, -3, 3, 6]) { k.cyl(0.5, 0.5, 2, 0x3a3a3a, x, 0, -1.4, Math.PI / 2, 0, 0, 8); }
+      k.box(1.2, 0.8, 0.05, 0xf0f0f0, 0.95, 0.2, -2, 0, Math.PI / 2, 0);
+      root.add(k.mesh(M.vcShiny()));
+      return root;
+    },
+    // a crate hanging from a parachute (the parachute can be removed)
+    supplyCrate() {
+      const root = new THREE.Group();
+      const k = kit();
+      k.box(1.2, 0.9, 1.2, 0x4a5a3a, 0, 0.45, 0);
+      k.box(1.24, 0.12, 1.24, 0x2a3222, 0, 0.9, 0);
+      k.box(1.24, 0.12, 1.24, 0x2a3222, 0, 0.06, 0);
+      k.box(0.5, 0.5, 0.02, 0xf0f0f0, 0, 0.5, -0.611); k.box(0.12, 0.34, 0.03, 0xd02020, 0, 0.5, -0.615); k.box(0.34, 0.12, 0.03, 0xd02020, 0, 0.5, -0.615);
+      root.add(k.mesh());
+      const chute = new THREE.Group();
+      const canopy = new THREE.Mesh(new THREE.SphereGeometry(2.4, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2.4), M.parachute());
+      canopy.position.y = 4.2; canopy.scale.y = 0.6;
+      chute.add(canopy);
+      const lk = kit();
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2, x = Math.cos(a) * 1.9, z = Math.sin(a) * 1.9;
+        const dir = new THREE.Vector3(x, 3.4, z);
+        const g = new THREE.CylinderGeometry(0.012, 0.012, dir.length(), 3);
+        g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize()));
+        lk.add(g, 0xf0f0f0, x / 2, 0.9 + 1.7, z / 2);
+      }
+      chute.add(lk.mesh());
+      root.add(chute);
+      root.userData.chute = chute;
+      return root;
+    },
+
     // the rescue helicopter
     helicopter() {
       const root = new THREE.Group();
@@ -584,6 +656,7 @@ DA.Models = (function () {
     arrow: (k) => { k.cyl(0.012, 0.012, 0.8, 0xb89a60, 0, 0, 0, 0, 0, 0, 4); k.cone(0.03, 0.1, 0x6a6a6a, 0, 0.44, 0, 0, 0, 0, 4); k.box(0.06, 0.12, 0.005, 0xd02020, 0, -0.34, 0); k.box(0.005, 0.12, 0.06, 0xd02020, 0, -0.34, 0); },
     torch: (k) => { k.cyl(0.035, 0.03, 0.6, W, 0, 0, 0, 0, 0, 0, 6); k.cyl(0.06, 0.05, 0.14, 0x5a4a3a, 0, 0.3, 0, 0, 0, 0, 7); },
     flashlight: (k) => { k.cyl(0.04, 0.04, 0.3, 0x2a2a2a, 0, 0, 0, 0, 0, 0, 10); k.cyl(0.065, 0.045, 0.1, 0x3a3a3a, 0, 0.19, 0, 0, 0, 0, 10); k.cyl(0.058, 0.058, 0.01, 0xffffd0, 0, 0.245, 0, 0, 0, 0, 10); k.box(0.03, 0.05, 0.02, 0xc02020, 0, 0.05, -0.04); },
+    firecracker: (k) => { k.cyl(0.05, 0.05, 0.3, 0xd02020, 0, 0, 0, 0, 0, 0, 8); k.cyl(0.052, 0.052, 0.05, 0xf0d040, 0, 0.08, 0, 0, 0, 0, 8); k.cyl(0.052, 0.052, 0.05, 0xf0d040, 0, -0.08, 0, 0, 0, 0, 8); k.cyl(0.008, 0.008, 0.12, 0x3a3a3a, 0, 0.2, 0, 0.3, 0, 0, 3); },
     campfire: (k) => { for (let i = 0; i < 7; i++) k.add(rockGeo(i, 0.1), STONE, Math.cos(i * 0.9) * 0.3, 0, Math.sin(i * 0.9) * 0.3); k.cyl(0.04, 0.04, 0.5, W, 0, 0.1, 0, 0.4, 0, 0.4, 5); k.cyl(0.04, 0.04, 0.5, W, 0, 0.1, 0, -0.4, 0, -0.4, 5); k.cone(0.12, 0.3, 0xffa030, 0, 0.2, 0, 0, 0, 0, 6); },
     wall: (k) => { for (let i = 0; i < 4; i++) k.box(0.6, 0.14, 0.06, 0x8a6a48, 0, -0.25 + i * 0.16, 0); k.box(0.06, 0.62, 0.08, 0x5a4432, -0.24, 0, 0.03); k.box(0.06, 0.62, 0.08, 0x5a4432, 0.24, 0, 0.03); },
     doorway: (k) => { k.box(0.6, 0.7, 0.06, 0x8a6a48, 0, 0, 0); k.box(0.3, 0.5, 0.07, 0x6a4a30, 0, -0.1, 0); k.box(0.04, 0.04, 0.08, 0xc0a040, 0.1, -0.1, 0); },

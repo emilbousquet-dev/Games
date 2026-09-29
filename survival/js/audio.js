@@ -181,6 +181,27 @@ DA.Audio = (function () {
     zombieDie(x, z) { if (!ctx) return; const s = spot(x, z); groan(90, 1.2, 0.35 * s.v, s.p, false); noise(0.3, 'lowpass', 300, 1, 0.5 * s.v, s.p, 0.01, null, 0.5); },
     animal(x, z) { if (!ctx) return; const s = spot(x, z); tone('sine', 700, 1100, 0.15, 0.1 * s.v, s.p, 0.01); },
 
+    // ---------- new fun stuff ----------
+    bark(x, z) {
+      if (!ctx) return; const s = spot(x, z, 50); if (s.v < 0.02) return;
+      for (let i = 0; i < 2; i++) {
+        tone('sawtooth', U.rand(420, 520), 260, 0.09, 0.22 * s.v, s.p, 0.005, i * 0.18);
+        noise(0.08, 'bandpass', 900, 2, 0.25 * s.v, s.p, 0.004, null, i * 0.18);
+      }
+    },
+    fuse(x, z) { if (!ctx) return; const s = spot(x, z, 30); for (let i = 0; i < 15; i++) noise(0.05, 'highpass', 4000, 1, 0.15 * s.v, s.p, 0.002, null, i * 0.28 + Math.random() * 0.1); },
+    boom(x, z) {
+      if (!ctx) return; const s = spot(x, z, 120);
+      noise(1.4, 'lowpass', 900, 0.7, 1.0 * Math.max(0.15, s.v), s.p, 0.004, 60);
+      tone('sine', 90, 30, 0.9, 0.8 * Math.max(0.15, s.v), s.p, 0.004);
+      for (let i = 0; i < 6; i++) noise(0.06, 'highpass', 2500, 1, 0.3 * s.v, s.p, 0.002, null, 0.1 + i * 0.07); // crackles
+    },
+    throwIt() { if (ctx) noise(0.2, 'bandpass', 900, 1, 0.2, 0, 0.03, 300); },
+    xp() { if (ctx) tone('sine', 1200, 1500, 0.08, 0.06, 0, 0.005); },
+    levelUp() { if (!ctx) return; [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => { tone('square', f, f, 0.14, 0.06, 0, 0.005, i * 0.08); tone('sine', f * 2, f * 2, 0.2, 0.05, 0, 0.005, i * 0.08); }); },
+    plane() { if (!ctx) return; const o = tone('sawtooth', 70, 60, 9, 0.12, 0, 2.5); void o; noise(9, 'lowpass', 400, 1, 0.2, 0, 2.5, 200); },
+    bossRoar(x, z) { if (!ctx) return; const s = spot(x, z, 150); groan(45, 2.4, 0.9 * Math.max(0.3, s.v), s.p, true); groan(60, 2.2, 0.5 * Math.max(0.3, s.v), s.p, true); },
+
     // ---------- big events ----------
     hordeHorn() {
       if (!ctx) return;

@@ -29,11 +29,8 @@ DA.Inv = (function () {
         if (n <= 0) break;
         if (s && s.id === id && s.n < st) { const k = Math.min(n, st - s.n); s.n += k; n -= k; }
       }
-      // new squares: fill the hotbar first for tools, the backpack first for materials
-      const kind = I.def(id).kind;
-      const order = [...Array(SIZE).keys()];
-      if (kind === 'mat' || kind === 'special') order.sort((a, b) => (a < HOT) - (b < HOT) || a - b);
-      for (const i of order) {
+      // new squares: the hotbar first, so you see what you got right away
+      for (let i = 0; i < SIZE; i++) {
         if (n <= 0) break;
         if (!I.slots[i]) { const k = Math.min(n, st); I.slots[i] = { id, n: k }; n -= k; }
       }
@@ -82,41 +79,84 @@ DA.Inv = (function () {
   // ============================================================
   //  ITEM PICTURES: each 3D item model is photographed once
   // ============================================================
-  function makeIcons() {
-    let r;
-    try {
-      r = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-    } catch (e) { return; }
-    r.setSize(96, 96); r.setPixelRatio(1);
-    r.outputColorSpace = THREE.SRGBColorSpace;
+  // simple backup pictures, in case the 3D ones can't be made
+  const EMOJI = {
+    wood: '🪵', stone: '🪨', scrap: '🔩', nails: '📌', cloth: '🧵', rope: '➰', hide: '🟫', radiopart: '📻',
+    berries: '🫐', apple: '🍎', can: '🥫', chips: '🍟', rawmeat: '🥩', meat: '🍖', water: '💧', bottle: '🧴', soda: '🥤',
+    bandage: '🩹', medkit: '⛑️', stoneaxe: '🪓', pickaxe: '⛏️', metalaxe: '🪓', spear: '🔱', bat: '🏏', machete: '🔪',
+    bow: '🏹', arrow: '➶', torch: '🔥', flashlight: '🔦', campfire: '🔥', wall: '🧱', doorway: '🚪', floor: '🟫',
+    stonewall: '🧱', bed: '🛏️', box: '📦', spikes: '📍', firecracker: '🧨', dogtreat: '🦴',
+  };
+  function emojiIcon(id) {
+    return U.canvas(96, 96, (g) => {
+      g.font = '56px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle';
+      g.fillText(EMOJI[id] || '❔', 48, 44);
+      g.font = 'bold 13px Arial'; g.fillStyle = '#e8e0c8';
+      g.fillText(I.def(id).name.split(' ')[0].slice(0, 9), 48, 86);
+    }).toDataURL();
+  }
+
+  // take a photo of each 3D item model with the game's own 3D engine
+  function makeIcons(renderer) {
+    const S = 96;
     const sc = new THREE.Scene();
     sc.add(new THREE.HemisphereLight(0xffffff, 0x404040, 2.2));
     const dl = new THREE.DirectionalLight(0xffffff, 2.2); dl.position.set(2, 3, 4); sc.add(dl);
     const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 50);
+    let rt = null;
+    try { rt = new THREE.WebGLRenderTarget(S, S); } catch (e) { rt = null; }
+    const px = new Uint8Array(S * S * 4);
+    const cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const g2 = cv.getContext('2d');
+    const img = g2.createImageData(S, S);
+    const toSRGB = (v) => { const l = v / 255; return 255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055); };
+    const oldColor = new THREE.Color(); renderer.getClearColor(oldColor);
+    const oldAlpha = renderer.getClearAlpha();
     for (const id in ITEMS) {
-      const m = DA.Models.Items.make(id);
-      const g = new THREE.Group(); g.add(m);
-      const long = ['stoneaxe', 'pickaxe', 'metalaxe', 'spear', 'bat', 'machete', 'torch', 'flashlight', 'arrow'].includes(id);
-      if (long) g.rotation.z = -Math.PI / 4;
-      g.rotation.y = long ? 0.3 : 0.6; if (!long) g.rotation.x = 0.35;
-      sc.add(g);
-      const box = new THREE.Box3().setFromObject(g);
-      const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3()).length();
-      g.position.sub(c);
-      cam.position.set(0, 0, sz * 1.9); cam.lookAt(0, 0, 0);
-      r.render(sc, cam);
-      I.icons[id] = r.domElement.toDataURL();
-      sc.remove(g);
+      let url = null;
+      try {
+        if (!rt) throw new Error('no render target');
+        const m = DA.Models.Items.make(id);
+        const g = new THREE.Group(); g.add(m);
+        const long = ['stoneaxe', 'pickaxe', 'metalaxe', 'spear', 'bat', 'machete', 'torch', 'flashlight', 'arrow'].includes(id);
+        if (long) g.rotation.z = -Math.PI / 4;
+        g.rotation.y = long ? 0.3 : 0.6; if (!long) g.rotation.x = 0.35;
+        sc.add(g);
+        const box = new THREE.Box3().setFromObject(g);
+        const c = box.getCenter(new THREE.Vector3()), sz = box.getSize(new THREE.Vector3()).length();
+        g.position.sub(c);
+        cam.position.set(0, 0, sz * 1.9); cam.lookAt(0, 0, 0);
+        renderer.setRenderTarget(rt);
+        renderer.setClearColor(0x000000, 0);
+        renderer.clear();
+        renderer.render(sc, cam);
+        renderer.readRenderTargetPixels(rt, 0, 0, S, S, px);
+        sc.remove(g);
+        let seen = 0;
+        for (let y = 0; y < S; y++) for (let x = 0; x < S; x++) {
+          const a = ((S - 1 - y) * S + x) * 4, b = (y * S + x) * 4; // the photo comes out upside down
+          img.data[b] = toSRGB(px[a]); img.data[b + 1] = toSRGB(px[a + 1]); img.data[b + 2] = toSRGB(px[a + 2]); img.data[b + 3] = px[a + 3];
+          if (px[a + 3] > 0) seen++;
+        }
+        if (seen < 20) throw new Error('empty picture');
+        g2.putImageData(img, 0, 0);
+        url = cv.toDataURL();
+      } catch (e) { url = emojiIcon(id); }
+      I.icons[id] = url;
     }
-    r.dispose();
-    if (r.forceContextLoss) r.forceContextLoss();
+    renderer.setRenderTarget(null);
+    renderer.setClearColor(oldColor, oldAlpha);
+    if (rt) rt.dispose();
   }
+  const iconOf = (id) => I.icons[id] || (I.icons[id] = emojiIcon(id));
   I.makeIcons = makeIcons;
+  I.iconOf = iconOf;
 
   const slotHTML = (s, i, extra = '') => {
     if (!s) return `<div class="slot empty ${extra}" data-i="${i}"></div>`;
     const d = I.def(s.id);
-    return `<div class="slot ${extra}" data-i="${i}" title="${U.esc(d.name)}"><img src="${I.icons[s.id] || ''}" alt=""><span class="n">${s.n > 1 ? s.n : ''}</span></div>`;
+    return `<div class="slot ${extra}" data-i="${i}" title="${U.esc(d.name)}"><img src="${iconOf(s.id)}" alt=""><span class="n">${s.n > 1 ? s.n : ''}</span></div>`;
   };
   I.slotHTML = slotHTML;
 
@@ -139,7 +179,7 @@ DA.Inv = (function () {
         const row = e.target.closest('[data-r]');
         if (!row) return;
         const r = RECIPES[+row.dataset.r];
-        if (I.craft(r)) { DA.Audio.craft(); UI.flash(`Made ${r.out > 1 ? r.out + ' x ' : ''}${I.def(r.item).name}!`); }
+        if (I.craft(r)) { DA.Audio.craft(); DA.Player.addXp(2); UI.flash(`Made ${r.out > 1 ? r.out + ' x ' : ''}${I.def(r.item).name}!`); }
         else DA.Audio.error();
       });
       document.getElementById('takeAll').addEventListener('click', () => { if (UI.box) DA.Game.act({ t: 'takeAll', cid: UI.box.cid }); });
@@ -240,7 +280,7 @@ DA.Inv = (function () {
       RECIPES.forEach((r, ri) => {
         const ok = I.canCraft(r);
         const need = Object.entries(r.need).map(([id, n]) => `<span class="${I.count(id) >= n ? 'have' : 'miss'}">${n} ${U.esc(I.def(id).name)}</span>`).join(', ');
-        c += `<div class="recipe ${ok ? 'ok' : ''}" data-r="${ri}"><img src="${I.icons[r.item] || ''}" alt=""><div><b>${U.esc(I.def(r.item).name)}${r.out > 1 ? ' x' + r.out : ''}</b><br><small>${need}</small></div></div>`;
+        c += `<div class="recipe ${ok ? 'ok' : ''}" data-r="${ri}"><img src="${iconOf(r.item)}" alt=""><div><b>${U.esc(I.def(r.item).name)}${r.out > 1 ? ' x' + r.out : ''}</b><br><small>${need}</small></div></div>`;
       });
       document.getElementById('craftList').innerHTML = c;
       // cupboard

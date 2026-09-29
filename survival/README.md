@@ -47,6 +47,19 @@ A game controller works too: sticks to move and look, RT to hit, A to jump, X to
 - ☠️ **Every 5th night a HORDE attacks!**
 - 🛏 Build a **Bed**: when you die you wake up there. Your backpack stays where you died, so go and get it back!
 
+## New fun stuff
+
+- ⭐ **Levels and XP**: kill zombies, chop trees, craft, build and survive nights to get XP.
+  Every level gives you +10 max health and stronger hits, and every 3 levels you chop and mine faster.
+- 📦 **Supply drops**: every day at noon a plane drops a crate with great loot. Follow 📦 on your compass.
+  But the noise brings zombies...
+- 🐕 **Dog buddies**: Rex (Hollow Farm), Luna (the hunter's cabin) and Biscuit (behind the gas station).
+  Press E to make friends. Your dog follows you, barks when zombies come and bites them!
+  Press E again to make it sit and guard your base.
+- 🧨 **Firecrackers**: craft them (1 cloth + 1 scrap = 3) or find them. Throw one: zombies run to the noise... then BOOM!
+- 👑 **Horde Boss**: a giant zombie leads every horde. Beat it for a bag of great loot.
+- 💥 Damage numbers, zombie health bars, and pop-ups when you pick things up.
+
 ## The zombies
 
 - **Walker**: slow and clumsy, but they come in groups.
@@ -108,6 +121,7 @@ to update `dead-acres.html` (or just ask Claude to do it).
 | `js/collide.js` | bumping into walls and trees |
 | `js/player.js` | you: walking, hunger, thirst, hitting, your hands |
 | `js/zombies.js` | zombie and animal brains |
+| `js/dogs.js` | your dog buddies (change their names here!) |
 | `js/building.js` | building your base |
 | `js/inventory.js` | the backpack and crafting screen |
 | `js/net.js` | playing online |

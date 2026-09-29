@@ -39,6 +39,7 @@ DA.Game = (function () {
       boxes: {}, builds: {}, bags: {},
       radio: { parts: 0, fixed: false, found: {}, heli: 0, heliT: 0, hordeTonight: false },
       nextId: 1, players: {}, hordeNight: 0, kills: 0, lastDawn: 1,
+      dogs: {}, drops: {}, lastDrop: 0,
     };
   }
 
@@ -69,11 +70,11 @@ DA.Game = (function () {
       ...W.buildSteps(null).map(([label], i) => [label, () => W.buildSteps(scene)[i][1]()]),
       ['Waking up the zombies', () => {
         Z = DA.Zombies; B = DA.Build; FX = DA.Effects; P = DA.Player; me = P.me;
-        Z.init(W, scene); B.init(W, scene); FX.init(scene);
+        Z.init(W, scene); B.init(W, scene); FX.init(scene); DA.Dogs.init(W, scene);
         setupLights();
       }],
       ['Drawing the items', () => {
-        try { Inv.makeIcons(); } catch (e) { console.warn('item pictures failed', e); }
+        try { Inv.makeIcons(renderer); } catch (e) { console.warn('item pictures failed', e); }
         Inv.UI.init();
         Inv.onChange = () => HUD.drawHotbar();
         P.init(W, scene, cam);
@@ -157,11 +158,12 @@ DA.Game = (function () {
     // dawn: a new day
     if (before < 6 && s.time >= 6) newDay();
     // dusk
+    if (before < 12 && s.time >= 12 && s.lastDrop !== s.day) { s.lastDrop = s.day; supplyDrop(); }
     if (before < 20.2 && s.time >= 20.2) {
       if (isHordeNight() && s.hordeNight !== s.day) {
         s.hordeNight = s.day;
         const n = 18 + s.day * 2 + (s.radio.hordeTonight ? 15 : 0);
-        Z.startHorde(Math.min(60, n));
+        Z.startHorde(Math.min(60, n), true);
         emit({ t: 'horde' });
       } else emit({ t: 'night' });
     }
@@ -176,6 +178,8 @@ DA.Game = (function () {
       for (const id in s.gone[kind]) if (s.day - s.gone[kind][id] >= REGROW[kind]) { delete s.gone[kind][id]; emit({ t: 'gone', kind, id: +id, v: false }); }
     }
     s.radio.hordeTonight = false;
+    for (const d of Object.values(s.drops)) if (s.day - d.day >= 3) { delete s.drops[d.id]; delete s.boxes['d' + d.id]; emit({ t: 'undrop', id: d.id }); }
+    emit({ t: 'xp', n: 25, why: 'survived the night' });
     if (s.radio.fixed && !s.radio.heli) { s.radio.heli = 1; s.radio.heliT = 0; emit({ t: 'heli', s: 1 }); }
     emit({ t: 'day', day: s.day });
     save();
@@ -270,6 +274,11 @@ DA.Game = (function () {
   }
 
   function checkBagEmpty(cid) {
+    if (cid[0] === 'd') {
+      const bx = G.state.boxes[cid];
+      if (bx && bx.items.every((x) => !x)) { const id = +cid.slice(1); delete G.state.boxes[cid]; delete G.state.drops[id]; emit({ t: 'undrop', id }); }
+      return;
+    }
     if (cid[0] !== 'g') return;
     const bx = G.state.boxes[cid];
     if (bx && bx.items.every((x) => !x)) {
@@ -302,6 +311,7 @@ DA.Game = (function () {
           if (a.kind === 'tree' && o.type === 'oak' && Math.random() < 0.3) got.push(['apple', U.randInt(1, 2)]);
           if (a.kind === 'rock' && Math.random() < 0.15) got.push(['scrap', 1]);
           emit({ t: 'gone', kind: a.kind, id: a.id, v: true, fx: a.fx, fz: a.fz });
+          emit({ t: 'xp', n: 3, why: a.kind === 'tree' ? 'tree' : 'rock' }, pid);
         }
         give(pid, got);
         break;
@@ -423,6 +433,20 @@ DA.Game = (function () {
         emit({ t: 'boarded', pid, name: pl.name });
         break;
       }
+      case 'throw': {
+        const id = newId();
+        const L = FX.landing(a.x, a.y, a.z, a.vx, a.vy, a.vz);
+        emit({ t: 'fc', id, x: a.x, y: a.y, z: a.z, vx: a.vx, vy: a.vy, vz: a.vz });
+        later(0.3, () => Z.lure(L.x, L.z, 32, 5));
+        later(4.5, () => { Z.blast(L.x, L.z, 6, ITEMS.firecracker.dmg, pid); emit({ t: 'boom', id, x: U.round(L.x), y: U.round(L.y), z: U.round(L.z) }); });
+        break;
+      }
+      case 'dog': {
+        const text = DA.Dogs.interact(a.i, pname(pid));
+        if (text) emit({ t: 'msg', text: U.esc(text), color: '#ffd890' }, pid);
+        break;
+      }
+      case 'lvl': if (pl) emitExcept({ t: 'lvl', name: pl.name, lv: a.lv | 0 }, pid); break;
       case 'fx': emitExcept({ t: 'fx', k: a.k, x: a.x, y: a.y, z: a.z }, pid); break;
       case 'arrowFx': emitExcept({ t: 'arrow', x: a.x, y: a.y, z: a.z, dx: a.dx, dy: a.dy, dz: a.dz, s: a.s }, pid); break;
       case 'chat': {
@@ -474,9 +498,9 @@ DA.Game = (function () {
           if (!ITEMS[id]) continue;
           const l = Inv.add(id, n);
           if (l > 0) left.push([id, l]);
-          names.push(`+${n - l} ${ITEMS[id].name}`);
+          if (n - l > 0) names.push(`<img src="${Inv.iconOf(id)}" alt="">+${n - l} ${ITEMS[id].name}`);
         }
-        if (names.length && !(ev.note || '').startsWith('box:')) HUD.msg(names.join('  '), '#cfe8b0', 2.5);
+        if (names.length && !(ev.note || '').startsWith('box:')) HUD.popup(names.join('  '), '#e8f0c8');
         if (ev.note === 'full') HUD.msg('It\'s full!', '#fa4');
         if (left.length) {
           if (Inv.UI.open && Inv.UI.box && ev.note && ev.note.startsWith('box:')) { left.forEach((it) => G.act({ t: 'put', cid: Inv.UI.box.cid, item: it })); HUD.msg('Your backpack is full!', '#fa4'); }
@@ -545,7 +569,17 @@ DA.Game = (function () {
         if (ev.pid === G.myPid) { me.inHeli = true; }
         break;
       case 'end': showEnding(ev); break;
-      case 'kill': me.kills++; break;
+      case 'kill': me.kills++; P.addXp(ev.xp || 10, ev.kind === 'boss' ? 'HORDE BOSS DEFEATED!' : 'zombie'); break;
+      case 'xp': if (me.alive) P.addXp(ev.n, ev.why); break;
+      case 'fc': FX.throwThing(ev.id, ev.x, ev.y, ev.z, ev.vx, ev.vy, ev.vz); A.fuse(ev.x, ev.z); break;
+      case 'boom': FX.explode(ev.x, ev.y, ev.z, ev.id); A.boom(ev.x, ev.z); if (U.dist(ev.x, ev.z, me.x, me.z) < 18) me.shake = Math.max(me.shake, 0.35 * (1 - U.dist(ev.x, ev.z, me.x, me.z) / 18)); break;
+      case 'drop': s.drops[ev.drop.id] = ev.drop; addDrop(ev.drop, true); break;
+      case 'undrop': delete s.drops[ev.id]; removeDrop(ev.id); if (Inv.UI.box && Inv.UI.box.cid === 'd' + ev.id) G.closeInventory(); break;
+      case 'boss':
+        HUD.banner('👑 THE HORDE BOSS IS HERE', 'A giant zombie leads the horde tonight. Beat it for great loot!', '#ff5030', 6);
+        A.bossRoar(ev.x, ev.z);
+        break;
+      case 'lvl': HUD.msg(`⭐ ${U.esc(ev.name)} reached level ${ev.lv}!`, '#c8d860'); break;
     }
   }
 
@@ -573,6 +607,10 @@ DA.Game = (function () {
   };
   G.zombieKilled = function (zb, pid) {
     G.state.kills++;
+    if (zb.kind === 'boss') {
+      makeBag(zb.x, zb.y + 0.2, zb.z, rollLoot('boss', 12).filter(Boolean), 'the Boss');
+      emit({ t: 'msg', text: `👑 The HORDE BOSS was defeated${pid ? ' by ' + U.esc(pname(pid)) : ''}! Its loot bag is where it fell.`, color: '#ffc040' });
+    }
     if (!pid) return;
     const drops = [];
     const r = Math.random();
@@ -582,11 +620,91 @@ DA.Game = (function () {
     else if (r < 0.35) drops.push(['can', 1]);
     else if (r < 0.39) drops.push(['nails', U.randInt(2, 4)]);
     if (drops.length) give(pid, drops);
-    emit({ t: 'kill' }, pid);
+    emit({ t: 'kill', kind: zb.kind, xp: zb.k.xp }, pid);
   };
   G.animalKilled = function (an, pid) {
-    if (pid) give(pid, Z.ANIMALS[an.kind].drops.map((d) => [d[0], d[1]]));
+    if (pid) { give(pid, Z.ANIMALS[an.kind].drops.map((d) => [d[0], d[1]])); emit({ t: 'xp', n: 5, why: an.kind }, pid); }
   };
+  G.bossSpawned = function () {
+    const b = Z.boss();
+    emit({ t: 'boss', x: b ? U.round(b.x) : me.x, z: b ? U.round(b.z) : me.z });
+  };
+  G.levelUp = function (lv) { if (Net.online) G.act({ t: 'lvl', lv }); };
+
+  // things that happen a little later (host), paused with the game
+  const timers = [];
+  function later(sec, fn) { timers.push({ t: sec, fn }); }
+  function runTimers(dt) {
+    for (let i = timers.length - 1; i >= 0; i--) { timers[i].t -= dt; if (timers[i].t <= 0) { const f = timers[i].fn; timers.splice(i, 1); f(); } }
+  }
+
+  // ============================================================
+  //  SUPPLY DROPS: every day at noon a plane drops a crate
+  // ============================================================
+  function supplyDrop() {
+    const alive = [...G.players.values()].filter((p) => p.alive && !p.inHeli);
+    if (!alive.length) return;
+    const p = U.pick(alive);
+    for (let tries = 0; tries < 40; tries++) {
+      const a = Math.random() * 6.28, d = U.rand(50, 110);
+      const x = p.x + Math.sin(a) * d, z = p.z + Math.cos(a) * d;
+      if (!W.inside(x, z) || Math.abs(x) > 260 || Math.abs(z) > 260) continue;
+      if (W.groundType(x, z) !== 0 || W.slopeAt(x, z) > 0.6) continue;
+      const y = W.heightAt(x, z);
+      if (C.blocked({ shape: 'circle', x, z, r: 1.5, y0: y + 0.2, y1: y + 3 })) continue;
+      const id = newId();
+      const drop = { id, x: U.round(x), y: U.round(y), z: U.round(z), day: G.state.day };
+      G.state.drops[id] = drop;
+      G.state.boxes['d' + id] = { items: rollLoot('supply', 12), day: G.state.day };
+      emit({ t: 'drop', drop });
+      // the noise brings zombies...
+      later(20, () => { for (let i = 0; i < 3 + Math.min(4, G.state.day); i++) { const s = [x + U.rand(-25, 25), z + U.rand(-25, 25)]; if (W.inside(s[0], s[1]) && W.heightAt(s[0], s[1]) > W.WATER + 0.3) Z.spawnZombie(Math.random() < 0.8 ? 'walker' : 'runner', s[0], s[1], false); } });
+      return;
+    }
+  }
+  const dropObjs = new Map();
+  function addDrop(d, animate) {
+    removeDrop(d.id);
+    const crate = DA.Models.Props.supplyCrate();
+    scene.add(crate);
+    const o = { crate, d, t: animate ? 0 : 99, col: null, plane: null };
+    if (animate) {
+      o.plane = DA.Models.Props.plane();
+      scene.add(o.plane);
+      A.plane();
+      HUD.banner('📦 SUPPLY DROP!', 'A plane dropped a crate full of good stuff. Find the 📦 on your compass!', '#ffc040', 6);
+    } else crate.userData.chute.visible = false;
+    dropObjs.set(d.id, o);
+    placeDrop(o, 0);
+  }
+  function placeDrop(o, dt) {
+    const d = o.d;
+    o.t += dt;
+    const FALL = 16, H = 70;
+    const k = Math.min(1, o.t / FALL);
+    o.crate.position.set(d.x, d.y + (1 - k) * H, d.z);
+    o.crate.rotation.y = o.t * 0.3;
+    o.crate.rotation.z = k < 1 ? Math.sin(o.t * 1.5) * 0.08 : 0;
+    if (o.plane) {
+      const pt = o.t + 3; // the plane passes over the spot at t = 0
+      o.plane.position.set(d.x - 180 + pt * 60, d.y + H + 12, d.z + 5);
+      o.plane.rotation.y = -Math.PI / 2;
+      if (pt > 7) { scene.remove(o.plane); o.plane = null; }
+    }
+    if (k >= 1 && !o.col) {
+      o.crate.userData.chute.visible = false;
+      o.col = C.add({ shape: 'box', x: d.x, z: d.z, hw: 0.62, hd: 0.62, rot: 0, y0: d.y - 0.3, y1: d.y + 0.95, kind: 'drop', ref: d, walk: true });
+      if (dt > 0) { FX.dust(d.x, d.y + 0.2, d.z, 20); A.land(1); }
+    }
+    // red smoke so you can find it
+    if (k >= 1 && Math.random() < dt * 6) FX.smoke(d.x + 0.3, d.y + 1.1, d.z, 1.4, 0xd04030);
+  }
+  function removeDrop(id) {
+    const o = dropObjs.get(id);
+    if (!o) return;
+    scene.remove(o.crate); if (o.plane) scene.remove(o.plane); if (o.col) C.remove(o.col);
+    dropObjs.delete(id);
+  }
 
   // ============================================================
   //  YOU: opening things, dying, eating from the backpack
@@ -659,7 +777,7 @@ DA.Game = (function () {
   //  SAVING (only the host saves the world)
   // ============================================================
   function myRecord() {
-    return { inv: Inv.dump(), hp: Math.round(me.hp), food: Math.round(me.food), water: Math.round(me.water), x: U.round(me.x), y: U.round(me.y), z: U.round(me.z), yaw: U.round(me.yaw), alive: me.alive };
+    return { inv: Inv.dump(), lv: me.level, xp: me.xp, hp: Math.round(me.hp), food: Math.round(me.food), water: Math.round(me.water), x: U.round(me.x), y: U.round(me.y), z: U.round(me.z), yaw: U.round(me.yaw), alive: me.alive };
   }
   function save() {
     if (!G.isHost || !G.state || G.mode !== 'play') return;
@@ -678,6 +796,9 @@ DA.Game = (function () {
     for (const kind of ['tree', 'rock', 'bush']) for (const id in s.gone[kind]) W.setResGone(kind, +id, true);
     for (const b of Object.values(s.builds)) B.add(b);
     for (const bag of Object.values(s.bags)) addBag(bag);
+    s.drops = s.drops || {}; s.dogs = s.dogs || {};
+    for (const d of Object.values(s.drops)) addDrop(d, false);
+    DA.Dogs.load(s);
     G.hour = s.time;
   }
   function clearWorld() {
@@ -688,9 +809,13 @@ DA.Game = (function () {
     for (const p of G.players.values()) if (p.remote) p.remote.remove();
     G.players.clear();
     if (G.heliObj) { scene.remove(G.heliObj); G.heliObj = null; }
+    for (const id of [...dropObjs.keys()]) removeDrop(id);
+    DA.Dogs.clear();
+    timers.length = 0;
   }
 
   function loadMe(rec) {
+    P.setLevel(rec ? rec.lv || 1 : 1, rec ? rec.xp || 0 : 0);
     P.resetStats();
     if (rec) {
       Inv.load(rec.inv);
@@ -848,7 +973,7 @@ DA.Game = (function () {
     const pl = [];
     for (const p of G.players.values()) pl.push([p.pid, p.name, p.color, R(p.x), R(p.y), R(p.z), R(p.yaw), R(p.pitch || 0), p.item || null, p.flags | 0, Math.round(p.hp), p.inHeli ? 1 : 0]);
     const zs = Z.snapshot();
-    Net.broadcast({ k: 's', t: R(G.state.time, 1000), d: G.state.day, p: pl, z: zs.z, a: zs.a, h: [G.state.radio.heli, R(G.state.radio.heliT)] });
+    Net.broadcast({ k: 's', t: R(G.state.time, 1000), d: G.state.day, p: pl, z: zs.z, a: zs.a, dg: DA.Dogs.snapshot(), h: [G.state.radio.heli, R(G.state.radio.heliT)] });
   }
   function applySnapshot(m) {
     if (!G.state || G.mode !== 'play') return;
@@ -866,6 +991,7 @@ DA.Game = (function () {
     }
     for (const pid of [...G.players.keys()]) if (!seen.has(pid) && pid !== G.myPid) { const p = G.players.get(pid); if (p.remote) p.remote.remove(); G.players.delete(pid); }
     Z.applySnapshot(m.z, m.a);
+    DA.Dogs.applySnapshot(m.dg);
     G.state.radio.heli = m.h[0]; G.state.radio.heliT = m.h[1];
   }
 
@@ -961,6 +1087,7 @@ DA.Game = (function () {
       if (mine) { Object.assign(mine, { x: me.x, y: me.y, z: me.z, yaw: me.yaw, pitch: me.pitch, item: Inv.held() ? Inv.held().id : null, flags: me.flags | (me.alive ? 0 : 8), hp: me.hp, alive: me.alive, inHeli: !!me.inHeli }); }
       if (G.isHost) {
         advanceTime(dt);
+        runTimers(dt);
         Z.hostUpdate(dt, G.hour);
         snapT -= dt;
         if (snapT <= 0 && Net.online) { snapT = 0.1; hostSnapshot(); }
@@ -980,6 +1107,8 @@ DA.Game = (function () {
       fxBudget = Math.max(0, fxBudget - dt * 10);
       for (const p of G.players.values()) if (p.remote) p.remote.update(dt);
       Z.update(dt, G.isHost);
+      DA.Dogs.update(dt, G.isHost);
+      for (const o of dropObjs.values()) placeDrop(o, dt);
       B.update(dt, t);
       updateHeli(dt);
       if (!me.alive) { deadT += dt; }
@@ -1009,7 +1138,7 @@ DA.Game = (function () {
     HUD.update(dt, {
       me, hour: G.hour, day: s.day, prompt: me.prompt, targetKind: me.target && me.target.kind,
       nightIn: night ? null : secondsUntil(G.hour, 20.2), dayIn: night ? secondsUntil(G.hour, 6) : null, horde: isHordeNight(),
-      markers: compassMarkers(), online: onlineText(), goal: goalT <= 0 ? (goalT = 0.5, lastGoal = goalText()) : lastGoal,
+      cam, markers: compassMarkers(), online: onlineText(), goal: goalT <= 0 ? (goalT = 0.5, lastGoal = goalText()) : lastGoal,
     });
     goalT -= dt;
     if (mapOpen) HUD.drawMap(me, [...G.players.values()].filter((p) => p.pid !== G.myPid).map((p) => ({ x: p.x, z: p.z, name: p.name, color: COLORS_CSS[p.color % 4] })), mapExtras());
@@ -1037,6 +1166,10 @@ DA.Game = (function () {
     if (has('campfire') && !myBuild('campfire') && s.day < 3) return 'Hold the Campfire and click to place it.';
     if (!myBuild('bed') && (Inv.count('cloth') < 5 || !has('bed'))) return has('bed') ? 'Hold the Bed and click to place it.' : 'Build a Bed so you wake up there if you die (search houses for cloth).';
     if (!myBuild('bed')) return 'Hold the Bed and click to place it.';
+    if (!DA.Dogs.list.some((d) => d.owner === G.myName)) {
+      const free = DA.Dogs.list.find((d) => !d.owner);
+      if (free) return `Find a dog buddy! ${free.name} is waiting somewhere (🐕 on the map, press M).`;
+    }
     return `Find the 3 radio parts (${parts + r.parts}/3): police station, gas station, hunter's cabin.`;
   }
 
@@ -1055,6 +1188,8 @@ DA.Game = (function () {
     const bed = Object.values(G.state.builds).find((b) => b.type === 'bed' && b.owner === G.myName);
     if (bed) m.push(markerFor(bed.x, bed.z, '🛏', '#fff', 'Your bed'));
     for (const b of Object.values(G.state.bags)) if (b.owner === G.myName) m.push(markerFor(b.x, b.z, '🎒', '#fd6', 'Your stuff'));
+    for (const d of Object.values(G.state.drops)) m.push(markerFor(d.x, d.z, '📦', '#ffc040', 'Supply crate'));
+    for (const d of DA.Dogs.list) if (d.owner === G.myName && U.dist(d.x, d.z, me.x, me.z) > 8) m.push(markerFor(d.x, d.z, '🐕', '#ffd890', d.name));
     if (W.radioSpot && (Inv.count('radiopart') || G.state.radio.parts || G.state.radio.fixed)) m.push(markerFor(W.radioSpot.x, W.radioSpot.z, '📡', '#8f8', 'Radio tower'));
     return m;
   }
@@ -1064,6 +1199,8 @@ DA.Game = (function () {
     const bed = Object.values(G.state.builds).find((b) => b.type === 'bed' && b.owner === G.myName);
     if (bed) e.push({ x: bed.x, z: bed.z, icon: '🛏' });
     for (const b of Object.values(G.state.bags)) e.push({ x: b.x, z: b.z, icon: '🎒' });
+    for (const d of Object.values(G.state.drops)) e.push({ x: d.x, z: d.z, icon: '📦' });
+    for (const d of DA.Dogs.list) if (d.owner === G.myName || !d.owner) e.push({ x: d.x, z: d.z, icon: '🐕' });
     return e;
   }
 
