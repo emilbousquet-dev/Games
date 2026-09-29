@@ -615,6 +615,7 @@ SF.World = (function () {
   //  PUZZLES
   // ============================================================
   function meleeHit(x, z, y) {
+    SF.Nature.cutBushes(x, z, 1.6);
     for (const pz of puzzles) {
       if (pz.kind !== 'runes' || W().puzzles[pz.id]) continue;
       for (const s of pz.stones) {

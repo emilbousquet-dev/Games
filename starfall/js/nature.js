@@ -189,6 +189,7 @@ SF.Nature = (function () {
         for (const list of buckets.values()) {
           const im = new THREE.InstancedMesh(geo, mat, list.length);
           list.forEach((sp, i) => {
+            if (name === 'bush') { (sp.inst = sp.inst || []).push({ im, i }); }
             e.set(0, sp.ry, 0); q.setFromEuler(e);
             p.set(sp.x, sp.y - 0.1, sp.z); s.set(sp.sc, sp.sc, sp.sc);
             m4.compose(p, q, s);
@@ -206,6 +207,7 @@ SF.Nature = (function () {
         }
       };
       if (geos.body) make(geos.body, SF.Models.M.vc);
+      if (name === 'bush') bushes = spots;
       if (geos.glow) {
         const gm = new THREE.MeshBasicMaterial({ vertexColors: true });
         glowMats.push(gm);
@@ -215,10 +217,41 @@ SF.Nature = (function () {
   }
 
   // glowing plants glow brighter at night
-  function update(night) {
+  function update(night, dt = 0) {
     const v = 0.75 + night * 0.35;
     for (const m of glowMats) m.color.setScalar(v);
+    // cut bushes grow back after a while
+    for (let k = cut.length - 1; k >= 0; k--) {
+      const b = cut[k];
+      b.t -= dt;
+      if (b.t <= 0) { showBush(b.sp, true); cut.splice(k, 1); }
+    }
   }
 
-  return { build, update };
+  // ---------- cutting bushes with your sword (like in Zelda!) ----------
+  let bushes = [];
+  const cut = [];
+  const zero = new THREE.Matrix4().makeScale(0, 0, 0);
+  function showBush(sp, on) {
+    const m = new THREE.Matrix4();
+    m.compose(new THREE.Vector3(sp.x, sp.y - 0.1, sp.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, sp.ry, 0)), new THREE.Vector3(sp.sc, sp.sc, sp.sc));
+    for (const { im, i } of sp.inst) { im.setMatrixAt(i, on ? m : zero); im.instanceMatrix.needsUpdate = true; }
+    sp.gone = !on;
+  }
+  function cutBushes(x, z, r) {
+    let n = 0;
+    for (const sp of bushes) {
+      if (sp.gone || Math.abs(sp.x - x) > r + 1 || Math.abs(sp.z - z) > r + 1) continue;
+      if (Math.hypot(sp.x - x, sp.z - z) > r + 0.4 * sp.sc) continue;
+      showBush(sp, false);
+      cut.push({ sp, t: 120 });
+      SF.FX.burst(sp.x, sp.y + 0.6, sp.z, 0x40d0a0, 14);
+      if (Math.random() < 0.35) SF.World.dropLoot(sp.x, sp.y + 0.6, sp.z, [1, 1]);
+      n++;
+    }
+    if (n) SF.Audio.sfx('pop');
+    return n;
+  }
+
+  return { build, update, cutBushes };
 })();

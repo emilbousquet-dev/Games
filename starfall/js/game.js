@@ -315,7 +315,7 @@ SF.Game = (function () {
     SF.Story.update(dt, time);
     SF.Sky.update(dt, G.camera, P.pos, G.scene, time);
     SF.Terrain.update(dt, time);
-    SF.Nature.update(SF.Sky.S.night);
+    SF.Nature.update(SF.Sky.S.night, dt);
     SF.FX.update(dt);
     SF.State.world.playTime += dt;
 
