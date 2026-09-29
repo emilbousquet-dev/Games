@@ -64,8 +64,37 @@ SF.Story = (function () {
     zib.antennas.forEach((a, i) => (a.rotation.x = Math.sin(time * 4 + i) * 0.2));
     zib.fins.forEach((f, i) => (f.rotation.x = Math.sin(time * 10 + i) * 0.3));
     zib.group.visible = !SF.Game.cutscene || SF.Game.cutscene.showZib;
+    checkTips(dt);
   }
   function bounce() { zibBounce = 1; }
+
+  // ---------- Zib's tips: each one only once, the first time something happens ----------
+  let tipT = 3;
+  function tip(key, text) {
+    const f = W().flags;
+    if (f['tip_' + key] || SF.HUD.dialogOpen) return false;
+    f['tip_' + key] = true;
+    SF.HUD.toast('ZIB: ' + text, 0xc8b0ff, 6);
+    SF.Audio.chirp(1.2); SF.Audio.chirp(1.3);
+    bounce();
+    tipT = 7;
+    return true;
+  }
+  function checkTips(dt) {
+    const P = SF.Game.player;
+    if (!P || !W().flags.intro || SF.Game.cutscene) return;
+    tipT -= dt;
+    if (tipT > 0) return;
+    const near = (max) => SF.Creatures.list.some((e) => !SF.Creatures.TYPES[e.type].boss && Math.hypot(e.x - P.pos.x, e.z - P.pos.z) < max);
+    if (near(14) && tip('fight', 'A monster! CLICK to swing your sword. Hold RIGHT CLICK to block with your shield!')) return;
+    if (P.swimming && tip('swim', 'Swimming uses energy (the green bar). Don\'t swim too far!')) return;
+    if (P.hp > 0 && P.hp <= 4 && tip('lowhp', 'Your hearts are low! Monsters sometimes drop hearts, and beacons heal you.')) return;
+    if (SF.Sky.S.night > 0.5 && !SF.Sky.S.indoor && tip('night', 'It\'s getting dark... the plants glow, and more Gloops come out!')) return;
+    if (ME().shards >= 5 && tip('shards', 'Star shards! Mo the trader in Zibville sells cool stuff for them.')) return;
+    if (SF.World.towers.some((t) => Math.hypot(t.x - P.pos.x, t.z - P.pos.z) < 18) && tip('tower', 'A signal tower! Climb the spiral stairs and turn it on at the top!')) return;
+    if (SF.World.beacons.some((b) => !W().beacons[b.i] && Math.hypot(b.x - P.pos.x, b.z - P.pos.z) < 12) && tip('beacon', 'A beacon! Press E to turn it on. It saves your game!')) return;
+    if (W().powers.glider && !P.grounded && P.vel.y < -8 && !P.gliding && tip('glide', 'Falling?! Press JUMP to open your wings!')) return;
+  }
 
   function say(lines, done) {
     bounce();
