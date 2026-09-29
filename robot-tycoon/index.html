@@ -180,11 +180,11 @@ label.chk { display: inline-flex; gap: 5px; align-items: center; font-weight: 80
 #modalBox textarea { width: 100%; height: 90px; background: #0b0f18; color: #b9ffcf; border: 2px solid var(--line); border-radius: 8px;
   font-family: monospace; font-size: 11px; padding: 6px; resize: none; user-select: text; -webkit-user-select: text; }
 .mbtns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
-#toasts { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; flex-direction: column;
+#toasts { position: absolute; left: 50%; top: 96px; transform: translateX(-50%); width: max-content; max-width: 92%; display: flex; flex-direction: column;
   gap: 6px; align-items: center; z-index: 60; pointer-events: none; }
 .toast { background: #0d1320ee; border: 2px solid var(--gold); color: #fff; font-weight: 800; padding: 7px 14px; border-radius: 12px;
   animation: toastIn .25s ease-out; box-shadow: 0 4px 12px #000a; text-align: center; }
-@keyframes toastIn { from { transform: translateY(20px); opacity: 0; } }
+@keyframes toastIn { from { transform: translateY(-16px); opacity: 0; } }
 
 /* ---------- title ---------- */
 #title { position: absolute; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -551,6 +551,9 @@ const GOALS = [
 const NAME_A = ['Rusty', 'Sparky', 'Bolt', 'Turbo', 'Mega', 'Tiny', 'Big', 'Captain', 'Sir', 'Doctor', 'Iron', 'Laser', 'Crusher', 'Zappy', 'Robo', 'Clanky', 'Gizmo', 'Nitro', 'Titan', 'Beep'];
 const NAME_B = ['Boop', 'Smash', 'Bot', 'Tron', 'Max', 'Gears', '3000', 'X', 'Punch', 'Byte', 'Nugget', 'Wrench', 'Blaster', 'Zilla', 'Chomp', 'Dozer', 'Beans', 'McBolt', 'Jr.', 'Prime'];
 const randomName = () => pick(NAME_A) + ' ' + pick(NAME_B);
+// arena ranks (from trophies)
+const RANKS = [[0, '🔩 Rookie'], [50, '🥉 Bronze'], [150, '🥈 Silver'], [300, '🥇 Gold'], [600, '💎 Diamond'], [1000, '👑 Legend']];
+const rankOf = (tr) => RANKS.filter((r) => tr >= r[0]).pop()[1];
 
 // ============================================================
 //  DRAWING ROBOTS  (every part is drawn with code)
@@ -1582,6 +1585,12 @@ function handleEvents(evs) {
         if (e.kind === 'repair' || e.kind === 'shield') for (const u of V.units) if (u.alive && u.team === e.team) { addPart({ x: u.x, y: u.y - 30, vx: 0, vy: -50, g: 0, life: 0.8, max: 0.8, s: 12, col: e.kind === 'repair' ? '#4dff88' : '#7df0ff', type: e.kind === 'repair' ? 'plus' : 'ring' }); }
         break;
       }
+      case 'end':
+        if (e.winner === BV.myTeam) {
+          BV.banner = { txt: '🏆 VICTORY!', t: 2 };
+          for (let i = 0; i < 90; i++) addPart({ x: rand(100, 900), y: rand(-40, 60), vx: rand(-60, 60), vy: rand(40, 160), g: 120, life: rand(1.2, 2.2), max: 2.2, s: rand(4, 7), col: pick(COLORS), type: 'debris', floor: 560 });
+        } else if (V.mode === 'campaign' || BV.online || e.winner >= 0) BV.banner = { txt: e.winner < 0 ? '🤝 NOBODY WON' : '💥 DEFEAT', t: 2 };
+        break;
       case 'wave': BV.banner = { txt: '⚠️ ENEMY REINFORCEMENTS!', t: 2 }; S.siren(); break;
       case 'turret': S.blaster(); break;
       case 'emo': { const u = V.units.find((x) => x.alive && x.team === e.team); floatText(u ? u.x : 500, u ? u.y - 80 : 200, e.e, '#fff', 30); break; }
@@ -1611,7 +1620,7 @@ function drawBattle(dt) {
   if (V.mode === 'campaign') {
     drawBase(c, 40, 330, '#2f5fa8', '🏳️', 0, 0, undefined, true, t, false);
     const B = BASES[V.baseIdx], bs = V.base;
-    drawBase(c, bs.x, bs.y, B.color, B.flag, bs.hp, bs.maxHp, bs.ang, bs.alive, t, true);
+    drawBase(c, bs.x, bs.y, B.color, B.flag, bs.hp, bs.maxHp, bs.turret ? bs.ang : undefined, bs.alive, t, true);
   }
   // team rings on the ground + robots (sorted so the ones in front are drawn last)
   const units = V.units.filter((u) => u.alive).sort((a, b) => a.y - b.y);
@@ -1721,7 +1730,7 @@ function openBattle(view, opts = {}) {
   $('emotes').style.display = BV.online ? 'flex' : 'none';
   const tm = view.teams[BV.myTeam];
   $('bBottom').innerHTML = Object.keys(POWERS).filter((k) => k !== 'air' || resLvl('air') || (tm && tm.charges.air)).map((k) =>
-    `<button class="btn pu ${k === 'emp' ? 'blue' : k === 'air' ? 'red' : k === 'repair' ? 'green' : 'purple'}" data-pu="${k}" title="${POWERS[k].desc}">${POWERS[k].ico} ${POWERS[k].name}<span class="n">0</span></button>`).join('');
+    `<button class="btn pu ${k === 'emp' ? 'blue' : k === 'air' ? 'red' : k === 'repair' ? 'green' : 'purple'}" data-pu="${k}" title="${POWERS[k].desc} (key ${['repair', 'shield', 'emp', 'air'].indexOf(k) + 1})">${POWERS[k].ico} ${POWERS[k].name}<span class="n">0</span></button>`).join('');
   $('battle').classList.add('show');
   if (!BV.online && G.stats.wins + G.stats.losses < 3) BV.banner = { txt: '💡 Tip: use the POWER-UPS at the bottom!', t: 4 };
   Sfx.startMusic(view.mode === 'campaign' && view.baseIdx === 9);
@@ -1822,14 +1831,14 @@ function startCampaign(i) {
 function startArena(bots, diff) {
   if (!needSquad()) return;
   const mine = myUnits(0), myPow = armyPower(squad().slice(0, MAX_SQUAD));
-  const mult = [0.75, 1, 1.3][diff];
+  // bots are a bit weaker than you (and even weaker when there are 3 of them)
+  const mult = [0.55, 0.8, 1][diff] * (bots > 1 ? 0.75 : 1);
   const teams = [myTeamDef()], units = mine.slice();
   const botNames = ['Bot Bolt', 'Bot Sparky', 'Bot Crusher'];
   for (let k = 1; k <= bots; k++) {
-    const pc = diff === 2 ? 2 : 1;
-    teams.push({ name: botNames[k - 1], bot: true, charges: { repair: pc, shield: pc, emp: diff ? 1 : 0, air: diff === 2 ? 1 : 0 } });
+    teams.push({ name: botNames[k - 1], bot: true, charges: { repair: 1, shield: 1, emp: diff ? 1 : 0, air: diff === 2 ? 1 : 0 } });
     const col = COLORS[(k * 3 + 2) % COLORS.length];
-    for (const a of botArmy(myPow * mult, 6)) units.push({ team: k, design: Object.assign({ color: col }, a.d), lvl: a.lvl, bonus: bonusNow() });
+    for (const a of botArmy(myPow * mult, Math.min(6, mine.length + 2))) units.push({ team: k, design: Object.assign({ color: col }, a.d), lvl: a.lvl, bonus: bonusNow() });
   }
   const b = createBattle({ mode: 'arena', seed: (Math.random() * 1e9) | 0, teams, units, limit: 150 });
   openBattle(b, { local: true, myTeam: 0, onEnd: (bb) => finishArena(bb, bots, diff) });
@@ -2085,7 +2094,7 @@ function renderBattleTab() {
         ${beaten ? ' <span class="pill ok">✔ Beaten</span>' : ''}</div>`;
     }).join('')}</div>
     <div class="section-title" style="font-size:15px;margin-top:16px">🏟️ ARENA — everyone fights everyone</div>
-    <div class="card"><p class="small dim" style="margin-top:0">Fight bot armies for 🏆 trophies and coins. Robots don't break in the arena.</p>
+    <div class="card"><p class="small dim" style="margin-top:0">Fight bot armies for 🏆 trophies and coins. Robots don't break in the arena. Your rank: <b style="color:#ffd98a">${rankOf(G.trophies)}</b> (🏆 ${G.trophies})</p>
       <div class="row"><b>Bots:</b>${[1, 2, 3].map((n) => `<button class="btn small ${arenaBots === n ? 'gold' : ''}" data-act="abots" data-n="${n}">${n}</button>`).join('')}
       <b style="margin-left:10px">Difficulty:</b>${['Easy', 'Normal', 'Hard'].map((d, i) => `<button class="btn small ${arenaDiff === i ? 'gold' : ''}" data-act="adiff" data-n="${i}">${d}</button>`).join('')}
       <button class="btn red" data-act="arena" style="margin-left:auto">🏟️ FIGHT!</button></div></div>
@@ -2110,7 +2119,7 @@ function updateTop() {
   document.querySelector('#coins .v').textContent = fmt(G.coins);
   const inc = incomePerSec();
   document.querySelector('#income .v').textContent = inc < 10 ? inc.toFixed(1) : fmt(inc);
-  document.querySelector('#trophies .v').textContent = fmt(G.trophies);
+  document.querySelector('#trophies .v').textContent = fmt(G.trophies) + ' ' + rankOf(G.trophies).split(' ')[0];
   $('crankVal').textContent = '+' + fmt(crankValue());
 }
 function updateAfford() {
@@ -2300,16 +2309,16 @@ const NET_FAIL = {
 };
 function myArmyPayload() {
   const sq = squad().slice(0, MAX_SQUAD);
-  return { v: NET_VERSION, name: G.name || 'Player', robots: sq.map((r) => ({ head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: r.color, lvl: r.lvl, name: r.name })), bonus: bonusNow(), charges: myTeamDef().charges, power: armyPower(sq) };
+  return { v: NET_VERSION, name: G.name || 'Player', rank: rankOf(G.trophies), robots: sq.map((r) => ({ head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: r.color, lvl: r.lvl, name: r.name })), bonus: bonusNow(), charges: myTeamDef().charges, power: armyPower(sq) };
 }
 function cleanArmy(a) { // don't trust other computers too much
   const robots = (Array.isArray(a.robots) ? a.robots : []).slice(0, MAX_SQUAD).filter((r) => r && SLOTS.every((k) => PARTS[r[k]] && PARTS[r[k]].slot === k))
     .map((r) => ({ head: r.head, body: r.body, arms: r.arms, legs: r.legs, color: /^#[0-9a-f]{6}$/i.test(r.color) ? r.color : '#b8c2d6', lvl: clamp(r.lvl | 0, 1, MAX_LVL), name: String(r.name || 'Bot').slice(0, 18) }));
   const b = a.bonus || {}, ch = a.charges || {};
-  return { name: String(a.name || 'Player').slice(0, 16), robots, bonus: { plating: clamp(b.plating | 0, 0, 5), weapons: clamp(b.weapons | 0, 0, 5) },
+  return { name: String(a.name || 'Player').slice(0, 16), rank: RANKS.some((r) => r[1] === a.rank) ? a.rank : '', robots, bonus: { plating: clamp(b.plating | 0, 0, 5), weapons: clamp(b.weapons | 0, 0, 5) },
     charges: { repair: clamp(ch.repair | 0, 0, 3), shield: clamp(ch.shield | 0, 0, 3), emp: clamp(ch.emp | 0, 0, 3), air: clamp(ch.air | 0, 0, 3) } };
 }
-function lobbyList() { return OL.players.map((p) => ({ pid: p.pid, name: p.name, power: p.power, bot: !!p.bot, n: p.robots.length })); }
+function lobbyList() { return OL.players.map((p) => ({ pid: p.pid, name: p.name, power: p.power, bot: !!p.bot, n: p.robots.length, rank: p.rank || '' })); }
 function sendLobby() {
   for (const p of OL.players) if (!p.bot && p.pid !== 'host') Net.send(p.pid, { t: 'lobby', players: lobbyList(), you: p.pid, code: OL.code });
   renderOnline();
@@ -2508,7 +2517,7 @@ function renderOnline() {
       const p = OL.players[i];
       if (!p) return `<div class="card" style="opacity:.5"><h3>Empty spot</h3><div class="small dim">Waiting for a player...</div></div>`;
       return `<div class="card" style="border-color:${TEAM_COLORS[i]}"><h3>${p.bot ? '🤖' : '🧑'} ${esc(p.name)}${p.pid === OL.me ? ' (you)' : ''}${p.pid === 'host' ? ' 👑' : ''}</h3>
-        <div class="small">⚡ Power ${fmt(p.power)}${p.n !== undefined || p.robots ? ' · ' + (p.n !== undefined ? p.n : p.robots.length) + ' robots' : ''}</div></div>`;
+        <div class="small">${p.rank ? esc(p.rank) + ' · ' : ''}⚡ Power ${fmt(p.power)}${p.n !== undefined || p.robots ? ' · ' + (p.n !== undefined ? p.n : p.robots.length) + ' robots' : ''}</div></div>`;
     }).join('')}</div>
     <div class="row" style="margin-top:12px">
       ${host ? `<button class="btn" data-act="olAddBot" ${OL.players.length >= 4 ? 'disabled' : ''}>➕ Add bot</button>
@@ -2594,6 +2603,10 @@ document.addEventListener('change', (ev) => {
 document.addEventListener('input', (ev) => { if (ev.target.id === 'wsName') G.ws.name = ev.target.value; });
 document.addEventListener('keydown', (ev) => {
   if (ev.key === 'Enter' && ev.target.id === 'joinCode') joinRoom();
+  if (BV.view && !ev.target.closest('input,textarea')) {
+    const k = { 1: 'repair', 2: 'shield', 3: 'emp', 4: 'air' }[ev.key];
+    if (k && document.querySelector(`.pu[data-pu="${k}"]`)) pressPower(k);
+  }
   if (ev.key === 'Escape' && BV.armed) { BV.armed = null; document.querySelectorAll('.pu').forEach((b) => b.classList.remove('armed')); }
 });
 $('bCanvas').addEventListener('pointerdown', battleClick);
