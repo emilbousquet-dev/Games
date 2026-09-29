@@ -115,7 +115,7 @@ FP.Modes.conveyor = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#cfd6e6"/><g stroke="#2a2140" stroke-width="2"><path d="M14 30h92v30H14z" fill="#8a8fa0"/><path d="M14 30h23v30H14z" fill="#ffb13b"/><path d="M37 30h23v30H37z" fill="#4aa8ff"/><path d="M60 30h23v30H60z" fill="#ff7eb6"/><path d="M83 30h23v30H83z" fill="#5cc44a"/></g><path d="M25 52l0-14M21 42l4-4 4 4M48 38l0 14M44 48l4 4 4-4M71 52l0-14M67 42l4-4 4 4M94 38l0 14M90 48l4 4 4-4" stroke="#2a2140" stroke-width="2" fill="none"/><ellipse cx="58" cy="24" rx="5" ry="6" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/><circle cx="58" cy="15" r="4" fill="#ff5a5f" stroke="#2a2140" stroke-width="2"/></svg>';
 
   self = {
-    id: 'conveyor', name: 'Conveyor Brawl', roundsToWin: 2, minTotal: 2, removeOut: 1.5, song: 'race', minZoom: 15, art: ART,
+    id: 'conveyor', name: 'Conveyor Brawl', roundsToWin: 2, minTotal: 2, removeOut: 1.5, song: 'factory', minZoom: 15, art: ART,
     desc: 'The floor is made of moving belts! Walk against them and push everyone else off the ends.',
     build, spawn, beforeStep, update, botThink, hud, visual,
     netState: () => ({ s: Math.round(speed * 10) / 10, f: flip }),

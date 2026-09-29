@@ -6,7 +6,7 @@
 window.FP = window.FP || {};
 
 FP.Settings = (function () {
-  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: FP.Touch && FP.Touch.available ? 'low' : 'high', tags: true, fps: false, replays: true, colorblind: false };
+  const DEFAULTS = { master: 8, music: 6, sfx: 8, shake: true, quality: FP.Touch && FP.Touch.available ? 'low' : 'high', tags: true, fps: false, replays: true, colorblind: false, commentator: true, chat: true, rumble: true };
   const s = Object.assign({}, DEFAULTS);
   try { Object.assign(s, JSON.parse(localStorage.getItem('floppy-settings') || '{}')); } catch (e) { /* no saving */ }
   function save() { try { localStorage.setItem('floppy-settings', JSON.stringify(s)); } catch (e) { /* no saving */ } }
@@ -44,6 +44,9 @@ FP.Settings = (function () {
     { key: 'quality', name: 'Graphics', kind: 'pick', options: ['high', 'low'], labels: { high: 'Pretty', low: 'Fast' } },
     { key: 'tags', name: 'Name tags', kind: 'bool' },
     { key: 'replays', name: 'Knockout replays', kind: 'bool' },
+    { key: 'commentator', name: 'Commentator', kind: 'bool' },
+    { key: 'chat', name: 'Quick Chat (keys 5, 6, 7)', kind: 'bool' },
+    { key: 'rumble', name: 'Controller rumble', kind: 'bool' },
     { key: 'fps', name: 'Show speed (FPS)', kind: 'bool' },
     { key: 'colorblind', name: 'Colorblind shapes', kind: 'bool' },
   ];

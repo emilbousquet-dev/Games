@@ -167,6 +167,16 @@ FP.Audio = (function () {
     circus: { bpm: 144, chords: [[62, 'M'], [57, 'M'], [57, 'M'], [62, 'M']], lead: 'square', arp: false, bass: 'x...x...x...x...',
       drums: { k: 'x.......x.......', s: '....x.......x...', h: '..x...x...x...x.' },
       mel: '74 73 74 . 81 . 79 78 79 . 76 . 74 76 78 . 76 75 76 . 81 . 79 78 79 . 76 . 73 76 79 . 76 75 76 . 85 . 83 82 83 . 79 . 76 79 81 . 78 77 78 . 86 . 85 83 81 . 78 . 74 . . .' },
+    // World Tour songs: hot and bubbly Lava Land, beep-boop Robot Factory, dreamy Outer Space
+    lava: { bpm: 132, chords: [[50, 'm'], [46, 'M'], [48, 'M'], [45, 'M']], lead: 'sawtooth', arp: true, bass: 'x..x..x.x..x..x.',
+      drums: { k: 'x..x....x..x....', s: '....x.......x...', h: 'x.x.x.x.x.x.x.x.' },
+      mel: '74 . 77 . 81 . 77 . 74 . 72 . 74 . . . 70 . 74 . 77 . 74 . 70 . 69 . 70 . . . 72 . 76 . 79 . 76 . 84 . 79 . 76 . 72 . 73 . 76 . 81 . 76 . 79 - 77 . 76 . 73 .' },
+    factory: { bpm: 118, chords: [[52, 'm'], [48, 'M'], [50, 'M'], [47, 'M']], lead: 'square', arp: true, bass: 'x.x.x.x.x.x.x.x.',
+      drums: { k: 'x...x...x...x...', s: '....x.......x...', h: 'xxxxxxxxxxxxxxxx' },
+      mel: '76 76 . 79 . 76 . 83 . 76 76 . 79 . 74 . 72 72 . 76 . 72 . 79 . 72 72 . 76 . 71 . 74 74 . 78 . 74 . 81 . 74 74 . 78 . 79 . 75 . 78 . 83 . 78 . 81 - 79 . 78 . 75 .' },
+    space: { bpm: 92, chords: [[53, 'M'], [57, 'm'], [50, 'm'], [55, 'M']], lead: 'triangle', arp: true, bass: 'x.......x.......',
+      drums: { k: 'x.........x.....', s: '............x...', h: '..x...x...x...x.' },
+      mel: '81 . . . 77 . . . 84 . . . 81 . . . 76 . . . 81 . . . 84 - - . 83 . 81 . 77 . . . 74 . . . 81 . . . 77 . 76 . 79 . . . 83 . . . 86 - - - 83 . . .' },
   };
   for (const k in SONGS) SONGS[k].notes = SONGS[k].mel.split(' ');
 

@@ -185,7 +185,7 @@ FP.Modes.skydive = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#bfe6ff"/><ellipse cx="60" cy="72" rx="40" ry="6" fill="#8fd35f"/><ellipse cx="60" cy="72" rx="12" ry="2.5" fill="#ff5a5f"/><path d="M40 20a20 12 0 0 1 40 0z" fill="#ff7eb6" stroke="#2a2140" stroke-width="2"/><path d="M42 20l16 22M78 20l-16 22" stroke="#2a2140" stroke-width="1.5"/><ellipse cx="60" cy="46" rx="5" ry="7" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><circle cx="60" cy="37" r="4" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/><ellipse cx="96" cy="44" rx="8" ry="3" fill="none" stroke="#ffcf33" stroke-width="3"/><ellipse cx="22" cy="54" rx="8" ry="3" fill="none" stroke="#ff7eb6" stroke-width="3"/></svg>';
 
   self = {
-    id: 'skydive', name: 'Sky Diving', roundsToWin: 1, rounds: 3, roundName: 'Jump', minTotal: 1, defaultBots: 3, song: 'chill', minZoom: 12, art: ART,
+    id: 'skydive', name: 'Sky Diving', roundsToWin: 1, rounds: 3, roundName: 'Jump', minTotal: 1, defaultBots: 3, song: 'space', minZoom: 12, art: ART,
     desc: 'Jump out of the sky! Steer through the rings, press JUMP to open your parachute, and land on the bullseye. 3 jumps.',
     build, spawn, control, beforeStep, update, botThink, hud, visual,
     scoreLabel: (s) => `${s} pts`,

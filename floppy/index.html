@@ -274,6 +274,14 @@
     .replay-bars i.top { top: 0; } .replay-bars i.bot { bottom: 0; }
     .replay-bars b { position: absolute; top: 2vh; left: 24px; color: #ff5a5f; font: 900 30px system-ui, sans-serif; animation: blink 1s steps(2) infinite; }
     .replay-bars small { position: absolute; bottom: 3vh; right: 24px; color: #fff; font: 700 15px system-ui, sans-serif; opacity: .8; }
+    .replay-bars small span { display: inline-block; margin-left: 14px; }
+    .replay-bars .rp-info { position: absolute; top: 3vh; right: 24px; color: #fff; font: 800 16px system-ui, sans-serif; }
+    .replay-bars .rp-bar { position: absolute; left: 50%; transform: translateX(-50%); top: calc(4.5vh - 4px); width: min(260px, 26vw); height: 8px; border-radius: 99px; background: rgba(255,255,255,.25); overflow: hidden; }
+    .replay-bars .rp-bar i { position: static; display: block; height: 100%; width: 0; background: #ff5a5f; }
+    @media (max-width: 800px) { .replay-bars small span { display: block; margin: 0; text-align: right; font-size: 12px; } .replay-bars .rp-info { font-size: 12px; } }
+    .dir-hint { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); z-index: 6; font: inherit; font-weight: 800; font-size: 16px; background: rgba(42,33,64,.85); color: #fff; border: 0; border-radius: 999px; padding: 7px 16px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: var(--shadow); animation: casterPop .35s; }
+    .dir-hint kbd { background: #fff; color: var(--ink); border-radius: 6px; padding: 0 6px; font: inherit; font-size: 13px; }
+    .dir-hint .ico { width: 16px; height: 16px; }
     @keyframes blink { 50% { opacity: .3; } }
     body.photo-mode .hud, body.photo-mode .tags, body.photo-mode .fps, body.photo-mode .touch { display: none !important; }
     .photo-ui { position: fixed; left: 0; right: 0; bottom: 16px; display: flex; justify-content: center; z-index: 30; pointer-events: none; }
@@ -331,6 +339,11 @@
     .speed-time small { font-size: 15px; opacity: .7; }
     .speed-clock { font-variant-numeric: tabular-nums; background: var(--ink); color: #fff; border-radius: 8px; padding: 0 7px; }
     .king-line { color: #b8860b; }
+    .caster { position: fixed; left: 14px; bottom: 44px; z-index: 4; pointer-events: none; display: flex; align-items: center; gap: 8px; background: var(--ink); color: #fff; font-weight: 900; font-size: 20px; padding: 6px 16px 6px 8px; border-radius: 999px; box-shadow: var(--shadow); max-width: min(520px, 80vw); letter-spacing: .3px; }
+    .caster .ico { width: 30px; height: 30px; background: #fff; border-radius: 50%; padding: 3px; flex: none; }
+    .caster.pop { animation: casterPop .35s cubic-bezier(.2, 1.6, .4, 1); }
+    @keyframes casterPop { from { transform: translateX(-30px) scale(.7); opacity: 0; } }
+    @media (pointer: coarse) { .caster { bottom: auto; top: 110px; font-size: 16px; } }
     /* tournament bracket */
     .screen.tourney .card { max-width: 760px; width: 96vw; }
     .bracket { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: center; margin: 6px 0; }
@@ -469,6 +482,12 @@
     .splash-bar i { display: block; height: 100%; width: 40%; background: var(--yellow); border-radius: 999px; animation: load 1.2s ease-in-out infinite; }
     @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
     #splash p { margin: 0; font-weight: 800; font-size: 20px; }
+    .splash-art { width: min(300px, 70vw); height: auto; }
+    .splash-art .fly { animation: splashFly 1.6s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    .splash-art .thrower { animation: bob 1.4s ease-in-out infinite; }
+    @keyframes splashFly { 0% { transform: translate(0, 6px) rotate(0deg); } 50% { transform: translate(18px, -12px) rotate(180deg); } 100% { transform: translate(0, 6px) rotate(360deg); } }
+    #splash p.splash-tip { font-size: 16px; font-weight: 700; max-width: min(460px, 86vw); text-align: center; background: rgba(255,255,255,.7); border-radius: 14px; padding: 6px 14px; }
+    #splash p.splash-tip b { color: #d23a6a; }
     .extra.tut-hud { background: none; padding: 0; }
     .tut { display: flex; flex-direction: column; align-items: center; gap: 3px; background: rgba(255,250,243,.96); color: var(--ink); border: 4px solid #fff; border-radius: 20px; padding: 8px 20px 10px; box-shadow: var(--shadow); min-width: 280px; }
     .tut small { font-weight: 800; font-size: 13px; opacity: .55; text-transform: uppercase; letter-spacing: .5px; }
@@ -570,7 +589,33 @@
   </style>
 </head>
 <body>
-  <div id="splash"><div class="splash-logo"><b>F</b><b>L</b><b>O</b><b>P</b><b>P</b><b>Y</b> <b>P</b><b>A</b><b>R</b><b>T</b><b>Y</b></div><div class="splash-bar"><i></i></div><p>Loading the party...</p></div>
+  <div id="splash"><div class="splash-logo"><b>F</b><b>L</b><b>O</b><b>P</b><b>P</b><b>Y</b> <b>P</b><b>A</b><b>R</b><b>T</b><b>Y</b></div><svg class="splash-art" viewBox="0 0 300 140" aria-hidden="true">
+      <ellipse cx="150" cy="128" rx="130" ry="10" fill="#7ad35e" stroke="#2a2140" stroke-width="3"/>
+      <g class="thrower"><ellipse cx="90" cy="96" rx="22" ry="26" fill="#ff5a5f" stroke="#2a2140" stroke-width="3"/><circle cx="90" cy="62" r="17" fill="#ff5a5f" stroke="#2a2140" stroke-width="3"/><circle cx="84" cy="60" r="3" fill="#2a2140"/><circle cx="96" cy="60" r="3" fill="#2a2140"/><path d="M83 68q7 6 14 0" fill="none" stroke="#2a2140" stroke-width="2.5" stroke-linecap="round"/><path d="M70 90l-12-22M110 90l14-24" stroke="#2a2140" stroke-width="9" stroke-linecap="round"/><path d="M70 90l-12-22M110 90l14-24" stroke="#ff5a5f" stroke-width="5" stroke-linecap="round"/><path d="M78 44l12-18 12 18z" fill="#ffcf33" stroke="#2a2140" stroke-width="3" stroke-linejoin="round"/></g>
+      <g class="fly"><ellipse cx="190" cy="50" rx="17" ry="20" fill="#4aa8ff" stroke="#2a2140" stroke-width="3"/><circle cx="190" cy="24" r="13" fill="#4aa8ff" stroke="#2a2140" stroke-width="3"/><path d="M184 21l4 4M188 21l-4 4M193 21l4 4M197 21l-4 4" stroke="#2a2140" stroke-width="2" stroke-linecap="round"/><circle cx="190" cy="31" r="3" fill="#2a2140"/></g>
+      <g fill="#ffcf33" stroke="#2a2140" stroke-width="2"><path d="M240 30l3 6 6 1-4.5 4 1 6-5.5-3-5.5 3 1-6-4.5-4 6-1z"/><path d="M226 62l2 4 4 .6-3 2.8.7 4-3.7-2-3.7 2 .7-4-3-2.8 4-.6z"/></g>
+    </svg><div class="splash-bar"><i></i></div><p>Loading the party...</p><p class="splash-tip" id="splash-tip"></p></div>
+  <script>
+    // a random tip while the game loads
+    (function () {
+      var tips = [
+        'Hold <b>GRAB</b> on someone, run, then let go to <b>THROW</b> them!',
+        'A big punch can <b>knock people out</b> for a moment. Then grab them!',
+        'Pretend to be knocked out with <b>Play dead</b> (R). Bots will leave you alone!',
+        'The <b>Laugh</b> emote near someone makes them angry, and you get faster!',
+        'Try the <b>Tournament</b>: 8 players, one champion!',
+        'Build your own arena in the <b>Level Editor</b>, then share its code with a friend.',
+        'In a Party Tour, the leader wears a crown. <b>Knock out the King</b> for a bonus point!',
+        'Press <b>5, 6 or 7</b> to say "Nice!", "Oops!" or "Rematch?"',
+        'How fast can you finish the <b>World Tour speedrun</b>? Beat your record!',
+        'Win games to <b>level up</b> and unlock pets, name tags and special colors.',
+        'Pause a game and pick <b>Photo mode</b>. Then add stickers to your picture!',
+        'Stuck in a grab? <b>Mash jump</b> to break free!'
+      ];
+      var el = document.getElementById('splash-tip');
+      if (el) el.innerHTML = 'Tip: ' + tips[Math.floor(Math.random() * tips.length)];
+    })();
+  </script>
   <script src="../lib/three.min.js"></script>
   <script src="lib/cannon-es.js"></script>
   <script src="lib/peerjs.min.js"></script>
@@ -592,6 +637,7 @@
   <script src="js/profile.js"></script>
   <script src="js/season.js"></script>
   <script src="js/weekly.js"></script>
+  <script src="js/caster.js"></script>
   <script src="js/modes/kit.js"></script>
   <script src="js/modes/arena.js"></script>
   <script src="js/modes/soccer.js"></script>

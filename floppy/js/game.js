@@ -30,7 +30,7 @@ FP.Game = (function () {
   let playlist = [];         // your own list of games for a Party Tour (saved on this computer)
   try { playlist = JSON.parse(localStorage.getItem('floppy-playlist') || '[]'); } catch (e) { /* no saving */ }
   let daily = null;          // the Daily Challenge being played right now
-  let replayBuf = [], replay = null, replayPending = false; // the slow-motion replay of the last moment of a round
+  let replayBuf = [], replay = null, replayPending = false, directorWanted = false; // the slow-motion replay of the last moment of a round
   let photo = null, photoShot = false; // photo mode
   try { botSkill = FP.Bots.SKILLS[localStorage.getItem('floppy-skill')] ? localStorage.getItem('floppy-skill') : 'normal'; } catch (e) { /* no saving */ }
   const idle = { x: 0, z: 0 };
@@ -761,13 +761,14 @@ FP.Game = (function () {
     round = 0;
     resetStats();
     FP.Camera.setLift(0);
-    FP.Audio.setSong(m.song || 'party');
+    // World Tour: Lava Land, the Robot Factory and Outer Space have their own songs (the bosses keep theirs)
+    FP.Audio.setSong(story && WORLD_SONGS[story.w] && !isBoss(m.id) ? WORLD_SONGS[story.w] : m.song || 'party');
     if (FP.Net) FP.Net.matchStarted(m.id);
     startRound();
   }
 
   function startRound() {
-    replayBuf = []; replayPending = false;
+    replayBuf = []; replayPending = false; directorWanted = false;
     round++;
     FP.Stage.clear();
     FP.FX.clear();
@@ -782,6 +783,7 @@ FP.Game = (function () {
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     timer = 0;
     if (FP.Net) FP.Net.roundStarted();
+    FP.bus.emit('roundStart', round);
     if (round === 1 && humans().length && !api.skipIntro && !mode.noIntro && !tourney) showIntro();
     else goCountdown();
   }
@@ -920,6 +922,7 @@ FP.Game = (function () {
     FP.Audio.play('fall');
     const by = c.lastHitBy && c.lastHitBy !== c && performance.now() - c.lastHitTime < 6000 ? c.lastHitBy : null;
     FP.UI.toast(by ? `${by.name} knocked out ${c.name}!` : `${c.name} ${how}`);
+    FP.bus.emit('out', { c, by });
     // some games move players who are out away from the action after a moment
     if (mode && mode.removeOut) outTimers.push({ c, t: mode.removeOut });
     FP.FX.puffs(c.parts.torso.position, 12, 0xffffff, 4, 1.5);
@@ -1570,6 +1573,7 @@ FP.Game = (function () {
     { name: 'Outer Space', levels: ['skydive', 'boulder', 'bumpers', 'ufo'] },
   ];
   const BOSSES = ['boss', 'ufo'];
+  const WORLD_SONGS = { 3: 'lava', 4: 'factory', 5: 'space' };
   const isBoss = (id) => BOSSES.includes(id);
   const STORY_PRIZES = [
     { stars: 10, id: 'face:mask' }, { stars: 20, id: 'trail:gold' }, { stars: 30, id: 'outfit:knight' }, { stars: 45, id: 'dance:champ' }, { boss: 'boss', id: 'robot' }, { boss: 'ufo', id: 'alien' },
@@ -1766,7 +1770,7 @@ FP.Game = (function () {
   function recordFrame() {
     const pose = (b) => [b.position.x, b.position.y, b.position.z, b.quaternion.x, b.quaternion.y, b.quaternion.z, b.quaternion.w];
     replayBuf.push({ c: chars.map((c) => c.bodies.map(pose)), m: FP.Stage.movers.map(([, b]) => pose(b)) });
-    if (replayBuf.length > 200) replayBuf.shift();
+    if (replayBuf.length > 600) replayBuf.shift(); // (about 10 seconds)
   }
   function applyFrame(f) {
     const set = (b, v) => { b.position.set(v[0], v[1], v[2]); b.quaternion.set(v[3], v[4], v[5], v[6]); b.velocity.set(0, 0, 0); b.angularVelocity.set(0, 0, 0); };
@@ -1777,15 +1781,73 @@ FP.Game = (function () {
     replayPending = false;
     state = 'replay';
     // start the replay about 3 seconds before the end (the last frames are just the celebration)
-    replay = { frames: replayBuf.slice(0, Math.max(60, replayBuf.length - 60)), t: 0 };
+    replay = { frames: replayBuf.slice(Math.max(0, replayBuf.length - 260), Math.max(60, replayBuf.length - 60)), t: 0 };
     FP.UI.setHud('');
-    if (!replayEl) { replayEl = document.createElement('div'); replayEl.className = 'replay-bars'; replayEl.innerHTML = '<i class="top"></i><i class="bot"></i><b>REPLAY</b><small>Press jump to skip</small>'; document.body.append(replayEl); }
-    replayEl.hidden = false;
+    showReplayBars('<b>REPLAY</b><small>Press jump to skip</small>');
     if (FP.Net) FP.Net.banner('REPLAY', '');
     FP.Camera.zoomTo(0.75);
   }
+  function showReplayBars(inner) {
+    if (!replayEl) { replayEl = document.createElement('div'); replayEl.className = 'replay-bars'; document.body.append(replayEl); }
+    replayEl.innerHTML = '<i class="top"></i><i class="bot"></i>' + inner;
+    replayEl.hidden = false;
+  }
+  // DIRECTOR MODE: watch the last 10 seconds again, turning and zooming the camera, in slow motion or not
+  function startDirector() {
+    directorWanted = false; replayPending = false;
+    state = 'replay';
+    replay = { frames: replayBuf.slice(), t: 0, director: true, orbit: 0, zoom: 1, slow: false, follow: -1, grabWas: true };
+    FP.UI.setHud('');
+    dirHint(false);
+    showReplayBars(`<b>REPLAY</b><small><span>Move: turn and zoom the camera</span> <span>JUMP: slow motion</span> <span>PUNCH: follow someone</span> <span>GRAB or ESC: done</span></small><span class="rp-info"></span><span class="rp-bar"><i></i></span>`);
+    if (FP.Net) FP.Net.banner('REPLAY', 'The host is watching the replay');
+    FP.Audio.play('whoosh');
+  }
+  function directorFrame(dt) {
+    const r = replay;
+    let x = 0, z = 0, jump = false, punch = false, grab = false;
+    for (const p of humans()) {
+      if (p.source.kind === 'remote') continue;
+      const inp = FP.Input.read(p.source, 'director' + p.id);
+      x += inp.x || 0; z += inp.z || 0; jump = jump || inp.jumpPressed; punch = punch || inp.punchPressed; grab = grab || inp.grab;
+    }
+    r.orbit += Math.max(-1, Math.min(1, x)) * dt * 2;
+    r.zoom = Math.max(0.35, Math.min(1.8, r.zoom + Math.max(-1, Math.min(1, z)) * dt * 0.9));
+    if (jump) { r.slow = !r.slow; FP.Audio.play('menu'); }
+    if (punch) { r.follow = r.follow + 1 >= chars.length ? -1 : r.follow + 1; FP.Audio.play('menu'); }
+    if (grab && !r.grabWas) { endReplay(); return; }
+    r.grabWas = grab;
+    r.t += dt * (r.slow ? 0.3 : 1);
+    let i = Math.floor(r.t * 60);
+    if (i >= r.frames.length) { r.t = 0; i = 0; } // (it plays again from the start)
+    if (r.frames[i]) applyFrame(r.frames[i]);
+    FP.Camera.zoomTo(r.zoom);
+    const bar = replayEl && replayEl.querySelector('.rp-bar i');
+    if (bar) bar.style.width = `${Math.round((i / Math.max(1, r.frames.length - 1)) * 100)}%`;
+    const info = replayEl && replayEl.querySelector('.rp-info');
+    if (info) info.textContent = `${r.slow ? 'Slow motion' : 'Normal speed'}  |  Camera: ${r.follow >= 0 && chars[r.follow] ? chars[r.follow].name : 'everyone'}`;
+  }
+  window.addEventListener('keydown', (e) => {
+    if (FP.Net && FP.Net.isClient()) return;
+    if (e.code === 'KeyV' && state === 'roundOver' && !paused && humans().length && replayBuf.length > 60 && !(mode && mode.render)) { e.preventDefault(); askDirector(); }
+    if (e.code === 'Escape' && state === 'replay' && replay && replay.director) { e.preventDefault(); endReplay(); }
+  });
+  function askDirector() {
+    if (directorWanted) return;
+    directorWanted = true;
+    FP.Audio.play('select');
+    if (dirHintEl) dirHintEl.innerHTML = '<b>Replay coming up!</b>';
+  }
+  // the little "watch the replay" hint while a round ends
+  let dirHintEl = null;
+  function dirHint(show) {
+    if (!show) { if (dirHintEl) dirHintEl.hidden = true; return; }
+    if (!dirHintEl) { dirHintEl = document.createElement('button'); dirHintEl.className = 'dir-hint'; dirHintEl.type = 'button'; dirHintEl.hidden = true; dirHintEl.addEventListener('click', () => { if (state === 'roundOver') askDirector(); }); FP.UI.root.append(dirHintEl); }
+    if (dirHintEl.hidden) { dirHintEl.innerHTML = directorWanted ? '<b>Replay coming up!</b>' : `${ICON.play} Watch the replay: <kbd>V</kbd> or controller <kbd>Back</kbd>`; dirHintEl.hidden = false; }
+  }
   function replayFrame(dt) {
     if (!replay) { endReplay(); return; }
+    if (replay.director) { directorFrame(dt); return; }
     replay.t += dt * 0.45;
     const i = Math.floor(replay.t * 60);
     const skip = humans().some((p) => p.source.kind !== 'remote' && FP.Input.read(p.source, 'replay' + p.id).jumpPressed);
@@ -1796,6 +1858,7 @@ FP.Game = (function () {
     replay = null;
     if (replayEl) replayEl.hidden = true;
     FP.Camera.zoomTo(1);
+    dirHint(false);
     if (matchOver()) results(); else nextRound();
   }
   // a quick screen wipe, then the next round
@@ -2090,15 +2153,16 @@ FP.Game = (function () {
     FP.UI.update(dt);
     FP.Fun.update(dt, FP.Net && FP.Net.isClient() ? 'client' : state);
     titleT += dt;
-    FP.Camera.setOrbit(state === 'title' ? Math.sin(titleT * 0.12) * 0.45 : state === 'replay' && replay ? Math.sin(replay.t * 1.4) * 0.7 : 0);
+    FP.Camera.setOrbit(state === 'title' ? Math.sin(titleT * 0.12) * 0.45 : state === 'replay' && replay ? (replay.director ? replay.orbit : Math.sin(replay.t * 1.4) * 0.7) : 0);
     FP.Camera.setShift(state === 'title' && innerWidth > 800 ? 3.2 : 0);
     FP.Props.animate(dt);
     FP.Season.update(dt); // falling snow in winter
     updatePets(dt);
     updateKingCrown();
+    FP.Caster.update(dt);
     if (!paused && state !== 'replay') FP.Style.update(dt, chars); // sparkly trails
     const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
-    FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));
+    FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen || (state === 'replay' && replay && replay.director)));
     if (FP.Net && FP.Net.isClient()) {
       FP.Audio.duck(false);
       FP.Net.clientFrame(dt);
@@ -2106,13 +2170,13 @@ FP.Game = (function () {
       return;
     }
     padPause();
-    if (state !== 'roundOver') hideBoard();
+    if (state !== 'roundOver') { hideBoard(); dirHint(false); }
     FP.Audio.duck(paused && !photo);
     if (paused) { if (photo) photoFrame(dt); return; }
     if (state === 'lobby') lobbyJoins();
     if (state === 'editor') FP.Editor.update(dt);
     if (slowmo > 0) { slowmo -= dt; dt *= 0.3; if (slowmo <= 0) FP.Camera.zoomTo(1); }
-    else if (state !== 'roundOver') FP.Camera.zoomTo(1);
+    else if (state !== 'roundOver' && state !== 'replay') FP.Camera.zoomTo(1);
 
     // physics runs in fixed little steps (60 per second)
     // hit-stop: on a big hit everything freezes for a split second (it makes hits feel strong)
@@ -2152,7 +2216,10 @@ FP.Game = (function () {
       timer += dt;
       if (mode.update) mode.update(dt, chars, api, true);
       if (timer > 1.1 && timer - dt <= 1.1 && !mode.single && !matchOver()) showBoard();
-      if (timer > 3.2) { if (replayPending) startReplay(); else if (matchOver()) results(); else nextRound(); }
+      // (controller: Back asks for the replay; keyboard: V)
+      if (!directorWanted && humans().some((p) => p.source.kind === 'pad' && FP.Input.read(p.source, 'dirask' + p.id).colorPressed) && replayBuf.length > 60 && !mode.render) askDirector();
+      dirHint(timer > 0.4 && humans().some((p) => p.source.kind !== 'remote') && replayBuf.length > 60 && !mode.render);
+      if (timer > 3.2) { dirHint(false); if (directorWanted) startDirector(); else if (replayPending) startReplay(); else if (matchOver()) results(); else nextRound(); }
     } else if (state === 'replay') {
       replayFrame(dt);
     } else if (state === 'intro') {
@@ -2176,7 +2243,8 @@ FP.Game = (function () {
     FP.FX.update(dt);
     FP.Stage.update(dt, timer, FP.Camera.target);
     const playing = mode && ['countdown', 'play', 'roundOver'].includes(state);
-    const focus = state === 'replay' ? chars.filter((c) => c.parts.torso.position.y > -4).map(FP.Ragdoll.center) : playing && mode.focus ? mode.focus(chars) : chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
+    const follow = state === 'replay' && replay && replay.director && replay.follow >= 0 ? chars[replay.follow] : null;
+    const focus = follow ? [FP.Ragdoll.center(follow)] : state === 'replay' ? chars.filter((c) => c.parts.torso.position.y > -4).map(FP.Ragdoll.center) : playing && mode.focus ? mode.focus(chars) : chars.filter((c) => c.alive && c.parts.torso.position.y > (mode && mode.focusMinY !== undefined ? mode.focusMinY() : -4)).map(FP.Ragdoll.center);
     FP.Camera.update(focus.length ? focus : chars.map(FP.Ragdoll.center), dt, state === 'results' ? 7 : mode && state !== 'lobby' ? (mode.minZoom || 12) : 11);
     FP.UI.nameTags(chars, FP.Camera.camera, ['lobby', 'countdown', 'play', 'roundOver'].includes(state) && !(mode && mode.noTags && state !== 'lobby'));
     if (FP.Net) FP.Net.hostFrame(dt);

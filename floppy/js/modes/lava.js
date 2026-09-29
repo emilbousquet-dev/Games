@@ -181,7 +181,7 @@ FP.Modes.lava = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#ffe0c2"/><rect x="52" y="6" width="16" height="64" fill="#b9a38a" stroke="#2a2140" stroke-width="2.5"/><rect x="18" y="52" width="26" height="6" rx="2" fill="#d4f5c4" stroke="#2a2140" stroke-width="2"/><rect x="76" y="40" width="26" height="6" rx="2" fill="#cfe8ff" stroke="#2a2140" stroke-width="2"/><rect x="22" y="28" width="26" height="6" rx="2" fill="#fff1b8" stroke="#2a2140" stroke-width="2"/><rect x="74" y="16" width="26" height="6" rx="2" fill="#ffd6e7" stroke="#2a2140" stroke-width="2"/><path d="M0 64q10-6 20 0t20 0 20 0 20 0 20 0 20 0v16H0z" fill="#ff6a1a"/><circle cx="30" cy="70" r="3" fill="#ffc04a"/><circle cx="90" cy="72" r="2.5" fill="#ffc04a"/><ellipse cx="87" cy="10" rx="5" ry="6" fill="#4aa8ff" stroke="#2a2140" stroke-width="2"/></svg>';
 
   return {
-    id: 'lava', name: 'Lava Rising', roundsToWin: 2, minTotal: 2, removeOut: 1.5, song: 'tense', minZoom: 19, art: ART,
+    id: 'lava', name: 'Lava Rising', roundsToWin: 2, minTotal: 2, removeOut: 1.5, song: 'lava', minZoom: 19, art: ART,
     desc: 'The floor is lava and it keeps rising! Jump up the platforms and be the last one out of the lava.',
     build, spawn, update, botThink, hud, visual,
     focusMinY: () => lavaY - 1,

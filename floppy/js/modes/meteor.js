@@ -128,7 +128,7 @@ FP.Modes.meteor = (function () {
   const ART = '<svg viewBox="0 0 120 80"><rect width="120" height="80" rx="12" fill="#ffc9a8"/><ellipse cx="60" cy="62" rx="50" ry="13" fill="#8fbf6a" stroke="#2a2140" stroke-width="2"/><ellipse cx="78" cy="62" rx="14" ry="4" fill="#ff3a3a" opacity=".5" stroke="#ff3a3a" stroke-width="2"/><path d="M104 6L82 44" stroke="#ffcf33" stroke-width="9" stroke-linecap="round" opacity=".6"/><circle cx="82" cy="44" r="7" fill="#6a4c3a" stroke="#2a2140" stroke-width="2"/><circle cx="82" cy="44" r="10" fill="#ff9a3c" opacity=".35"/><ellipse cx="40" cy="54" rx="6" ry="8" fill="#5cc44a" stroke="#2a2140" stroke-width="2"/><circle cx="40" cy="43" r="5" fill="#5cc44a" stroke="#2a2140" stroke-width="2"/></svg>';
 
   self = {
-    id: 'meteor', name: 'Meteor Shower', roundsToWin: 2, minTotal: 2, removeOut: 1.5, song: 'tense', minZoom: 16, art: ART,
+    id: 'meteor', name: 'Meteor Shower', roundsToWin: 2, minTotal: 2, removeOut: 1.5, song: 'lava', minZoom: 16, art: ART,
     desc: 'Meteors fall from the sky! Red circles show where they land. Get out of the way!',
     build, spawn, update, botThink, hud, visual,
     netState: () => rocks.map((m) => (m.on ? [Math.round(m.x * 10) / 10, Math.round(m.z * 10) / 10, Math.round(m.t * 10) / 10] : 0)),
