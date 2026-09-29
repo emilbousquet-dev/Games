@@ -80,7 +80,7 @@ MH.Player = (function () {
     P.pitch = U.clamp(P.pitch, -1.25, 1.2);
     // --- walking ---
     const bat = P.powerT > 0 && P.boss === 'vampire';
-    let speed = inp.run ? (P.boss === 'werewolf' ? 7.0 : 5.6) : 3.5;
+    let speed = inp.run ? (P.boss === 'werewolf' ? 7.8 : 6.6) : 4.3;
     if (bat) speed = 10;
     const fx = -Math.sin(P.yaw), fz = -Math.cos(P.yaw);
     const rx = Math.cos(P.yaw), rz = -Math.sin(P.yaw);

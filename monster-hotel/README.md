@@ -33,7 +33,7 @@ Keep every monster happy... or the hotel gets **closed down**!
 - 😱 **Humans** sneak in and scare the guests. Walk up to them and press `E` to go **BOO!**
 - ⭐ Happy guests leave **5-star reviews** when they leave. Grumpy ones leave 1 star.
   If your **Hotel Rating** drops below **1.5 stars**, the hotel is closed!
-- 🌙 Survive until **6 AM** (sunrise). Every night gets busier, with new monsters and new problems.
+- 🌙 Survive until **6 AM** (sunrise). Storms start on Night 2, humans on Night 4, and new monsters keep arriving, but slowly. Take your time!
 
 Room lamps: 🟢 free and clean · 🔴 a guest is staying · 🟠 dirty, clean it!
 
@@ -52,10 +52,10 @@ Room lamps: 🟢 free and clean · 🔴 a guest is staying · 🟠 dirty, clean 
 |---|---|---|
 | Vampires | Blood Smoothies, towels | 1 |
 | Werewolves | Giant Bones, towels, **belly rubs** | 1 |
-| Mummies | Fresh Bandages, Bug Soup | 2 |
-| Ghosts | Ecto-Jelly, towels | 3 |
-| Big Monsters | Lightning Jars, Bug Soup | 4 |
-| Blobs | Bug Soup, Ecto-Jelly | 5 |
+| Mummies | Fresh Bandages, Bug Soup | 3 |
+| Ghosts | Ecto-Jelly, towels | 4 |
+| Big Monsters | Lightning Jars, Bug Soup | 5 |
+| Blobs | Bug Soup, Ecto-Jelly | 6 |
 
 ## Change the game!
 

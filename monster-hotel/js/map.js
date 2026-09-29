@@ -67,19 +67,19 @@ MH.MONSTERS = {
     names: ['Wolfgang', 'Howlie', 'Barkley', 'Fuzzy Frank', 'Lupita', 'Sir Sniffs', 'Grr-trude', 'Chompers'],
   },
   mummy: {
-    title: 'Mummy', wants: ['bandage', 'bandage', 'soup'], firstNight: 2,
+    title: 'Mummy', wants: ['bandage', 'bandage', 'soup'], firstNight: 3,
     names: ['Pharaoh Phil', 'Tutti Wrapson', 'Queen Nefer-tissue', 'Ramses the Rolled', 'Wrappy', 'Cleo-patchy'],
   },
   ghost: {
-    title: 'Ghost', wants: ['jelly', 'jelly', 'towel'], firstNight: 3,
+    title: 'Ghost', wants: ['jelly', 'jelly', 'towel'], firstNight: 4,
     names: ['Boo-Boo', 'Wispy', 'Mr. Boolington', 'Lady Floatsworth', 'Spooky Sue', 'Sheetsy'],
   },
   frankie: {
-    title: 'Monster', wants: ['jar', 'jar', 'soup'], firstNight: 4,
+    title: 'Monster', wants: ['jar', 'jar', 'soup'], firstNight: 5,
     names: ['Big Frank', 'Sparky', 'Boltz', 'Stitches', 'Frankenbert', 'Voltina'],
   },
   blob: {
-    title: 'Blob', wants: ['soup', 'jelly', 'soup'], firstNight: 5,
+    title: 'Blob', wants: ['soup', 'jelly', 'soup'], firstNight: 6,
     names: ['Globby', 'Gloop', 'Jiggles', 'Squishy Pete', 'Oozie', 'Wobbles'],
   },
 };
@@ -99,25 +99,26 @@ MH.BOSSES = [
 // ---------- how hard each night is ----------
 MH.night = function (n) {
   return {
-    length: Math.min(170 + (n - 1) * 25, 290),        // seconds from 8 PM to 6 AM
-    arriveEvery: Math.max(7, 23 - n * 3),            // seconds between new guests
-    stay: [65 + n * 4, 105 + n * 6],                 // how long guests stay (seconds)
-    askEvery: [Math.max(9, 22 - n * 2), Math.max(16, 34 - n * 2.5)], // seconds between requests
-    grumpy: 0.75 + (n - 1) * 0.15,                   // how fast guests get grumpy
-    humans: n >= 3 ? Math.max(24, 70 - (n - 3) * 10) : 0,  // seconds between humans sneaking in
-    storms: n >= 2 ? Math.max(18, 55 - n * 6) : 0,   // seconds between windows blowing open
-    messes: Math.max(14, 40 - n * 4),                // seconds between guests making a mess
+    length: Math.min(160 + (n - 1) * 15, 240),          // seconds from 8 PM to 6 AM
+    arriveEvery: Math.max(12, 30 - n * 2.5),           // seconds between new guests
+    stay: [60 + n * 3, 95 + n * 4],                    // how long guests stay (seconds)
+    askEvery: [Math.max(14, 30 - n * 2), Math.max(24, 46 - n * 2.5)], // seconds between requests
+    grumpy: Math.min(1, 0.4 + (n - 1) * 0.08),         // how fast guests get grumpy
+    humans: n >= 4 ? Math.max(40, 90 - (n - 4) * 10) : 0,  // seconds between humans sneaking in
+    storms: n >= 2 ? Math.max(30, 75 - n * 6) : 0,     // seconds between windows blowing open
+    messes: Math.max(25, 55 - n * 4),                  // seconds between guests making a mess
   };
 };
 
 // what's new each night (shown at the start of the night)
 MH.NEWS = {
-  1: ['Welcome to your hotel, Boss!', 'Check guests in at the front desk and bring them what they ask for.'],
-  2: ['NEW: Mummies are checking in!', 'They need Fresh Bandages. And watch out: storms can blow the windows open!'],
-  3: ['NEW: Ghosts and... HUMANS?!', 'Humans sneak in and scare the guests. Walk up to them and press E to scare them away!'],
-  4: ['NEW: Big Monsters!', 'They need Lightning Jars to recharge their bolts.'],
-  5: ['NEW: Blobs!', 'They love Bug Soup and Ecto-Jelly. Everyone is checking in tonight!'],
-};
+  1: ['Welcome to your hotel, Boss!', 'Check guests in at the front desk and bring them what they ask for. Take your time!'],
+  2: ['NEW: Stormy weather!', 'Storms can blow a window open. Close it by looking at it and pressing E.'],
+  3: ['NEW: Mummies are checking in!', 'They need Fresh Bandages from the Supplies room.'],
+  4: ['NEW: Ghosts and... HUMANS?!', 'Humans sneak in and scare the guests. Walk up to them and press E to scare them away!'],
+  5: ['NEW: Big Monsters!', 'They need Lightning Jars to recharge their bolts.'],
+  6: ['NEW: Blobs!', 'They love Bug Soup and Ecto-Jelly. Everyone is checking in tonight!'],
+}
 
 // ---------- reviews ----------
 MH.REVIEWS = {

@@ -316,7 +316,7 @@ MH.Game = (function () {
       H.review(g.name, KIND_NAME[g.kind] || g.kind, stars, text);
       A.review(stars);
       const before = S.rating;
-      S.rating = U.clamp(S.rating + (stars - S.rating) * 0.16, 0, 5);
+      S.rating = U.clamp(S.rating + (stars - S.rating) * 0.1, 0, 5);
       H.setRating(S.rating);
       H.pulseRating(S.rating >= before);
       W.setRating(S.rating);
@@ -406,7 +406,7 @@ MH.Game = (function () {
     }
     if (S.hours < 9.3) {
       tm.human -= dt;
-      const maxH = 1 + Math.floor((S.night - 3) / 2);
+      const maxH = 1 + Math.floor((S.night - 4) / 3);
       if (tm.human <= 0) {
         tm.human = n.humans * U.rand(0.7, 1.3);
         if (Gs.humans.filter((h) => h.state === 'sneak').length < maxH) {
@@ -650,8 +650,8 @@ MH.Game = (function () {
     // stress: grumpy guests + humans
     const grumpy = Gs.list.filter((g) => g.happy < 30 && g.state !== 'leave' && g.state !== 'storm').length;
     const stress = U.clamp(grumpy * 0.2 + Gs.humans.filter((h) => h.state === 'sneak').length * 0.3, 0, 1);
-    H.setStress(stress * 0.7);
-    A.setIntensity(stress * 0.7 + (S.night - 1) * 0.06);
+    H.setStress(stress * 0.35);
+    A.setIntensity(stress * 0.35 + (S.night - 1) * 0.03);
     const lm = $('lockmsg');
     lm.style.display = !AUTO && !In.mouse.locked && state === 'play' && S.time < 25 ? 'block' : 'none';
     lm.textContent = In.mouse.noLock ? 'Hold the mouse button and drag to look around' : 'Click to look around with the mouse';

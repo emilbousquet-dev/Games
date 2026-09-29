@@ -72,7 +72,7 @@ MH.Guests = (function () {
       id: nextId++, kind, style, model, name: pickName(kind),
       x: e.x + U.rand(-0.8, 0.8), z: e.z, yaw: Math.PI, speed: SPEED[kind] * U.rand(0.9, 1.1),
       state: 'arrive', path: null, pathI: 0, target: null,
-      happy: U.clamp(56 + ctx.rating * 5, 50, 90), room: null, request: null,
+      happy: U.clamp(66 + ctx.rating * 4, 60, 92), room: null, request: null,
       stay: U.rand(ctx.night.stay[0], ctx.night.stay[1]),
       nextAsk: U.rand(4, 9), talkT: 0, scaredT: 0, seenCd: 0, idleT: 0, hangT: 0, sleepy: 0,
       bubble: makeBubble(), lookAt: null, moveSpeed: 0, queueSlot: -1, served: 0, checkedIn: false,
@@ -168,7 +168,7 @@ MH.Guests = (function () {
           if (U.dist(g.x, g.z, spot.x, spot.z) > 0.3) { if (!g.target || U.dist(g.target.x, g.target.z, spot.x, spot.z) > 0.3) goTo(g, spot.x, spot.z); walk(g, dt); }
           else { g.moveSpeed = 0; face(g, W.desk.x, W.desk.z, dt); }
           g.waitT = (g.waitT || 0) + dt;
-          drain = 0.7 + Math.min(g.waitT, 40) * 0.025;
+          drain = 0.5 + Math.min(g.waitT, 40) * 0.015;
           if (g.waitT > 18 && Math.random() < dt * 0.08) say(g, U.pick(['Hellooo? Anybody?', '*taps foot*', 'I\'ve been waiting forever!']), -0.5);
           break;
         }
@@ -226,19 +226,19 @@ MH.Guests = (function () {
           }
         } else {
           g.request.age += dt * (ctx.frozen ? 0 : 1);
-          drain += 0.75 + Math.min(g.request.age, 50) * 0.03;
+          drain += 0.5 + Math.min(g.request.age, 50) * 0.015;
         }
         // problems in the room
         const R = g.room;
         if (R && g.state === 'inRoom') {
-          drain += Math.min(R.messes.length, 3) * 0.45;
-          if (R.window && R.window.target > 0) drain += 1.3;
+          drain += Math.min(R.messes.length, 3) * 0.3;
+          if (R.window && R.window.target > 0) drain += 0.8;
         }
         g.stay -= dt * (ctx.frozen ? 0 : 1);
         if (g.stay <= 0 && !g.request) checkout(g, false);
       }
       // happy guests relax
-      if (drain === 0 && g.checkedIn) g.happy = Math.min(100, g.happy + dt * 0.35);
+      if (drain === 0 && g.checkedIn) g.happy = Math.min(100, g.happy + dt * 0.6);
       g.happy -= drain * grumpy * dt;
       if (g.happy <= 0 && g.state !== 'storm' && g.state !== 'leave') {
         g.happy = 0;
@@ -255,12 +255,12 @@ MH.Guests = (function () {
         if (d < 7 && W.canSee(g.x, g.z, h.x, h.z)) {
           if (g.seenCd <= 0) {
             g.seenCd = 4;
-            if (!ctx.frozen) g.happy -= 10;
+            if (!ctx.frozen) g.happy -= 6;
             g.scaredT = 2.5;
             say(g, U.pick(['AAAH! A HUMAN!', 'EEEK! HUMAN!', 'Get it away from me!!', 'A h-h-human?!']), -1);
             if (G.on.scared) G.on.scared(g, h);
           }
-          if (!ctx.frozen) g.happy -= 1.8 * dt;
+          if (!ctx.frozen) g.happy -= 1.0 * dt;
           g.scaredT = Math.max(g.scaredT, 0.5);
         }
       }
@@ -399,7 +399,7 @@ MH.Guests = (function () {
           h.photoT = U.rand(5, 8);
           h.flashT = 0.15;
           A.flash();
-          for (const g of G.list) if (U.dist(g.x, g.z, h.x, h.z) < 6 && W.canSee(g.x, g.z, h.x, h.z) && !ctx.frozen) { g.happy -= 6; g.scaredT = 2; }
+          for (const g of G.list) if (U.dist(g.x, g.z, h.x, h.z) < 6 && W.canSee(g.x, g.z, h.x, h.z) && !ctx.frozen) { g.happy -= 3; g.scaredT = 2; }
           if (G.on.flash) G.on.flash(h);
         }
         if (h.life <= 0) { h.state = 'flee'; h.speed = 2; h.path = null; h.target = null; }
