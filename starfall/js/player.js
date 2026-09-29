@@ -6,7 +6,6 @@ window.SF = window.SF || {};
 
 // ------------------------------------------------------------
 //  AVATAR: the 3D astronaut and its animations.
-//  Used for you AND for your online friend.
 // ------------------------------------------------------------
 SF.Avatar = class {
   constructor(scene, accent, name) {
@@ -213,10 +212,6 @@ SF.Player = class {
     this.down = true; this.downT = 0; this.gliding = false; this.aiming = false; this.blocking = false;
     SF.Game.onPlayerDown(this);
   }
-  revive(hp = 8) {
-    this.down = false; this.hp = Math.min(this.maxHp, hp); this.inv = 2;
-    SF.Audio.sfx('revive');
-  }
   heal(n) { this.hp = Math.min(this.maxHp, this.hp + n); }
 
   // ---------- every frame ----------
@@ -230,7 +225,7 @@ SF.Player = class {
     // ---- the camera turns with the mouse / right stick ----
     if (!SF.Game.cutscene) {
       this.camYaw -= inp.lookX;
-      this.camPitch = U.clamp(this.camPitch + inp.lookY, -0.45, 1.25);
+      this.camPitch = U.clamp(this.camPitch + inp.lookY, this.aiming ? -1.15 : -0.45, 1.25);
     }
     if (inp.pad && !inp.lookX && (Math.abs(inp.mx) > 0.2) && !this.aiming) {
       // controller: the camera slowly turns to follow where you run
@@ -326,6 +321,12 @@ SF.Player = class {
     // ---- sword ----
     if (!locked && inp.attackPressed && !this.aiming && !this.blocking && !this.swimming && !this.gliding && this.attackT < 0) {
       this.combo = this.comboWindow > 0 ? (this.combo + 1) % 3 : 0;
+      // like in Zelda: turn toward the closest enemy
+      const tg = SF.Creatures.nearestEnemy(this.pos, 5.5);
+      if (tg) {
+        const ang = Math.atan2(tg.x - this.pos.x, tg.z - this.pos.z);
+        if (moveLen < 0.1 || Math.abs(SF.U.angleDiff(this.facing, ang)) < 1.8) this.facing = ang;
+      }
       this.comboCount++;
       this.attackT = 0; this.hitDone = false;
       this.attackDur = this.combo === 2 ? 0.42 : 0.3;
@@ -351,10 +352,9 @@ SF.Player = class {
       this.camera.getWorldDirection(dir);
       // aim at what is in the middle of the screen
       const start = new THREE.Vector3(this.pos.x + Math.sin(this.facing) * 0.6, this.pos.y + 1.45, this.pos.z + Math.cos(this.facing) * 0.6);
-      const far = this.camera.position.clone().addScaledVector(dir, 60);
+      const far = SF.Game.aimPoint(this.camera.position, dir, 90);
       const aimDir = far.sub(start).normalize();
-      SF.Creatures.shootArrow(start, aimDir, 'me');
-      if (SF.Net.active) SF.Net.sendArrow(start, aimDir);
+      SF.Creatures.shootArrow(start, aimDir);
       SF.Audio.sfx('bowShoot');
     }
 
@@ -413,7 +413,7 @@ SF.Player = class {
         // landing!
         if (!wasGrounded) {
           const fall = this.fallStart !== null ? this.fallStart - p.y : 0;
-          if (fall > 14 && !this.gliding) this.hurt(Math.min(12, Math.round((fall - 14) * 0.5) + 2));
+          if (fall > 16 && !this.gliding) this.hurt(Math.min(8, Math.round((fall - 16) * 0.25) + 2));
           if (this.vel.y < -6) { SF.Audio.sfx('land'); SF.FX && SF.FX.puff(p.x, p.y, p.z, 0xd0c0e0, 5); }
         }
         this.vel.y = 0;
@@ -505,7 +505,7 @@ SF.Player = class {
     if (Math.abs(cam.fov - fov) > 0.1) { cam.fov = U.damp(cam.fov, fov, 8, dt); cam.updateProjectionMatrix(); }
   }
 
-  // what the avatar should show (also sent to your online friend)
+  // what the avatar should show
   state() {
     return {
       x: this.pos.x, y: this.pos.y, z: this.pos.z, f: this.facing, sp: this.speedNow, vy: this.vel.y,

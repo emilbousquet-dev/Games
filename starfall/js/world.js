@@ -11,6 +11,7 @@ SF.World = (function () {
   const interactables = [];
   const chests = [], shards = [], loot = [], towers = [], beacons = [], temples = [], arenas = [], puzzles = [], npcs = [];
   let ship, arenaLight, lootId = 0;
+  const pillarPath = [];
   const W = () => SF.State.world;
 
   // a fresh saved world
@@ -66,7 +67,7 @@ SF.World = (function () {
     for (const s of [-1, 1]) { const p = local(L.crash.x, L.crash.z, s * 3.6, -1.2, 0.6); Ph.addCyl(p.x, p.z, 1.4, sy - 1, sy + 1.4); }
     Ph.clear(L.crash.x, L.crash.z, 22);
     addInteract({
-      x: L.crash.x, z: L.crash.z, y: sy, r: 6,
+      x: L.crash.x, z: L.crash.z, y: sy, r: 10,
       label: () => (W().parts.every((p) => p) ? 'Repair the ship and FLY HOME!' : 'Your ship (' + W().parts.filter((p) => p).length + '/4 parts)'),
       act: () => SF.Story.shipTalk(),
     });
@@ -206,23 +207,24 @@ SF.World = (function () {
     // ---------- THE PILLARS UP TO THE LAVA RIFT (you need jet boots!) ----------
     {
       const c = T.lavaCenter;
-      const n = 16;
+      const n = 20, arc = 0.8;
       const a0 = Math.PI - 0.35;
       const p0 = { x: c.x + Math.cos(a0) * 98, z: c.z + Math.sin(a0) * 98 };
       let rimH = 0;
       for (let a = 0; a < 6.28; a += 0.2) rimH = Math.max(rimH, T.heightAt(c.x + Math.cos(a) * 72, c.z + Math.sin(a) * 72));
-      const endA = a0 + 0.62;
+      const endA = a0 + arc;
       const endH = T.heightAt(c.x + Math.cos(endA) * 77, c.z + Math.sin(endA) * 77) + 0.8;
       const startH = T.heightAt(p0.x, p0.z) + 2.4;
       for (let k = 0; k < n; k++) {
         const t = k / (n - 1);
-        const a = a0 + t * 0.62, r = U.lerp(98, 79.5, t);
+        const a = a0 + t * arc, r = U.lerp(98, 79.5, t);
         const x = c.x + Math.cos(a) * r, z = c.z + Math.sin(a) * r;
         const top = U.lerp(startH, endH, t);
         const g = T.heightAt(x, z);
         const m = Mo.pillar(top - g + 3);
         place(m, x, z, g - 3);
         Ph.addCyl(x, z, 1.5, g - 5, top);
+        pillarPath.push({ x, z, top });
         Ph.clear(x, z, 3);
       }
     }
@@ -482,8 +484,8 @@ SF.World = (function () {
       p.camYaw = 0; p.facing = Math.PI; p.camInit = false;
       SF.Sky.S.indoor = { fog: [0x10261e, 0x2a1a10, 0x101a2a, 0x1a0806][i] };
       arenaLight.position.set(a.x, a.y + 12, a.z);
-      arenaLight.color.set(Mo.TEMPLE_COLORS[i].glow);
-      arenaLight.intensity = 3;
+      arenaLight.color.set(Mo.TEMPLE_COLORS[i].glow).lerp(new THREE.Color(0xffffff), 0.6);
+      arenaLight.intensity = 1.2;
       SF.HUD.zone(L.temples[i].name);
       if (!W().bosses[i]) SF.Story.bossIntro(i);
     });
@@ -497,24 +499,19 @@ SF.World = (function () {
       p.camYaw = tp.ry; p.facing = tp.ry; p.camInit = false;
       SF.Sky.S.indoor = null;
       arenaLight.intensity = 0;
-      if (!SF.Net.active || SF.Net.isHost) {
-        const boss = SF.Creatures.bossIn(arenas[i]);
-        const friendInside = SF.Game.targets().some((t) => t.id !== 'me' && Ph.arenaAt(t.pos.x, t.pos.z) === arenas[i]);
-        if (boss && !friendInside) { SF.Creatures.clearArena(arenas[i]); }
-      }
+      if (SF.Creatures.bossIn(arenas[i])) SF.Creatures.clearArena(arenas[i]);
     });
   }
   function inArena(p) { const a = Ph.arenaAt(p.x, p.z); return a || null; }
 
   // ============================================================
-  //  WORLD EVENTS (shared with your online friend)
+  //  WORLD EVENTS (chests, shards, puzzles, bosses...)
   // ============================================================
   function event(ev) {
-    apply(ev, false);
-    if (SF.Net.active) SF.Net.event(ev);
+    apply(ev);
   }
 
-  function apply(ev, fromNet) {
+  function apply(ev) {
     const w = W(), me = SF.State.me, P = SF.Game.player;
     switch (ev.t) {
       case 'chest': {
@@ -525,8 +522,8 @@ SF.World = (function () {
         SF.Audio.sfx('chest');
         SF.FX.burst(c.x, c.y + 1, c.z, 0x70f0ff, 30);
         if (c.content.heart) {
-          setTimeout(() => SF.Story.gotHeartPiece(fromNet), 700);
-        } else if (!fromNet) {
+          setTimeout(() => SF.Story.gotHeartPiece(), 700);
+        } else {
           me.shards += c.content.shards;
           SF.HUD.toast('+' + c.content.shards + ' star shards!', 0xffe040);
         }
@@ -538,7 +535,7 @@ SF.World = (function () {
         w.shards[ev.id] = true;
         const s = shards.find((s) => s.id === ev.id);
         if (s) { scene.remove(s.m); SF.FX.sparks(s.x, s.y, s.z, 0xffe040, 8, 3); }
-        if (!fromNet) { me.shards += 1; SF.Audio.sfx('shard'); }
+        me.shards += 1; SF.Audio.sfx('shard');
         break;
       }
       case 'tower': {
@@ -558,7 +555,7 @@ SF.World = (function () {
         SF.Audio.sfx('beacon');
         const b = beacons[ev.i];
         SF.FX.burst(b.x, b.y + 3, b.z, 0x60f0ff, 40);
-        if (!fromNet) { P.heal(99); SF.HUD.toast('Beacon activated! You can travel here, and it saves your game.', 0x60f0ff); }
+        P.heal(99); SF.HUD.toast('Beacon activated! You can travel here, and it saves your game.', 0x60f0ff);
         SF.Game.save();
         break;
       }
@@ -587,7 +584,7 @@ SF.World = (function () {
         w.parts[ev.i] = true;
         const pw = L.temples[ev.i].power;
         if (pw) w.powers[pw] = true;
-        SF.Story.gotReward(ev.i, fromNet);
+        SF.Story.gotReward(ev.i);
         SF.Game.save();
         break;
       }
@@ -596,7 +593,6 @@ SF.World = (function () {
         if (a && a.pillars[ev.p] && !a.pillars[ev.p].broken) breakPillar(a, a.pillars[ev.p]);
         break;
       }
-      case 'kill': SF.Creatures.remoteKill(ev); break;
       case 'flag': w.flags[ev.k] = ev.v; break;
       case 'ending': SF.Story.ending(); break;
     }
@@ -653,6 +649,11 @@ SF.World = (function () {
       }
     }
     return false;
+  }
+
+  function targetAt(p, r) {
+    for (const pz of puzzles) if (pz.kind === 'targets') for (const t of pz.targets) if (Math.hypot(p.x - t.x, p.y - t.y, p.z - t.z) < r) return t;
+    return null;
   }
 
   let race = null;
@@ -807,7 +808,7 @@ SF.World = (function () {
       a.part.rotation.y = time * 1.5;
       a.part.position.y = 1.8 + Math.sin(time * 2) * 0.2;
       // start the boss fight when someone walks in
-      if ((!SF.Net.active || SF.Net.isHost) && !w.bosses[a.i] && !SF.Creatures.bossIn(a)) {
+      if (!w.bosses[a.i] && !SF.Creatures.bossIn(a)) {
         const inside = SF.Game.targets().some((t) => Ph.arenaAt(t.pos.x, t.pos.z) === a && dist(t.pos.x, t.pos.z, a.x, a.z) < a.r - 3.5);
         if (inside) SF.Creatures.spawnBoss(a);
       }
@@ -842,9 +843,9 @@ SF.World = (function () {
   }
 
   return {
-    newState, build, update, event, apply, nearestInteract, meleeHit, arrowHit, dropLoot, bossDefeated, breakPillar,
+    newState, build, update, event, apply, nearestInteract, meleeHit, arrowHit, targetAt, dropLoot, bossDefeated, breakPillar,
     enterTemple, leaveTemple, inArena, isDoorOpen,
-    temples, arenas, towers, beacons, chests, shards, puzzles, npcs,
+    temples, arenas, towers, beacons, chests, shards, puzzles, npcs, pillarPath,
     get ship() { return ship; },
   };
 })();

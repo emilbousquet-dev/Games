@@ -1,8 +1,6 @@
 // ============================================================
 //  STARFALL — CREATURES: enemies, bosses, friendly floofs,
 //  arrows and flying magic balls.
-//  In online games the HOST moves the enemies and tells the friend
-//  where they are.
 // ============================================================
 window.SF = window.SF || {};
 
@@ -16,7 +14,6 @@ SF.Creatures = (function () {
   const floofs = [];
   const camps = [];
   let nightSpawnT = 10, nightCount = 0, uid = 0;
-  const isHost = () => !SF.Net.active || SF.Net.isHost;
 
   // ============================================================
   //  TYPES OF ENEMIES
@@ -166,7 +163,7 @@ SF.Creatures = (function () {
   // ============================================================
   // ---------- 1. THORNMAW: a giant hungry plant ----------
   TYPES.thornmaw = {
-    hp: 12, r: 2.2, h: 8, boss: true, name: 'THORNMAW, THE HUNGRY ROOT',
+    hp: 16, r: 2.2, h: 8, boss: true, name: 'THORNMAW, THE HUNGRY ROOT',
     make(e) { const m = Mo.thornmaw(); e.m = m; e.d = { vine: 0, tx: 0, tz: 0, slams: 0 }; return m.group; },
     think(e, dt, tg) {
       e.t -= dt;
@@ -175,7 +172,7 @@ SF.Creatures = (function () {
       e.yaw = U.dampAngle(e.yaw, Math.atan2(tg.dx, tg.dz), e.st === 3 ? 0 : 1.5, dt);
       if (e.st === 0) { // choose an attack
         if (e.t <= 0) {
-          if (d.slams >= 3) { e.st = 3; e.t = 5; d.slams = 0; SF.Audio.sfx('roar'); SF.HUD.toast('Its mouth is open... HIT IT!'); return; }
+          if (d.slams >= 3) { e.st = 3; e.t = 4; d.slams = 0; SF.Audio.sfx('roar'); SF.HUD.toast('Its mouth is open... HIT IT!'); return; }
           if (Math.random() < 0.25 && countType('gloop') < 3) {
             e.st = 4; e.t = 1;
           } else {
@@ -234,7 +231,7 @@ SF.Creatures = (function () {
 
   // ---------- 2. SANDWYRM: a giant worm. Make it crash into a pillar! ----------
   TYPES.sandwyrm = {
-    hp: 10, r: 1.4, h: 2.6, boss: true, name: 'SANDWYRM, EATER OF DUNES',
+    hp: 14, r: 1.4, h: 2.6, boss: true, name: 'SANDWYRM, EATER OF DUNES',
     make(e) { const m = Mo.sandwyrm(); e.m = m; e.d = { trail: [], dirx: 0, dirz: 1, sink: 1 }; return m.group; },
     think(e, dt, tg) {
       e.t -= dt;
@@ -264,8 +261,8 @@ SF.Creatures = (function () {
         if (crash) {
           SF.Audio.sfx('boom'); shake(0.6, e);
           SF.FX.burst(nx, e.y + 1, nz, 0xe0b080, 30);
-          if (crash !== 'wall') { crash.broken = true; SF.World.breakPillar(a, crash); SF.Net.event({ t: 'pillar', a: a.i, p: a.pillars.indexOf(crash) }); }
-          e.st = 3; e.t = crash === 'wall' ? 2.6 : 4.5;
+          if (crash !== 'wall') { crash.broken = true; SF.World.breakPillar(a, crash); }
+          e.st = 3; e.t = crash === 'wall' ? 2.4 : 3.4;
           SF.HUD.toast('It\'s dizzy! Hit its head!');
         } else { e.x = nx; e.z = nz; }
         for (const p of targets()) if (dist(p.pos.x, p.pos.z, e.x, e.z) < 2.4 && p.pos.y - e.y < 2) p.hurt(5, e.x - d.dirx * 3, e.z - d.dirz * 3, 12);
@@ -304,11 +301,12 @@ SF.Creatures = (function () {
 
   // ---------- 3. FROST COLOSSUS: shoot its eye with the bow! ----------
   TYPES.colossus = {
-    hp: 12, r: 3, h: 12, boss: true, name: 'FROST COLOSSUS',
+    hp: 18, r: 3, h: 12, boss: true, name: 'FROST COLOSSUS',
     make(e) { const m = Mo.colossus(); e.m = m; e.d = { kneel: 0 }; return m.group; },
     think(e, dt, tg) {
       e.t -= dt;
       const d = e.d;
+      d.guard = Math.max(0, (d.guard || 0) - dt);
       if (!tg) return;
       d.kneel = U.damp(d.kneel, e.st === 3 ? 1 : 0, 4, dt);
       if (e.st !== 3) e.yaw = U.dampAngle(e.yaw, Math.atan2(tg.dx, tg.dz), 1.2, dt);
@@ -337,13 +335,13 @@ SF.Creatures = (function () {
           e.st = 0; e.t = 2.2;
         }
       } else if (e.st === 3) { // knocked down!
-        if (e.t <= 0) { e.st = 0; e.t = 1.5; SF.Audio.sfx('roar'); }
+        if (e.t <= 0) { e.st = 0; e.t = 1.5; d.guard = 4; SF.Audio.sfx('roar'); }
       }
     },
     armor(e) { return e.st !== 3; },
     // arrows in the eye knock it down
     arrowHit(e, p) {
-      if (e.st === 3) return false;
+      if (e.st === 3 || e.d.guard > 0) return false;
       const ew = new THREE.Vector3(); e.m.eye.getWorldPosition(ew);
       if (ew.distanceTo(p) < 1.3) { TYPES.colossus.stun(e); SF.FX.burst(ew.x, ew.y, ew.z, 0xff4060, 20); return true; }
       return false;
@@ -357,7 +355,7 @@ SF.Creatures = (function () {
       m.legs.forEach((l, i) => { l.rotation.x = k * -1.1 + (e.moving ? Math.sin(time * 3 + i * 3) * 0.3 : 0); l.position.y = 4.5 - k * 1.5; });
       const up = e.st === 1 ? -2.4 : e.st === 2 ? -2.9 : -0.2 + Math.sin(time) * 0.1;
       m.arms.forEach((a, i) => (a.rotation.x = k > 0.5 ? 0.3 : up * (e.st === 2 && i === 0 ? 1 : e.st === 2 ? 0.2 : 1)));
-      m.eye.material = Mo.M.glow(e.st === 3 ? 0x402030 : 0xff4060);
+      m.eye.material = Mo.M.glow(e.st === 3 || e.d.guard > 0 ? 0x402030 : 0xff4060);
       m.core.scale.setScalar(e.st === 3 ? 1.3 + Math.sin(time * 10) * 0.15 : 1);
       m.core.rotation.y = time * 2;
     },
@@ -365,11 +363,12 @@ SF.Creatures = (function () {
 
   // ---------- 4. EMBER KING: the final boss ----------
   TYPES.emberking = {
-    hp: 16, r: 3, h: 6, boss: true, fly: true, name: 'THE EMBER KING',
+    hp: 22, r: 3, h: 6, boss: true, fly: true, name: 'THE EMBER KING',
     make(e) { const m = Mo.emberking(); e.m = m; e.d = { fall: 0, ang: 0 }; return m.group; },
     think(e, dt, tg) {
       e.t -= dt;
       const d = e.d, a = e.arena;
+      d.guard = Math.max(0, (d.guard || 0) - dt);
       if (!tg) return;
       const angry = e.hp < e.maxHp / 2;
       const floatY = a.y + (e.st === 3 ? 2.6 : 8 + Math.sin(e.t) * 0.5);
@@ -396,7 +395,7 @@ SF.Creatures = (function () {
         if (angry) setTimeout(() => { if (e.alive) { wave(e.x, e.z, a.r, 1.8, 4, 0xff6020); SF.Audio.sfx('boom'); } }, 900);
         e.st = 0; e.t = angry ? 2.6 : 2.2;
       } else if (e.st === 3 && e.t <= 0) { // gets back up
-        e.st = 0; e.t = 1.4; SF.Audio.sfx('roar');
+        e.st = 0; e.t = 1.4; d.guard = 5; SF.Audio.sfx('roar');
       } else if (e.st === 4 && e.t <= 0) { // hand smash
         SF.Audio.sfx('boom'); shake(0.5, e); SF.FX.burst(d.tx, a.y + 0.5, d.tz, 0xff6020, 25);
         for (const p of targets()) if (dist(p.pos.x, p.pos.z, d.tx, d.tz) < 3.2 && p.pos.y - a.y < 1.5) p.hurt(5, d.tx, d.tz, 11);
@@ -405,7 +404,7 @@ SF.Creatures = (function () {
     },
     armor(e) { return e.st !== 3; },
     arrowHit(e, p) {
-      if (e.st === 3) return false;
+      if (e.st === 3 || e.d.guard > 0) return false;
       const ew = new THREE.Vector3(); e.m.eye.getWorldPosition(ew);
       if (ew.distanceTo(p) < 1.6) { TYPES.emberking.stun(e); SF.FX.burst(ew.x, ew.y, ew.z, 0xfff080, 25); return true; }
       return false;
@@ -416,7 +415,7 @@ SF.Creatures = (function () {
       m.body.rotation.y = time * 0.3;
       m.body.rotation.x = e.st === 3 ? 0.5 : 0;
       m.eye.visible = true;
-      m.eye.material = Mo.M.glow(e.st === 3 ? 0x604020 : 0xfff080);
+      m.eye.material = Mo.M.glow(e.st === 3 || e.d.guard > 0 ? 0x604020 : 0xfff080);
       m.crown.rotation.y = -time * 0.8;
       m.hands.forEach((h, i) => {
         const s = i ? 1 : -1;
@@ -470,6 +469,18 @@ SF.Creatures = (function () {
     if (!TYPES[e.type].fly) e.yaw = U.dampAngle(e.yaw, Math.atan2(dx, dz), 5, dt);
     e.moving = true;
   }
+  // the closest enemy you could swing at (for auto-aim)
+  function nearestEnemy(p, max) {
+    let best = null, bd = max;
+    for (const e of list) {
+      if (!e.alive) continue;
+      const def = TYPES[e.type];
+      const hp = def.hitPos ? def.hitPos(e) : { x: e.x, y: e.y + def.h * 0.5, z: e.z };
+      const d = Math.hypot(hp.x - p.x, hp.z - p.z) - def.r;
+      if (d < bd && Math.abs(hp.y - p.y - 1) < def.h * 0.5 + 2) { bd = d; best = hp; }
+    }
+    return best;
+  }
   function countType(t) { return list.filter((e) => e.alive && e.type === t).length; }
 
   // a shockwave on the floor. Jump to avoid it!
@@ -487,12 +498,10 @@ SF.Creatures = (function () {
       const w = waves[i];
       w.t += dt;
       const r = 0.5 + (w.t / w.time) * w.maxR;
-      if (isHost()) {
-        for (const p of targets()) {
-          if (w.hitSet.has(p.id)) continue;
-          const d = dist(p.pos.x, p.pos.z, w.x, w.z);
-          if (Math.abs(d - r) < 0.9 && p.pos.y - w.y < 0.6) { w.hitSet.add(p.id); p.hurt(w.dmg, w.x, w.z, 9); }
-        }
+      for (const p of targets()) {
+        if (w.hitSet.has(p.id)) continue;
+        const d = dist(p.pos.x, p.pos.z, w.x, w.z);
+        if (Math.abs(d - r) < 0.9 && p.pos.y - w.y < 0.6) { w.hitSet.add(p.id); p.hurt(w.dmg, w.x, w.z, 9); }
       }
       if (w.t >= w.time) waves.splice(i, 1);
     }
@@ -514,7 +523,7 @@ SF.Creatures = (function () {
       id: opts.id || ('e' + (uid++)), type, x, z, y: 0, yaw: Math.random() * 7, vx: 0, vy: 0, vz: 0,
       hp: def.hp, maxHp: def.hp, st: 0, t: 1 + Math.random(), cd: 0, alive: true, onGround: true,
       hx: opts.hx ?? x, hz: opts.hz ?? z, camp: opts.camp || null, arena: opts.arena || null,
-      night: opts.night || false, lava: opts.lava || false, remote: !!opts.remote, flash: 0,
+      night: opts.night || false, lava: opts.lava || false, flash: 0,
     };
     e.group = def.make(e);
     e.group.traverse((o) => { if (o.isMesh) o.castShadow = !SF.lowGfx; });
@@ -624,14 +633,14 @@ SF.Creatures = (function () {
     return any;
   }
 
-  // what happens when an enemy is hit (on the host, or asked by the friend)
-  function applyHit(e, dmg, fromX, fromZ, knock, kind, pt, fromNet) {
+  // what happens when an enemy is hit
+  function applyHit(e, dmg, fromX, fromZ, knock, kind, pt) {
     const def = TYPES[e.type];
     const fx = pt ? pt.x : e.x, fy = pt ? pt.y : e.y + 1, fz = pt ? pt.z : e.z;
     if (def.armor && def.armor(e, fromX, fromZ)) {
       SF.Audio.sfx('clank');
       SF.FX.sparks(fx, fy, fz, 0xffffff, 8);
-      if (!fromNet && SF.Game.player && kind === 'sword') {
+      if (SF.Game.player && kind === 'sword') {
         const p = SF.Game.player, d = Math.hypot(p.pos.x - e.x, p.pos.z - e.z) || 1;
         p.knock.set((p.pos.x - e.x) / d * 5, 0, (p.pos.z - e.z) / d * 5);
       }
@@ -640,11 +649,6 @@ SF.Creatures = (function () {
     SF.Audio.sfx('hit');
     SF.FX.sparks(fx, fy, fz, 0xfff0a0, 14);
     e.flash = 0.15;
-    if (!isHost() && !e.remoteAuthority) {
-      // the friend's game asks the host to do the damage
-      SF.Net.sendHit(e.id, dmg, fromX, fromZ, knock, kind);
-      return;
-    }
     e.hp -= dmg;
     if (!def.boss) {
       const d = Math.hypot(e.x - fromX, e.z - fromZ) || 1;
@@ -662,18 +666,7 @@ SF.Creatures = (function () {
     if (e.camp) { e.camp.alive = e.camp.alive.filter((x) => x !== e); if (!e.camp.alive.length) e.camp.cleared = 200; }
     if (!def.boss) SF.World.dropLoot(e.x, e.y + 0.5, e.z, def.shards);
     remove(e);
-    if (SF.Net.active && SF.Net.isHost) SF.Net.event({ t: 'kill', id: e.id, x: e.x, y: e.y, z: e.z, type: e.type });
     if (def.boss) SF.World.bossDefeated(e.arena.i);
-  }
-
-  // the friend's game hears that an enemy died
-  function remoteKill(ev) {
-    const e = byId.get(ev.id);
-    const def = TYPES[ev.type];
-    SF.Audio.sfx(def && def.boss ? 'roar' : 'enemyDie');
-    SF.FX.burst(ev.x, ev.y + 1, ev.z, 0xc0a0ff, 24);
-    if (def && !def.boss) SF.World.dropLoot(ev.x, ev.y + 0.5, ev.z, def.shards);
-    if (e) remove(e);
   }
 
   // ============================================================
@@ -694,7 +687,7 @@ SF.Creatures = (function () {
     for (let i = shots.length - 1; i >= 0; i--) {
       const s = shots[i];
       s.life -= dt;
-      if (s.home && isHost()) {
+      if (s.home) {
         const tg = nearestTarget({ x: s.x, z: s.z, arena: Ph.arenaAt(s.x, s.z) }, 60);
         if (tg) {
           const dx = tg.p.x - s.x, dy = tg.p.y + 1 - s.y, dz = tg.p.z - s.z, d = Math.hypot(dx, dy, dz) || 1;
@@ -707,7 +700,7 @@ SF.Creatures = (function () {
       s.m.position.set(s.x, s.y, s.z);
       if (Math.random() < 0.6) SF.FX.trailDot(s.x, s.y, s.z, s.color, s.kind === 'ice' ? 2 : 1);
       let dead = s.life <= 0 || Ph.solidAt(s.x, s.y, s.z);
-      if (!dead && isHost()) {
+      if (!dead) {
         for (const p of targets()) {
           if (p.down) continue;
           if (Math.hypot(p.pos.x - s.x, p.pos.y + 1 - s.y, p.pos.z - s.z) < s.r + 0.6) {
@@ -718,7 +711,7 @@ SF.Creatures = (function () {
       }
       if (dead) {
         SF.FX.burst(s.x, s.y, s.z, s.color, s.kind === 'ice' ? 20 : 10);
-        if (s.kind === 'ice') { SF.Audio.sfx('boom'); if (isHost()) for (const p of targets()) if (Math.hypot(p.pos.x - s.x, p.pos.z - s.z) < 2.5 && Math.abs(p.pos.y - s.y) < 2) p.hurt(s.dmg, s.x, s.z, 8); }
+        if (s.kind === 'ice') { SF.Audio.sfx('boom'); for (const p of targets()) if (Math.hypot(p.pos.x - s.x, p.pos.z - s.z) < 2.5 && Math.abs(p.pos.y - s.y) < 2) p.hurt(s.dmg, s.x, s.z, 8); }
         scene.remove(s.m);
         shots.splice(i, 1);
       }
@@ -726,11 +719,11 @@ SF.Creatures = (function () {
   }
 
   // ---------- arrows (from YOUR plasma bow) ----------
-  function shootArrow(start, dir, owner) {
+  function shootArrow(start, dir) {
     const m = Mo.arrow();
     m.position.copy(start);
     scene.add(m);
-    arrows.push({ p: start.clone(), v: dir.clone().multiplyScalar(55), m, life: 2.5, owner, stuck: 0 });
+    arrows.push({ p: start.clone(), v: dir.clone().multiplyScalar(55), m, life: 2.5, stuck: 0 });
   }
 
   function updateArrows(dt) {
@@ -744,16 +737,16 @@ SF.Creatures = (function () {
       let hit = false;
       for (let k = 0; k < steps && !hit; k++) {
         a.p.addScaledVector(a.v, dt / steps);
-        if (a.owner === 'me') {
+        {
           // bosses with special weak points
           for (const e of list) {
             if (!e.alive) continue;
             const def = TYPES[e.type];
             if (def.arrowHit && def.arrowHit(e, a.p)) {
               hit = true;
-              if (SF.Net.active && !SF.Net.isHost) SF.Net.sendHit(e.id, 0, a.p.x, a.p.z, 0, 'eye');
               break;
             }
+            if (def.arrowHit && e.st !== 3) continue; // arrows fly past big bosses unless you hit the eye
             const hp = def.hitPos ? def.hitPos(e) : { x: e.x, y: e.y + def.h * 0.5, z: e.z };
             const rr = def.r + 0.3;
             if (Math.abs(a.p.x - hp.x) < rr + 1 && Math.abs(a.p.z - hp.z) < rr + 1 && a.p.y > e.y - 0.3 && a.p.y < e.y + def.h + 0.3 && Math.hypot(a.p.x - hp.x, a.p.z - hp.z) < rr) {
@@ -821,14 +814,13 @@ SF.Creatures = (function () {
   //  EVERY FRAME
   // ============================================================
   function update(dt, time) {
-    const host = isHost();
-    if (host) updateCamps(dt);
+    updateCamps(dt);
     for (const e of list.slice()) {
       if (!e.alive) continue;
       const def = TYPES[e.type];
       e.moving = false;
       e.cd = Math.max(0, e.cd - dt);
-      if (host) {
+      {
         const tg = nearestTarget(e, def.boss ? 200 : 40);
         def.think(e, dt, tg);
         // knockback
@@ -852,13 +844,6 @@ SF.Creatures = (function () {
           const a = e.arena, d = dist(e.x, e.z, a.x, a.z);
           if (d > a.r - 1) { e.x = a.x + (e.x - a.x) / d * (a.r - 1); e.z = a.z + (e.z - a.z) / d * (a.r - 1); }
         }
-      } else if (e.net) {
-        // the friend's game: slide smoothly to where the host says
-        const k = 1 - Math.exp(-12 * dt);
-        e.x += (e.net.x - e.x) * k; e.y += (e.net.y - e.y) * k; e.z += (e.net.z - e.z) * k;
-        e.yaw = U.dampAngle(e.yaw, e.net.yaw, 12, dt);
-        e.moving = e.net.mv;
-        if (e.type === 'sandwyrm') { e.d.trail.unshift({ x: e.x, z: e.z }); if (e.d.trail.length > 90) e.d.trail.pop(); }
       }
       e.group.position.set(e.x, e.y, e.z);
       if (e.type !== 'sandwyrm') e.group.rotation.y = e.yaw;
@@ -885,48 +870,6 @@ SF.Creatures = (function () {
     updateFloofs(dt, time);
   }
 
-  // ============================================================
-  //  ONLINE: the host sends enemies, the friend shows them
-  // ============================================================
-  function snapshot(near) {
-    const out = [];
-    for (const e of list) {
-      if (!e.alive || e.night === undefined) continue;
-      if (near && !near.some((p) => dist(p.x, p.z, e.x, e.z) < 120 || (e.arena && Ph.arenaAt(p.x, p.z) === e.arena))) continue;
-      const o = [e.id, e.type, +e.x.toFixed(2), +e.y.toFixed(2), +e.z.toFixed(2), +e.yaw.toFixed(2), +e.hp.toFixed(1), e.st, +e.t.toFixed(2), e.moving ? 1 : 0, e.night ? 1 : 0, e.lava ? 1 : 0, e.arena ? e.arena.i : -1];
-      if (e.d) o.push(JSON.parse(JSON.stringify(e.d, (k, v) => (k === 'trail' ? undefined : v))));
-      out.push(o);
-    }
-    const sh = shots.map((s) => [s.kind, +s.x.toFixed(2), +s.y.toFixed(2), +s.z.toFixed(2), +s.vx.toFixed(2), +s.vy.toFixed(2), +s.vz.toFixed(2)]);
-    return { e: out, s: sh };
-  }
-
-  function applySnapshot(snap) {
-    const seen = new Set();
-    for (const o of snap.e) {
-      const [id, type, x, y, z, yaw, hp, st, t, mv, night, lava, ai, d] = o;
-      seen.add(id);
-      let e = byId.get(id);
-      if (!e) {
-        const arena = ai >= 0 ? Ph.arenas[ai] : null;
-        e = spawn(type, x, z, { id, remote: true, night: !!night, lava: !!lava, arena, y });
-        e.y = y; e.yaw = yaw;
-      }
-      e.net = { x, y, z, yaw, mv: !!mv };
-      if (e.st !== st && TYPES[type].boss) e.t = t;
-      e.hp = hp; e.st = st; e.t = t;
-      if (d) Object.assign(e.d, d);
-    }
-    for (const e of list.slice()) if (!seen.has(e.id)) remove(e);
-    // enemy shots: just show them
-    for (const s of shots) scene.remove(s.m);
-    shots.length = 0;
-    for (const [kind, x, y, z, vx, vy, vz] of snap.s) {
-      const s = shoot(kind, x, y, z, vx, vy, vz, 0);
-      s.life = 0.25; s.home = 0;
-    }
-  }
-
   // ---------- temple bosses ----------
   function spawnBoss(arena) {
     if (list.some((e) => e.arena === arena && TYPES[e.type].boss)) return null;
@@ -943,7 +886,7 @@ SF.Creatures = (function () {
   function build(sc) { scene = sc; makeCamps(); }
 
   return {
-    TYPES, list, camps, build, update, spawn, remove, meleeHit, applyHit, shootArrow, kill, remoteKill,
-    snapshot, applySnapshot, spawnBoss, bossIn, clearArena, clearAll, byId, shoot,
+    TYPES, list, camps, build, update, nearestEnemy, spawn, remove, meleeHit, applyHit, shootArrow, kill,
+    spawnBoss, bossIn, clearArena, clearAll, byId, shoot,
   };
 })();

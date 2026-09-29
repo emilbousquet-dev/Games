@@ -10,9 +10,9 @@ SF.Game = (function () {
   const $ = (id) => document.getElementById(id);
   const G = {
     scene: null, camera: null, renderer: null, player: null, cutscene: null,
-    interact: null, reviveTarget: null, reviveT: 0, mode: 'loading', paused: false,
+    interact: null, mode: 'loading', paused: false,
   };
-  let clock = null, time = 0, shakeA = 0, lastRegion = '', downTimer = 0;
+  let clock = null, time = 0, shakeA = 0, lastRegion = '';
 
   function newMe() {
     return { maxHearts: L.startHearts, heartPieces: 0, energyLv: 0, swordLv: 0, shards: 0, boughtHearts: 0, fog: [], pos: null, lastBeacon: 0 };
@@ -30,8 +30,7 @@ SF.Game = (function () {
     else if (!P.down && !P.swimming) me.pos = { x: +P.pos.x.toFixed(1), z: +P.pos.z.toFixed(1) };
     SF.State.world.time = SF.Sky.S.t;
     try {
-      if (SF.Net.active && !SF.Net.isHost) localStorage.setItem('starfall.guestme', JSON.stringify(me));
-      else localStorage.setItem('starfall.save', JSON.stringify(SF.State));
+      localStorage.setItem('starfall.save', JSON.stringify(SF.State));
     } catch (e) {}
   };
 
@@ -93,7 +92,7 @@ SF.Game = (function () {
     $('titleMsg').textContent = msg || '';
     const save = readSave();
     $('btnContinue').style.display = save ? 'block' : 'none';
-    $('btnNew').textContent = save ? 'NEW GAME' : 'PLAY ALONE';
+    $('btnNew').textContent = save ? 'NEW GAME' : 'START ADVENTURE';
     $('nameInput').value = G.myName();
     $('gfxBtn').textContent = 'GRAPHICS: ' + (SF.lowGfx ? 'LOW' : 'HIGH');
     SF.Audio.setMusic('title');
@@ -101,7 +100,6 @@ SF.Game = (function () {
   }
   G.backToTitle = function (msg) {
     G.save();
-    SF.Net.stop();
     try { sessionStorage.setItem('starfall.msg', msg || ''); } catch (e) {}
     location.reload();
   };
@@ -115,23 +113,6 @@ SF.Game = (function () {
       if (readSave() && !confirm('Start a new game? Your old adventure will be deleted!')) return;
       try { localStorage.removeItem('starfall.save'); } catch (e) {}
       startSolo(null);
-    };
-    $('btnHost').onclick = () => {
-      click();
-      $('titleMsg').textContent = 'Starting an online game...';
-      SF.Net.host((code) => {
-        startSolo(readSave());
-        SF.HUD.toast('Your room code is ' + code + '. Tell it to your friend!', 0x6ab0ff, 10);
-      }, (err) => { SF.Net.stop(); $('titleMsg').textContent = err; });
-    };
-    $('btnJoin').onclick = () => { click(); $('joinBox').style.display = 'flex'; $('codeInput').focus(); };
-    $('btnJoinGo').onclick = () => {
-      click();
-      const code = $('codeInput').value.trim();
-      if (!code) return;
-      $('titleMsg').textContent = 'Looking for ' + code.toUpperCase() + '...';
-      SF.Net.onWelcome = (d) => startGuest(d);
-      SF.Net.join(code, (err) => { SF.Net.stop(); $('titleMsg').textContent = err; });
     };
     $('gfxBtn').onclick = () => {
       try { localStorage.setItem('starfall.gfx', SF.lowGfx ? 'high' : 'low'); } catch (e) {}
@@ -148,8 +129,9 @@ SF.Game = (function () {
     $('volMusic').value = SF.Audio.musicVol; $('volSfx').value = SF.Audio.sfxVol; $('sens').value = SF.Input.sensitivity;
     $('game').addEventListener('click', () => { if (G.mode === 'play' && !G.paused && !SF.HUD.modalOpen) SF.Input.lock($('game')); });
     document.addEventListener('pointerlockchange', () => {
-      if (!document.pointerLockElement && G.mode === 'play' && !SF.HUD.modalOpen && !G.cutscene && $('credits').style.display !== 'flex' && !G.noPauseOnUnlock) pause();
-      G.noPauseOnUnlock = false;
+      if (document.pointerLockElement) return;
+      if (SF.Input.mouse.intentional) { SF.Input.mouse.intentional = false; return; }
+      if (G.mode === 'play' && !SF.HUD.modalOpen && !G.cutscene && $('credits').style.display !== 'flex') pause();
     });
     const msg = sessionStorage.getItem('starfall.msg');
     if (msg) { sessionStorage.removeItem('starfall.msg'); setTimeout(() => ($('titleMsg').textContent = msg), 100); }
@@ -183,26 +165,11 @@ SF.Game = (function () {
     else G.fadeIn(1);
   }
 
-  function startGuest(d) {
-    let me = null;
-    try { me = JSON.parse(localStorage.getItem('starfall.guestme') || 'null'); } catch (e) {}
-    SF.State = { world: Object.assign(SF.World.newState(), d.world), me: Object.assign(newMe(), me || {}) };
-    SF.Sky.S.t = d.time;
-    begin();
-    const p = d.pos || { x: L.crash.x, z: L.crash.z };
-    G.player.place(p.x + 2, p.z + 2);
-    if (SF.Phys.arenaAt(p.x, p.z)) { const a = SF.Phys.arenaAt(p.x, p.z); SF.World.enterTemple(a.i); }
-    G.fadeIn(1);
-    SF.Story.bounce();
-    SF.HUD.toast('You joined ' + SF.Net.friend.name + '\'s game! 🎉', 0x6ab0ff, 5);
-  }
-
   // ---------- pause ----------
   function pause() {
     if (G.mode !== 'play' || G.paused) return;
-    G.paused = !SF.Net.connected; // online, the world keeps going!
+    G.paused = true;
     $('pause').style.display = 'flex';
-    $('pauseRoom').textContent = SF.Net.active ? (SF.Net.isHost ? 'Room code: ' + SF.Net.code : 'Playing online with ' + (SF.Net.friend ? SF.Net.friend.name : '...')) : '';
     G.menuOpen = true;
     G.save();
   }
@@ -216,10 +183,23 @@ SF.Game = (function () {
   // ---------- helpers other files use ----------
   G.targets = function () {
     const P = G.player;
-    const t = [{ id: 'me', pos: P.pos, down: P.down, hurt: (a, fx, fz, k) => P.hurt(a, fx, fz, k) }];
-    const f = SF.Net.friend;
-    if (SF.Net.connected && f && f.st) t.push({ id: 'friend', pos: f.pos, down: !!f.st.dn, hurt: (a, fx, fz, k) => SF.Net.sendHurt(a, fx, fz, k) });
-    return t;
+    return [{ id: 'me', pos: P.pos, down: P.down, hurt: (a, fx, fz, k) => P.hurt(a, fx, fz, k) }];
+  };
+  // the first thing in the middle of the screen (so arrows go where the crosshair is)
+  G.aimPoint = function (from, dir, max) {
+    const p = from.clone();
+    const P = G.player;
+    for (let t = 0; t < max; t += 0.4) {
+      p.copy(from).addScaledVector(dir, t);
+      if (t < 3.5) continue; // don't hit yourself
+      if (SF.Phys.solidAt(p.x, p.y, p.z)) return p;
+      if (SF.World.targetAt(p, 1.0)) return p;
+      for (const e of SF.Creatures.list) {
+        const def = SF.Creatures.TYPES[e.type];
+        if (Math.hypot(p.x - e.x, p.z - e.z) < def.r && p.y > e.y && p.y < e.y + def.h) return p;
+      }
+    }
+    return p;
   };
   G.shake = (a) => { shakeA = Math.max(shakeA, a); };
   G.fade = function (cb) {
@@ -234,18 +214,11 @@ SF.Game = (function () {
   };
 
   // when your hearts run out
-  G.onPlayerDown = function (p) {
-    downTimer = 0;
-    if (!SF.Net.connected) {
-      $('faint').style.display = 'flex';
-      setTimeout(() => { $('faint').style.display = 'none'; G.respawnAll(); }, 2800);
-    } else if (SF.Net.friend.st && SF.Net.friend.st.dn) {
-      setTimeout(() => { G.respawnAll(); SF.Net.sendRespawn(); }, 2500);
-    } else {
-      SF.HUD.toast('Knocked out! Your friend can help you up.', 0xff8080, 5);
-    }
+  G.onPlayerDown = function () {
+    $('faint').style.display = 'flex';
+    setTimeout(() => { $('faint').style.display = 'none'; G.respawn(); }, 2800);
   };
-  G.respawnAll = function () {
+  G.respawn = function () {
     const P = G.player;
     G.fade(() => {
       const w = SF.State.world;
@@ -256,7 +229,7 @@ SF.Game = (function () {
       for (const b of SF.World.beacons) { if (!w.beacons[b.i]) continue; const d = Math.hypot(b.x - from.x, b.z - from.z); if (d < bd) { bd = d; best = b; } }
       if (a) {
         SF.Sky.S.indoor = null;
-        if (!SF.Net.connected || SF.Net.isHost) SF.Creatures.clearArena(a);
+        SF.Creatures.clearArena(a);
       }
       P.down = false; P.hp = P.maxHp; P.inv = 2;
       P.place(best.x + 2.5, best.z + 2.5);
@@ -311,6 +284,14 @@ SF.Game = (function () {
       return;
     }
 
+    tick(dt, inp);
+    G.renderer.render(G.scene, G.camera);
+    SF.Input.endFrame();
+  }
+
+  // one step of the game (the tests also call this to play really fast)
+  function tick(dt, inp) {
+    const P = G.player;
     // menus and talking come first
     let busy = false;
     if (G.menuOpen) busy = true;
@@ -318,39 +299,24 @@ SF.Game = (function () {
     else if (SF.HUD.updateModal(inp)) busy = true;
     else if (!G.cutscene) {
       if (inp.mapPressed) { SF.HUD.toggleMap(); SF.Audio.sfx('ui'); }
-      if (inp.pausePressed) { if (SF.HUD.mapOpen) SF.HUD.toggleMap(false); else { G.noPauseOnUnlock = true; SF.Input.unlock(); G.noPauseOnUnlock = false; pause(); } }
+      if (inp.pausePressed) { if (SF.HUD.mapOpen) SF.HUD.toggleMap(false); else { SF.Input.unlock(); pause(); } }
       if (inp.usePressed && !P.down) {
         if (G.interact) { G.interact.act(); SF.Audio.sfx('ui'); }
-        else if (!G.reviveTarget) SF.Story.talkZib();
+        else SF.Story.talkZib();
       }
     }
     if (G.cutscene) { P.frozen = true; G.hadCutscene = true; }
     else if (G.hadCutscene) { G.hadCutscene = false; P.frozen = false; }
 
-    // helping your friend up
-    G.reviveTarget = null;
-    const f = SF.Net.friend;
-    if (SF.Net.connected && f && f.st && f.st.dn && !P.down && Math.hypot(f.pos.x - P.pos.x, f.pos.z - P.pos.z) < 2.8) {
-      G.reviveTarget = f;
-      if (inp.use && !busy) {
-        G.reviveT += dt;
-        if (Math.random() < dt * 10) SF.FX.sparks(f.pos.x, f.pos.y + 0.5, f.pos.z, 0x80ffb0, 2, 2);
-        if (G.reviveT >= 3) { G.reviveT = 0; SF.Net.sendRevive(); SF.Audio.sfx('revive'); f.st.dn = false; }
-      } else G.reviveT = Math.max(0, G.reviveT - dt);
-    } else G.reviveT = 0;
-    // knocked out for too long: wake up at a beacon
-    if (P.down && SF.Net.connected) { downTimer += dt; if (downTimer > 30) { downTimer = 0; G.respawnAll(); } }
-
     P.update(dt, busy && !G.cutscene ? { ...inp, mx: 0, mz: 0, jumpPressed: false, attackPressed: false, block: false, aim: false, sprint: false } : inp);
     SF.Creatures.update(dt, time);
     SF.World.update(dt, time);
     SF.Story.update(dt, time);
-    SF.Net.update(dt);
     SF.Sky.update(dt, G.camera, P.pos, G.scene, time);
     SF.Terrain.update(dt, time);
     SF.Nature.update(SF.Sky.S.night);
     SF.FX.update(dt);
-    if (!SF.Net.active || SF.Net.isHost) SF.State.world.playTime += dt;
+    SF.State.world.playTime += dt;
 
     // camera
     if (G.cutscene) G.cutscene.update(dt);
@@ -367,10 +333,8 @@ SF.Game = (function () {
     // save every 20 seconds, just in case
     G.saveT = (G.saveT || 0) + dt;
     if (G.saveT > 20) { G.saveT = 0; G.save(); }
-
-    G.renderer.render(G.scene, G.camera);
-    SF.Input.endFrame();
   }
+  G.tick = (dt, inp) => { time += dt; tick(dt, Object.assign(SF.Input.empty(), inp || {})); };
 
   window.addEventListener('beforeunload', () => G.save());
 

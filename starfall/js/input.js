@@ -46,7 +46,8 @@ SF.Input = (function () {
   function lock(canvas) {
     try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) {}
   }
-  function unlock() { if (document.pointerLockElement) document.exitPointerLock(); }
+  // the game lets go of the mouse on purpose (menus): this is not a pause
+  function unlock() { if (document.pointerLockElement) { mouse.intentional = true; document.exitPointerLock(); } }
 
   const down = (list) => list.some((k) => keys.has(k));
   const hit = (list) => list.some((k) => pressed.has(k));
@@ -106,9 +107,15 @@ SF.Input = (function () {
     return s;
   }
 
+  // an input where nothing is pressed (for tests)
+  function empty() {
+    return { mx: 0, mz: 0, lookX: 0, lookY: 0, jump: false, jumpPressed: false, attackPressed: false, attack: false, block: false, aim: false,
+      sprint: false, use: false, usePressed: false, mapPressed: false, pausePressed: false, up: false, down: false, ok: false, back: false, pad: false };
+  }
+
   function endFrame() { pressed.clear(); mouse.leftPressed = false; }
   function onAny(f) { listeners.push(f); }
   function setSensitivity(v) { sensitivity = v; try { localStorage.setItem('starfall.sens', v); } catch (e) {} }
 
-  return { init, lock, unlock, read, endFrame, onAny, mouse, keys, setSensitivity, get sensitivity() { return sensitivity; } };
+  return { init, lock, unlock, read, empty, endFrame, onAny, mouse, keys, setSensitivity, get sensitivity() { return sensitivity; } };
 })();

@@ -18,12 +18,12 @@ SF.Nature = (function () {
         biomes: ['jungle'], count: 520, slope: 0.8, cluster: 0.1, scale: [0.8, 1.35], collide: { r: 0.55, top: 7 },
         build() {
           const b = B();
-          b.add(G.cyl(0.28, 0.45, 5, 7), 0x2a4a5a, 0, 2.5, 0);
-          b.add(G.cyl(0.18, 0.28, 2.5, 6), 0x2a4a5a, 0.4, 5.8, 0, 0, 0, -0.3);
-          b.add(G.ico(2.1, 1), 0x1a9a9a, 0.6, 7.4, 0);
-          b.add(G.ico(1.6, 1), 0x2080b0, -0.8, 6.6, 0.6);
-          b.add(G.ico(1.4, 1), 0x20a0a0, 0.4, 6.4, -1.1);
-          for (let k = 0; k < 6; k++) b.glow(G.sph(0.18, 6, 4), 0x80fff0, Math.cos(k) * 1.6, 5.4 + (k % 2) * 0.4, Math.sin(k) * 1.6);
+          b.add(new THREE.CylinderGeometry(0.28, 0.45, 5, 6, 1, true), 0x2a4a5a, 0, 2.5, 0);
+          b.add(new THREE.CylinderGeometry(0.18, 0.28, 2.5, 5, 1, true), 0x2a4a5a, 0.4, 5.8, 0, 0, 0, -0.3);
+          b.add(new THREE.IcosahedronGeometry(2.1, 0), 0x1a9a9a, 0.6, 7.4, 0);
+          b.add(new THREE.IcosahedronGeometry(1.6, 0), 0x2080b0, -0.8, 6.6, 0.6);
+          b.add(new THREE.IcosahedronGeometry(1.4, 0), 0x20a0a0, 0.4, 6.4, -1.1);
+          for (let k = 0; k < 6; k++) b.glow(G.oct(0.2), 0x80fff0, Math.cos(k) * 1.6, 5.4 + (k % 2) * 0.4, Math.sin(k) * 1.6);
           return b;
         },
       },
@@ -48,10 +48,10 @@ SF.Nature = (function () {
         },
       },
       grass: {
-        biomes: ['jungle', 'plains', 'desert'], count: 7000, slope: 1.0, cluster: 0.0, scale: [0.7, 1.4], tint: true, noShadow: true,
+        biomes: ['jungle', 'plains', 'desert'], count: 6000, slope: 1.0, cluster: 0.0, scale: [0.7, 1.4], tint: true, noShadow: true,
         build() {
           const b = B();
-          for (let k = 0; k < 3; k++) b.add(G.cone(0.07, 0.8, 3), 0xffffff, Math.cos(k * 2.1) * 0.12, 0.4, Math.sin(k * 2.1) * 0.12, Math.cos(k * 2.1) * 0.3, 0, Math.sin(k * 2.1) * 0.3);
+          for (let k = 0; k < 3; k++) b.add(new THREE.ConeGeometry(0.07, 0.8, 3, 1, true), 0xffffff, Math.cos(k * 2.1) * 0.12, 0.4, Math.sin(k * 2.1) * 0.12, Math.cos(k * 2.1) * 0.3, 0, Math.sin(k * 2.1) * 0.3);
           return b;
         },
       },
@@ -178,24 +178,32 @@ SF.Nature = (function () {
       if (!spots.length) continue;
       const b = k.build();
       const geos = b.geos();
+      // split the plants into 16 areas, so only the areas you can see get drawn
+      const buckets = new Map();
+      for (const sp of spots) {
+        const key = Math.floor((sp.x + 320) / 160) * 10 + Math.floor((sp.z + 320) / 160);
+        if (!buckets.has(key)) buckets.set(key, []);
+        buckets.get(key).push(sp);
+      }
       const make = (geo, mat) => {
-        const im = new THREE.InstancedMesh(geo, mat, spots.length);
-        spots.forEach((sp, i) => {
-          e.set(0, sp.ry, 0); q.setFromEuler(e);
-          p.set(sp.x, sp.y - 0.1, sp.z); s.set(sp.sc, sp.sc, sp.sc);
-          m4.compose(p, q, s);
-          im.setMatrixAt(i, m4);
-          if (k.tint || name === 'rock') {
-            const tt = (TINTS[name] && TINTS[name][sp.reg]) || [0xffffff, 0xdddddd];
-            col.set(tt[0]).lerp(c2.set(tt[1]), sp.t);
-            im.setColorAt(i, col);
-          }
-        });
-        im.castShadow = !k.noShadow && !SF.lowGfx && mat !== SF.Models.M.vcGlow;
-        im.receiveShadow = !SF.lowGfx;
-        im.computeBoundingSphere();
-        scene.add(im);
-        return im;
+        for (const list of buckets.values()) {
+          const im = new THREE.InstancedMesh(geo, mat, list.length);
+          list.forEach((sp, i) => {
+            e.set(0, sp.ry, 0); q.setFromEuler(e);
+            p.set(sp.x, sp.y - 0.1, sp.z); s.set(sp.sc, sp.sc, sp.sc);
+            m4.compose(p, q, s);
+            im.setMatrixAt(i, m4);
+            if (k.tint || name === 'rock') {
+              const tt = (TINTS[name] && TINTS[name][sp.reg]) || [0xffffff, 0xdddddd];
+              col.set(tt[0]).lerp(c2.set(tt[1]), sp.t);
+              im.setColorAt(i, col);
+            }
+          });
+          im.castShadow = !k.noShadow && !SF.lowGfx && mat === SF.Models.M.vc;
+          im.receiveShadow = !SF.lowGfx;
+          im.computeBoundingSphere();
+          scene.add(im);
+        }
       };
       if (geos.body) make(geos.body, SF.Models.M.vc);
       if (geos.glow) {

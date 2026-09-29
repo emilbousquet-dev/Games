@@ -19,8 +19,8 @@ SF.HUD = (function () {
       obj: $('objective'), zone: $('zone'), toast: $('toast'), prompt: $('prompt'), cross: $('crosshair'), hurt: $('hurt'),
       dialog: $('dialog'), dName: $('dName'), dText: $('dText'), banner: $('banner'), bTitle: $('bTitle'), bSub: $('bSub'),
       bossbar: $('bossbar'), bossName: $('bossName'), bossFill: $('bossFill'), bossTitle: $('bossTitle'),
-      timer: $('timer'), modal: $('modal'), map: $('map'), mapInfo: $('mapInfo'), help: $('help'), friend: $('friend'),
-      credits: $('credits'), fade: $('fade'), net: $('netStatus'),
+      timer: $('timer'), modal: $('modal'), map: $('map'), mapInfo: $('mapInfo'), help: $('help'),
+      credits: $('credits'), fade: $('fade'),
     };
     mini = $('minimap'); miniCtx = mini.getContext('2d');
     big = $('bigmap'); bigCtx = big.getContext('2d');
@@ -49,7 +49,7 @@ SF.HUD = (function () {
   function redrawFog() {
     const f = fogData();
     const img = fogCtx.createImageData(FOG, FOG);
-    for (let k = 0; k < FOG * FOG; k++) { img.data[k * 4] = 20; img.data[k * 4 + 1] = 16; img.data[k * 4 + 2] = 40; img.data[k * 4 + 3] = f[k] ? 0 : 255; }
+    for (let k = 0; k < FOG * FOG; k++) { img.data[k * 4] = 20; img.data[k * 4 + 1] = 16; img.data[k * 4 + 2] = 40; img.data[k * 4 + 3] = f[k] ? 0 : 175; }
     fogCtx.putImageData(img, 0, 0);
   }
 
@@ -73,6 +73,7 @@ SF.HUD = (function () {
   function bossTitle(name) {
     els.bossTitle.textContent = name;
     els.bossTitle.classList.add('show');
+    els.zone.classList.remove('show'); zoneT = 0;
     bossTitleT = 3;
   }
   function hurtFlash() {
@@ -234,8 +235,6 @@ SF.HUD = (function () {
       g.font = `bold ${18 * scale}px sans-serif`; g.textAlign = 'center'; g.fillStyle = '#ffe040'; g.strokeStyle = '#000'; g.lineWidth = 3;
       g.strokeText('★', x, y + 6 * scale); g.fillText('★', x, y + 6 * scale);
     }
-    const fr = SF.Net.friend && SF.Net.friend.st;
-    if (fr && SF.Net.friend.avatar) arrow(g, toX(fr.x), toY(fr.z), fr.f, '#6ab0ff', 6 * scale);
     const P = SF.Game.player;
     if (P && !SF.Phys.arenaAt(P.pos.x, P.pos.z)) arrow(g, toX(P.pos.x), toY(P.pos.z), P.facing, '#ff9a50', 7 * scale);
   }
@@ -343,8 +342,6 @@ SF.HUD = (function () {
     const it = !P.frozen && !P.down && !SF.Game.cutscene ? SF.World.nearestInteract(P.pos) : null;
     SF.Game.interact = it;
     if (it) { els.prompt.innerHTML = `<kbd>E</kbd> ${it.label()}`; els.prompt.style.display = 'block'; }
-    else if (P.down && SF.Net.active) { els.prompt.innerHTML = 'You are knocked out! Wait for your friend to help you up...'; els.prompt.style.display = 'block'; }
-    else if (SF.Game.reviveTarget) { els.prompt.innerHTML = `<kbd>E</kbd> Hold to help your friend up! ${Math.round(SF.Game.reviveT * 33)}%`; els.prompt.style.display = 'block'; }
     else els.prompt.style.display = 'none';
     els.cross.style.display = P.aiming ? 'block' : 'none';
     // timers
@@ -364,16 +361,6 @@ SF.HUD = (function () {
       drawMini();
       if (mapOpen) drawBigMap();
     }
-    // your online friend
-    const fr = SF.Net.friend;
-    if (SF.Net.active && fr && fr.st) {
-      els.friend.style.display = 'block';
-      const q = fr.st.hp, m = fr.st.mh || 12;
-      let h = '';
-      for (let i = 0; i < m / 4; i++) h += `<span class="heart small q${U.clamp(q - i * 4, 0, 4)}"></span>`;
-      els.friend.innerHTML = `<b>${fr.name}</b> ${fr.st.dn ? '💫 KNOCKED OUT!' : h}`;
-    } else els.friend.style.display = 'none';
-    els.net.textContent = SF.Net.statusText();
   }
 
   return {

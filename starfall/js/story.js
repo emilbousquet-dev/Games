@@ -205,7 +205,7 @@ SF.Story = (function () {
     SF.HUD.toast('The Guardian is defeated! Take the relic!', 0xffe060, 5);
   }
 
-  function gotReward(i, fromNet) {
+  function gotReward(i) {
     const t = L.temples[i];
     const me = ME();
     me.maxHearts++;
