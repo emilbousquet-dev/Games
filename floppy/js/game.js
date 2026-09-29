@@ -26,7 +26,7 @@ FP.Game = (function () {
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
   const VERSION = '1.3';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
-  let tourOpts = { games: 5, bots: null, list: false };
+  let tourOpts = { games: 5, bots: null, list: false, king: true };
   let playlist = [];         // your own list of games for a Party Tour (saved on this computer)
   try { playlist = JSON.parse(localStorage.getItem('floppy-playlist') || '[]'); } catch (e) { /* no saving */ }
   let daily = null;          // the Daily Challenge being played right now
@@ -39,7 +39,8 @@ FP.Game = (function () {
   //  PLAYERS
   // ------------------------------------------------------------
   const humans = () => players.filter((p) => p.source.kind !== 'bot');
-  const everyone = () => players.concat(matchBots);
+  // (in a tournament match only the two players in that match play)
+  const everyone = () => (tourney && tourney.current ? [tourney.current.a, tourney.current.b] : players.concat(matchBots));
 
   function freeColor(list = everyone()) {
     for (let i = 0; i < FP.Look.COLORS.length; i++) if (!FP.Look.COLORS[i].special && !list.some((p) => p.colorIndex === i)) return i;
@@ -202,6 +203,7 @@ FP.Game = (function () {
     if (splash && !splash.classList.contains('gone')) { splash.classList.add('gone'); setTimeout(() => splash.remove(), 600); }
     endDaily();
     endStory();
+    tourney = null;
     state = 'title';
     paused = false;
     mode = null;
@@ -321,6 +323,7 @@ FP.Game = (function () {
     endDaily();
     endStory();
     tour = null;
+    tourney = null;
     FP.UI.closeScreen();
     FP.UI.help.hidden = true;
     state = 'lobby';
@@ -599,11 +602,12 @@ FP.Game = (function () {
       start: typeof sel === 'number' ? sel : typeof sel === 'string' && list.some((m) => m.id === sel) ? 8 + list.findIndex((m) => m.id === sel) : 8,
       buttons: [
         { label: `${ICON.trophy} Party Tour`, action: tourSetup, cls: 'extra tour' },
+        { label: `${ICON.crown} Tournament`, action: tourneySetup, cls: 'extra tour' },
         { label: `${ICON.dice} Surprise me!`, action: surprise, cls: 'extra' },
         { label: `${ICON.sparkle} Fun options${nFun ? ` (${nFun})` : ''}`, action: () => funScreen(backToPicker), cls: 'extra' },
-        { label: `${ICON.back} Lobby`, action: backToLobby, cls: 'extra' },
         ...CATS.map((c, i) => ({ label: `${c.name} <small>${c.id === 'all' ? all.length : all.filter((m) => catOf(m.id) === c.id).length}</small>`, action: () => setCat(c.id, 4 + i), cls: 'cat' + (pickCat === c.id ? ' active' : '') })),
         ...list.map((m) => ({ label: `<span class="art">${m.art || ''}</span><b>${m.name}</b><small>${m.desc}</small>${played.includes(m.id) ? `<span class="played" title="You played this one">${ICON.check}</span>` : ''}`, action: () => setupMatch(m), cls: 'mode' })),
+        { label: `${ICON.back} Back to the lobby`, action: backToLobby, cls: 'extra wide' },
       ],
       back: backToLobby,
     });
@@ -743,11 +747,12 @@ FP.Game = (function () {
     const { min, max } = botLimits(m);
     const n = Math.min(max, Math.max(min, botCount[m.id] !== undefined ? botCount[m.id] : min));
     // team mode: the same game, but Red against Blue
-    if (teamPlay[m.id] && TEAMABLE.includes(m.id) && humans().length + n >= 3 && !tour && !story && !daily) {
+    if (teamPlay[m.id] && TEAMABLE.includes(m.id) && humans().length + n >= 3 && !tour && !story && !daily && !tourney) {
       mode = Object.create(m);
       Object.assign(mode, { base: m, teams: true, name: m.name + ': Teams', roundsToWin: Math.max(2, m.roundsToWin) });
     }
-    if (tour) { if (!tour.bots) { makeBots(tour.botCount); tour.bots = matchBots; } matchBots = tour.bots; tour.awarded = false; } else makeBots(n);
+    if (tourney && tourney.current) matchBots = [tourney.current.a, tourney.current.b].filter((p) => p.source.kind === 'bot');
+    else if (tour) { if (!tour.bots) { makeBots(tour.botCount); tour.bots = matchBots; } matchBots = tour.bots; tour.awarded = false; } else makeBots(n);
     const list = everyone();
     list.forEach((p, i) => { p.team = mode.teams ? i % 2 : undefined; });
     scores = {};
@@ -777,7 +782,7 @@ FP.Game = (function () {
     FP.Camera.snap(chars.map(FP.Ragdoll.center));
     timer = 0;
     if (FP.Net) FP.Net.roundStarted();
-    if (round === 1 && humans().length && !api.skipIntro && !mode.noIntro) showIntro();
+    if (round === 1 && humans().length && !api.skipIntro && !mode.noIntro && !tourney) showIntro();
     else goCountdown();
   }
 
@@ -948,6 +953,13 @@ FP.Game = (function () {
     const by = c.lastHitBy;
     if (by && by !== c && performance.now() - c.lastHitTime < 3000) { const b = statOf(by); if (b) b.kos++; }
     hitStop(0.09);
+    // knocked out the King of the Party: +1 party point (up to 3 per game)
+    if (state === 'play' && tour && tour.king && c.player === tour.king && by && by !== c && by.player && performance.now() - c.lastHitTime < 3000 && tour.kingKos < 3) {
+      tour.kingKos++;
+      tour.bonus[by.player.id] = (tour.bonus[by.player.id] || 0) + 1;
+      FP.UI.toast(`${by.player.name} knocked out the King! +1 party point`, 2.2);
+      FP.Audio.play('ding');
+    }
   });
   FP.bus.on('throw', (e) => { if (e && e.who && e.who.bodies) { const s = statOf(e.by); if (s) s.throws++; } });
   FP.bus.on('grab', (e) => { if (e && e.victim) { const s = statOf(e.by); if (s) s.grabs++; } });
@@ -1169,6 +1181,7 @@ FP.Game = (function () {
       if (Object.keys(got).length) setTimeout(() => { if (state === 'results') FP.Audio.play('coin'); }, 650);
       if (localP.length && places.length > 1 && !places[0].some((p) => localP.includes(p))) setTimeout(() => { if (state === 'results') FP.Audio.play('aww'); }, 400);
       if (FP.Net) FP.Net.podium(places.map((g) => g.map((p) => p.id)));
+      if (tourney && tourney.current) { tourneyResults(html, places); return; }
       if (tour) { tourResults(html, netHtml); return; }
       if (story) { storyResults(html); return; }
       FP.UI.screen({
@@ -1200,7 +1213,7 @@ FP.Game = (function () {
         return FP.UI.playerPill(p, `${score}${c && c.alive === false ? ` <span class="outmark">${ICON.out}</span>` : ''}`);
       }).join('');
     }
-    const goal = (mode.rounds ? ` <small>${mode.roundName || 'Round'} ${round} of ${mode.rounds}</small>` : mode.roundsToWin > 1 && !mode.single ? ` <small>first to ${mode.roundsToWin}</small>` : '') + (tour ? ` <small>Party Tour ${tour.index + 1} of ${tour.games.length}</small>` : '');
+    const goal = (mode.rounds ? ` <small>${mode.roundName || 'Round'} ${round} of ${mode.rounds}</small>` : mode.roundsToWin > 1 && !mode.single ? ` <small>first to ${mode.roundsToWin}</small>` : '') + (tour ? ` <small>Party Tour ${tour.index + 1} of ${tour.games.length}</small>` : '') + (story && story.speed && speedRun ? ` <small class="speed-clock">${speedFmt(speedRun.t)}</small>` : '') + (tour && tour.king && everyone().includes(tour.king) ? ` <small class="king-line" data-king="${tour.king.id}">${ICON.crown} King: ${esc(tour.king.name)}</small>` : '');
     return `<div class="modename">${mode.name}${goal}</div>${pills ? `<div class="pills">${pills}</div>` : ''}${extra ? `<div class="extra${mode.hudClass ? ' ' + mode.hudClass : ''}">${extra}</div>` : ''}`;
   }
 
@@ -1223,6 +1236,8 @@ FP.Game = (function () {
           <button class="round" data-bots="-1" ${n <= min ? 'disabled' : ''} title="Fewer bots">${ICON.minus}</button><b class="count">${n}</b>
           <button class="round" data-bots="1" ${n >= max ? 'disabled' : ''} title="More bots">${ICON.plus}</button></div>
         ${n > 0 ? `<div class="skill"><span class="lbl">Bot skill</span>${FP.Bots.SKILL_ORDER.map((id) => `<button class="chip${id === botSkill ? ' on' : ''}" data-skill="${id}">${skillStars(id)}${FP.Bots.SKILLS[id].name}</button>`).join('')}</div>` : ''}
+        <div class="skill"><span class="lbl">King of the Party</span><button class="chip${tourOpts.king ? ' on' : ''}" data-king="1">On</button><button class="chip${tourOpts.king ? '' : ' on'}" data-king="0">Off</button></div>
+        ${tourOpts.king ? '<p class="small">The leader wears a big crown. Knock out the King for <b>+1</b> party point!</p>' : ''}
         ${funLine()}<p class="small">Left and right: number of bots.${n > 0 ? ' Up and down: bot skill.' : ''}</p>`;
       const card = FP.UI.screen({
         cls: 'setup', title: 'Party Tour', html,
@@ -1242,6 +1257,7 @@ FP.Game = (function () {
         },
       });
       card.querySelectorAll('[data-bots]').forEach((b) => b.addEventListener('click', () => change(+b.dataset.bots)));
+      card.querySelectorAll('[data-king]').forEach((b) => b.addEventListener('click', () => { tourOpts.king = b.dataset.king === '1'; FP.Audio.play('menu'); draw(); }));
       card.querySelectorAll('[data-games]').forEach((b) => b.addEventListener('click', () => { tourOpts.games = +b.dataset.games; tourOpts.list = false; FP.Audio.play('menu'); draw(); }));
       card.querySelectorAll('[data-list]').forEach((b) => b.addEventListener('click', () => { FP.Audio.play('menu'); if (!cleanPlaylist().length) playlistScreen(); else { tourOpts.list = true; draw(); } }));
       card.querySelectorAll('[data-skill]').forEach((b) => b.addEventListener('click', () => { botSkill = b.dataset.skill; try { localStorage.setItem('floppy-skill', botSkill); } catch (e) { /* no saving */ } FP.Audio.play('menu'); draw(); }));
@@ -1253,7 +1269,7 @@ FP.Game = (function () {
     const ids = MODES().map((m) => m.id).filter((id) => id !== 'custom'); // (your own arenas are played on purpose)
     for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [ids[i], ids[j]] = [ids[j], ids[i]]; }
     const games = tourOpts.list && cleanPlaylist().length ? cleanPlaylist() : ids.slice(0, tourOpts.games);
-    tour = { games, index: 0, points: {}, bots: null, botCount: tourOpts.bots, awarded: false };
+    tour = { games, index: 0, points: {}, bots: null, botCount: tourOpts.bots, awarded: false, kingOn: tourOpts.king, king: null, bonus: {}, kingKos: 0 };
     FP.UI.wipe(() => startMatch(FP.Modes[tour.games[0]]));
   }
 
@@ -1268,13 +1284,22 @@ FP.Game = (function () {
       let place = 0;
       sorted.forEach((p, i) => { if (i > 0 && (scores[p.id] || 0) < (scores[sorted[i - 1].id] || 0)) place = i; got[p.id] = [4, 3, 2, 1][place] || 1; });
     }
-    list.forEach((p) => { tour.points[p.id] = (tour.points[p.id] || 0) + got[p.id]; });
+    // King of the Party: +1 for the King if they win, +1 for everyone who knocked out the King
+    if (tour.kingOn && tour.king && list.includes(tour.king) && got[tour.king.id] === 4) tour.bonus[tour.king.id] = (tour.bonus[tour.king.id] || 0) + 1;
+    list.forEach((p) => { got[p.id] += tour.bonus[p.id] || 0; tour.points[p.id] = (tour.points[p.id] || 0) + got[p.id]; });
+    tour.bonus = {}; tour.kingKos = 0;
+    // the new King: the one leader (nobody if there's a tie)
+    const top = Math.max(...list.map((p) => tour.points[p.id] || 0));
+    const leaders = list.filter((p) => (tour.points[p.id] || 0) === top);
+    const was = tour.king;
+    tour.king = tour.kingOn && leaders.length === 1 ? leaders[0] : null;
+    if (tour.king && tour.king !== was) tour.newKing = true;
     return got;
   }
 
   function tourTable(got) {
     const list = everyone().slice().sort((a, b) => (tour.points[b.id] || 0) - (tour.points[a.id] || 0));
-    return `<div class="tour-table">${list.map((p, i) => `<div class="tour-row"><span class="medal m${i}">${['1st', '2nd', '3rd'][i] || `${i + 1}th`}</span>${FP.UI.playerPill(p)}<b>${tour.points[p.id] || 0}</b>${got ? `<span class="plus">+${got[p.id]}</span>` : ''}</div>`).join('')}</div>`;
+    return `<div class="tour-table">${list.map((p, i) => `<div class="tour-row"><span class="medal m${i}">${['1st', '2nd', '3rd'][i] || `${i + 1}th`}</span>${FP.UI.playerPill(p, tour.king === p ? ` <span class="crowns">${ICON.crown}</span>` : '')}<b>${tour.points[p.id] || 0}</b>${got ? `<span class="plus">+${got[p.id]}</span>` : ''}</div>`).join('')}</div>`;
   }
   const tourList = () => `<div class="tour-list">${tour.games.map((id, i) => `<span class="${i < tour.index ? 'done' : i === tour.index ? 'now' : ''}">${FP.Modes[id].name}</span>`).join('')}</div>`;
 
@@ -1282,7 +1307,9 @@ FP.Game = (function () {
     const got = tour.awarded ? null : tourAward();
     tour.awarded = true;
     const last = tour.index >= tour.games.length - 1;
-    const html = `${gameHtml}<h2>Party points</h2>${tourTable(got)}${tourList()}`;
+    const kingLine = tour.king && !last ? `<p class="small">${ICON.crown} <b>${esc(tour.king.name)}</b> is the King of the Party${tour.newKing ? ' now' : ''}! Knock them out for +1 point.</p>` : '';
+    tour.newKing = false;
+    const html = `${gameHtml}<h2>Party points</h2>${tourTable(got)}${kingLine}${tourList()}`;
     FP.UI.screen({
       cls: 'results',
       title: `${mode.name}: results`,
@@ -1293,7 +1320,7 @@ FP.Game = (function () {
         { label: `${ICON.home} Stop the tour`, action: () => lobby(), small: true },
       ],
     });
-    if (FP.Net) FP.Net.results(`${netGameHtml}<h2>Party points</h2>${tourTable(got)}${tourList()}`);
+    if (FP.Net) FP.Net.results(`${netGameHtml}<h2>Party points</h2>${tourTable(got)}${kingLine}${tourList()}`);
   }
 
   function tourFinal() {
@@ -1318,6 +1345,130 @@ FP.Game = (function () {
       ],
     });
     if (FP.Net) FP.Net.results(html);
+  }
+
+  // ------------------------------------------------------------
+  //  TOURNAMENT: 8 players in a bracket (bots fill the empty spots).
+  //  Win your match to move on: quarterfinals, semifinals, final!
+  //  When two bots meet, their match is decided in a flash.
+  // ------------------------------------------------------------
+  const TOURNEY_GAMES = ['arena', 'sumo', 'bumpers', 'tiles', 'color', 'sweeper', 'meteor', 'boxing', 'conveyor', 'wall'];
+  let tourney = null;
+  const pickGame = () => TOURNEY_GAMES[Math.floor(Math.random() * TOURNEY_GAMES.length)];
+  function tourneySetup() {
+    if (FP.Net && (FP.Net.isHost() || FP.Net.isClient())) { FP.UI.toast('The Tournament works when you are not online'); return; }
+    const draw = () => {
+      const html = `<div class="champ">${ICON.crown}</div><p>8 players in a bracket. Every match is <b>1 against 1</b> in a random mini-game. Win to move on to the semifinals, then the <b>final</b>! Bots fill the empty spots.</p>
+        <div class="skill"><span class="lbl">Bot skill</span>${FP.Bots.SKILL_ORDER.map((id) => `<button class="chip${id === botSkill ? ' on' : ''}" data-skill="${id}">${skillStars(id)}${FP.Bots.SKILLS[id].name}</button>`).join('')}</div>
+        <p class="small">Players: ${humans().map((p) => esc(p.name)).join(', ')} and ${8 - humans().length} bots.</p>`;
+      const card = FP.UI.screen({
+        cls: 'setup', title: 'Tournament', html,
+        buttons: [{ label: `${ICON.play} Start the tournament`, action: startTourney, cls: 'go' }, { label: `${ICON.back} Back`, action: backToPicker, small: true }],
+        back: backToPicker,
+      });
+      card.querySelectorAll('[data-skill]').forEach((b) => b.addEventListener('click', () => { botSkill = b.dataset.skill; FP.Audio.play('menu'); draw(); }));
+    };
+    draw();
+  }
+  function startTourney() {
+    const h = humans().slice(0, 8);
+    makeBots(8 - h.length);
+    const people = h.concat(matchBots);
+    for (let i = people.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [people[i], people[j]] = [people[j], people[i]]; }
+    const first = [];
+    for (let i = 0; i < 8; i += 2) first.push({ a: people[i], b: people[i + 1], w: null, game: pickGame() });
+    tourney = { people, rounds: [first, [], []], r: 0, current: null, champion: null };
+    matchBots = [];
+    FP.UI.wipe(bracketScreen);
+  }
+  const nextTourneyMatch = () => tourney.rounds[tourney.r].find((m) => !m.w);
+  function advanceTourney() {
+    const R = tourney.rounds[tourney.r];
+    if (R.some((m) => !m.w)) return;
+    if (tourney.r === 2) { tourney.champion = R[0].w; return; }
+    const next = [];
+    for (let i = 0; i < R.length; i += 2) next.push({ a: R[i].w, b: R[i + 1].w, w: null, game: pickGame() });
+    tourney.r++; tourney.rounds[tourney.r] = next;
+  }
+  // the island behind the bracket (like the lobby, but the tournament keeps going)
+  function tourneyWorld() {
+    FP.UI.closeScreen();
+    state = 'select'; paused = false; mode = null; matchBots = [];
+    FP.UI.setHud('');
+    FP.Audio.setSong('party');
+    FP.Camera.setLift(1.6);
+    buildLobbyIsland();
+    clearChars();
+    players.forEach((p) => { p.team = undefined; spawnInLobby(p); });
+    FP.Camera.snap(chars.map(FP.Ragdoll.center));
+    if (lobbyPanel) lobbyPanel.hidden = true;
+  }
+  function bracketScreen() {
+    tourneyWorld();
+    if (tourney.champion) { tourneyChampion(); return; }
+    const pill = (p, m) => `<span class="br-p${m && m.w === p ? ' win' : m && m.w ? ' lose' : ''}">${FP.UI.playerPill(p)}</span>`;
+    const match = (m) => `<div class="br-m${m === nextTourneyMatch() ? ' now' : ''}">${pill(m.a, m)}${pill(m.b, m)}<small>${FP.Modes[m.game].name}</small></div>`;
+    const col = (i, title) => `<div class="br-col"><h3>${title}</h3><div class="br-list">${(tourney.rounds[i] || []).map(match).join('') || '<div class="br-m tbd">?</div>'}</div></div>`;
+    const m = nextTourneyMatch();
+    const human = m && [m.a, m.b].some((p) => p.source.kind !== 'bot');
+    FP.UI.screen({
+      cls: 'tourney', title: 'Tournament',
+      html: `<div class="bracket">${col(0, 'Quarterfinals')}${col(1, 'Semifinals')}${col(2, 'Final')}</div>`,
+      buttons: [
+        { label: `${ICON.play} ${human ? `Play: ${esc(m.a.name)} vs ${esc(m.b.name)} in ${FP.Modes[m.game].name}` : 'Next: the bots play their matches'}`, action: playTourneyMatch, cls: 'go' },
+        { label: `${ICON.home} Quit the tournament`, action: () => FP.UI.wipe(() => lobby()), small: true },
+      ],
+      back: () => {},
+    });
+  }
+  function playTourneyMatch() {
+    const m = nextTourneyMatch();
+    if (!m) return;
+    const botsOnly = (x) => x && ![x.a, x.b].some((p) => p.source.kind !== 'bot');
+    if (botsOnly(m)) {
+      // two bots: decided in a flash (all the bot matches in a row, until a player has to play)
+      const lines = [];
+      for (let x = m; botsOnly(x) && !tourney.champion; x = nextTourneyMatch()) {
+        x.w = Math.random() < 0.5 ? x.a : x.b;
+        lines.push(`${x.w.name} beats ${(x.w === x.a ? x.b : x.a).name}`);
+        advanceTourney();
+      }
+      FP.UI.toast(lines.join('. ') + '!', 2.8);
+      FP.Audio.play('ding');
+      bracketScreen();
+      return;
+    }
+    tourney.current = m;
+    FP.UI.wipe(() => startMatch(FP.Modes[m.game]));
+  }
+  function tourneyResults(gameHtml, places) {
+    const m = tourney.current;
+    const top = places[0] || [];
+    m.w = top.length === 1 ? top[0] : top.length ? top[Math.floor(Math.random() * top.length)] : Math.random() < 0.5 ? m.a : m.b;
+    const stage = ['quarterfinal', 'semifinal', 'final'][tourney.r];
+    advanceTourney();
+    FP.UI.screen({
+      cls: 'results', title: `${mode.name}: results`,
+      html: `<p class="winner">${esc(m.w.name)} wins the ${stage}!</p>${gameHtml}`,
+      buttons: [{ label: `${ICON.play} ${tourney.champion ? 'Who is the champion?' : 'Back to the bracket'}`, action: () => { tourney.current = null; FP.UI.wipe(bracketScreen); }, cls: 'go' }],
+    });
+  }
+  function tourneyChampion() {
+    const p = tourney.champion, mine = p.source.kind !== 'bot';
+    FP.Audio.play('win'); FP.Audio.play('cheer');
+    FP.FX.confetti(FP.Camera.target.clone(), 180, 6);
+    let c = chars.find((q) => q.player === p);
+    if (!c) { c = makeChar(p, { x: 0, y: 0.1, z: 3, yaw: 0 }); FP.Camera.snap(chars.map(FP.Ragdoll.center)); } // (a bot champion comes to the island too)
+    if (c) { c.cheer = 30; c.expression = 'happy'; c.exprTimer = 30; c.podiumWinner = true; }
+    if (mine) { FP.Profile.earn(150); FP.Profile.addXp(100); }
+    FP.UI.screen({
+      cls: 'results', title: 'Tournament Champion!',
+      html: `<div class="champ">${ICON.trophy}</div><p class="winner">${esc(p.name)} is the Tournament Champion!</p>${mine ? `<p>${ICON.coin} <b>+150</b> party coins and <b>+100</b> XP!</p>` : '<p>A bot won this time. Try again!</p>'}`,
+      buttons: [
+        { label: `${ICON.again} New tournament`, action: () => { tourney = null; startTourney(); }, cls: 'go' },
+        { label: `${ICON.home} Back to the lobby`, action: () => FP.UI.wipe(() => lobby()), small: true },
+      ],
+    });
   }
 
   // ------------------------------------------------------------
@@ -1458,6 +1609,7 @@ FP.Game = (function () {
         action: () => (open ? storyLevel(w, l) : FP.UI.toast('Win the level before this one to open it!', 2.2)),
       });
     }));
+    buttons.push({ label: `${ICON.clock} Speedrun`, action: speedrunScreen, small: true, cls: 'wide' });
     buttons.push({ label: `${ICON.back} Back`, action: titleScreen, small: true, cls: 'wide' });
     const card = FP.UI.screen({
       cls: 'story', title: 'Floppy World Tour',
@@ -1488,11 +1640,11 @@ FP.Game = (function () {
     });
   }
 
-  function startStory(w, l, skill) {
+  function startStory(w, l, skill, speed = false) {
     const m = FP.Modes[WORLDS[w].levels[l]];
     if (!m) return;
     lobby(); // makes sure Player 1 is here
-    story = { w, l, skill, prevSkill: botSkill, result: null };
+    story = { w, l, skill, prevSkill: botSkill, result: null, speed };
     botSkill = isBoss(m.id) ? 'hard' : skill; // (bots are your friends in the boss fights: they try their best)
     if (isBoss(m.id)) m.level = skill; // the bosses are tougher on Hard
     const { min, max } = botLimits(m);
@@ -1519,6 +1671,20 @@ FP.Game = (function () {
       for (const p of STORY_PRIZES) if ((p.boss ? d[p.boss] : total >= p.stars) && FP.Profile.grant(p.id)) res.prizes.push(p.id);
       if (res.coins) FP.Profile.earn(res.coins);
     }
+    // speedrun: on to the next level (or the finish line!)
+    if (story.speed && speedRun) {
+      if (won) {
+        speedRun.i++;
+        if (speedRun.i >= SPEED_LEVELS) {
+          const sd = speedData(), t = speedRun.t;
+          res.speedDone = { t, record: !sd.best || t < sd.best, old: sd.best };
+          if (res.speedDone.record) sd.best = t;
+          sd.runs = (sd.runs || 0) + 1;
+          sd.run = null; speedRun = null;
+          saveSpeed(sd);
+        } else saveSpeedRun();
+      } else saveSpeedRun();
+    }
     story.result = res;
   }
 
@@ -1535,10 +1701,62 @@ FP.Game = (function () {
     for (let i = 0; i < (r.newStars || 0); i++) setTimeout(() => FP.Audio.play('star'), 700 + i * 260);
     if (!r.won) setTimeout(() => FP.Audio.play('aww'), 500);
     const buttons = [];
+    if (story.speed) {
+      // speedrun: straight on to the next level, no menus (the clock is stopped in here)
+      if (r.speedDone) {
+        msg = `<p class="winner">Speedrun finished!</p><p class="speed-time">${speedFmt(r.speedDone.t)}</p>` +
+          (r.speedDone.record ? `<p><b>New record!</b>${r.speedDone.old ? ` Your old best was ${speedFmt(r.speedDone.old)}.` : ''}</p>` : `<p>Your best is still ${speedFmt(r.speedDone.old)}.</p>`) + msg;
+        FP.Audio.play('fanfare'); FP.FX.confetti(FP.Camera.target.clone(), 160, 6);
+        buttons.push({ label: `${ICON.again} New speedrun`, action: () => startSpeedrun(true), cls: 'go' });
+      } else {
+        const lv = speedRun ? speedRun.i : 0, sw = Math.floor(lv / 4), sl = lv % 4;
+        msg = `<p class="speed-time">${speedFmt(speedRun ? speedRun.t : 0)} <small>${lv} of ${SPEED_LEVELS} levels done</small></p>` + msg;
+        buttons.push({ label: `${ICON.play} ${r.won ? `Next: ${sw + 1}-${sl + 1} ${FP.Modes[WORLDS[sw].levels[sl]].name}` : 'Try again (the clock keeps going!)'}`, action: () => startStory(sw, sl, 'normal', true), cls: 'go' });
+      }
+      buttons.push({ label: `${ICON.grid} World Tour map${r.speedDone ? '' : ' (your run is saved)'}`, action: () => storyMap(w * 4 + l), small: true });
+      FP.UI.screen({ cls: 'results', title: `${mode.name}: results`, html: msg + gameHtml, buttons });
+      return;
+    }
     if (r.won && !lastLevel) buttons.push({ label: `${ICON.play} Next level: ${FP.Modes[WORLDS[nw].levels[nl]].name}`, action: () => storyLevel(nw, nl), cls: 'go' });
     buttons.push({ label: `${ICON.again} ${r.won ? 'Play again' : 'Try again'}`, action: () => startStory(w, l, skill), cls: r.won ? '' : 'go' });
     buttons.push({ label: `${ICON.grid} World Tour map`, action: () => storyMap(w * 4 + l), small: true });
     FP.UI.screen({ cls: 'results', title: `${mode.name}: results`, html: msg + gameHtml, buttons });
+  }
+
+  // ------------------------------------------------------------
+  //  SPEEDRUN: play all 24 World Tour levels in a row, on Normal,
+  //  as fast as you can. The clock only runs while you play, and
+  //  losing a level costs time (you have to try it again).
+  // ------------------------------------------------------------
+  const SPEED_LEVELS = WORLDS.length * 4;
+  let speedRun = null; // { i: the level you are on, t: seconds so far }
+  function speedData() { try { return JSON.parse(localStorage.getItem('floppy-speedrun') || '{}') || {}; } catch (e) { return {}; } }
+  function saveSpeed(d) { try { localStorage.setItem('floppy-speedrun', JSON.stringify(d)); } catch (e) { /* no saving */ } }
+  function saveSpeedRun() { const d = speedData(); d.run = speedRun ? { i: speedRun.i, t: speedRun.t } : null; saveSpeed(d); }
+  function speedFmt(t) { const m = Math.floor(t / 60), sec = t - m * 60; return `${m}:${sec < 10 ? '0' : ''}${sec.toFixed(1)}`; }
+  function startSpeedrun(fresh) {
+    const d = speedData();
+    if (fresh || !d.run) speedRun = { i: 0, t: 0 }; else speedRun = { i: d.run.i | 0, t: +d.run.t || 0 };
+    saveSpeedRun();
+    const w = Math.floor(speedRun.i / 4), l = speedRun.i % 4;
+    startStory(w, l, 'normal', true);
+  }
+  function speedrunScreen() {
+    const d = speedData();
+    const run = d.run && d.run.i < SPEED_LEVELS ? d.run : null;
+    const html = `<div class="champ">${ICON.trophy}</div><p>Play all <b>${SPEED_LEVELS} levels</b> of the World Tour in a row, on Normal, as fast as you can!</p>
+      <p class="small">The clock only runs while you play. Lose a level and you must try it again, so the clock keeps going. You can stop and come back later.</p>
+      <p class="speed-time">${d.best ? `Best: ${speedFmt(d.best)}` : 'No record yet'}</p>
+      ${run ? `<p>Your run: level <b>${run.i + 1}</b> of ${SPEED_LEVELS}, <b>${speedFmt(run.t)}</b> so far.</p>` : ''}`;
+    FP.UI.screen({
+      cls: 'setup', title: 'Speedrun', html,
+      buttons: [
+        ...(run ? [{ label: `${ICON.play} Continue my run`, action: () => startSpeedrun(false), cls: 'go' }] : []),
+        { label: `${ICON.again} New speedrun`, action: () => startSpeedrun(true), cls: run ? '' : 'go' },
+        { label: `${ICON.back} World Tour map`, action: () => storyMap(), small: true },
+      ],
+      back: () => storyMap(),
+    });
   }
 
   // ------------------------------------------------------------
@@ -1824,6 +2042,22 @@ FP.Game = (function () {
     }
   }
 
+  // the big floating crown of the King of the Party (online friends see it too: the id comes in the HUD)
+  let kingCrown = null;
+  function updateKingCrown() {
+    let id = null;
+    if (['countdown', 'play', 'roundOver'].includes(state) && tour && tour.king) id = tour.king.id;
+    else if (state === 'client') { const el = document.querySelector('.king-line[data-king]'); if (el) id = +el.dataset.king; }
+    const c = id !== null ? chars.find((ch) => ch.player && ch.player.id === id && ch.alive !== false) : null;
+    if (!c) { if (kingCrown) kingCrown.visible = false; return; }
+    if (!kingCrown) { kingCrown = FP.Look.makeHat('crown', 0.62); kingCrown.scale.setScalar(1.3); FP.Stage.scene.add(kingCrown); }
+    if (kingCrown.parent !== FP.Stage.scene) FP.Stage.scene.add(kingCrown);
+    const h = c.parts.head.position, t = performance.now() / 1000;
+    kingCrown.visible = true;
+    kingCrown.position.set(h.x, h.y + 1.2 + Math.sin(t * 3) * 0.08, h.z);
+    kingCrown.rotation.set(0.15, t * 1.5, 0);
+  }
+
   // ------------------------------------------------------------
   //  THE LOOP
   // ------------------------------------------------------------
@@ -1833,7 +2067,7 @@ FP.Game = (function () {
     const src = p.source;
     const canMove = ['play', 'lobby', 'roundOver', 'title'].includes(state);
     if (!canMove || paused) return idle;
-    if (src.kind === 'bot') return state === 'lobby' || state === 'title' || (c.emote && c.emote.t < 2) ? idle : FP.Bots.think(c, chars, FP.Physics.STEP, state === 'play' ? mode : null);
+    if (src.kind === 'bot') return state === 'lobby' || state === 'title' || state === 'select' || (c.emote && c.emote.t < 2) ? idle : FP.Bots.think(c, chars, FP.Physics.STEP, state === 'play' ? mode : null);
     if (src.kind === 'remote') return FP.Net ? FP.Net.inputOf(p.id) : idle;
     const input = FP.Input.read(src, p.id);
     if (!p.used && (Math.abs(input.x) > 0.3 || Math.abs(input.z) > 0.3 || input.jumpPressed || input.punchPressed || input.grab)) p.used = true;
@@ -1861,6 +2095,7 @@ FP.Game = (function () {
     FP.Props.animate(dt);
     FP.Season.update(dt); // falling snow in winter
     updatePets(dt);
+    updateKingCrown();
     if (!paused && state !== 'replay') FP.Style.update(dt, chars); // sparkly trails
     const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
     FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen));
@@ -1909,6 +2144,7 @@ FP.Game = (function () {
       if (mode.update) mode.update(0, chars, api, true);
     } else if (state === 'play') {
       timer += dt;
+      if (story && story.speed && speedRun) speedRun.t += dt; // (the speedrun clock only runs while you play)
       for (const o of outTimers) { o.t -= dt; if (o.t <= 0 && !o.done) { o.done = true; FP.Ragdoll.teleport(o.c, 0, -80, 0); o.c.alive = false; } }
       const res = mode.update(dt, chars, api);
       if (res) endRound(res);
@@ -1951,7 +2187,7 @@ FP.Game = (function () {
     get chars() { return chars; }, get state() { return state; }, get round() { return round; }, set round(v) { round = v; }, get mode() { return mode; }, get scores() { return scores; },
     get everyone() { return everyone(); },
     MODES, addPlayer, removePlayer, eliminate, lobby, titleScreen, startMatch, chooseMode, setupMatch, refreshLobby, hudHtml, update,
-    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, editor, storyMap, startStory, get story() { return story; }, startPhoto, endPhoto, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
+    clientLobby, clientRound, clientPodium, skipIntro: false, dailyInfo, startDaily, editor, storyMap, startStory, get story() { return story; }, startPhoto, endPhoto, tourneySetup, startTourney, playTourneyMatch, get tourney() { return tourney; }, get replaying() { return !!replay; }, get playlist() { return playlist; }, endMatchNow: () => { if (['play', 'roundOver', 'countdown'].includes(state)) results(); }, cycle: (p, what, dir) => (what === 'color' ? cycleColor(p, dir) : what === 'outfit' ? cycleOutfit(p, dir) : what === 'hat' ? cycleHat(p, dir) : STYLE_ACTS.includes(what) ? cycleStyle(p, what, dir) : null),
     botLimits, setBots(id, n) { botCount[id] = n; },
     setSkill(id) { if (FP.Bots.SKILLS[id]) botSkill = id; }, get botSkill() { return botSkill; },
     catOf, get tour() { return tour; }, tourSetup, startTour, surprise, funScreen,

@@ -314,6 +314,26 @@
     .tour-list span.now { background: var(--yellow); }
     .tour-list span.done { opacity: .5; text-decoration: line-through; }
     .champ .ico { width: 90px; height: 90px; display: block; margin: 0 auto; }
+    .speed-time { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 4px 0; }
+    .speed-time small { font-size: 15px; opacity: .7; }
+    .speed-clock { font-variant-numeric: tabular-nums; background: var(--ink); color: #fff; border-radius: 8px; padding: 0 7px; }
+    .king-line { color: #b8860b; }
+    /* tournament bracket */
+    .screen.tourney .card { max-width: 760px; width: 96vw; }
+    .bracket { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; align-items: center; margin: 6px 0; }
+    .bracket { align-items: stretch; }
+    .br-col { display: flex; flex-direction: column; gap: 4px; }
+    .br-list { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: space-around; }
+    .br-col h3 { margin: 0 0 2px; font-size: 16px; }
+    .br-m { background: var(--paper2); border-radius: 14px; padding: 6px; display: flex; flex-direction: column; gap: 4px; align-items: center; border: 3px solid transparent; }
+    .br-m small { font-size: 12px; font-weight: 700; opacity: .7; }
+    .br-m.now { border-color: var(--ink); background: var(--yellow); animation: brPulse 1.2s ease-in-out infinite; }
+    .br-m.tbd { font-size: 26px; font-weight: 800; opacity: .45; padding: 14px; }
+    .br-p .pill { font-size: 13px; padding: 0 8px 0 5px; border-width: 2px; }
+    .br-p.win .pill { outline: 3px solid var(--yellow); outline-offset: 1px; }
+    .br-p.lose { opacity: .4; }
+    @keyframes brPulse { 50% { transform: scale(1.04); } }
+    @media (max-width: 560px) { .bracket { gap: 4px; } .br-p .pill { font-size: 11px; } .br-col h3 { font-size: 13px; } }
 
     /* how many bots */
     .setup-art svg { width: 220px; max-width: 100%; height: auto; border-radius: 14px; }
