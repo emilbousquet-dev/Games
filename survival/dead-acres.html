@@ -304,6 +304,10 @@
   </div>
 </div>
 
+<script>
+  // hide one harmless warning from three.js ("build/three.min.js is deprecated") so it doesn't look like an error
+  (function () { const w = console.warn; console.warn = function (...a) { if (String(a[0]).includes('three.min.js" are deprecated')) return; w.apply(console, a); }; })();
+</script>
 <script>/* ../lib/three.min.js */
 console.warn('Scripts "build/three.js" and "build/three.min.js" are deprecated with r150+, and will be removed with r160. Please use ES Modules or alternatives: https://threejs.org/docs/index.html#manual/en/introduction/Installation'),
 /**

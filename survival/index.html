@@ -304,6 +304,10 @@
   </div>
 </div>
 
+<script>
+  // hide one harmless warning from three.js ("build/three.min.js is deprecated") so it doesn't look like an error
+  (function () { const w = console.warn; console.warn = function (...a) { if (String(a[0]).includes('three.min.js" are deprecated')) return; w.apply(console, a); }; })();
+</script>
 <script src="../lib/three.min.js"></script>
 <script src="lib/peerjs.min.js"></script>
 <script src="js/util.js"></script>
