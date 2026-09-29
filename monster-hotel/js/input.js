@@ -24,10 +24,12 @@ MH.Input = (function () {
     });
     window.addEventListener('keyup', (e) => keys.delete(e.code));
     window.addEventListener('blur', () => keys.clear());
-    document.addEventListener('mousemove', (e) => { if (mouse.locked) { mouse.dx += e.movementX; mouse.dy += e.movementY; } });
+    // mouse look: with the mouse locked, or by dragging (when locking isn't allowed)
+    document.addEventListener('mousemove', (e) => { if (mouse.locked || (e.buttons & 1 && e.target && e.target.id === 'game')) { mouse.dx += e.movementX; mouse.dy += e.movementY; } });
     document.addEventListener('mousedown', (e) => { if (mouse.locked && e.button === 0) { mouse.down = true; mouse.clicked = true; } });
     document.addEventListener('mouseup', (e) => { if (e.button === 0) mouse.down = false; });
     document.addEventListener('pointerlockchange', () => { mouse.locked = !!document.pointerLockElement; });
+    document.addEventListener('pointerlockerror', () => { mouse.noLock = true; });
   }
   const down = (list) => list.some((k) => keys.has(k));
   const hit = (list) => list.some((k) => pressed.has(k));
@@ -75,7 +77,7 @@ MH.Input = (function () {
     return s;
   }
   function onKey(f) { listeners.push(f); }
-  function lock(el) { try { const p = el.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (e) { /* not allowed */ } }
+  function lock(el) { try { const p = el.requestPointerLock(); if (p && p.catch) p.catch(() => { mouse.noLock = true; }); } catch (e) { mouse.noLock = true; } }
   function unlock() { try { document.exitPointerLock(); } catch (e) { /* ignore */ } }
 
   return { init, read, onKey, lock, unlock, mouse, isDown: (c) => keys.has(c) };

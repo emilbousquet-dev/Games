@@ -429,7 +429,7 @@ MH.Game = (function () {
     if (tm.lightning <= 0) { tm.lightning = U.rand(12, 30); W.lightning(); A.thunder(U.rand(0.4, 1.6)); }
 
     // --- you ---
-    P.update(dt, inp, t, In.mouse.locked);
+    P.update(dt, inp, t, true);
     handlePower(inp);
     handleInteraction(inp, dt);
     if (inp.drop && P.dropAll()) H.say('You', 'Oops, dropped it!', '#ffe14a');
@@ -652,7 +652,9 @@ MH.Game = (function () {
     const stress = U.clamp(grumpy * 0.2 + Gs.humans.filter((h) => h.state === 'sneak').length * 0.3, 0, 1);
     H.setStress(stress * 0.7);
     A.setIntensity(stress * 0.7 + (S.night - 1) * 0.06);
-    $('lockmsg').style.display = !AUTO && !In.mouse.locked && state === 'play' ? 'block' : 'none';
+    const lm = $('lockmsg');
+    lm.style.display = !AUTO && !In.mouse.locked && state === 'play' && S.time < 25 ? 'block' : 'none';
+    lm.textContent = In.mouse.noLock ? 'Hold the mouse button and drag to look around' : 'Click to look around with the mouse';
   }
 
   // ============================================================
