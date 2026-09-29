@@ -295,7 +295,7 @@ DA.Player = (function () {
     if (!t) return;
     switch (t.kind) {
       case 'container': G.openContainer('c' + t.ref.id, t.ref.name); A.loot(t.ref.x, t.ref.z); break;
-      case 'drop': G.openContainer('d' + t.ref.id, 'Supply crate'); A.loot(t.ref.x, t.ref.z); break;
+      case 'drop': G.openContainer('d' + t.ref.id, 'Supply crate'); A.loot(t.ref.x, t.ref.z); DA.Trophies.add('crates'); break;
       case 'dog': G.act({ t: 'dog', i: t.dog.i }); break;
       case 'bag': G.openContainer('g' + t.ref.id, (t.ref.owner || 'Someone') + '\'s backpack'); A.loot(t.ref.x, t.ref.z); break;
       case 'bush':
@@ -363,11 +363,13 @@ DA.Player = (function () {
     if (z) {
       const e = z.e, pos = e.avatar.root.position;
       const hx = eyePos.x + lookDir.x * z.d, hy = eyePos.y + lookDir.y * z.d, hz = eyePos.z + lookDir.z * z.d;
+      if (!z.isAnimal && isHeadshot(e, hy)) return hitZombie(e, dmg * 2, hx, hy, hz, true, s);
       FX.blood(hx, hy, hz);
       A.hitFlesh(hx, hz);
       DA.HUD.floatText(hx, hy + 0.3, hz, '-' + dmg, '#ff7050');
       DA.HUD.hitMarker();
       const kx = lookDir.x, kz = lookDir.z;
+      void kx;
       const push = s && s.id === 'bat' ? 1.6 : 1;
       if (z.isAnimal) G.act({ t: 'hitA', id: e.id, dmg });
       else G.act({ t: 'hitZ', id: e.id, dmg, kx: kx * push, kz: kz * push });
@@ -402,6 +404,24 @@ DA.Player = (function () {
     void px; void py; void pz;
   }
 
+  // hit high on a zombie = HEADSHOT (double damage!)
+  function isHeadshot(e, y) {
+    const sc = e.kind === 'boss' ? 1.9 : e.kind === 'brute' ? 1.3 : 1;
+    return y - e.avatar.root.position.y > 1.5 * sc;
+  }
+  function hitZombie(e, dmg, hx, hy, hz, head, held) {
+    FX.blood(hx, hy, hz);
+    A.hitFlesh(hx, hz);
+    if (head) { A.xp(); DA.Trophies.add('headshots'); DA.HUD.floatText(hx, hy + 0.5, hz, 'HEADSHOT!', '#ffd040'); }
+    DA.HUD.floatText(hx, hy + 0.3, hz, '-' + dmg, head ? '#ffd040' : '#ff7050');
+    DA.HUD.hitMarker();
+    const push = held && held.id === 'bat' ? 1.6 : 1;
+    G.act({ t: 'hitZ', id: e.id, dmg, kx: lookDir.x * push, kz: lookDir.z * push });
+    G.fx('hitZ', hx, hy, hz);
+    me.shake = 0.12;
+    DA.Input.rumble(0.4, 80);
+  }
+
   // shoot an arrow
   function shoot(power) {
     if (!Inv.count('arrow')) { G.msg('No arrows! Craft some (2 wood + 1 stone).', '#fa4'); A.error(); return; }
@@ -416,6 +436,7 @@ DA.Player = (function () {
       const h = C.ray(ox, oy, oz, dx, dy, dz, L, (o) => o.solid && o.kind !== 'floor' && o.kind !== 'fence');
       if (z && (!h || z.d < h.d)) {
         const e = z.e;
+        if (!z.isAnimal && isHeadshot(e, oy + dy * z.d)) { hitZombie(e, dmg * 2, ox + dx * z.d, oy + dy * z.d, oz + dz * z.d, true, null); return { t: z.d / L, gone: true }; }
         if (z.isAnimal) G.act({ t: 'hitA', id: e.id, dmg });
         else G.act({ t: 'hitZ', id: e.id, dmg, kx: dx * 0.5, kz: dz * 0.5 });
         FX.blood(ox + dx * z.d, oy + dy * z.d, oz + dz * z.d);
@@ -473,6 +494,7 @@ DA.Player = (function () {
       A.levelUp();
       const perk = me.level % 3 === 1 ? 'You chop and mine faster!' : 'More health, stronger hits!';
       DA.HUD.banner(`LEVEL ${me.level}!`, `${perk} (max health ${me.maxHp})`, '#c8d860', 4);
+      DA.Trophies.max('level', me.level);
       G.levelUp(me.level);
     }
   }
@@ -526,6 +548,7 @@ DA.Player = (function () {
     A.build(s.x, s.z);
     FX.dust(s.x, s.y + 0.2, s.z, 12);
     addXp(2);
+    DA.Trophies.add('built');
   }
 
   // ============================================================

@@ -179,7 +179,7 @@ DA.Inv = (function () {
         const row = e.target.closest('[data-r]');
         if (!row) return;
         const r = RECIPES[+row.dataset.r];
-        if (I.craft(r)) { DA.Audio.craft(); DA.Player.addXp(2); UI.flash(`Made ${r.out > 1 ? r.out + ' x ' : ''}${I.def(r.item).name}!`); }
+        if (I.craft(r)) { DA.Audio.craft(); DA.Player.addXp(2); DA.Trophies.add('crafted'); UI.flash(`Made ${r.out > 1 ? r.out + ' x ' : ''}${I.def(r.item).name}!`); }
         else DA.Audio.error();
       });
       document.getElementById('takeAll').addEventListener('click', () => { if (UI.box) DA.Game.act({ t: 'takeAll', cid: UI.box.cid }); });

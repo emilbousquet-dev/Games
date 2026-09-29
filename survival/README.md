@@ -58,6 +58,8 @@ A game controller works too: sticks to move and look, RT to hit, A to jump, X to
   Press E again to make it sit and guard your base.
 - 🧨 **Firecrackers**: craft them (1 cloth + 1 scrap = 3) or find them. Throw one: zombies run to the noise... then BOOM!
 - 👑 **Horde Boss**: a giant zombie leads every horde. Beat it for a bag of great loot.
+- 🎯 **Headshots**: hit a zombie high on the head for double damage.
+- 🏆 **Trophies**: 16 awards to unlock. See them in the pause menu (Esc). Add your own in `js/trophies.js`!
 - 💥 Damage numbers, zombie health bars, and pop-ups when you pick things up.
 
 ## The zombies
@@ -122,6 +124,7 @@ to update `dead-acres.html` (or just ask Claude to do it).
 | `js/player.js` | you: walking, hunger, thirst, hitting, your hands |
 | `js/zombies.js` | zombie and animal brains |
 | `js/dogs.js` | your dog buddies (change their names here!) |
+| `js/trophies.js` | the trophies (make up new ones here!) |
 | `js/building.js` | building your base |
 | `js/inventory.js` | the backpack and crafting screen |
 | `js/net.js` | playing online |

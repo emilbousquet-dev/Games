@@ -438,11 +438,13 @@ DA.Game = (function () {
         const L = FX.landing(a.x, a.y, a.z, a.vx, a.vy, a.vz);
         emit({ t: 'fc', id, x: a.x, y: a.y, z: a.z, vx: a.vx, vy: a.vy, vz: a.vz });
         later(0.3, () => Z.lure(L.x, L.z, 32, 5));
-        later(4.5, () => { Z.blast(L.x, L.z, 6, ITEMS.firecracker.dmg, pid); emit({ t: 'boom', id, x: U.round(L.x), y: U.round(L.y), z: U.round(L.z) }); });
+        later(4.5, () => { const killed = Z.blast(L.x, L.z, 6, ITEMS.firecracker.dmg, pid); if (killed) emit({ t: 'boomKills', n: killed }, pid); emit({ t: 'boom', id, x: U.round(L.x), y: U.round(L.y), z: U.round(L.z) }); });
         break;
       }
       case 'dog': {
+        const had = DA.Dogs.list[a.i] && DA.Dogs.list[a.i].owner;
         const text = DA.Dogs.interact(a.i, pname(pid));
+        if (!had && DA.Dogs.list[a.i] && DA.Dogs.list[a.i].owner) emit({ t: 'gotDog' }, pid);
         if (text) emit({ t: 'msg', text: U.esc(text), color: '#ffd890' }, pid);
         break;
       }
@@ -569,8 +571,16 @@ DA.Game = (function () {
         if (ev.pid === G.myPid) { me.inHeli = true; }
         break;
       case 'end': showEnding(ev); break;
-      case 'kill': me.kills++; P.addXp(ev.xp || 10, ev.kind === 'boss' ? 'HORDE BOSS DEFEATED!' : 'zombie'); break;
-      case 'xp': if (me.alive) P.addXp(ev.n, ev.why); break;
+      case 'boomKills': DA.Trophies.max('bestBoom', ev.n); if (ev.n >= 2) HUD.popup(`💥 ${ev.n} zombies with one BOOM!`, '#ffc040'); break;
+      case 'gotDog': DA.Trophies.add('dogs'); break;
+      case 'bossDown': DA.Trophies.add('bosses'); break;
+      case 'kill': me.kills++; DA.Trophies.add('kills'); P.addXp(ev.xp || 10, ev.kind === 'boss' ? 'HORDE BOSS DEFEATED!' : 'zombie'); break;
+      case 'xp':
+        if (ev.why === 'tree') DA.Trophies.add('trees');
+        if (ev.why === 'rock') DA.Trophies.add('rocks');
+        if (ev.why === 'survived the night') DA.Trophies.add('nights');
+        if (me.alive) P.addXp(ev.n, ev.why);
+        break;
       case 'fc': FX.throwThing(ev.id, ev.x, ev.y, ev.z, ev.vx, ev.vy, ev.vz); A.fuse(ev.x, ev.z); break;
       case 'boom': FX.explode(ev.x, ev.y, ev.z, ev.id); A.boom(ev.x, ev.z); if (U.dist(ev.x, ev.z, me.x, me.z) < 18) me.shake = Math.max(me.shake, 0.35 * (1 - U.dist(ev.x, ev.z, me.x, me.z) / 18)); break;
       case 'drop': s.drops[ev.drop.id] = ev.drop; addDrop(ev.drop, true); break;
@@ -609,6 +619,7 @@ DA.Game = (function () {
     G.state.kills++;
     if (zb.kind === 'boss') {
       makeBag(zb.x, zb.y + 0.2, zb.z, rollLoot('boss', 12).filter(Boolean), 'the Boss');
+      emit({ t: 'bossDown' });
       emit({ t: 'msg', text: `👑 The HORDE BOSS was defeated${pid ? ' by ' + U.esc(pname(pid)) : ''}! Its loot bag is where it fell.`, color: '#ffc040' });
     }
     if (!pid) return;
@@ -777,7 +788,7 @@ DA.Game = (function () {
   //  SAVING (only the host saves the world)
   // ============================================================
   function myRecord() {
-    return { inv: Inv.dump(), lv: me.level, xp: me.xp, hp: Math.round(me.hp), food: Math.round(me.food), water: Math.round(me.water), x: U.round(me.x), y: U.round(me.y), z: U.round(me.z), yaw: U.round(me.yaw), alive: me.alive };
+    return { inv: Inv.dump(), lv: me.level, xp: me.xp, stats: DA.Trophies.stats, trophies: DA.Trophies.got, hp: Math.round(me.hp), food: Math.round(me.food), water: Math.round(me.water), x: U.round(me.x), y: U.round(me.y), z: U.round(me.z), yaw: U.round(me.yaw), alive: me.alive };
   }
   function save() {
     if (!G.isHost || !G.state || G.mode !== 'play') return;
@@ -816,6 +827,7 @@ DA.Game = (function () {
 
   function loadMe(rec) {
     P.setLevel(rec ? rec.lv || 1 : 1, rec ? rec.xp || 0 : 0);
+    DA.Trophies.load(rec);
     P.resetStats();
     if (rec) {
       Inv.load(rec.inv);
@@ -1215,6 +1227,7 @@ DA.Game = (function () {
     $('pause').style.display = p ? 'flex' : 'none';
     $('pauseNote').textContent = Net.online ? 'The game does NOT pause when playing online!' : '';
     $('pauseCode').innerHTML = Net.online && G.isHost ? `Room code: <b>${Net.code}</b>` : '';
+    $('trophies').innerHTML = DA.Trophies.html();
     if (p) { document.exitPointerLock && document.exitPointerLock(); save(); } else lockMouse();
   }
 

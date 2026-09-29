@@ -51,6 +51,17 @@
   #pops { position: absolute; left: 0; right: 0; top: 64%; display: flex; flex-direction: column; align-items: center; gap: 2px; }
   .pop { font-weight: bold; font-size: 16px; text-shadow: 0 0 4px #000, 0 0 2px #000; animation: popUp 1.6s forwards; }
   @keyframes popUp { 0% { transform: translateY(8px) scale(0.8); opacity: 0; } 12% { transform: none; opacity: 1; } 75% { opacity: 1; } 100% { transform: translateY(-14px); opacity: 0; } }
+  #trophyToast { position: absolute; left: 50%; top: 96px; transform: translate(-50%, -30px); opacity: 0; background: rgba(40,32,8,0.9); border: 1px solid #ffc040; border-radius: 8px; padding: 8px 16px; text-align: center; font-size: 15px; color: #ffe8a0; pointer-events: none; }
+  #trophyToast b { color: #ffc040; letter-spacing: 2px; }
+  #trophyToast small { display: block; color: #d8c890; font-size: 12px; margin-top: 2px; }
+  #trophyToast.show { animation: toast 4s forwards; }
+  @keyframes toast { 0% { opacity: 0; transform: translate(-50%, -30px); } 10%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; transform: translate(-50%, -10px); } }
+  #trophies { max-height: 34vh; overflow-y: auto; text-align: left; margin: 10px 0; border-top: 1px solid var(--line); padding-top: 8px; }
+  .trophyHead { color: #ffc040; font-weight: bold; letter-spacing: 2px; margin-bottom: 6px; font-size: 13px; }
+  .trophy { display: flex; flex-direction: column; padding: 4px 0; opacity: 0.55; font-size: 13px; }
+  .trophy.got { opacity: 1; }
+  .trophy.got b { color: #ffc040; }
+  .trophy span { color: var(--dim); font-size: 12px; }
   #bossBar { position: absolute; left: 50%; top: 58px; transform: translateX(-50%); width: min(460px, 70vw); display: none; text-align: center; text-shadow: 0 0 4px #000; }
   #bossBar b { color: #ff6040; letter-spacing: 3px; font-size: 14px; }
   #bossBar div { height: 12px; margin-top: 3px; background: rgba(0,0,0,0.6); border: 1px solid #ff6040; border-radius: 6px; overflow: hidden; }
@@ -233,6 +244,7 @@
   <div id="crosshair"></div>
   <div id="hitmark">✕</div>
   <div id="pops"></div>
+  <div id="trophyToast"></div>
   <div id="bossBar"><b>👑 HORDE BOSS</b><div><i id="bossFill"></i></div></div>
   <div id="prompt"></div>
   <div class="progress" id="pickBar"><i></i></div>
@@ -286,6 +298,7 @@
     <button class="btn" id="btnResume">RESUME</button>
     <div class="setting">🔊 Volume <input type="range" id="volume" min="0" max="1" step="0.05"></div>
     <div class="setting">🖱 Mouse speed <input type="range" id="sens" min="0.3" max="2.5" step="0.1"></div>
+    <div id="trophies"></div>
     <button class="btn" id="btnQuit">SAVE AND QUIT</button>
     <div class="hint">Your world saves by itself, on this computer.</div>
   </div>
@@ -3999,7 +4012,7 @@ DA.Inv = (function () {
         const row = e.target.closest('[data-r]');
         if (!row) return;
         const r = RECIPES[+row.dataset.r];
-        if (I.craft(r)) { DA.Audio.craft(); DA.Player.addXp(2); UI.flash(`Made ${r.out > 1 ? r.out + ' x ' : ''}${I.def(r.item).name}!`); }
+        if (I.craft(r)) { DA.Audio.craft(); DA.Player.addXp(2); DA.Trophies.add('crafted'); UI.flash(`Made ${r.out > 1 ? r.out + ' x ' : ''}${I.def(r.item).name}!`); }
         else DA.Audio.error();
       });
       document.getElementById('takeAll').addEventListener('click', () => { if (UI.box) DA.Game.act({ t: 'takeAll', cid: UI.box.cid }); });
@@ -5020,13 +5033,15 @@ DA.Zombies = (function () {
   };
   // an explosion hurts every zombie and animal close by (host)
   Z.blast = function (x, z, radius, dmg, byPid) {
+    let killed = 0;
     for (const zb of [...Z.zombies.values()]) {
       const d = U.dist(zb.x, zb.z, x, z);
       if (d > radius || zb.state === 'dead') continue;
       const k = 1 - d / radius * 0.6;
-      Z.hit(zb.id, Math.round(dmg * k), (zb.x - x) / (d || 1) * 2.5, (zb.z - z) / (d || 1) * 2.5, byPid);
+      if (Z.hit(zb.id, Math.round(dmg * k), (zb.x - x) / (d || 1) * 2.5, (zb.z - z) / (d || 1) * 2.5, byPid)) killed++;
     }
     for (const an of [...Z.animals.values()]) if (U.dist(an.x, an.z, x, z) < radius) Z.hitAnimal(an.id, dmg, byPid);
+    return killed;
   };
   Z.boss = function () { for (const zb of Z.zombies.values()) if (zb.kind === 'boss' && !zb.dead && zb.state !== 'dead') return zb; return null; };
 
@@ -5228,6 +5243,61 @@ DA.Dogs = (function () {
     },
   };
   return D;
+})();
+
+</script>
+<script>/* js/trophies.js */
+// ============================================================
+//  DEAD ACRES — TROPHIES 🏆
+//  Little awards for doing cool things. Add your own!
+//  "stat" is what we count, "need" is how many you need.
+// ============================================================
+window.DA = window.DA || {};
+
+DA.TROPHIES = [
+  { id: 'firstblood', name: 'First Zombie', desc: 'Defeat your first zombie', stat: 'kills', need: 1 },
+  { id: 'hunter', name: 'Zombie Hunter', desc: 'Defeat 25 zombies', stat: 'kills', need: 25 },
+  { id: 'legend', name: 'Legend of Maple Creek', desc: 'Defeat 100 zombies', stat: 'kills', need: 100 },
+  { id: 'headshot', name: 'Bullseye', desc: 'Hit 10 zombies in the head', stat: 'headshots', need: 10 },
+  { id: 'lumberjack', name: 'Lumberjack', desc: 'Chop down 10 trees', stat: 'trees', need: 10 },
+  { id: 'miner', name: 'Rock Smasher', desc: 'Break 10 rocks', stat: 'rocks', need: 10 },
+  { id: 'crafter', name: 'Crafty', desc: 'Craft 15 things', stat: 'crafted', need: 15 },
+  { id: 'builder', name: 'Builder', desc: 'Build 20 pieces', stat: 'built', need: 20 },
+  { id: 'boom', name: 'Kaboom!', desc: 'Defeat 3 zombies with one firecracker', stat: 'bestBoom', need: 3 },
+  { id: 'dog', name: 'Best Friends', desc: 'Make friends with a dog', stat: 'dogs', need: 1 },
+  { id: 'crate', name: 'Special Delivery', desc: 'Open a supply crate', stat: 'crates', need: 1 },
+  { id: 'night', name: 'Night Owl', desc: 'Survive a night', stat: 'nights', need: 1 },
+  { id: 'week', name: 'One Week Later', desc: 'Survive 7 nights', stat: 'nights', need: 7 },
+  { id: 'boss', name: 'Boss Slayer', desc: 'Help defeat a Horde Boss', stat: 'bosses', need: 1 },
+  { id: 'level5', name: 'Level 5', desc: 'Reach level 5', stat: 'level', need: 5 },
+  { id: 'level10', name: 'Level 10', desc: 'Reach level 10', stat: 'level', need: 10 },
+];
+
+DA.Trophies = (function () {
+  const T = {
+    stats: {},        // counters
+    got: {},          // trophy id -> true
+    add(stat, n = 1) { T.stats[stat] = (T.stats[stat] || 0) + n; T.check(); },
+    max(stat, v) { if (v > (T.stats[stat] || 0)) { T.stats[stat] = v; T.check(); } },
+    check() {
+      for (const t of DA.TROPHIES) {
+        if (T.got[t.id] || (T.stats[t.stat] || 0) < t.need) continue;
+        T.got[t.id] = true;
+        DA.HUD.trophy(t);
+        DA.Audio.levelUp();
+      }
+    },
+    load(rec) { T.stats = Object.assign({}, rec && rec.stats); T.got = Object.assign({}, rec && rec.trophies); },
+    // the list for the pause menu
+    html() {
+      const n = DA.TROPHIES.filter((t) => T.got[t.id]).length;
+      return `<div class="trophyHead">🏆 TROPHIES ${n} / ${DA.TROPHIES.length}</div>` + DA.TROPHIES.map((t) => {
+        const have = T.got[t.id], v = Math.min(t.need, T.stats[t.stat] || 0);
+        return `<div class="trophy ${have ? 'got' : ''}"><b>${have ? '🏆' : '🔒'} ${DA.U.esc(t.name)}</b><span>${DA.U.esc(t.desc)}${have ? '' : ` (${v}/${t.need})`}</span></div>`;
+      }).join('');
+    },
+  };
+  return T;
 })();
 
 </script>
@@ -5529,7 +5599,7 @@ DA.Player = (function () {
     if (!t) return;
     switch (t.kind) {
       case 'container': G.openContainer('c' + t.ref.id, t.ref.name); A.loot(t.ref.x, t.ref.z); break;
-      case 'drop': G.openContainer('d' + t.ref.id, 'Supply crate'); A.loot(t.ref.x, t.ref.z); break;
+      case 'drop': G.openContainer('d' + t.ref.id, 'Supply crate'); A.loot(t.ref.x, t.ref.z); DA.Trophies.add('crates'); break;
       case 'dog': G.act({ t: 'dog', i: t.dog.i }); break;
       case 'bag': G.openContainer('g' + t.ref.id, (t.ref.owner || 'Someone') + '\'s backpack'); A.loot(t.ref.x, t.ref.z); break;
       case 'bush':
@@ -5597,11 +5667,13 @@ DA.Player = (function () {
     if (z) {
       const e = z.e, pos = e.avatar.root.position;
       const hx = eyePos.x + lookDir.x * z.d, hy = eyePos.y + lookDir.y * z.d, hz = eyePos.z + lookDir.z * z.d;
+      if (!z.isAnimal && isHeadshot(e, hy)) return hitZombie(e, dmg * 2, hx, hy, hz, true, s);
       FX.blood(hx, hy, hz);
       A.hitFlesh(hx, hz);
       DA.HUD.floatText(hx, hy + 0.3, hz, '-' + dmg, '#ff7050');
       DA.HUD.hitMarker();
       const kx = lookDir.x, kz = lookDir.z;
+      void kx;
       const push = s && s.id === 'bat' ? 1.6 : 1;
       if (z.isAnimal) G.act({ t: 'hitA', id: e.id, dmg });
       else G.act({ t: 'hitZ', id: e.id, dmg, kx: kx * push, kz: kz * push });
@@ -5636,6 +5708,24 @@ DA.Player = (function () {
     void px; void py; void pz;
   }
 
+  // hit high on a zombie = HEADSHOT (double damage!)
+  function isHeadshot(e, y) {
+    const sc = e.kind === 'boss' ? 1.9 : e.kind === 'brute' ? 1.3 : 1;
+    return y - e.avatar.root.position.y > 1.5 * sc;
+  }
+  function hitZombie(e, dmg, hx, hy, hz, head, held) {
+    FX.blood(hx, hy, hz);
+    A.hitFlesh(hx, hz);
+    if (head) { A.xp(); DA.Trophies.add('headshots'); DA.HUD.floatText(hx, hy + 0.5, hz, 'HEADSHOT!', '#ffd040'); }
+    DA.HUD.floatText(hx, hy + 0.3, hz, '-' + dmg, head ? '#ffd040' : '#ff7050');
+    DA.HUD.hitMarker();
+    const push = held && held.id === 'bat' ? 1.6 : 1;
+    G.act({ t: 'hitZ', id: e.id, dmg, kx: lookDir.x * push, kz: lookDir.z * push });
+    G.fx('hitZ', hx, hy, hz);
+    me.shake = 0.12;
+    DA.Input.rumble(0.4, 80);
+  }
+
   // shoot an arrow
   function shoot(power) {
     if (!Inv.count('arrow')) { G.msg('No arrows! Craft some (2 wood + 1 stone).', '#fa4'); A.error(); return; }
@@ -5650,6 +5740,7 @@ DA.Player = (function () {
       const h = C.ray(ox, oy, oz, dx, dy, dz, L, (o) => o.solid && o.kind !== 'floor' && o.kind !== 'fence');
       if (z && (!h || z.d < h.d)) {
         const e = z.e;
+        if (!z.isAnimal && isHeadshot(e, oy + dy * z.d)) { hitZombie(e, dmg * 2, ox + dx * z.d, oy + dy * z.d, oz + dz * z.d, true, null); return { t: z.d / L, gone: true }; }
         if (z.isAnimal) G.act({ t: 'hitA', id: e.id, dmg });
         else G.act({ t: 'hitZ', id: e.id, dmg, kx: dx * 0.5, kz: dz * 0.5 });
         FX.blood(ox + dx * z.d, oy + dy * z.d, oz + dz * z.d);
@@ -5707,6 +5798,7 @@ DA.Player = (function () {
       A.levelUp();
       const perk = me.level % 3 === 1 ? 'You chop and mine faster!' : 'More health, stronger hits!';
       DA.HUD.banner(`LEVEL ${me.level}!`, `${perk} (max health ${me.maxHp})`, '#c8d860', 4);
+      DA.Trophies.max('level', me.level);
       G.levelUp(me.level);
     }
   }
@@ -5760,6 +5852,7 @@ DA.Player = (function () {
     A.build(s.x, s.z);
     FX.dust(s.x, s.y + 0.2, s.z, 12);
     addXp(2);
+    DA.Trophies.add('built');
   }
 
   // ============================================================
@@ -6123,6 +6216,11 @@ DA.HUD = (function () {
     box.appendChild(el);
     while (box.children.length > 4) box.firstChild.remove();
     setTimeout(() => el.remove(), 1600);
+  };
+  H.trophy = function (t) {
+    const el = $('trophyToast');
+    el.innerHTML = `🏆 <b>TROPHY!</b> ${U.esc(t.name)}<small>${U.esc(t.desc)}</small>`;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
   };
   let markT = 0;
   H.hitMarker = function () { markT = 0.18; };
@@ -6731,11 +6829,13 @@ DA.Game = (function () {
         const L = FX.landing(a.x, a.y, a.z, a.vx, a.vy, a.vz);
         emit({ t: 'fc', id, x: a.x, y: a.y, z: a.z, vx: a.vx, vy: a.vy, vz: a.vz });
         later(0.3, () => Z.lure(L.x, L.z, 32, 5));
-        later(4.5, () => { Z.blast(L.x, L.z, 6, ITEMS.firecracker.dmg, pid); emit({ t: 'boom', id, x: U.round(L.x), y: U.round(L.y), z: U.round(L.z) }); });
+        later(4.5, () => { const killed = Z.blast(L.x, L.z, 6, ITEMS.firecracker.dmg, pid); if (killed) emit({ t: 'boomKills', n: killed }, pid); emit({ t: 'boom', id, x: U.round(L.x), y: U.round(L.y), z: U.round(L.z) }); });
         break;
       }
       case 'dog': {
+        const had = DA.Dogs.list[a.i] && DA.Dogs.list[a.i].owner;
         const text = DA.Dogs.interact(a.i, pname(pid));
+        if (!had && DA.Dogs.list[a.i] && DA.Dogs.list[a.i].owner) emit({ t: 'gotDog' }, pid);
         if (text) emit({ t: 'msg', text: U.esc(text), color: '#ffd890' }, pid);
         break;
       }
@@ -6862,8 +6962,16 @@ DA.Game = (function () {
         if (ev.pid === G.myPid) { me.inHeli = true; }
         break;
       case 'end': showEnding(ev); break;
-      case 'kill': me.kills++; P.addXp(ev.xp || 10, ev.kind === 'boss' ? 'HORDE BOSS DEFEATED!' : 'zombie'); break;
-      case 'xp': if (me.alive) P.addXp(ev.n, ev.why); break;
+      case 'boomKills': DA.Trophies.max('bestBoom', ev.n); if (ev.n >= 2) HUD.popup(`💥 ${ev.n} zombies with one BOOM!`, '#ffc040'); break;
+      case 'gotDog': DA.Trophies.add('dogs'); break;
+      case 'bossDown': DA.Trophies.add('bosses'); break;
+      case 'kill': me.kills++; DA.Trophies.add('kills'); P.addXp(ev.xp || 10, ev.kind === 'boss' ? 'HORDE BOSS DEFEATED!' : 'zombie'); break;
+      case 'xp':
+        if (ev.why === 'tree') DA.Trophies.add('trees');
+        if (ev.why === 'rock') DA.Trophies.add('rocks');
+        if (ev.why === 'survived the night') DA.Trophies.add('nights');
+        if (me.alive) P.addXp(ev.n, ev.why);
+        break;
       case 'fc': FX.throwThing(ev.id, ev.x, ev.y, ev.z, ev.vx, ev.vy, ev.vz); A.fuse(ev.x, ev.z); break;
       case 'boom': FX.explode(ev.x, ev.y, ev.z, ev.id); A.boom(ev.x, ev.z); if (U.dist(ev.x, ev.z, me.x, me.z) < 18) me.shake = Math.max(me.shake, 0.35 * (1 - U.dist(ev.x, ev.z, me.x, me.z) / 18)); break;
       case 'drop': s.drops[ev.drop.id] = ev.drop; addDrop(ev.drop, true); break;
@@ -6902,6 +7010,7 @@ DA.Game = (function () {
     G.state.kills++;
     if (zb.kind === 'boss') {
       makeBag(zb.x, zb.y + 0.2, zb.z, rollLoot('boss', 12).filter(Boolean), 'the Boss');
+      emit({ t: 'bossDown' });
       emit({ t: 'msg', text: `👑 The HORDE BOSS was defeated${pid ? ' by ' + U.esc(pname(pid)) : ''}! Its loot bag is where it fell.`, color: '#ffc040' });
     }
     if (!pid) return;
@@ -7070,7 +7179,7 @@ DA.Game = (function () {
   //  SAVING (only the host saves the world)
   // ============================================================
   function myRecord() {
-    return { inv: Inv.dump(), lv: me.level, xp: me.xp, hp: Math.round(me.hp), food: Math.round(me.food), water: Math.round(me.water), x: U.round(me.x), y: U.round(me.y), z: U.round(me.z), yaw: U.round(me.yaw), alive: me.alive };
+    return { inv: Inv.dump(), lv: me.level, xp: me.xp, stats: DA.Trophies.stats, trophies: DA.Trophies.got, hp: Math.round(me.hp), food: Math.round(me.food), water: Math.round(me.water), x: U.round(me.x), y: U.round(me.y), z: U.round(me.z), yaw: U.round(me.yaw), alive: me.alive };
   }
   function save() {
     if (!G.isHost || !G.state || G.mode !== 'play') return;
@@ -7109,6 +7218,7 @@ DA.Game = (function () {
 
   function loadMe(rec) {
     P.setLevel(rec ? rec.lv || 1 : 1, rec ? rec.xp || 0 : 0);
+    DA.Trophies.load(rec);
     P.resetStats();
     if (rec) {
       Inv.load(rec.inv);
@@ -7508,6 +7618,7 @@ DA.Game = (function () {
     $('pause').style.display = p ? 'flex' : 'none';
     $('pauseNote').textContent = Net.online ? 'The game does NOT pause when playing online!' : '';
     $('pauseCode').innerHTML = Net.online && G.isHost ? `Room code: <b>${Net.code}</b>` : '';
+    $('trophies').innerHTML = DA.Trophies.html();
     if (p) { document.exitPointerLock && document.exitPointerLock(); save(); } else lockMouse();
   }
 

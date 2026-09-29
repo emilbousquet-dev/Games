@@ -628,13 +628,15 @@ DA.Zombies = (function () {
   };
   // an explosion hurts every zombie and animal close by (host)
   Z.blast = function (x, z, radius, dmg, byPid) {
+    let killed = 0;
     for (const zb of [...Z.zombies.values()]) {
       const d = U.dist(zb.x, zb.z, x, z);
       if (d > radius || zb.state === 'dead') continue;
       const k = 1 - d / radius * 0.6;
-      Z.hit(zb.id, Math.round(dmg * k), (zb.x - x) / (d || 1) * 2.5, (zb.z - z) / (d || 1) * 2.5, byPid);
+      if (Z.hit(zb.id, Math.round(dmg * k), (zb.x - x) / (d || 1) * 2.5, (zb.z - z) / (d || 1) * 2.5, byPid)) killed++;
     }
     for (const an of [...Z.animals.values()]) if (U.dist(an.x, an.z, x, z) < radius) Z.hitAnimal(an.id, dmg, byPid);
+    return killed;
   };
   Z.boss = function () { for (const zb of Z.zombies.values()) if (zb.kind === 'boss' && !zb.dead && zb.state !== 'dead') return zb; return null; };
 

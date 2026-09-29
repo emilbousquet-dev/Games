@@ -77,6 +77,11 @@ DA.HUD = (function () {
     while (box.children.length > 4) box.firstChild.remove();
     setTimeout(() => el.remove(), 1600);
   };
+  H.trophy = function (t) {
+    const el = $('trophyToast');
+    el.innerHTML = `🏆 <b>TROPHY!</b> ${U.esc(t.name)}<small>${U.esc(t.desc)}</small>`;
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  };
   let markT = 0;
   H.hitMarker = function () { markT = 0.18; };
 
