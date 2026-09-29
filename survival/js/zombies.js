@@ -281,6 +281,23 @@ DA.Zombies = (function () {
       }
       gx = zb.tx; gz = zb.tz; speed = k.walk;
     }
+    // a player-built wall between me and my target? walk to it and smash it
+    if (tp && zb.state === 'chase' && !zb.smash) {
+      zb.wallT = (zb.wallT || 0) - dt;
+      if (zb.wallT <= 0) {
+        zb.wallT = 0.4;
+        zb.wall = null;
+        const ex = tp.x - zb.x, ez = tp.z - zb.z, ed = Math.hypot(ex, ez);
+        if (ed < 25 && ed > 0.5) {
+          const h = C.ray(zb.x, zb.y + 1, zb.z, ex / ed, 0, ez / ed, ed, (o) => o.solid && (o.kind === 'build' || o.kind === 'wall' || o.kind === 'prop' || o.kind === 'car'));
+          if (h && h.o.kind === 'build') zb.wall = { id: h.o.ref.id, d: h.d, x: zb.x + ex / ed * h.d, z: zb.z + ez / ed * h.d };
+        }
+      }
+      if (zb.wall) {
+        gx = zb.wall.x; gz = zb.wall.z;
+        if (U.dist(zb.x, zb.z, gx, gz) < k.r + 1.1) { zb.smash = zb.wall.id; zb.smashT = 0.4; zb.wall = null; }
+      }
+    }
     let dx = gx - zb.x, dz = gz - zb.z;
     const dist = Math.hypot(dx, dz);
     // --- attack the player
@@ -303,7 +320,7 @@ DA.Zombies = (function () {
     // --- smash a wall that's in the way
     if (zb.smash) {
       const b = DA.Game.state.builds[zb.smash];
-      if (!b || !tp && zb.state !== 'search') zb.smash = null;
+      if (!b || (!tp && zb.state !== 'search') || U.dist(zb.x, zb.z, b.x, b.z) > 4) zb.smash = null;
       else {
         moving = false;
         zb.ry += U.angleDiff(zb.ry, Math.atan2(-(b.x - zb.x), -(b.z - zb.z))) * Math.min(1, dt * 6);

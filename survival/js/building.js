@@ -125,7 +125,9 @@ DA.Build = (function () {
       if (sh.solid === false && s.type !== 'spikes') continue;
       const test = Object.assign({}, sh, { y0: Math.max(sh.y0, s.y + 0.15), hw: sh.hw && sh.hw - 0.05, hd: sh.hd && Math.max(0.02, sh.hd - 0.03), r: sh.r && sh.r - 0.05 });
       if (test.y1 <= test.y0) continue;
-      const hit = C.blocked(test, (o) => o.kind === 'bush' || o.kind === 'floor' || o.kind === 'stump' || (o.kind === 'build' && o.ref && (o.ref.type === 'floor' || (o.ref.type === 'spikes'))) || o.kind === 'fence');
+      // walls may touch other walls at the corners
+      const hit = C.blocked(test, (o) => o.kind === 'bush' || o.kind === 'floor' || o.kind === 'stump' || o.kind === 'fence' ||
+        (o.kind === 'build' && o.ref && (o.ref.type === 'floor' || o.ref.type === 'spikes' || (t.edge && TYPES[o.ref.type].edge))));
       if (hit) return 'Something is in the way';
     }
     // don't build on top of someone
