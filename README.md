@@ -1,5 +1,8 @@
 # LAB 13 👽🩸
 
+> 🆕 **NEW: [DINO RAMPAGE](dino-rampage/README.md)** 🦖💥: grow from a baby T-Rex into a GIANT and smash the city!
+> Open `dino-rampage/index.html` to play.
+>
 > 🆕 **Also in this folder: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
 > Open `monster-hotel/index.html` to play.
 

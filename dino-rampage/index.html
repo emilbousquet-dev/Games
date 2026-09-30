@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dino Rampage</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --green: #5cd14a; --green2: #2a8a2a; --orange: #ff8a2a; --yellow: #ffd23a; --dark: #1a2a14; --text: #fffdf0; --panel: rgba(24,44,20,0.94); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #9ad8ff; overflow: hidden; font-family: Fredoka, 'Trebuchet MS', sans-serif; color: var(--text); user-select: none; }
+  canvas#game { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+  .screen { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 20; padding: 16px; }
+  .screen.show { display: flex; }
+  .title-logo { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: min(17vw, 150px); line-height: 0.85; text-align: center; letter-spacing: 5px; color: var(--yellow);
+    text-shadow: 0 6px 0 #c85a1a, 0 12px 0 #1a2a14, 0 0 40px rgba(0,0,0,0.35); animation: stomp 1.4s ease-in-out infinite; transform-origin: 50% 100%; }
+  .title-logo small { display: block; font-size: 0.72em; color: var(--green); text-shadow: 0 6px 0 #1a6a1a, 0 12px 0 #1a2a14; letter-spacing: 8px; }
+  @keyframes stomp { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-10px) rotate(2deg); } }
+  .subtitle { margin: 18px 0 22px; font-size: 21px; font-weight: 600; text-shadow: 0 2px 6px rgba(0,0,0,0.8); text-align: center; max-width: 640px; }
+  .btn { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 34px; letter-spacing: 2px; color: #3a1a06; cursor: pointer; border: none;
+    background: linear-gradient(180deg, #ffe98a, var(--yellow) 50%, #f0a020); padding: 10px 48px 8px; border-radius: 40px; margin: 7px;
+    box-shadow: 0 6px 0 #a85a10, 0 10px 24px rgba(0,0,0,0.4); transition: transform 0.1s; min-width: 270px; }
+  .btn:hover { transform: translateY(-3px) scale(1.05); }
+  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #a85a10; }
+  .btn.alt { background: linear-gradient(180deg, #8ae87a, var(--green) 55%, #3aa83a); color: #0a2a0a; box-shadow: 0 6px 0 #1a6a1a, 0 10px 24px rgba(0,0,0,0.4); font-size: 24px; padding: 8px 26px 6px; min-width: 200px; }
+  .btn.small { font-size: 20px; min-width: 0; padding: 6px 20px 4px; }
+  .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .dim { background: radial-gradient(ellipse at center, rgba(10,30,10,0.15) 0%, rgba(8,20,8,0.7) 100%); }
+  .panel { background: var(--panel); border: 4px solid var(--green); border-radius: 28px; padding: 24px 32px; box-shadow: 0 0 0 6px rgba(0,0,0,0.25), 0 20px 60px rgba(0,0,0,0.5); max-width: min(800px, 94vw); max-height: 94vh; overflow-y: auto; text-align: center; }
+  .panel h2 { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 54px; margin: 0 0 6px; color: var(--yellow); letter-spacing: 3px; text-shadow: 0 4px 0 #c85a1a; font-weight: 400; }
+  .panel p { font-size: 18px; line-height: 1.45; margin: 8px 0; }
+  .best { margin-top: 14px; font-size: 18px; font-weight: 600; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+  .keys { display: grid; grid-template-columns: auto auto; gap: 8px 22px; text-align: left; margin: 14px auto; font-size: 17px; width: fit-content; }
+  .keys b { display: inline-block; min-width: 26px; padding: 1px 8px; margin-right: 3px; border-radius: 7px; background: #fffdf0; color: #1a2a14; text-align: center; font-size: 15px; box-shadow: 0 3px 0 #8a9a7a; }
+
+  /* level select */
+  .cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin: 12px 0 8px; }
+  .card { width: 220px; padding: 16px 14px; border-radius: 22px; background: linear-gradient(180deg, #3a6a2a, #22421a); border: 3px solid var(--green); cursor: pointer; transition: transform 0.12s; }
+  .card:hover { transform: translateY(-5px) scale(1.03); }
+  .card .emo { font-size: 58px; line-height: 1.1; }
+  .card .nm { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 30px; color: var(--yellow); letter-spacing: 1px; }
+  .card .ab { font-size: 14px; min-height: 58px; color: #e8f0d8; }
+  .card .st { font-size: 28px; color: var(--yellow); letter-spacing: 3px; } .card .st span { color: rgba(255,255,255,0.2); }
+  .card .bt { font-size: 13px; color: #c8e0b8; min-height: 18px; }
+  .card.locked { filter: grayscale(0.9) brightness(0.6); cursor: not-allowed; }
+  .card.locked .emo::after { content: ' 🔒'; font-size: 30px; }
+
+  /* dino closet */
+  #closet { align-items: flex-end; justify-content: center; padding-right: 4vw; }
+  #closet .panel { width: min(430px, 94vw); padding: 12px 18px 14px; }
+  #closet h2 { font-size: 40px; margin: 0; }
+  #closet .btn { font-size: 26px; padding: 6px 30px 4px; margin-top: 2px; }
+  .picks { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 4px 0 8px; }
+  .pick { border-radius: 14px; padding: 5px 2px 4px; background: rgba(255,255,255,0.08); border: 3px solid transparent; cursor: pointer; font-size: 12px; font-weight: 600; line-height: 1.15; }
+  .pick:hover { background: rgba(255,255,255,0.18); }
+  .pick.on { border-color: var(--yellow); background: rgba(255,210,58,0.2); }
+  .pick.locked { opacity: 0.45; cursor: not-allowed; }
+  .pick .sw { width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 3px; border: 3px solid rgba(255,255,255,0.7); }
+  .pick .ic { font-size: 26px; line-height: 32px; height: 34px; }
+  .pick .lk { font-size: 12px; color: var(--yellow); }
+  .sect { text-align: left; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--green); }
+  .mystars { font-size: 20px; color: var(--yellow); font-weight: 700; }
+
+  /* level intro */
+  #intro .big { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: min(14vw, 110px); color: var(--yellow); text-shadow: 0 6px 0 #c85a1a, 0 12px 0 #1a2a14; letter-spacing: 4px; line-height: 1; text-align: center; }
+  #intro .emo { font-size: 80px; }
+  #intro .news { font-size: 22px; font-weight: 600; max-width: 640px; text-align: center; margin: 12px 0 18px; text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
+
+  /* win */
+  .bigstars { font-size: 64px; color: var(--yellow); letter-spacing: 6px; text-shadow: 0 0 20px rgba(255,210,58,0.6); line-height: 1.1; }
+  .bigstars span { display: inline-block; transform: scale(0); transition: transform 0.4s cubic-bezier(.2,1.8,.4,1); }
+  .bigstars span.on { transform: scale(1); }
+  .bigstars span.off { color: rgba(255,255,255,0.18); text-shadow: none; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 26px; margin: 14px auto; text-align: left; font-size: 18px; width: fit-content; }
+  .stats b { color: var(--yellow); }
+  .unlock { color: #9aff6a; font-weight: 700; font-size: 19px; margin: 8px 0; min-height: 24px; }
+
+  /* ---------------- HUD ---------------- */
+  #hud { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  .hud-box { background: linear-gradient(180deg, rgba(30,56,24,0.86), rgba(16,32,12,0.86)); border: 3px solid rgba(92,209,74,0.85); border-radius: 18px; box-shadow: 0 6px 18px rgba(0,0,0,0.35); }
+  #lvlbox { position: absolute; top: 12px; left: 12px; padding: 6px 16px 8px; }
+  #lvl-name { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--yellow); }
+  #timer { font-size: 20px; font-weight: 700; }
+  #growbox { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); padding: 6px 18px 8px; text-align: center; width: min(460px, 52vw); }
+  #badges { display: flex; justify-content: space-between; align-items: flex-end; height: 34px; }
+  .badge { opacity: 0.35; filter: grayscale(1); transition: all 0.3s; }
+  .badge.done { opacity: 0.9; filter: none; }
+  .badge.now { opacity: 1; filter: drop-shadow(0 0 6px #fff); transform: scale(1.25); }
+  #grow-bar { height: 16px; border-radius: 9px; background: rgba(0,0,0,0.4); margin: 4px 0 2px; overflow: hidden; border: 2px solid rgba(255,255,255,0.3); }
+  #grow-fill { height: 100%; width: 0; background: linear-gradient(90deg, #5cd14a, #c8ff6a); border-radius: 7px; transition: width 0.25s; }
+  #grow-fill.rampage { background: linear-gradient(90deg, #ff5a3a, #ffd23a); box-shadow: 0 0 12px #ff8a3a; }
+  #size-line { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; }
+  #size-name { color: var(--yellow); font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 20px; letter-spacing: 1px; }
+  #rampage-lbl { color: #d8f0c8; align-self: center; }
+  #can-smash { font-size: 13px; color: #d8f0c8; margin-top: 2px; }
+  #can-smash b { color: #fff; }
+  #scorebox { position: absolute; top: 12px; right: 12px; padding: 6px 18px 8px; text-align: right; min-width: 150px; }
+  #scorebox .lbl { font-size: 13px; letter-spacing: 3px; font-weight: 700; color: #c8e8b8; }
+  #score { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 38px; color: var(--yellow); letter-spacing: 1px; line-height: 1; }
+  #combo { position: absolute; right: 16px; top: 100px; transform-origin: 100% 50%; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 32px; color: #ff6a3a; text-shadow: 0 3px 0 #1a2a14, 0 0 16px rgba(255,160,60,0.6); opacity: 0; letter-spacing: 2px; }
+  #combo.show { animation: combo 2.2s forwards; }
+  @keyframes combo { 0% { opacity: 1; transform: scale(1.4) rotate(-4deg); } 15% { transform: scale(1) rotate(2deg); } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #roarbox { position: absolute; left: 12px; bottom: 12px; display: flex; align-items: center; gap: 10px; padding: 8px 16px 8px 8px; }
+  #roar-ring { width: 66px; height: 66px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  #roar-ring div { width: 52px; height: 52px; border-radius: 50%; background: #1a2a14; display: flex; align-items: center; justify-content: center; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 26px; }
+  #roarbox .nm { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 26px; color: var(--orange); letter-spacing: 1px; }
+  #roarbox small { display: block; font-size: 13px; color: #c8e8b8; }
+  #roarbox.ready { animation: ready 0.6s ease-in-out infinite alternate; border-color: #ff6a3a; }
+  #roarbox.ready .nm { color: #ff5a3a; }
+  @keyframes ready { to { box-shadow: 0 0 26px rgba(255,90,58,0.95); transform: scale(1.05); } }
+  #minimap-box { position: absolute; right: 12px; bottom: 12px; padding: 5px; border-radius: 50%; }
+  #minimap { display: block; width: 150px; height: 150px; border-radius: 50%; }
+  #hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 14px; padding: 6px 16px; font-size: 14px; font-weight: 600; white-space: nowrap; }
+  #hint b { display: inline-block; padding: 0 7px; border-radius: 6px; background: #fffdf0; color: #1a2a14; margin-right: 3px; }
+  #center-msg { position: absolute; left: 0; right: 0; top: 24%; text-align: center; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: min(12vw, 84px); color: var(--yellow); text-shadow: 0 5px 0 #c85a1a, 0 10px 0 #1a2a14; opacity: 0; transform: scale(0.5); transition: all 0.35s cubic-bezier(.2,1.6,.4,1); letter-spacing: 3px; }
+  #center-msg.show { opacity: 1; transform: none; }
+  #center-msg.green { color: #9aff6a; text-shadow: 0 5px 0 #1a6a1a, 0 10px 0 #0a1a0a; }
+  #center-msg small { display: block; font-family: Fredoka, sans-serif; font-size: 24px; font-weight: 700; color: #fff; letter-spacing: 0; text-shadow: 0 2px 6px #000; }
+  #tip { position: absolute; left: 50%; top: 150px; transform: translateX(-50%) translateY(-20px); max-width: min(600px, 80vw); padding: 10px 18px; font-size: 18px; font-weight: 500; text-align: center; opacity: 0; transition: all 0.4s; background: linear-gradient(180deg, rgba(255,250,220,0.97), rgba(255,236,170,0.97)); color: #2a1a06; border: 3px solid var(--orange); border-radius: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.35); }
+  #tip.show { opacity: 1; transform: translateX(-50%); }
+  #tip b { color: #c84a0a; }
+  #labels { position: absolute; inset: 0; overflow: hidden; }
+  .bubble { position: absolute; left: 0; top: 0; background: #fff; color: #1a1a1a; font-weight: 700; font-size: 15px; padding: 5px 11px; border-radius: 14px; white-space: nowrap; box-shadow: 0 3px 8px rgba(0,0,0,0.35); border: 2px solid #1a1a1a; }
+  .bubble::after { content: ''; position: absolute; left: 50%; bottom: -9px; margin-left: -6px; border: 6px solid transparent; border-top-color: #1a1a1a; }
+  .pop { position: absolute; left: 0; top: 0; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 26px; color: #fff; text-shadow: 0 2px 0 #1a2a14, 0 0 6px rgba(0,0,0,0.6); letter-spacing: 1px; white-space: nowrap; }
+  .pop.big { font-size: 38px; color: var(--yellow); }
+  .pop.yum { font-size: 34px; color: #ff7ab8; }
+  .pop.nope { color: #ff6a5a; font-size: 30px; }
+  #flash { position: absolute; inset: 0; opacity: 0; }
+  #lockmsg { position: fixed; left: 50%; bottom: 26%; transform: translateX(-50%); z-index: 15; font-size: 22px; padding: 10px 22px; display: none; pointer-events: none; }
+  #mute { position: fixed; right: 14px; bottom: 14px; z-index: 30; font-size: 22px; background: rgba(20,40,16,0.85); border: 3px solid var(--green); color: #fff; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; display: none; }
+  #loading { position: fixed; inset: 0; background: #9ad8ff; z-index: 50; display: flex; align-items: center; justify-content: center; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 56px; color: #fff; letter-spacing: 3px; text-shadow: 0 4px 0 #2a8a2a; }
+  @media (max-width: 900px) { #can-smash, #hint { display: none !important; } #minimap { width: 110px; height: 110px; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="loading">🥚 Hatching the dino...</div>
+
+<!-- ======= TITLE ======= -->
+<div id="title" class="screen dim">
+  <div class="title-logo">DINO<small>RAMPAGE</small></div>
+  <div class="subtitle">You're a baby T-Rex in a big city. Eat snacks, smash stuff, and grow into a <b>GIANT</b>! 🦖</div>
+  <button class="btn" id="btn-play">PLAY!</button>
+  <div class="row">
+    <button class="btn alt" id="btn-closet">🎩 DINO CLOSET</button>
+    <button class="btn alt" id="btn-how">HOW TO PLAY</button>
+  </div>
+  <div class="row"><button class="btn alt small" id="btn-gfx">GRAPHICS: PRETTY</button></div>
+  <div class="best" id="best"></div>
+</div>
+
+<!-- ======= HOW TO PLAY ======= -->
+<div id="how" class="screen dim">
+  <div class="panel">
+    <h2>How to Play</h2>
+    <p>You start as a tiny <b>baby T-Rex</b>. Walk into small things to <b>SMASH</b> them, and eat the <b>sparkly snacks</b> 🍉🍩🍕 to grow faster!<br>
+    Every time you grow, you can smash <b>bigger</b> things: cars 🚗 → houses 🏠 → shops 🏬 → <b>SKYSCRAPERS</b> 🏙️<br>
+    Become a <b>GIANT</b> and fill the rampage bar to win!</p>
+    <div class="keys">
+      <div><b>W</b><b>A</b><b>S</b><b>D</b> walk</div><div><b>Mouse</b> look around</div>
+      <div><b>Shift</b> run</div><div><b>Space</b> jump</div>
+      <div><b>Left click</b> or <b>E</b> bite</div><div><b>Right click</b> or <b>Q</b> tail whip</div>
+      <div><b>Space</b> then <b>click</b> BELLY FLOP</div><div><b>R</b> SUPER ROAR (when it's full)</div>
+      <div><b>Esc</b> pause</div><div><b>M</b> sound on/off</div>
+    </div>
+    <p style="font-size:16px;color:#c8e8b8">🎮 Controllers work too! &nbsp;·&nbsp; Things that are too big go <b>BOING</b>. Grow first!<br>Don't worry, the people are fine: they just run away screaming 😄</p>
+    <button class="btn" id="btn-how-back">GOT IT!</button>
+  </div>
+</div>
+
+<!-- ======= LEVEL SELECT ======= -->
+<div id="levels" class="screen dim">
+  <div class="panel" style="max-width:min(820px,96vw)">
+    <h2>Pick a City</h2>
+    <div class="cards" id="cards"></div>
+    <button class="btn alt small" id="btn-levels-back">BACK</button>
+  </div>
+</div>
+
+<!-- ======= DINO CLOSET ======= -->
+<div id="closet" class="screen">
+  <div class="panel">
+    <h2>Dino Closet</h2>
+    <div class="mystars" id="closet-stars"></div>
+    <div class="sect">Skins</div>
+    <div class="picks" id="pick-skins"></div>
+    <div class="sect">Hats</div>
+    <div class="picks" id="pick-hats"></div>
+    <button class="btn" id="btn-closet-done">LOOKING GOOD!</button>
+  </div>
+</div>
+
+<!-- ======= LEVEL INTRO ======= -->
+<div id="intro" class="screen dim">
+  <div class="emo" id="intro-emo">🏡</div>
+  <div class="big" id="intro-name">SLEEPY SUBURBS</div>
+  <div class="news" id="intro-about"></div>
+  <button class="btn" id="btn-go">STOMP TIME!</button>
+  <div class="best">Tip: click the game so the mouse moves the camera</div>
+</div>
+
+<!-- ======= PAUSE ======= -->
+<div id="pause" class="screen dim">
+  <div class="panel">
+    <h2>Paused</h2>
+    <div class="keys">
+      <div><b>W</b><b>A</b><b>S</b><b>D</b> walk</div><div><b>Shift</b> run</div>
+      <div><b>Click</b> / <b>E</b> bite</div><div><b>Right click</b> / <b>Q</b> tail whip</div>
+      <div><b>Space</b> jump (+click = flop)</div><div><b>R</b> super roar</div>
+    </div>
+    <div class="row"><button class="btn" id="btn-resume">KEEP STOMPING</button></div>
+    <div class="row">
+      <button class="btn alt small" id="btn-mute2">SOUND: ON</button>
+      <button class="btn alt small" id="btn-restart">RESTART LEVEL</button>
+      <button class="btn alt small" id="btn-quit">QUIT TO MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= LEVEL COMPLETE ======= -->
+<div id="win" class="screen dim">
+  <div class="panel">
+    <h2>RAMPAGE COMPLETE!</h2>
+    <p id="win-sub"></p>
+    <div class="bigstars" id="win-stars"><span>★</span><span>★</span><span>★</span></div>
+    <div class="stats" id="win-stats"></div>
+    <div class="unlock" id="win-unlock"></div>
+    <div class="row">
+      <button class="btn" id="btn-next">NEXT CITY →</button>
+    </div>
+    <div class="row">
+      <button class="btn alt small" id="btn-again">PLAY AGAIN</button>
+      <button class="btn alt small" id="btn-closet2">🎩 CLOSET</button>
+      <button class="btn alt small" id="btn-menu">MENU</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======= HUD ======= -->
+<div id="hud">
+  <div id="flash"></div>
+  <div id="labels"></div>
+  <div id="lvlbox" class="hud-box"><div id="lvl-name">Sleepy Suburbs</div><div id="timer">⏱ 0:00</div></div>
+  <div id="growbox" class="hud-box">
+    <div id="badges"></div>
+    <div id="grow-bar"><div id="grow-fill"></div></div>
+    <div id="size-line"><span id="size-name">BABY DINO</span><span id="rampage-lbl"></span></div>
+    <div id="can-smash"></div>
+  </div>
+  <div id="scorebox" class="hud-box"><div class="lbl">SCORE</div><div id="score">0</div></div>
+  <div id="combo"></div>
+  <div id="roarbox" class="hud-box"><div id="roar-ring"><div>R</div></div><div><div class="nm">SUPER ROAR</div><small>fills up when you smash</small></div></div>
+  <div id="hint" class="hud-box"><span><b>Click</b>bite</span><span><b>Right click</b>tail whip</span><span><b>Space</b>jump</span><span><b>Space+Click</b>belly flop</span><span><b>Shift</b>run</span></div>
+  <div id="minimap-box" class="hud-box"><canvas id="minimap" width="150" height="150"></canvas></div>
+  <div id="center-msg"></div>
+  <div id="tip"></div>
+</div>
+<div id="lockmsg" class="hud-box">Click to control the camera with the mouse</div>
+<button id="mute" title="Sound on/off (M)">🔊</button>
+
+<script src="../lib/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/models.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/city.js"></script>
+<script src="js/people.js"></script>
+<script src="js/dino.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
