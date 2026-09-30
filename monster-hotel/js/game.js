@@ -512,8 +512,10 @@ MH.Game = (function () {
   const KEY = (k = 'E') => `<b class="key">${k}</b>`;
   function handleInteraction(inp, dt) {
     // one press = one action (no accidental double presses)
-    if (inp.use && S.time - (S.lastUse || -1) < 0.3) inp.use = false;
-    if (inp.use) S.lastUse = S.time;
+    // (uses the real clock, which never goes back to zero when a new night starts)
+    const nowMs = performance.now();
+    if (inp.use && nowMs - (S.lastUseMs || 0) < 250) inp.use = false;
+    if (inp.use) S.lastUseMs = nowMs;
     const tg = findTarget();
     S.target = tg;
     $('crosshair').classList.toggle('target', !!tg);
