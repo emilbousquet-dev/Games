@@ -1,6 +1,6 @@
 // ============================================================
 //  JETPACK CITY — THE WORLD
-//  Builds the neon city and the endless road.
+//  Builds the planets and the endless road.
 //  New road pieces appear far ahead of you, and old ones behind
 //  you get thrown away, so the road never ends!
 //
@@ -27,106 +27,212 @@ JC.World = (function () {
   const cars = [];
   const particles = [];
   let genD = 0, lastPowerD = 0, lastPiece = null, tutorialLeft = [], runSpeed = 13;
-  let skyline, moon, sun, roadMat;
+  let skyline, moon, moonDisc, sun, hemi, gate, gateAt = -1;
+  const VARIANTS = JC.lowGfx ? 2 : 3;   // different city blocks per planet
+  const templates = {}, free = {};
+  let planetIdx = -1, onPlanet = null;
+  const PL = () => JC.SETTINGS.planetLength;
+  const planetAt = (d) => Math.floor(Math.max(0, d) / PL()) % JC.WORLDS.length;
 
   const laneX = (lane) => lane * LANE;
 
   // ---------------- setting up ----------------
   function init(sc) {
     scene = sc;
-    scene.background = JC.Tex.sky();
     scene.fog = new THREE.Fog(0x2a1048, 35, JC.lowGfx ? 140 : 175);
-    scene.add(new THREE.HemisphereLight(0xb0a0ff, 0x402060, 1.5));
+    hemi = new THREE.HemisphereLight(0xb0a0ff, 0x402060, 1.5);
+    scene.add(hemi);
     sun = new THREE.DirectionalLight(0xffe0f0, 1.6);
     sun.position.set(-6, 14, 8);
     scene.add(sun); scene.add(sun.target);
 
-    // far away skyline and the moon (they move along with you)
-    skyline = new THREE.Mesh(new THREE.PlaneGeometry(700, 175), new THREE.MeshBasicMaterial({ map: JC.Tex.skyline(), transparent: true, fog: false, depthWrite: false }));
+    // far away hills or towers, and the planet's sun or moon (they move along with you)
+    skyline = new THREE.Mesh(new THREE.PlaneGeometry(700, 175), new THREE.MeshBasicMaterial({ transparent: true, fog: false, depthWrite: false }));
     skyline.renderOrder = -1;
     scene.add(skyline);
     moon = M.glowSprite(scene, 0xffd0f0, 60, [0, 0, 0], 0.9);
     moon.material = moon.material.clone(); moon.material.fog = false;
-    const disc = new THREE.Mesh(M.G.sphere(), new THREE.MeshBasicMaterial({ color: 0xffe8f8, fog: false }));
-    disc.scale.setScalar(9); moon.add(disc); disc.scale.set(9 / 60, 9 / 60, 9 / 60);
+    moonDisc = new THREE.Mesh(M.G.sphere(), new THREE.MeshBasicMaterial({ color: 0xffe8f8, fog: false }));
+    moon.add(moonDisc); moonDisc.scale.set(9 / 60, 9 / 60, 9 / 60);
 
-    for (let i = 0; i < NBLOCKS; i++) blocks.push(makeBlock(i));
+    // build every planet's city blocks once, at the start (so the game never stops to build)
+    for (const w of JC.WORLDS) templates[w.id] = Array.from({ length: VARIANTS }, (_, v) => makeBlock(w, v));
+    for (let i = 0; i < NBLOCKS; i++) blocks.push({ index: i, g: null, key: null });
+    gate = M.warpGate();
+    scene.add(gate.g);
     for (let i = 0; i < (JC.lowGfx ? 2 : 5); i++) { const c = M.flyingCar(); scene.add(c); cars.push({ mesh: c, speed: 0 }); resetCar(cars[i], 0, true); }
     for (let i = 0; i < 70; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: JC.Tex.glow(), transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }));
       s.visible = false; scene.add(s);
       particles.push({ s, life: 0, max: 1, vx: 0, vy: 0, vz: 0, size: 1 });
     }
+    applyPlanet(0);
   }
 
-  // ---------------- one block of city ----------------
-  function makeBlock(index) {
+  // change the sky, the fog and the light to a planet's colors
+  function applyPlanet(i) {
+    planetIdx = i;
+    const w = JC.WORLDS[i];
+    scene.background = JC.Tex.sky(w);
+    scene.fog.color.set(w.fog);
+    hemi.color.set(w.light[0]); hemi.groundColor.set(w.light[1]); hemi.intensity = w.light[2];
+    sun.color.set(w.sun[0]); sun.intensity = w.sun[2];
+    skyline.material.map = JC.Tex.skyline(w.skyline[0], w.skyline[1], w.skyline[2]);
+    skyline.material.needsUpdate = true;
+    moonDisc.material.color.set(w.sun[0]);
+    moon.material.color.set(w.sun[1]);
+    for (const c of cars) c.mesh.visible = !!w.cars;
+  }
+
+  // city blocks: take one from the box of spare blocks (or copy the template), and give it back later
+  function useBlock(b, index) {
+    const w = JC.WORLDS[planetAt(index * BLOCK)];
+    const v = ((index % VARIANTS) + VARIANTS) % VARIANTS;
+    const key = w.id + v;
+    if (b.key !== key) {
+      if (b.g) { scene.remove(b.g); (free[b.key] = free[b.key] || []).push(b.g); }
+      b.g = (free[key] && free[key].pop()) || templates[w.id][v].clone();
+      b.key = key;
+      scene.add(b.g);
+    }
+    b.index = index;
+    b.g.position.z = -index * BLOCK;
+  }
+
+  // ---------------- one block of a planet ----------------
+  const roadMats = {};
+  function roadMat(style) {
+    if (!roadMats[style]) { const t = JC.Tex.road(style); t.repeat.set(1, BLOCK / 12); roadMats[style] = new THREE.MeshBasicMaterial({ map: t }); }
+    return roadMats[style];
+  }
+  function ground(g, color, y = -0.08) {
+    const m = new THREE.Mesh(M.G.plane(), M.lam(color));
+    m.rotation.x = -Math.PI / 2; m.scale.set(260, BLOCK, 1); m.position.set(0, y, -BLOCK / 2);
+    g.add(m);
+  }
+  // pick spots along the block for scenery, on both sides of the road
+  function alongSides(minX, maxX, step, fn) {
+    for (const s of [-1, 1]) {
+      let z = -U.rand(0, step * 0.5);
+      while (z > -BLOCK) { fn(s, s * U.rand(minX, maxX), z); z -= step * U.rand(0.7, 1.3); }
+    }
+  }
+
+  function makeBlock(w, variant) {
     const g = new THREE.Group();
-    const roadTex = JC.Tex.road();
-    roadTex.repeat.set(1, BLOCK / 12);
-    roadMat = roadMat || new THREE.MeshBasicMaterial({ map: roadTex });
-    const road = new THREE.Mesh(M.G.plane(), roadMat);
+    const road = new THREE.Mesh(M.G.plane(), roadMat(w.road));
     road.rotation.x = -Math.PI / 2; road.scale.set(8.4, BLOCK, 1); road.position.set(0, 0, -BLOCK / 2);
     g.add(road);
-    const deck = M.lam(0x1a1628);
-    M.P(g, M.G.box(), deck, [0, -0.48, -BLOCK / 2], [8.8, 0.9, BLOCK]);
-    // low walls with glowing strips at the sides of the road
-    for (const s of [-1, 1]) {
-      M.P(g, M.G.box(), M.lam(0x2a2640), [s * 4.35, 0.25, -BLOCK / 2], [0.16, 0.5, BLOCK]);
-      M.P(g, M.G.box(), M.glowy(0xff3aa8, 0.9), [s * 4.35, 0.52, -BLOCK / 2], [0.1, 0.05, BLOCK]);
-      M.P(g, M.G.box(), M.glowy(0x3af0ff, 0.7), [s * 4.45, -0.6, -BLOCK / 2], [0.06, 0.06, BLOCK]);
-    }
-    // big pillars holding up the road
-    for (const z of [-15, -45]) M.P(g, M.G.box(), deck, [0, -16, z], [3, 31, 3]);
-
-    // buildings on both sides
-    for (const s of [-1, 1]) {
-      let z = 0;
-      while (z > -BLOCK) {
-        const d = U.rand(8, 16), w = U.rand(8, 15), h = U.rand(30, 85);
-        const x = s * (8.5 + w / 2 + U.rand(0, 5));
-        const b = M.building(w, h, d, U.randInt(0, 3));
-        b.position.x = x; b.position.z = z - d / 2;
-        g.add(b);
-        const inner = x - s * w / 2;
-        if (Math.random() < 0.35) {
-          const sg = M.neonSign(U.pick(JC.TEXT.signs), U.pick(['#ff3aa8', '#3af0ff', '#ffd21a', '#9a5aff', '#6aff6a']));
-          sg.position.set(inner - s * 0.06, U.rand(3, 16), z - d / 2);
-          sg.rotation.y = s < 0 ? Math.PI / 2 : -Math.PI / 2;
-          g.add(sg);
-        }
-        if (Math.random() < 0.3) M.glowSprite(g, 0xff2a3a, 3, [x, h - 20 + 1, z - d / 2], 0.9);
-        z -= d + U.rand(1, 5);
-      }
-      // taller buildings further back
-      if (!JC.lowGfx) {
-        let z2 = 0;
-        while (z2 > -BLOCK) {
-          const d = U.rand(12, 22), w = U.rand(14, 24), h = U.rand(70, 130);
-          const b = M.building(w, h, d, U.randInt(0, 3));
-          b.position.set(s * (34 + w / 2 + U.rand(0, 10)), h / 2 - 20, z2 - d / 2);
-          g.add(b);
-          z2 -= d + U.rand(4, 12);
-        }
-      }
-    }
-    // a neon gate over the road on every other block
-    if (index % 2 === 0) {
-      const col = U.pick(['#ff3aa8', '#3af0ff', '#ffd21a']);
-      const hex = U.hex(col);
+    const curbs = (color, glow) => {
       for (const s of [-1, 1]) {
-        M.P(g, M.G.box(), M.lam(0x2a2640), [s * 5.4, 3.5, -2], [0.8, 9, 0.8]);
-        M.P(g, M.G.box(), M.glowy(hex, 0.9), [s * 5.0, 3.5, -1.58], [0.08, 9, 0.08]);
+        M.P(g, M.G.box(), M.lam(color), [s * 4.35, 0.18, -BLOCK / 2], [0.3, 0.36, BLOCK]);
+        if (glow) M.P(g, M.G.box(), M.glowy(glow, 0.9), [s * 4.35, 0.38, -BLOCK / 2], [0.12, 0.05, BLOCK]);
       }
-      M.P(g, M.G.box(), M.lam(0x2a2640), [0, 8.3, -2], [11.6, 1, 0.9]);
-      M.P(g, M.G.box(), M.glowy(hex, 0.9), [0, 7.78, -1.54], [11, 0.08, 0.08]);
-      const sg = M.neonSign(U.pick(JC.TEXT.signs), col);
-      sg.position.set(0, 9.9, -1.9); sg.scale.set(5.4, 1.7, 1);
-      g.add(sg);
+    };
+
+    if (w.scenery === 'city') {
+      // Metropolis: a skyway high above the clouds, between tall towers
+      const deck = M.lam(0x2a2848);
+      M.P(g, M.G.box(), deck, [0, -0.48, -BLOCK / 2], [8.8, 0.9, BLOCK]);
+      for (const s of [-1, 1]) {
+        M.P(g, M.G.box(), M.lam(0x3a3a60), [s * 4.35, 0.25, -BLOCK / 2], [0.16, 0.5, BLOCK]);
+        M.P(g, M.G.box(), M.glowy(0xffcc2a, 0.9), [s * 4.35, 0.52, -BLOCK / 2], [0.1, 0.05, BLOCK]);
+        M.P(g, M.G.box(), M.glowy(0x3af0ff, 0.7), [s * 4.45, -0.6, -BLOCK / 2], [0.06, 0.06, BLOCK]);
+      }
+      for (const z of [-15, -45]) M.P(g, M.G.box(), deck, [0, -16, z], [3, 31, 3]);
+      const clouds = new THREE.Mesh(M.G.plane(), M.basic(0x9a8ad0));
+      clouds.rotation.x = -Math.PI / 2; clouds.scale.set(260, BLOCK, 1); clouds.position.set(0, -28, -BLOCK / 2);
+      g.add(clouds);
+      for (const s of [-1, 1]) {
+        let z = 0;
+        while (z > -BLOCK) {
+          const d = U.rand(8, 14), wd = U.rand(8, 13), h = U.rand(35, 85);
+          const x = s * (9 + wd / 2 + U.rand(0, 5));
+          if (Math.random() < 0.5) M.tower(g, [x, 0, z - d / 2], wd, h, d, U.randInt(0, 3));
+          else { const bl = M.building(wd, h, d, U.randInt(0, 3)); bl.position.set(x, h / 2 - 20, z - d / 2); g.add(bl); }
+          if (Math.random() < 0.35) {
+            const sg = M.neonSign(U.pick(JC.TEXT.signs), U.pick(['#ff3aa8', '#3af0ff', '#ffd21a', '#9a5aff', '#6aff6a']));
+            sg.position.set(x - s * wd / 2 - s * 0.06, U.rand(3, 16), z - d / 2);
+            sg.rotation.y = s < 0 ? Math.PI / 2 : -Math.PI / 2;
+            g.add(sg);
+          }
+          z -= d + U.rand(2, 6);
+        }
+        if (!JC.lowGfx) {
+          let z2 = 0;
+          while (z2 > -BLOCK) {
+            const d = U.rand(12, 20), wd = U.rand(14, 22), h = U.rand(70, 130);
+            M.tower(g, [s * (36 + wd / 2 + U.rand(0, 10)), 0, z2 - d / 2], wd, h, d, U.randInt(0, 3));
+            z2 -= d + U.rand(4, 12);
+          }
+        }
+      }
+      if (variant > 0) M.place(g, M.platform, [variant === 1 ? -14 : 15, U.rand(4, 9), -30], U.rand(0, 6), 0.9);
+      if (variant === 0) {
+        for (const s of [-1, 1]) {
+          M.P(g, M.G.box(), M.lam(0x3a3a60), [s * 5.4, 3.5, -2], [0.8, 9, 0.8]);
+          M.P(g, M.G.box(), M.glowy(0x3af0ff, 0.9), [s * 5.0, 3.5, -1.58], [0.08, 9, 0.08]);
+        }
+        M.P(g, M.G.box(), M.lam(0x3a3a60), [0, 8.3, -2], [11.6, 1, 0.9]);
+        const sg = M.neonSign('METROPOLIS', '#3af0ff');
+        sg.position.set(0, 9.9, -1.9); sg.scale.set(5.4, 1.7, 1);
+        g.add(sg);
+      }
+    } else if (w.scenery === 'canyon') {
+      // Veldin: a desert track through orange canyons
+      ground(g, 0xe8a860);
+      curbs(0x9a6a3a);
+      alongSides(9, 14, 13, (s, x, z) => M.mesa(g, [x + s * 3, -0.1, z], U.rand(6, 11), U.rand(7, 22), U.rand(8, 13)));
+      alongSides(5.5, 7.5, 9, (s, x, z) => (Math.random() < 0.5 ? M.rocks(g, [x, 0, z], U.rand(0.5, 1.2)) : M.place(g, M.cactus, [x, 0, z], U.rand(0, 6), U.rand(0.7, 1.2))));
+      if (!JC.lowGfx) alongSides(40, 60, 26, (s, x, z) => M.mesa(g, [x, -0.1, z], U.rand(14, 24), U.rand(18, 38), U.rand(14, 22), '#c8702e', '#b05a22'));
+      if (variant === 0) M.rockArch(g, -30);
+    } else if (w.scenery === 'beach') {
+      // Pokitaru: a wooden boardwalk over turquoise water
+      const water = new THREE.Mesh(M.G.plane(), M.basic(0x2ac0d8));
+      water.rotation.x = -Math.PI / 2; water.scale.set(260, BLOCK, 1); water.position.set(0, -0.6, -BLOCK / 2);
+      g.add(water);
+      M.P(g, M.G.box(), M.lam(0x7a4a24), [0, -0.2, -BLOCK / 2], [8.6, 0.3, BLOCK]);
+      for (let z = -3; z > -BLOCK; z -= 6) {
+        for (const s of [-1, 1]) {
+          M.P(g, M.G.cyl(), M.lam(0x6a4020), [s * 4.1, -0.9, z], [0.18, 1.6, 0.18]);
+          M.P(g, M.G.cyl(), M.lam(0x8a5a30), [s * 4.35, 0.5, z], [0.1, 1.0, 0.1]);
+        }
+      }
+      for (const s of [-1, 1]) M.P(g, M.G.box(), M.lam(0xe8d0a0), [s * 4.35, 0.85, -BLOCK / 2], [0.06, 0.06, BLOCK]);
+      const islands = variant === 2 ? [[-1, -18], [1, -44]] : [[1, -14], [-1, -40]];
+      for (const [s, z] of islands) {
+        const x = s * U.rand(15, 22);
+        M.P(g, M.G.cyl(), M.basic(0x7ae8f0), [x, -0.55, z], [12, 0.05, 12]);
+        M.P(g, M.G.sphere(), M.lam(0xf4dca0), [x, -0.6, z], [9, 1.4, 9]);
+        M.place(g, M.palm, [x - s * 3, 0.4, z + 2], U.rand(0, 6), U.rand(0.9, 1.2));
+        M.place(g, M.palm, [x + s * 2, 0.4, z - 3], U.rand(0, 6), U.rand(0.8, 1.1));
+        M.place(g, M.hut, [x + s * 1, 1.1, z + 0.5], s < 0 ? Math.PI / 2 : -Math.PI / 2, 0.9);
+      }
+      alongSides(6, 7, 20, (s, x, z) => M.place(g, M.palm, [x, -0.2, z], U.rand(0, 6), U.rand(0.7, 1)));
+    } else if (w.scenery === 'ice') {
+      // Grelbin: an ice road across a frozen moon
+      ground(g, 0xe8f4ff);
+      for (const s of [-1, 1]) M.P(g, M.G.rbox(1.4, 0.7, BLOCK, 0.3), M.lam(0xffffff), [s * 4.9, 0.1, -BLOCK / 2]);
+      alongSides(8, 20, 11, (s, x, z) => M.place(g, M.crystal, [x, 0, z], U.rand(0, 6), U.rand(0.8, 2.2)));
+      const domes = variant === 1 ? [[-1, -20]] : [[1, -32]];
+      for (const [s, z] of domes) M.place(g, M.dome, [s * 20, 0, z], s < 0 ? Math.PI / 2 : -Math.PI / 2, 1);
+      if (!JC.lowGfx) alongSides(38, 60, 24, (s, x, z) => M.P(g, M.G.cone(), M.lam(0xf0f6ff), [x, 12, z], [U.rand(10, 16), 26, U.rand(10, 16)]));
+    } else {
+      // Gaspar: a road of black rock between rivers of lava
+      ground(g, 0x2a2024);
+      curbs(0x3a2c30, 0xff6a1a);
+      for (const s of [-1, 1]) {
+        const lava = new THREE.Mesh(M.G.plane(), M.basic(0xff6a1a));
+        lava.rotation.x = -Math.PI / 2; lava.scale.set(3.2, BLOCK, 1); lava.position.set(s * 7.2, -0.04, -BLOCK / 2);
+        g.add(lava);
+        M.P(g, M.G.box(), M.basic(0xffc040), [s * 7.2, -0.03, -BLOCK / 2], [1.0, 0.02, BLOCK]);
+      }
+      alongSides(10, 22, 10, (s, x, z) => M.place(g, M.spire, [x, 0, z], U.rand(0, 6), U.rand(0.8, 2)));
+      alongSides(5.5, 5.8, 14, (s, x, z) => M.rocks(g, [x, 0, z], U.rand(0.4, 0.8), 0x3a2c30));
+      if (variant !== 2) M.place(g, M.volcano, [(variant ? 1 : -1) * U.rand(42, 55), 0, -30], 0, U.rand(0.9, 1.3));
     }
     M.mergeStatic(g);
-    scene.add(g);
-    return { g, index };
+    return g;
   }
 
   function resetCar(c, playerZ, first) {
@@ -147,7 +253,9 @@ JC.World = (function () {
     clearAll();
     genD = 35; lastPowerD = 0; lastPiece = null;
     tutorialLeft = withTutorial ? JC.TUTORIAL.slice() : [];
-    blocks.forEach((b, i) => { b.index = i - 1; b.g.position.z = -b.index * BLOCK; });
+    blocks.forEach((b, i) => useBlock(b, i - 1));
+    gateAt = -1;
+    applyPlanet(0);
     for (const p of particles) { p.life = 0; p.s.visible = false; }
   }
 
@@ -214,7 +322,7 @@ JC.World = (function () {
           }
           const len = (r2 - r + 1) * ROW;
           if (isTrain) {
-            addObstacle('train', lane, dNear, len - 0.3, TRAIN_TOP, M.train(len - 0.3, false));
+            addObstacle('train', lane, dNear, len - 0.3, TRAIN_TOP, M.train(len - 0.3, false, JC.WORLDS[planetAt(dNear)].trains));
             for (let k = r; k <= r2; k++) if (cell(k, c) === 't') addBolt(laneX(lane), TRAIN_TOP + 1.0, -(startD + k * ROW + ROW / 2));
           } else if (ch === 'R') {
             addObstacle('ramp', lane, dNear, len, TRAIN_TOP, M.ramp(len));
@@ -303,10 +411,16 @@ JC.World = (function () {
 
     // move city blocks from behind you to the front
     for (const b of blocks) {
-      if ((b.index + 1) * BLOCK < playerD - 20) { b.index += NBLOCKS; b.g.position.z = -b.index * BLOCK; }
+      if ((b.index + 1) * BLOCK < playerD - 20) useBlock(b, b.index + NBLOCKS);
     }
+    // the warp gate always waits at the next planet
+    const next = (Math.floor(Math.max(0, playerD) / PL()) + 1) * PL();
+    if (next !== gateAt) { gateAt = next; gate.g.position.z = -next; gate.setPlanet(JC.WORLDS[planetAt(next)]); }
+    gate.spin(t);
+    const pi = planetAt(playerD);
+    if (pi !== planetIdx) { applyPlanet(pi); if (onPlanet) onPlanet(JC.WORLDS[pi]); }
     skyline.position.set(0, 50, pz - 260);
-    moon.position.set(-60, 95, pz - 250);
+    moon.position.set(35, 62, pz - 250);
     sun.position.set(-6, 14, pz + 8); sun.target.position.set(0, 0, pz);
     for (const c of cars) {
       c.mesh.position.z += c.speed * dt;
@@ -343,5 +457,8 @@ JC.World = (function () {
     }
   }
 
-  return { init, reset, update, burst, addSkyBolts, clearNear, levelAt, obstacles, bolts, powerUps, hints, LANE, TRAIN_TOP };
+  return {
+    init, reset, update, burst, addSkyBolts, clearNear, levelAt, planetAt, obstacles, bolts, powerUps, hints, LANE, TRAIN_TOP,
+    set onPlanet(f) { onPlanet = f; }, get planet() { return JC.WORLDS[planetIdx]; },
+  };
 })();

@@ -110,6 +110,10 @@
   .taunt { position: absolute; left: 0; right: 0; bottom: calc(env(safe-area-inset-bottom, 0px) + 12%); text-align: center; font-family: var(--display); font-size: min(7vw, 30px); color: var(--danger); opacity: 0; transition: opacity 0.3s;
     text-shadow: 0 0 14px var(--danger), 0 3px 0 #000; padding: 0 16px; }
   .taunt.show { opacity: 1; }
+  #flash { position: fixed; inset: 0; pointer-events: none; z-index: 6; background: #fff; opacity: 0; }
+  #flash.go { animation: flash 0.9s ease-out; }
+  @keyframes flash { 0% { opacity: 0.95; } 100% { opacity: 0; } }
+  .score small.planet { color: var(--text); letter-spacing: 1px; margin-top: 2px; }
   #danger { position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0; background: radial-gradient(ellipse at center, rgba(255, 0, 30, 0) 50%, rgba(255, 0, 30, 0.55) 100%); }
 
   /* ---------- panels: pause, game over ---------- */
@@ -136,15 +140,16 @@
 <body>
 <canvas id="game"></canvas>
 <div id="danger"></div>
+<div id="flash"></div>
 
 <!-- TITLE -->
 <div id="title" class="screen">
   <div class="logo"><span class="l1">JETPACK</span><span class="l2">CITY</span></div>
-  <div class="tag">Run! Grab the bolts! <b>MEGA-BOT</b> is coming!</div>
+  <div class="tag">Run, Ratchet! Grab the bolts! <b>MEGA-BOT</b> is coming!</div>
   <div class="spacer"></div>
   <div class="stats">
     <div class="chip"><span class="k">BEST</span><span id="tBest">0</span></div>
-    <div class="chip bolt"><span class="k">BOLTS</span>⚡ <span id="tBank">0</span></div>
+    <div class="chip bolt"><span class="k">BOLTS</span>🔩 <span id="tBank">0</span></div>
   </div>
   <div class="menu">
     <button class="btn" id="playBtn">PLAY</button>
@@ -160,10 +165,10 @@
 <!-- GARAGE -->
 <div id="garage" class="screen">
   <h2>GARAGE</h2>
-  <div class="chip bolt"><span class="k">YOUR BOLTS</span>⚡ <span id="gBank">0</span></div>
+  <div class="chip bolt"><span class="k">YOUR BOLTS</span>🔩 <span id="gBank">0</span></div>
   <div class="tabs">
-    <button class="tab on" id="tabJet">JETPACKS</button>
-    <button class="tab" id="tabSuit">OUTFITS</button>
+    <button class="tab on" id="tabJet">CLANK</button>
+    <button class="tab" id="tabSuit">RATCHET</button>
   </div>
   <div class="spacer"></div>
   <div class="gnote" id="gNote"></div>
@@ -174,11 +179,11 @@
 <!-- HUD (while running) -->
 <div id="hud">
   <div class="topbar">
-    <div class="score"><span id="hScore">0</span><small id="hDist">0 m</small></div>
-    <div class="bolts">⚡ <span id="hBolts">0</span></div>
+    <div class="score"><span id="hScore">0</span><small id="hDist">0 m</small><small id="hPlanet" class="planet">🪐 Veldin</small></div>
+    <div class="bolts">🔩 <span id="hBolts">0</span></div>
     <button id="pauseBtn" aria-label="Pause">❚❚</button>
   </div>
-  <div class="chase" aria-hidden="true"><div class="track"></div><span class="bot" id="hBot">🤖</span><span class="me">🧑‍🚀</span></div>
+  <div class="chase" aria-hidden="true"><div class="track"></div><span class="bot" id="hBot">🤖</span><span class="me">🦊</span></div>
   <div class="powers" id="hPowers"></div>
   <div class="pop" id="hPop"></div>
   <div class="hint" id="hHint"></div>
@@ -203,7 +208,8 @@
     <div class="record" id="oRecord" hidden>★ NEW RECORD! ★</div>
     <div class="lines">
       <span>Distance</span><span id="oDist">0 m</span>
-      <span>Bolts</span><span id="oBolts">⚡ 0</span>
+      <span>Bolts</span><span id="oBolts">🔩 0</span>
+      <span>Planets visited</span><span id="oPlanets">🪐 1</span>
       <span>Best score</span><span id="oBest">0</span>
     </div>
     <button class="btn" id="againBtn">RUN AGAIN</button>

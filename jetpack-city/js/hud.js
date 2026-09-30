@@ -69,29 +69,36 @@ JC.HUD = (function () {
     $('oTitle').textContent = r.title;
     $('oScore').textContent = r.score;
     $('oDist').textContent = r.dist + ' m';
-    $('oBolts').textContent = '⚡ ' + r.bolts;
+    $('oBolts').textContent = '🔩 ' + r.bolts;
     $('oBest').textContent = r.best;
     $('oRecord').hidden = !r.record;
+    $('oPlanets').textContent = '🪐 ' + r.planets;
+  }
+  function planet(name) { set('hPlanet', '🪐 ' + name); }
+  // a white flash when you go through a warp gate
+  function flash() {
+    const el = $('flash');
+    el.classList.remove('go'); void el.offsetWidth; el.classList.add('go');
   }
 
-  // the garage shelf: one card for every jetpack or outfit
+  // the garage shelf: one card for every Clank paint or Ratchet outfit
   function buildShelf(kind, items, save, onPick) {
     const shelf = $('shelf');
     shelf.innerHTML = '';
     const ownedList = save.owned[kind];
-    const current = kind === 'jetpacks' ? save.jetpack : save.outfit;
+    const current = save[kind];
     for (const it of items) {
-      const owned = ownedList.includes(it.id);
+      const owned = it.price === 0 || ownedList.includes(it.id);
       const b = document.createElement('button');
       b.className = 'card' + (it.id === current ? ' on' : '') + (owned ? '' : ' locked');
       let bg;
-      if (kind === 'jetpacks') bg = it.flame === 'rainbow'
+      if (kind === 'clank') bg = it.flame === 'rainbow'
         ? 'conic-gradient(#ff3a3a,#ffd21a,#3aff6a,#3af0ff,#9a5aff,#ff3aa8,#ff3a3a)'
-        : `linear-gradient(135deg, ${it.tank} 0 50%, ${it.flame} 50% 100%)`;
-      else bg = `linear-gradient(180deg, ${it.helmet} 0 30%, ${it.visor} 30% 42%, ${it.suit} 42% 72%, ${it.pants} 72% 100%)`;
+        : `radial-gradient(circle at 34% 45%, ${it.eye} 0 10%, transparent 11%), radial-gradient(circle at 66% 45%, ${it.eye} 0 10%, transparent 11%), linear-gradient(180deg, ${it.metal} 0 70%, ${it.flame} 70% 100%)`;
+      else bg = `linear-gradient(180deg, ${it.fur} 0 30%, ${it.stripe} 30% 38%, ${it.top} 38% 62%, ${it.accent} 62% 70%, ${it.pants} 70% 100%)`;
       const price = it.id === current ? '<span class="pr eq">WEARING</span>'
         : owned ? '<span class="pr eq">TAP TO WEAR</span>'
-          : `<span class="pr ${save.bank >= it.price ? '' : 'no'}">⚡ ${it.price}</span>`;
+          : `<span class="pr ${save.bank >= it.price ? '' : 'no'}">🔩 ${it.price}</span>`;
       b.innerHTML = `<div class="sw" style="background:${bg}"></div><div class="nm">${it.name}</div>${price}`;
       b.addEventListener('click', () => onPick(it));
       shelf.appendChild(b);
@@ -99,5 +106,5 @@ JC.HUD = (function () {
   }
   function garageNote(text) { $('gNote').textContent = text; }
 
-  return { show, update, pop, hint, taunt, clearMessages, setTitleStats, setSound, setGfx, showOver, buildShelf, garageNote };
+  return { planet, flash, show, update, pop, hint, taunt, clearMessages, setTitleStats, setSound, setGfx, showOver, buildShelf, garageNote };
 })();

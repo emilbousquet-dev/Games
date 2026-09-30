@@ -10,7 +10,7 @@ JC.Game = (function () {
   let renderer, scene, camera, clock;
   let state = 'title';                // title, garage, run, paused, caught, over
   let t = 0, shake = 0, camY = 0, wakeLock = null;
-  let garageTab = 'jetpacks';
+  let garageTab = 'clank', planets = 1;
   const cam = { pos: new THREE.Vector3(0, 2, -6), look: new THREE.Vector3(0, 2, 0), blend: 1, fromPos: new THREE.Vector3(), fromLook: new THREE.Vector3(), speed: 1.4 };
   const tp = new THREE.Vector3(), tl = new THREE.Vector3();
 
@@ -18,12 +18,12 @@ JC.Game = (function () {
   const save = {
     best: JC.store.get('best', 0),
     bank: JC.store.get('bank', 0),
-    owned: JC.store.get('owned', { jetpacks: ['rookie'], outfits: ['runner'] }),
-    jetpack: JC.store.get('jetpack', 'rookie'),
-    outfit: JC.store.get('outfit', 'runner'),
+    owned: JC.store.get('owned2', { clank: ['classic'], ratchet: ['classic'] }),
+    clank: JC.store.get('clank', 'classic'),
+    ratchet: JC.store.get('ratchet', 'classic'),
     tutorialDone: JC.store.get('tutorialDone', false),
   };
-  function saveAll() { for (const k of Object.keys(save)) JC.store.set(k, save[k]); }
+  function saveAll() { for (const k of Object.keys(save)) JC.store.set(k === 'owned' ? 'owned2' : k, save[k]); }
 
   // ---------------- starting up ----------------
   function init() {
@@ -40,6 +40,14 @@ JC.Game = (function () {
     P.init(scene, playerEvents);
     C.init(scene, chaserEvents);
     JC.Input.init(canvas);
+    W.onPlanet = (w) => {
+      if (state !== 'run') return;
+      planets++;
+      A.warp(); buzz(40);
+      H.flash();
+      H.planet(w.name);
+      H.pop('🪐 ' + w.name.toUpperCase() + '!', w.gate, 2);
+    };
     applyLook();
     P.reset(); P.state.mode = 'idle';
     W.reset(false);
@@ -87,8 +95,8 @@ JC.Game = (function () {
     on('pauseBtn', pause);
     on('soundBtn', toggleSound);
     on('pSoundBtn', toggleSound);
-    on('tabJet', () => { garageTab = 'jetpacks'; refreshGarage(); });
-    on('tabSuit', () => { garageTab = 'outfits'; refreshGarage(); });
+    on('tabJet', () => { garageTab = 'clank'; refreshGarage(); });
+    on('tabSuit', () => { garageTab = 'ratchet'; refreshGarage(); });
     on('gfxBtn', () => {
       JC.store.set('gfxFast', !JC.lowGfx);
       location.reload();  // the new graphics setting needs a fresh start
@@ -97,9 +105,9 @@ JC.Game = (function () {
   function toggleSound() { A.setMuted(!A.isMuted()); H.setSound(!A.isMuted()); }
 
   function applyLook() {
-    const jp = JC.GARAGE.jetpacks.find((j) => j.id === save.jetpack) || JC.GARAGE.jetpacks[0];
-    const of = JC.GARAGE.outfits.find((o) => o.id === save.outfit) || JC.GARAGE.outfits[0];
-    P.setLook(jp, of);
+    const ck = JC.GARAGE.clank.find((j) => j.id === save.clank) || JC.GARAGE.clank[0];
+    const rt = JC.GARAGE.ratchet.find((o) => o.id === save.ratchet) || JC.GARAGE.ratchet[0];
+    P.setLook(ck, rt);
   }
 
   // ---------------- moving between screens ----------------
@@ -130,13 +138,13 @@ JC.Game = (function () {
     camTo(1.6);
   }
   function refreshGarage() {
-    document.getElementById('tabJet').classList.toggle('on', garageTab === 'jetpacks');
-    document.getElementById('tabSuit').classList.toggle('on', garageTab === 'outfits');
+    document.getElementById('tabJet').classList.toggle('on', garageTab === 'clank');
+    document.getElementById('tabSuit').classList.toggle('on', garageTab === 'ratchet');
     H.setTitleStats(save.best, save.bank);
     H.buildShelf(garageTab, JC.GARAGE[garageTab], save, pickItem);
   }
   function pickItem(it) {
-    const owned = save.owned[garageTab].includes(it.id);
+    const owned = it.price === 0 || save.owned[garageTab].includes(it.id);
     if (!owned) {
       if (save.bank < it.price) { A.nope(); H.garageNote(`You need ${it.price - save.bank} more bolts for ${it.name}!`); return; }
       save.bank -= it.price;
@@ -144,7 +152,7 @@ JC.Game = (function () {
       A.buy();
       H.garageNote(`You got ${it.name}! 🎉`);
     } else H.garageNote('');
-    if (garageTab === 'jetpacks') save.jetpack = it.id; else save.outfit = it.id;
+    save[garageTab] = it.id;
     saveAll();
     applyLook();
     refreshGarage();
@@ -158,6 +166,8 @@ JC.Game = (function () {
     P.reset();
     W.reset(!save.tutorialDone);
     C.reset('chase');
+    planets = 1;
+    H.planet(JC.WORLDS[0].name);
     state = 'run';
     JC.Input.setEnabled(true);
     H.show('hud');
@@ -228,8 +238,9 @@ JC.Game = (function () {
     H.show('none');
     C.startGrab();
     cam.overTitle = title === 'CRASH!' ? 'CRASH! ' + U.pick(JC.TEXT.caught) : U.pick(JC.TEXT.caught);
-    // if you were flying or on a train, drop to the road
-    P.state.jetT = 0;
+    // if you were flying or on a train, drop to the road (and power-ups switch off)
+    P.state.jetT = 0; P.state.magnetT = 0; P.state.shieldT = 0;
+    P.place(t);
     camTo(1.3);
   }
 
@@ -243,7 +254,7 @@ JC.Game = (function () {
     saveAll();
     state = 'over';
     releaseWake();
-    H.showOver({ title: cam.overTitle || 'CAUGHT!', score, dist: Math.floor(p.d), bolts: p.bolts, best: save.best, record });
+    H.showOver({ title: cam.overTitle || 'CAUGHT!', score, dist: Math.floor(p.d), bolts: p.bolts, best: save.best, record, planets });
     H.show('over');
     if (record && score > 0) A.record(); else A.gameOver();
   }
@@ -269,7 +280,7 @@ JC.Game = (function () {
       camY = U.damp(camY, p.y, 4, camDt);
       jetCam = U.damp(jetCam, p.jetT > 0 ? 1 : 0, 3, camDt);
       // while flying, the camera comes closer and flies with you
-      outPos.set(p.x * 0.75, U.lerp(camY * 0.6 + 4.3, camY + 2.3, jetCam), z + U.lerp(8.6, 6.8, jetCam));
+      outPos.set(p.x * 0.75, U.lerp(camY * 0.6 + 4.3, camY + 2.3, jetCam), z + U.lerp(8.6, 5.8, jetCam));
       outLook.set(p.x * 0.85, U.lerp(camY * 0.7 + 1.3, camY + 0.3, jetCam), z - 7);
     }
   }

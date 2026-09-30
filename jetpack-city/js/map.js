@@ -280,33 +280,67 @@ JC.PIECES = [
 // The very first run teaches you the moves, one piece at a time.
 JC.TUTORIAL = [
   { hint: 'SWIPE ⬅ or ➡ to change lanes', rows: ['oBo', 'o.o', 'o.o', '...'] },
-  { hint: 'SWIPE ⬆ to hop with your jetpack', rows: ['.o.', 'BBB', '...', '...'] },
+  { hint: 'SWIPE ⬆ to hop with Clank\'s Heli-Pack', rows: ['.o.', 'BBB', '...', '...'] },
   { hint: 'SWIPE ⬇ to slide under lasers', rows: ['.o.', 'LLL', '...', '...'] },
   { hint: 'Run up RAMPS to get on top of trains', rows: ['TtT', 'TtT', 'TtT', 'TRT', '.R.', '...'] },
-  { hint: 'Grab power-ups! ⚡', rows: ['.J.', '...', '...'] },
+  { hint: 'Grab the 🚀 for Clank\'s Thruster-Pack!', rows: ['.J.', '...', '...'] },
 ];
 
 // ------------------------------------------------------------
-//  THE GARAGE: things you can buy with energy bolts
+//  THE GARAGE: things you can buy with bolts
 //  (colors are written like on the web: #rrggbb)
 // ------------------------------------------------------------
 JC.GARAGE = {
-  jetpacks: [
-    { id: 'rookie', name: 'Rookie Rocket', price: 0, tank: '#c8ccd4', stripe: '#ff7a1a', flame: '#ff9a2a' },
-    { id: 'comet', name: 'Blue Comet', price: 150, tank: '#2a6aff', stripe: '#ffffff', flame: '#40e8ff' },
-    { id: 'toxic', name: 'Toxic Blast', price: 300, tank: '#2a3a24', stripe: '#a4ff2a', flame: '#7aff3a' },
-    { id: 'bubble', name: 'Bubblegum Boost', price: 450, tank: '#ff6ac8', stripe: '#ffffff', flame: '#ff4af0' },
-    { id: 'gold', name: 'Golden Thunder', price: 1000, tank: '#e8b030', stripe: '#fff4c0', flame: '#fff08a' },
-    { id: 'rainbow', name: 'Rainbow Rocket', price: 2000, tank: '#f4f4ff', stripe: '#ff3a8a', flame: 'rainbow' },
+  // Clank's paint: his metal, his eyes, and the flames of his Thruster-Pack
+  clank: [
+    { id: 'classic', name: 'Classic Clank', price: 0, metal: '#c8d0dc', dark: '#6a7486', eye: '#6aff5a', flame: '#5ad8ff' },
+    { id: 'gold', name: 'Golden Clank', price: 300, metal: '#f0c040', dark: '#a87818', eye: '#ffffff', flame: '#fff08a' },
+    { id: 'red', name: 'Red Alert', price: 500, metal: '#e04040', dark: '#7a1a1a', eye: '#ffe03a', flame: '#ff8a2a' },
+    { id: 'stealth', name: 'Stealth Clank', price: 800, metal: '#30343e', dark: '#15171c', eye: '#3af0ff', flame: '#3af0ff' },
+    { id: 'rainbow', name: 'Rainbow Clank', price: 2000, metal: '#f4f4ff', dark: '#9aa4c0', eye: '#ff3aa8', flame: 'rainbow' },
   ],
-  outfits: [
-    { id: 'runner', name: 'Street Runner', price: 0, suit: '#ff7a1a', pants: '#24305a', helmet: '#f4f4f8', visor: '#30d8ff', shoes: '#ffffff' },
-    { id: 'pilot', name: 'Sky Pilot', price: 200, suit: '#3a6a3a', pants: '#2a2a20', helmet: '#8a6a3a', visor: '#ffb030', shoes: '#3a2a1a' },
-    { id: 'ninja', name: 'Neon Ninja', price: 500, suit: '#15151c', pants: '#15151c', helmet: '#15151c', visor: '#6aff4a', shoes: '#6aff4a' },
-    { id: 'astro', name: 'Astronaut', price: 800, suit: '#f0f0f4', pants: '#f0f0f4', helmet: '#ffffff', visor: '#ffc040', shoes: '#8a8a9a' },
-    { id: 'robo', name: 'Robo Disguise', price: 1500, suit: '#9aa4b8', pants: '#5a6478', helmet: '#c8d0e0', visor: '#ff3040', shoes: '#3a4050' },
+  // Ratchet's outfits: fur, stripes and clothes
+  ratchet: [
+    { id: 'classic', name: 'Classic Ratchet', price: 0, fur: '#e8b85a', stripe: '#7a4a22', muzzle: '#fff0d8', top: '#eef2f8', accent: '#3a78d8', pants: '#b89a6a', cap: '#8a5a30', boots: '#6a4020', gloves: '#6a4020' },
+    { id: 'racer', name: 'Hoverboard Racer', price: 200, fur: '#e8b85a', stripe: '#7a4a22', muzzle: '#fff0d8', top: '#e83a3a', accent: '#ffffff', pants: '#2a2a34', cap: '#ffffff', boots: '#2a2a34', gloves: '#e83a3a' },
+    { id: 'explorer', name: 'Space Explorer', price: 500, fur: '#e8b85a', stripe: '#7a4a22', muzzle: '#fff0d8', top: '#ff8a2a', accent: '#2a3a5a', pants: '#2a3a5a', cap: '#ffffff', boots: '#ffffff', gloves: '#ffffff' },
+    { id: 'snow', name: 'Snow Lombax', price: 800, fur: '#f4f4f8', stripe: '#8a9ab0', muzzle: '#ffffff', top: '#3a8aff', accent: '#ffffff', pants: '#2a4a8a', cap: '#3a8aff', boots: '#ffffff', gloves: '#3a8aff' },
+    { id: 'holo', name: 'Holo Armor', price: 1500, fur: '#e8b85a', stripe: '#7a4a22', muzzle: '#fff0d8', top: '#1a2a4a', accent: '#3af0ff', pants: '#1a2a4a', cap: '#3af0ff', boots: '#3af0ff', gloves: '#3af0ff' },
   ],
 };
+
+// ------------------------------------------------------------
+//  THE PLANETS
+//  You go through a warp gate to the next planet every "planetLength" meters.
+//  After the last planet you go back to the first one.
+//    sky:     colors of the sky, from the top down to the horizon
+//    road:    dirt, metal, planks, ice or basalt
+//    trains:  colors of the parked trains
+//    gate:    color of the warp gate that takes you there
+// ------------------------------------------------------------
+JC.SETTINGS.planetLength = 720;
+JC.WORLDS = [
+  { id: 'veldin', name: 'Veldin', scenery: 'canyon', road: 'dirt',
+    sky: ['#3a78c8', '#7ab0e0', '#f0c890', '#f8a060'], fog: '#f0b878', stars: false,
+    light: ['#fff4e0', '#c07a40', 1.6], sun: ['#fff0c8', '#fff8e0', 1.9], skyline: ['mesas', '#c07040', '#ffd090'],
+    trains: [0xe06a2a, 0x3a8aff, 0xf0c040], gate: '#ff9a2a', cars: false },
+  { id: 'metropolis', name: 'Metropolis', scenery: 'city', road: 'metal',
+    sky: ['#101848', '#2a3a8a', '#7a5ab8', '#e87aa8'], fog: '#5a4a9a', stars: true,
+    light: ['#c0c8ff', '#4a3a7a', 1.5], sun: ['#ffe0f0', '#ffd0f0', 1.6], skyline: ['city', '#2a2a5a', '#ffd27a'],
+    trains: [0xff3aa8, 0x3ab8ff, 0xffb01a, 0x7a4aff], gate: '#3af0ff', cars: true },
+  { id: 'pokitaru', name: 'Pokitaru', scenery: 'beach', road: 'planks',
+    sky: ['#1aa8f0', '#5ad0ff', '#b8f0ff', '#e8fff8'], fog: '#b8ecf8', stars: false,
+    light: ['#ffffff', '#3a9ab0', 1.7], sun: ['#fffae0', '#ffffe8', 2.0], skyline: ['islands', '#3a9a6a', '#ffffff'],
+    trains: [0xff5a8a, 0xffd23a, 0x3ad0a0], gate: '#3aff8a', cars: false },
+  { id: 'grelbin', name: 'Grelbin', scenery: 'ice', road: 'ice',
+    sky: ['#050a24', '#10205a', '#2a4a8a', '#8ab0d8'], fog: '#6a8ab8', stars: true,
+    light: ['#d0e8ff', '#5a7aa8', 1.5], sun: ['#e8f4ff', '#d8ecff', 1.5], skyline: ['mountains', '#4a6a9a', '#f0f8ff'],
+    trains: [0x3a8aff, 0xe8f0ff, 0x8a5aff], gate: '#8ad8ff', cars: false },
+  { id: 'gaspar', name: 'Gaspar', scenery: 'lava', road: 'basalt',
+    sky: ['#1a0508', '#4a0a0a', '#a82a10', '#ff7a2a'], fog: '#6a1a10', stars: false,
+    light: ['#ffb08a', '#5a1a10', 1.5], sun: ['#ffd0a0', '#ff8a4a', 1.7], skyline: ['volcanoes', '#2a1014', '#ff6a1a'],
+    trains: [0x5a5a64, 0xffb01a, 0x8a3a2a], gate: '#ff5a1a', cars: false },
+];
 
 // ------------------------------------------------------------
 //  WORDS
@@ -319,18 +353,20 @@ JC.TEXT = {
     'YOU CANNOT ESCAPE MEGA-BOT!',
     'STOMP! STOMP! STOMP!',
     'BEEP BOOP... GOTCHA SOON!',
+    'GIVE ME THAT LITTLE ROBOT!',
   ],
   // the title on the game over screen
   caught: [
     'MEGA-BOT GOT YOU!',
     'GRABBED!',
     'CAUGHT!',
+    'OH NO, RATCHET!',
   ],
   // the neon signs on the buildings
   signs: ['ROBO', 'NEON', 'BOLT', 'ZAP', 'CYBER', 'MEGA', 'PIXEL', 'TURBO', 'BYTE', 'VOLT', 'LASER', 'NOVA'],
   powerUps: {
     shield: '🛡️ SHIELD!',
     magnet: '🧲 MAGNET!',
-    jet: '🚀 JET BOOST!',
+    jet: '🚀 THRUSTER-PACK!',
   },
 };

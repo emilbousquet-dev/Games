@@ -110,6 +110,12 @@ JC.Audio = (function () {
     retreat() { [67, 64, 60].forEach((n, i) => tone('square', hz(n), hz(n), 0.1, 0.04, { delay: i * 0.08, filter: 'lowpass', ff: 1500 })); },
     horn() { tone('sawtooth', 311, 311, 0.9, 0.1, { filter: 'lowpass', ff: 1400 }); tone('sawtooth', 370, 370, 0.9, 0.1, { filter: 'lowpass', ff: 1400 }); },
     click() { tone('sine', 900, 700, 0.05, 0.15); },
+    // going through a warp gate: a big swooping WHOOSH with sparkles
+    warp() {
+      noise(1.2, 'bandpass', 300, 1.5, 0.4, { f1: 4000, attack: 0.05 });
+      tone('sawtooth', 110, 880, 0.9, 0.08, { filter: 'lowpass', ff: 2000 });
+      [84, 88, 91, 96].forEach((n, i) => tone('sine', hz(n), hz(n), 0.4, 0.07, { delay: 0.5 + i * 0.07, echo: true }));
+    },
     buy() { [76, 79, 84, 91].forEach((n, i) => tone('triangle', hz(n), hz(n), 0.2, 0.12, { delay: i * 0.07, echo: true })); },
     nope() { tone('square', 200, 150, 0.2, 0.08, { filter: 'lowpass', ff: 900 }); },
     record() { [72, 76, 79, 84, 79, 84, 88, 91].forEach((n, i) => tone('square', hz(n), hz(n), 0.15, 0.06, { delay: i * 0.09, filter: 'lowpass', ff: 3000, echo: true })); },
