@@ -8,6 +8,12 @@ fight bots in the Arena, or battle **online with up to 4 friends** using a room 
 The whole game is **one file** (`index.html`). The robots, sounds and online play are all made with code,
 so you can paste it into **Google Sites** and play at school.
 
+## Play it right now
+
+**https://claude.ai/artifact/6gn8X2JZ2w1PuGCYxAX5m9**: open it and click PLAY. In this version your game saves to your
+Claude account by itself. Online battles can't connect from there, so use the Google Sites version for those.
+(Only you can open the link until you share it from the page's Share menu.)
+
 ## Put it on your Google Site
 
 1. Open this file on GitHub:
