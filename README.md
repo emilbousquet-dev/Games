@@ -1,6 +1,9 @@
 # LAB 13 👽🩸
 
-> 🆕 **Also in this folder: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
+> 🆕 **Also in this folder: [KIDS vs HOMEWORK](kids-vs-homework/README.md)** ✏️📚: a tower defense game
+> starring Natti, Mio and Bill! Open `kids-vs-homework/index.html` to play.
+>
+> **And: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
 > Open `monster-hotel/index.html` to play.
 
 A **3D co-op survival horror game** that runs in your web browser.
