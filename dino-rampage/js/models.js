@@ -358,8 +358,10 @@ DR.Models = (function () {
     // ------------------ TIER 2: cars, trees, lamps ------------------
     car(r, variant) {
       const b = new Builder();
-      const type = variant || pickR(r, ['sedan', 'sedan', 'sedan', 'van', 'taxi']);
-      const c = type === 'taxi' ? COL.yellow : pickR(r, CAR_COLS);
+      const fbi = variant === 'fbi';
+      const type = fbi ? 'van' : variant || pickR(r, ['sedan', 'sedan', 'sedan', 'van', 'taxi']);
+      const c = fbi ? 0x16161c : type === 'taxi' ? COL.yellow : pickR(r, CAR_COLS);
+      if (fbi) { b.cyl(0.04, 1.6, COL.silver, [0.6, 2.8, -1.4], null, 5).cyl(0.04, 1.1, COL.silver, [-0.6, 2.6, -1.6], null, 5).add(G.hemi(), 0xd8d8e0, [0, 2.2, 0.4], [0.5, 0.25, 0.5]); }
       const tall = type === 'van' ? 0.45 : 0;
       b.rbox(2, 0.72, 4.2, 0.25, c, [0, 0.72, 0]);
       b.rbox(1.76, 0.62 + tall, type === 'van' ? 3.4 : 2.2, 0.2, COL.glass, [0, 1.3 + tall / 2, type === 'van' ? -0.3 : -0.15]);
@@ -549,6 +551,13 @@ DR.Models = (function () {
         for (let i = 0; i < 12; i++) b.sph(0.2, 0.1, 0.3, 0xfff6d0, [Math.cos(i * 2.4) * 1.8, y + 5.1 + (i % 3) * 0.1, Math.sin(i * 2.4) * 1.8], null, true);
         return { b, w, d: d + 1.5, h: y + 5.6 };
       }
+      if (variant === 'pudding') {
+        const y = h + 0.5;
+        b.cylT(3.2, 2.5, 4.5, 0xf6f4ee, [0, y + 2.25, 0], null, 18).cyl(3.1, 0.3, 0x8a5a2a, [0, y + 4.4, 0], null, 18).sph(2.4, 0.9, 2.4, 0x8a5a2a, [0, y + 4.5, 0]);
+        b.box(0.35, 0.2, 6, COL.silver, [1, y + 6, 0], [0.6, 0, 0.3]);
+        b.box(4.5, 1.2, 0.1, 0x5a6a3a, [0, y + 2, 2.8]);
+        return { b, w, d: d + 1.5, h: y + 7 };
+      }
       if (variant === 'donut') {
         const y = h + 0.5;
         b.box(1, 1.2, 1, COL.grey, [0, y + 0.6, 0]);
@@ -614,6 +623,111 @@ DR.Models = (function () {
       b.torus(1.95, 0.08, COL.black, [0, 25, 0], [PI / 2, 0, 0]);
       return { b, w: 6.4, d: 6.4, h: 29.6 };
     },
+
+    // ------------------ THE SECRET FBI BASE (shhh!) ------------------
+    fbibase() {
+      const b = new Builder();
+      b.win(12, 7, 10, 0xf0dcc0, [0, 3.5, 0], 2.6, 3.4);
+      b.box(12.4, 0.4, 10.4, 0xf8f0e0, [0, 7.2, 0]);
+      for (let i = 0; i < 8; i++) b.box(1.51, 0.1, 1.6, i % 2 ? COL.white : COL.pink, [-6 + (i + 0.5) * 1.5, 3.2, 5.7], [0.35, 0, 0]);
+      b.box(1.8, 2.6, 0.1, 0x3a2a2a, [0, 1.3, 5.05]);
+      b.box(9.6, 2.2, 0.2, 0xc84a7a, [0, 5.4, 5.05]);
+      // ...but why does a bakery have a GIANT satellite dish and so many antennas?
+      b.cyl(0.35, 2, COL.grey, [2.5, 8.4, -2]).sph(2.6, 0.55, 2.6, 0xe8e8f0, [2.5, 10.2, -2], [-0.9, 0.6, 0]);
+      b.cyl(0.08, 1.8, COL.silver, [2.5, 10.3, -1.2], [0.5, 0, 0]);
+      for (const [x, z, h] of [[-4, -3, 5], [-2.5, -3.5, 3.5], [-5, 1, 4], [5, 3, 3]]) b.cyl(0.07, h, COL.silver, [x, 7.4 + h / 2, z], null, 6).sph(0.18, 0.18, 0.18, COL.red, [x, 7.4 + h, z]);
+      b.box(2, 1.2, 2, 0x3a3a44, [-3, 8, 2]);
+      // a giant croissant on the roof (to look like a REAL bakery)
+      for (let i = 0; i < 5; i++) { const a = (i / 4 - 0.5) * 2.2; b.sph(0.9 - Math.abs(i - 2) * 0.18, 0.7 - Math.abs(i - 2) * 0.12, 0.8, 0xe8a850, [Math.sin(a) * 2.2, 8.2, 3 - Math.cos(a) * 1.4 + 1.4], [0, a, 0]); }
+      const sign = new THREE.Mesh(new THREE.PlaneGeometry(9.2, 1.9), new THREE.MeshStandardMaterial({ map: T.tex(U.canvas(512, 106, (g) => {
+        g.fillStyle = '#fff0f6'; g.fillRect(0, 0, 512, 106);
+        g.fillStyle = '#c83a6a'; g.font = 'bold 44px Arial, sans-serif'; g.textAlign = 'center'; g.fillText('TOTALLY NORMAL BAKERY', 256, 52);
+        g.fillStyle = '#6a5a6a'; g.font = 'italic 26px Arial, sans-serif'; g.fillText('(definitely NOT the FBI)', 256, 90);
+      }), false), roughness: 0.6 }));
+      sign.position.set(0, 5.4, 5.17);
+      return { b, w: 12.4, d: 12, h: 11, extra: sign };
+    },
+
+    // ------------------ ARMY BASE STUFF ------------------
+    sandbags() {
+      const b = new Builder();
+      for (let row = 0; row < 3; row++) for (let i = 0; i < 5 - row; i++) b.rbox(0.75, 0.32, 0.45, 0.14, row % 2 ? 0xc8b088 : 0xb8a078, [-1.2 + row * 0.3 + i * 0.6, 0.17 + row * 0.3, 0], [0, (i % 2) * 0.1, 0]);
+      return { b, w: 3.1, d: 0.6, h: 1 };
+    },
+    crates() {
+      const b = new Builder();
+      for (const [x, y, z, s] of [[-0.6, 0.5, 0, 1], [0.6, 0.45, 0.1, 0.9], [0, 1.4, 0, 0.85]]) {
+        b.box(s, s, s, 0x9a7a4a, [x, y, z]).box(s * 1.02, 0.1, s * 1.02, 0x6a5030, [x, y + s * 0.3, z]).box(s * 1.02, 0.1, s * 1.02, 0x6a5030, [x, y - s * 0.3, z]);
+      }
+      return { b, w: 2.3, d: 1.2, h: 1.9 };
+    },
+    pudding() {
+      const b = new Builder();
+      b.cylT(0.55, 0.42, 0.8, 0xf6f4ee, [0, 0.4, 0]).cyl(0.53, 0.08, 0x8a5a2a, [0, 0.79, 0]).sph(0.4, 0.15, 0.4, 0x8a5a2a, [0, 0.82, 0]);
+      b.box(0.08, 0.04, 1, COL.silver, [0.2, 1.05, 0], [0.5, 0, 0.3]).sph(0.12, 0.04, 0.15, COL.silver, [0.25, 0.86, -0.4]);
+      b.box(0.9, 0.25, 0.02, 0x5a6a3a, [0, 0.4, 0.5]);
+      return { b, w: 1.2, d: 1.2, h: 1.2 };
+    },
+    jeep(r) {
+      const b = new Builder(), c = 0x5a6a3a;
+      b.rbox(2.1, 0.9, 4, 0.2, c, [0, 0.95, 0]).box(1.9, 0.08, 0.6, COL.glass, [0, 1.75, 0.6], [-0.3, 0, 0]);
+      for (const x of [-0.95, 0.95]) b.box(0.06, 0.6, 0.06, c, [x, 1.6, 0.5]);
+      for (const x of [-1, 1]) for (const z of [-1.3, 1.3]) b.cyl(0.48, 0.38, COL.black, [x, 0.48, z], [0, 0, PI / 2], 12);
+      b.cyl(0.42, 0.3, COL.black, [0, 1.15, -2.1], [PI / 2, 0, 0], 12);
+      b.cone(0.35, 0.02, COL.white, [0, 1.41, 1.5], null, 5);
+      b.box(0.5, 0.5, 0.5, 0x4a5a2a, [0.5, 1.6, -1.2]);
+      return { b, w: 2.2, d: 4.4, h: 1.9 };
+    },
+    fueltank() {
+      const b = new Builder();
+      b.cyl(1.3, 6, 0x6a7a4a, [0, 1.9, 0], [0, 0, PI / 2], 16).sph(1.3, 1.3, 0.5, 0x6a7a4a, [3, 1.9, 0], [0, PI / 2, 0]).sph(1.3, 1.3, 0.5, 0x6a7a4a, [-3, 1.9, 0], [0, PI / 2, 0]);
+      for (const x of [-2, 2]) b.box(0.4, 0.8, 2, 0x4a4a52, [x, 0.4, 0]);
+      b.box(3, 0.5, 0.05, COL.yellow, [0, 2, 1.3]);
+      return { b, w: 6.6, d: 2.8, h: 3.3 };
+    },
+    flagpole() {
+      const b = new Builder();
+      b.cyl(0.4, 0.4, 0x8a8a92, [0, 0.2, 0]).cyl(0.07, 8, COL.silver, [0, 4.2, 0], null, 8).sph(0.15, 0.15, 0.15, COL.gold, [0, 8.2, 0]);
+      b.box(2.6, 1.6, 0.05, 0x4a6a3a, [1.35, 7.2, 0]).cone(0.45, 0.04, COL.white, [1.35, 7.2, 0.04], [PI / 2, 0, 0], 5);
+      return { b, w: 0.8, d: 0.8, h: 8.4, cw: 0.6, cd: 0.6 };
+    },
+    armytank() {
+      const t = tankParts(new Builder(), new Builder());
+      for (const p of t.turret.parts) t.body.parts.push({ g: p.g, mtx: new THREE.Matrix4().makeTranslation(0, 1.9, -0.2).multiply(p.mtx), color: p.color, keepUV: p.keepUV });
+      t.turret.cols.forEach((c) => t.body.cols.add(c));
+      return { b: t.body, w: 3.8, d: 7.4, h: 3.2 };
+    },
+    barracks(r) {
+      const b = new Builder(), c = pickR(r, [0x8a9a6a, 0x9aa07a, 0x7a8a5a]);
+      b.win(16, 4, 8, c, [0, 2, 0], 2.6, 4);
+      b.prism(16.6, 2, 8.8, 0x4a5a3a, [0, 5, 0]);
+      b.box(1.6, 2.6, 0.1, 0x3a3a2a, [0, 1.3, 4.05]).box(3, 0.8, 0.1, COL.white, [0, 3.4, 4.06]);
+      return { b, w: 16.6, d: 8.8, h: 6 };
+    },
+    hangar() {
+      const b = new Builder(), c = 0x7a8a6a;
+      b.add(G.cyl(20), c, [0, 0, 0], [9, 18, 8.5], [PI / 2, 0, 0]);
+      b.box(18, 0.5, 18.2, 0x5a5a62, [0, 0.25, 0]);
+      b.box(12, 6.5, 0.2, 0x5a6a4a, [0, 3.3, 9.05]);
+      for (let i = 0; i < 6; i++) b.box(0.1, 6.5, 0.22, 0x4a5a3a, [-5 + i * 2, 3.3, 9.07]);
+      b.cone(1.2, 0.05, COL.white, [0, 6.5, 9.2], [PI / 2, 0, 0], 5);
+      return { b, w: 18.2, d: 18.4, h: 9 };
+    },
+    radar() {
+      const b = new Builder();
+      for (const [x, z] of [[-1.5, -1.5], [1.5, -1.5], [-1.5, 1.5], [1.5, 1.5]]) b.cyl(0.18, 12, COL.grey, [x * 0.8, 6, z * 0.8], [z * 0.03, 0, -x * 0.03], 6);
+      for (let i = 1; i < 4; i++) b.box(2.8, 0.15, 0.15, COL.grey, [0, i * 3, 1.25]).box(2.8, 0.15, 0.15, COL.grey, [0, i * 3, -1.25]);
+      b.box(3.4, 0.4, 3.4, 0x4a4a52, [0, 12.2, 0]).cyl(0.3, 1.4, COL.grey, [0, 13, 0]).sph(3, 0.6, 3, 0xf0f0f8, [0, 14.6, 0], [-1.1, 0, 0]).cyl(0.1, 2, COL.silver, [0, 13.6, 0.9], [1.2, 0, 0]);
+      return { b, w: 6, d: 6, h: 16 };
+    },
+    controltower() {
+      const b = new Builder();
+      b.cylT(2.6, 3.4, 24, 0xe8e0d0, [0, 12, 0], null, 12);
+      for (let i = 1; i < 6; i++) b.cyl(3.45 - i * 0.16, 0.25, 0xc8c0b0, [0, i * 4, 0], null, 12);
+      b.cylT(5, 3.6, 1.5, 0xd8d0c0, [0, 24.7, 0], null, 12).cyl(5, 3.4, 0x3a6a9a, [0, 27.2, 0], null, 12).cyl(5.4, 0.6, 0xe8e0d0, [0, 29.2, 0], null, 12);
+      b.cyl(0.12, 5, COL.silver, [0, 32, 0], null, 6).sph(0.4, 0.4, 0.4, COL.red, [0, 34.5, 0]);
+      return { b, w: 10.8, d: 10.8, h: 35, cw: 7, cd: 7 };
+    },
     // the Ferris wheel is special: the wheel is its own piece so it can spin (and roll away!)
     ferris(r) {
       const b = new Builder();
@@ -634,12 +748,61 @@ DR.Models = (function () {
     },
   };
 
+
   // build a prop and give back the mesh + info
   function prop(kind, r = Math.random, variant) {
     const out = PROPS[kind](r, variant);
     let mesh = out.b.mesh();
     if (out.extra) { const g = new THREE.Group(); g.add(mesh); g.add(out.extra); mesh = g; }
     return { mesh, w: out.w, d: out.d, h: out.h, cw: out.cw || out.w, cd: out.cd || out.d, cols: [...out.b.cols], spin: out.spin || null };
+  }
+
+
+  // ============================================================
+  //  ARMY VEHICLES THAT MOVE (tank, jeep, helicopter)
+  // ============================================================
+  function tankParts(body, turret) {
+    const c = 0x5a6a3a, d = 0x3a4a2a;
+    body.rbox(3.4, 1.2, 6.6, 0.25, c, [0, 1.25, 0]);
+    for (const x of [-1.6, 1.6]) {
+      body.rbox(0.8, 1.1, 7.2, 0.4, 0x2a2a2a, [x, 0.6, 0]);
+      for (let i = 0; i < 5; i++) body.cyl(0.42, 0.85, 0x4a4a4a, [x, 0.55, -2.6 + i * 1.3], [0, 0, PI / 2], 10);
+    }
+    body.cone(0.5, 0.03, COL.white, [0, 1.87, -1.8], null, 5);
+    turret.rbox(2.4, 1, 2.8, 0.35, d, [0, 0.4, 0]).cyl(0.22, 4, d, [0, 0.45, 2.9], [PI / 2, 0, 0], 10).cyl(0.3, 0.5, d, [0, 0.45, 4.8], [PI / 2, 0, 0], 10);
+    turret.cyl(0.4, 0.3, c, [0.6, 1, -0.6], null, 10);
+    return { body, turret };
+  }
+  function unitTank() {
+    const t = tankParts(new Builder(), new Builder());
+    const root = new THREE.Group();
+    root.add(t.body.mesh());
+    const turret = t.turret.mesh(); turret.position.set(0, 1.9, -0.2); root.add(turret);
+    return { root, turret, cols: [0x5a6a3a, 0x3a4a2a, 0x2a2a2a, 0x4a4a4a] };
+  }
+  function unitJeep() {
+    const p = PROPS.jeep(Math.random);
+    const root = new THREE.Group(); root.add(p.b.mesh());
+    const gun = new Builder();
+    gun.box(0.3, 0.3, 1.2, 0x2a2a2a, [0, 0, 0.4]).box(0.6, 0.5, 0.4, 0x3a4a2a, [0, -0.1, 0]);
+    const turret = gun.mesh(); turret.position.set(0, 2.1, -0.6); root.add(turret);
+    return { root, turret, cols: [...p.b.cols] };
+  }
+  function unitHeli() {
+    const b = new Builder(), c = 0x4a5a3a;
+    b.sph(1.5, 1.4, 2.6, c, [0, 0, 0]).sph(1.2, 0.95, 1.3, COL.glass, [0, 0.2, 1.6]);
+    b.cylT(0.25, 0.7, 5, c, [0, 0.35, -4], [PI / 2 + 0.1, 0, 0], 10).box(0.15, 1.4, 0.9, c, [0, 1, -6.4]);
+    for (const x of [-1, 1]) { b.box(0.15, 1, 0.15, COL.black, [x * 0.9, -1.4, 0.8]).box(0.15, 1, 0.15, COL.black, [x * 0.9, -1.4, -0.8]).box(0.18, 0.15, 3.6, COL.black, [x * 1.05, -1.9, 0]); }
+    for (const x of [-1, 1]) b.cyl(0.25, 1.6, 0x3a3a3a, [x * 1.6, -0.3, 0.3], [PI / 2, 0, 0], 8);
+    b.cone(0.45, 0.03, COL.white, [1.45, 0.1, -0.5], [0, 0, PI / 2], 5).cone(0.45, 0.03, COL.white, [-1.45, 0.1, -0.5], [0, 0, -PI / 2], 5);
+    b.cyl(0.25, 0.6, COL.black, [0, 1.6, 0], null, 8);
+    const root = new THREE.Group(); root.add(b.mesh());
+    const rb = new Builder();
+    rb.box(11, 0.06, 0.45, 0x222226, [0, 0, 0]).box(0.45, 0.06, 11, 0x222226, [0, 0, 0]);
+    const rotor = rb.mesh(); rotor.position.y = 1.95; root.add(rotor);
+    const tb = new Builder(); tb.box(0.05, 2.2, 0.3, 0x222226, [0, 0, 0]);
+    const tail = tb.mesh(); tail.position.set(0.15, 1, -6.4); root.add(tail);
+    return { root, rotor, tail, cols: [c, 0x2a4a6a, 0x222226] };
   }
 
   // ============================================================
@@ -676,6 +839,7 @@ DR.Models = (function () {
     { id: 'zombie', name: 'Zombie Dino', base: '#8aa870', dark: '#5a7a4a', belly: '#c8c8a0', eye: 0xff3a3a, pattern: 'zombie', stars: 3 },
     { id: 'gold', name: 'Golden King', base: '#ffc830', dark: '#c89018', belly: '#fff0b0', eye: 0x3a2a8a, pattern: 'sparkle', stars: 5, metal: true },
     { id: 'rainbow', name: 'Rainbow Rex', base: '#ffffff', dark: '#888888', belly: '#ffffff', eye: 0x8a3ae8, stars: 7 },
+    { id: 'robo', name: 'Robo Rex', base: '#b8c4d4', dark: '#2a5ad8', belly: '#e8eef8', eye: 0xff2a2a, pattern: 'circuit', metal: true, stars: 0, secret: 'robo' },
   ];
   const HATS = [
     { id: 'none', name: 'No Hat', stars: 0 },
@@ -686,6 +850,7 @@ DR.Models = (function () {
     { id: 'chef', name: 'Chef Hat', stars: 4 },
     { id: 'flowers', name: 'Flower Crown', stars: 5 },
     { id: 'crown', name: 'Royal Crown', stars: 6 },
+    { id: 'agent', name: 'FBI Agent Hat', stars: 0, secret: 'agent' },
   ];
 
   function dino(skinId = 'green', hatId = 'none') {
@@ -809,6 +974,11 @@ DR.Models = (function () {
         for (let k = 0; k < 5; k++) b.sph(0.035, 0.015, 0.035, c, [x + Math.cos(k * 1.26) * 0.04, 0.03, z + Math.sin(k * 1.26) * 0.04], null, true);
         b.sph(0.022, 0.02, 0.022, 0xffa81a, [x, 0.045, z], null, true);
       }
+    } else if (hatId === 'agent') {
+      // a black hat AND secret-agent sunglasses
+      b.cyl(0.36, 0.025, 0x16161c, [0, 0.02, 0], [0.12, 0, 0], 20).cylT(0.2, 0.22, 0.2, 0x16161c, [0, 0.13, 0], null, 16).cyl(0.225, 0.05, 0x3a3a44, [0, 0.06, 0], null, 16);
+      for (const sx of [-1, 1]) b.cyl(0.1, 0.03, 0x08080a, [sx * 0.2, -0.13, 0.25], [PI / 2, sx * 0.35, 0]);
+      b.box(0.2, 0.025, 0.025, 0x08080a, [0, -0.1, 0.33]);
     } else if (hatId === 'crown') {
       b.cyl(0.22, 0.12, 0xffc830, [0, 0.06, 0], null, 16);
       for (let i = 0; i < 6; i++) {
@@ -875,6 +1045,7 @@ DR.Models = (function () {
     }
     if (s.air) neckX += 0.15;
     if (s.flop) neckX = -0.6;
+    if (s.dizzy) { neckX = 0.2 + Math.sin(t * 5) * 0.15; headShake = Math.sin(t * 7) * 0.35; jaw = 0.35; }
     R.neck.rotation.x += (neckX - R.neck.rotation.x) * k;
     R.head.rotation.z = headShake;
     R.head.rotation.y = s.look || 0;
@@ -935,9 +1106,26 @@ DR.Models = (function () {
       PEOPLE.push({ body: body.geometry(), arm: arm.geometry(), leg: leg.geometry(), kid: r() < 0.25 });
     }
   }
+  // an FBI agent: black suit, black tie, sunglasses
+  let AGENT = null;
+  function makeAgent() {
+    const sk = 0xe8b890, suit = 0x18181e;
+    const body = new Builder();
+    body.rbox(0.44, 0.56, 0.27, 0.1, suit, [0, 1.15, 0]).box(0.12, 0.4, 0.02, COL.white, [0, 1.22, 0.135]).box(0.05, 0.34, 0.02, 0x101014, [0, 1.2, 0.147]);
+    body.rbox(0.38, 0.22, 0.24, 0.06, suit, [0, 0.9, 0]);
+    body.sph(0.17, 0.18, 0.17, sk, [0, 1.6, 0]).sph(0.18, 0.1, 0.18, 0x1a1a1a, [0, 1.69, -0.02]);
+    body.box(0.24, 0.06, 0.04, 0x050508, [0, 1.63, 0.16]).cyl(0.012, 0.15, 0xd8d8d8, [0.17, 1.52, 0], [0.4, 0, 0]);
+    body.sph(0.03, 0.03, 0.03, sk, [0, 1.56, 0.17]);
+    const arm = new Builder();
+    arm.rbox(0.13, 0.3, 0.13, 0.05, suit, [0, -0.12, 0]).cyl(0.05, 0.3, suit, [0, -0.38, 0]).sph(0.06, 0.06, 0.06, sk, [0, -0.56, 0]);
+    const leg = new Builder();
+    leg.rbox(0.14, 0.75, 0.14, 0.05, suit, [0, -0.4, 0]).rbox(0.13, 0.08, 0.26, 0.03, 0x050508, [0, -0.8, 0.05]);
+    AGENT = { body: body.geometry(), arm: arm.geometry(), leg: leg.geometry(), kid: false };
+  }
   function person(style) {
     if (!PEOPLE.length) makePeopleStyles();
-    const st = PEOPLE[style % PEOPLE.length];
+    if (style === 'agent' && !AGENT) makeAgent();
+    const st = style === 'agent' ? AGENT : PEOPLE[style % PEOPLE.length];
     const mat = propMat();
     const root = new THREE.Group();
     const body = new THREE.Mesh(st.body, mat); root.add(body);
@@ -975,6 +1163,6 @@ DR.Models = (function () {
 
   return {
     C, M, G, P, grp, std, glowMat, propMat, blobShadow, Builder, COL, BRIGHT,
-    PROPS, prop, dino, setHat, animateDino, SKINS, HATS, person, animatePerson,
+    PROPS, prop, dino, setHat, animateDino, SKINS, HATS, person, animatePerson, unitTank, unitJeep, unitHeli,
   };
 })();

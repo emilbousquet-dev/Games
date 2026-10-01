@@ -54,8 +54,9 @@
       'watermelon', 'donut', 'cake', 'hotdog', 'pizza', 'icecream', 'burger',
       'car', 'car', 'tree', 'tree', 'lamppost', 'phonebooth', 'busstop', 'slide', 'trampoline', 'lifeguard', 'hotdogcart', 'booth', 'icecreamstand',
       'house', 'house', 'bus', 'truck', 'icecreamtruck', 'fountain', 'gasstation', 'carousel',
-      'shop', 'apartment', 'watertower', 'tower', 'tower', 'hotel', 'lighthouse', 'ferris'];
-    const variants = { car: ['taxi', 'van'], tree: ['pine', 'palm'], booth: ['cotton'], shop: ['burger', 'donut'], tower: ['deco', 'tall'] };
+      'shop', 'apartment', 'watertower', 'tower', 'tower', 'hotel', 'lighthouse', 'ferris',
+      'fbibase', 'sandbags', 'crates', 'pudding', 'jeep', 'fueltank', 'flagpole', 'armytank', 'barracks', 'hangar', 'radar', 'controltower'];
+    const variants = { car: ['taxi', 'van', 'fbi'], tree: ['pine', 'palm'], booth: ['cotton'], shop: ['burger', 'donut', 'pudding'], tower: ['deco', 'tall'] };
     const used = {};
     let x = -60, z = 40, rowD = 0;
     const place = (kind, v) => {
@@ -66,8 +67,12 @@
       if (p.spin) dinos.push({ spin: p.spin });
       x += p.w + 3; rowD = Math.max(rowD, p.d);
     };
-    for (const k of list) { const n = used[k] = (used[k] || 0); used[k]++; place(k, variants[k] && n > 0 ? variants[k][(n - 1) % variants[k].length] : undefined); }
-    for (const [k, vs] of Object.entries(variants)) for (const v of vs.slice(1)) place(k, v);
+    const only = params.get('only');
+    for (const k of only ? only.split(',') : list) { const n = used[k] = (used[k] || 0); used[k]++; place(k, variants[k] && n > 0 ? variants[k][(n - 1) % variants[k].length] : undefined); }
+    if (!params.get('only')) for (const [k, vs] of Object.entries(variants)) for (const v of vs.slice(1)) place(k, v);
+    // army vehicles that move
+    [Mo.unitTank(), Mo.unitJeep(), Mo.unitHeli()].forEach((u, i) => { u.root.position.set(-50 + i * 14, i === 2 ? 4 : 0, 60); scene.add(u.root); });
+    if (only) { dist = +params.get('dist') || 70; target.set(0, 4, 20); }
   }
   let drag = false, lx = 0, ly = 0;
   addEventListener('mousedown', (e) => { drag = true; lx = e.clientX; ly = e.clientY; });

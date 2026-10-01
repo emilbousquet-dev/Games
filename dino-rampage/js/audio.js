@@ -156,6 +156,33 @@ DR.Audio = (function () {
       mel.forEach(([n, d], i) => { tone('square', noteHz(n), noteHz(n), i === mel.length - 1 ? 1.2 : 0.25, 0.1, 0, { delay: d, filter: 'lowpass', ff: 3000 }); tone('triangle', noteHz(n - 12), noteHz(n - 12), 0.3, 0.12, 0, { delay: d }); });
     },
     star(i) { tone('triangle', noteHz(79 + i * 5), noteHz(79 + i * 5), 0.35, 0.18); tone('sine', noteHz(91 + i * 5), noteHz(91 + i * 5), 0.5, 0.06, 0, { delay: 0.05 }); },
+    // army sounds
+    boom(v = 1) {
+      if (!can('boom' + (v > 0.6 ? 'b' : 's'), 0.08)) return;
+      noise(0.5 + v * 0.5, 'lowpass', 900, 0.8, 0.25 + v * 0.25, 0, { f1: 120 });
+      tone('sine', 120, 35, 0.4 + v * 0.3, 0.3 * v + 0.1);
+    },
+    shot(type) {
+      if (!can('shot' + type, 0.08)) return;
+      if (type === 'ball') { tone('square', 500, 200, 0.06, 0.06, 0, { filter: 'lowpass', ff: 1500 }); noise(0.05, 'bandpass', 1500, 2, 0.08); }
+      else if (type === 'shell') { noise(0.35, 'lowpass', 700, 1, 0.3, 0, { f1: 150 }); tone('sine', 90, 40, 0.3, 0.25); }
+      else { noise(0.6, 'bandpass', 1800, 1.5, 0.12, 0, { f1: 600 }); tone('sawtooth', 300, 900, 0.4, 0.05, 0, { filter: 'lowpass', ff: 1500 }); }
+    },
+    chop(v) { if (!can('chop', 0.11)) return; noise(0.06, 'lowpass', 300, 1, 0.05 + v * 0.18, 0, { echo: false }); },
+    dizzy() {
+      for (let i = 0; i < 8; i++) tone('sine', noteHz(84 - (i % 4) * 2), noteHz(84 - (i % 4) * 2), 0.18, 0.06, (i % 2 ? -0.5 : 0.5), { delay: i * 0.1 });
+      tone('sawtooth', 300, 120, 0.8, 0.08, 0, { filter: 'lowpass', ff: 900, vib: 8, vibAmt: 30 });
+    },
+    // you found a secret!
+    secret() {
+      [[67, 0], [66, 0.12], [63, 0.24], [57, 0.36], [56, 0.48], [64, 0.6], [68, 0.72], [72, 0.84]].forEach(([n, d]) => { tone('square', noteHz(n + 12), noteHz(n + 12), 0.14, 0.08, 0, { delay: d, filter: 'lowpass', ff: 3500 }); tone('triangle', noteHz(n), noteHz(n), 0.16, 0.08, 0, { delay: d }); });
+    },
+    radio() {
+      if (!can('radio', 1)) return;
+      noise(0.18, 'bandpass', 2500, 1, 0.07, 0, { echo: false });
+      tone('sine', 1400, 1400, 0.06, 0.06, 0, { delay: 0.2, echo: false });
+      tone('sine', 1400, 1400, 0.06, 0.06, 0, { delay: 0.32, echo: false });
+    },
     click() { tone('sine', 900, 700, 0.05, 0.15, 0, { echo: false }); },
     hover() { tone('sine', 1300, 1300, 0.03, 0.04, 0, { echo: false }); },
     locked() { tone('square', 200, 150, 0.15, 0.08, 0, { filter: 'lowpass', ff: 800 }); },

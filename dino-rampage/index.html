@@ -37,11 +37,11 @@
 
   /* level select */
   .cards { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; margin: 12px 0 8px; }
-  .card { width: 220px; padding: 16px 14px; border-radius: 22px; background: linear-gradient(180deg, #3a6a2a, #22421a); border: 3px solid var(--green); cursor: pointer; transition: transform 0.12s; }
+  .card { width: 168px; padding: 12px 10px; border-radius: 22px; background: linear-gradient(180deg, #3a6a2a, #22421a); border: 3px solid var(--green); cursor: pointer; transition: transform 0.12s; }
   .card:hover { transform: translateY(-5px) scale(1.03); }
-  .card .emo { font-size: 58px; line-height: 1.1; }
-  .card .nm { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 30px; color: var(--yellow); letter-spacing: 1px; }
-  .card .ab { font-size: 14px; min-height: 58px; color: #e8f0d8; }
+  .card .emo { font-size: 48px; line-height: 1.1; }
+  .card .nm { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 26px; color: var(--yellow); letter-spacing: 1px; }
+  .card .ab { font-size: 13px; min-height: 70px; color: #e8f0d8; }
   .card .st { font-size: 28px; color: var(--yellow); letter-spacing: 3px; } .card .st span { color: rgba(255,255,255,0.2); }
   .card .bt { font-size: 13px; color: #c8e0b8; min-height: 18px; }
   .card.locked { filter: grayscale(0.9) brightness(0.6); cursor: not-allowed; }
@@ -110,6 +110,18 @@
   #roarbox.ready { animation: ready 0.6s ease-in-out infinite alternate; border-color: #ff6a3a; }
   #roarbox.ready .nm { color: #ff5a3a; }
   @keyframes ready { to { box-shadow: 0 0 26px rgba(255,90,58,0.95); transform: scale(1.05); } }
+  #hpbox { position: absolute; left: 12px; bottom: 104px; display: none; align-items: center; gap: 8px; padding: 6px 12px; width: 270px; }
+  #hpbox .heart { font-size: 22px; }
+  #hp-bar { flex: 1; height: 16px; border-radius: 9px; background: rgba(0,0,0,0.45); overflow: hidden; border: 2px solid rgba(255,255,255,0.3); }
+  #hp-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #ff4a5a, #ff8a9a); transition: width 0.2s; }
+  #hpbox.low { animation: lowhp 0.5s ease-in-out infinite alternate; border-color: #ff4a4a; }
+  @keyframes lowhp { to { box-shadow: 0 0 20px rgba(255,60,60,0.9); } }
+  #radio { position: absolute; left: 12px; top: 92px; max-width: min(340px, 40vw); padding: 8px 12px; display: flex; gap: 8px; align-items: flex-start; font-size: 15px; line-height: 1.3; opacity: 0; transform: translateX(-30px); transition: all 0.4s; border-color: #8a9aff; background: linear-gradient(180deg, rgba(20,24,48,0.92), rgba(10,12,30,0.92)); }
+  #radio.show { opacity: 1; transform: none; }
+  #radio .ant { font-size: 22px; animation: wiggle 0.3s ease-in-out infinite alternate; }
+  #radio b { color: #9ab8ff; }
+  @keyframes wiggle { to { transform: rotate(10deg); } }
+  #powerbox { position: absolute; left: 50%; top: 138px; transform: translateX(-50%); display: none; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 30px; letter-spacing: 2px; color: #fff; padding: 2px 18px; border-radius: 20px; background: linear-gradient(90deg, #ff4a4a, #ffb03a, #ffe23a, #4ad84a, #3aa8ff, #b05aff); text-shadow: 0 2px 0 #1a1a1a; animation: ready 0.4s ease-in-out infinite alternate; }
   #minimap-box { position: absolute; right: 12px; bottom: 12px; padding: 5px; border-radius: 50%; }
   #minimap { display: block; width: 150px; height: 150px; border-radius: 50%; }
   #hint { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; gap: 14px; padding: 6px 16px; font-size: 14px; font-weight: 600; white-space: nowrap; }
@@ -166,6 +178,8 @@
       <div><b>Space</b> then <b>click</b> BELLY FLOP</div><div><b>R</b> SUPER ROAR (when it's full)</div>
       <div><b>Esc</b> pause</div><div><b>M</b> sound on/off</div>
     </div>
+    <p style="font-size:16px;color:#c8e8b8">🚁 In the bigger cities the <b>ARMY</b> comes after you! Dodge their shots and smash them. If your ❤️ runs out you get dizzy.<br>
+    🕵️ The FBI is watching... and they are VERY bad at hiding. 🤫 Psst: every city has one <b>secret building</b>. Smash it!</p>
     <p style="font-size:16px;color:#c8e8b8">🎮 Controllers work too! &nbsp;·&nbsp; Things that are too big go <b>BOING</b>. Grow first!<br>Don't worry, the people are fine: they just run away screaming 😄</p>
     <button class="btn" id="btn-how-back">GOT IT!</button>
   </div>
@@ -173,7 +187,7 @@
 
 <!-- ======= LEVEL SELECT ======= -->
 <div id="levels" class="screen dim">
-  <div class="panel" style="max-width:min(820px,96vw)">
+  <div class="panel" style="max-width:min(860px,96vw)">
     <h2>Pick a City</h2>
     <div class="cards" id="cards"></div>
     <button class="btn alt small" id="btn-levels-back">BACK</button>
@@ -252,6 +266,9 @@
   </div>
   <div id="scorebox" class="hud-box"><div class="lbl">SCORE</div><div id="score">0</div></div>
   <div id="combo"></div>
+  <div id="hpbox" class="hud-box"><span class="heart">❤️</span><div id="hp-bar"><div id="hp-fill"></div></div></div>
+  <div id="radio" class="hud-box"><span class="ant">📻</span><span id="radio-text"></span></div>
+  <div id="powerbox"></div>
   <div id="roarbox" class="hud-box"><div id="roar-ring"><div>R</div></div><div><div class="nm">SUPER ROAR</div><small>fills up when you smash</small></div></div>
   <div id="hint" class="hud-box"><span><b>Click</b>bite</span><span><b>Right click</b>tail whip</span><span><b>Space</b>jump</span><span><b>Space+Click</b>belly flop</span><span><b>Shift</b>run</span></div>
   <div id="minimap-box" class="hud-box"><canvas id="minimap" width="150" height="150"></canvas></div>
@@ -272,6 +289,7 @@
 <script src="js/city.js"></script>
 <script src="js/people.js"></script>
 <script src="js/dino.js"></script>
+<script src="js/army.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

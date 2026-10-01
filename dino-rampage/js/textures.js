@@ -128,6 +128,20 @@ DR.Tex = (function () {
           g.beginPath(); g.moveTo(x, y); g.lineTo(x + l, y + r2() * 10); g.stroke();
           for (let k = 0; k < l; k += 8) { g.beginPath(); g.moveTo(x + k, y - 5); g.lineTo(x + k + 2, y + 6); g.stroke(); }
         }
+      } else if (skin.pattern === 'circuit') {
+        // robot panels with glowing blue lines
+        g.strokeStyle = 'rgba(40,50,70,0.5)'; g.lineWidth = 2;
+        for (let x = 0; x < w; x += 64) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+        for (let y = 0; y < h; y += 48) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+        g.strokeStyle = skin.dark; g.lineWidth = 4;
+        for (let i = 0; i < 26; i++) {
+          let x = r2() * w, y = r2() * h * 0.7;
+          g.beginPath(); g.moveTo(x, y);
+          for (let k = 0; k < 3; k++) { if (k % 2) x += (r2() - 0.5) * 80; else y += (r2() - 0.5) * 60; g.lineTo(x, y); }
+          g.stroke();
+          g.fillStyle = '#8ad8ff'; g.beginPath(); g.arc(x, y, 5, 0, 7); g.fill();
+        }
+        for (let i = 0; i < 40; i++) { g.fillStyle = 'rgba(60,70,90,0.7)'; g.beginPath(); g.arc(r2() * w, r2() * h, 2.5, 0, 7); g.fill(); }
       } else if (skin.pattern === 'sparkle') {
         for (let i = 0; i < 90; i++) { g.fillStyle = `rgba(255,255,220,${0.3 + r2() * 0.6})`; const s = 1 + r2() * 3; g.fillRect(r2() * w, r2() * h, s, s); }
       }

@@ -54,8 +54,43 @@ When you're a GIANT, fill the **RAMPAGE** bar to win the level.
 | 🏡 **Sleepy Suburbs** | houses, gardens, picnics, a park with a fountain, a little downtown |
 | 🏙️ **Downtown** | skyscrapers everywhere, shops, parking lots, busy streets |
 | 🎡 **Beach Boardwalk** | the beach, a fair with a Ferris wheel (smash it and it ROLLS away!), hotels, a lighthouse |
+| 🚁 **Army Base** | a town next to an army base: hangars, barracks, a control tower, tanks... and army pudding |
 
 Finish a city to unlock the next one. Finish fast to get ⭐⭐⭐!
+
+## 🚁 The army
+
+In **Downtown** and **Beach Boardwalk**, the army shows up once you're a Big dino.
+In the **Army Base** city they come even sooner, with more tanks and helicopters!
+
+| Vehicle | Shoots | Smash it when you're |
+|---|---|---|
+| 🚙 Jeep | orange paintballs | Little |
+| 🪖 Tank | shells that fly in an arc (dodge them!) | Big |
+| 🚁 Helicopter | rockets. It flies high, so **jump** or **bite** it! | Huge |
+
+When the army hits you, your **❤️ health** goes down. If it runs out, you get **DIZZY** 💫
+and shrink a little. Eat snacks to heal! The **SUPER ROAR** smashes small vehicles and stuns big ones.
+
+## 🕵️ The FBI
+
+FBI agents in black suits follow the dino around and say very serious things,
+like *"This is the FBI. You have the right to remain... HUGE."*
+Listen to the **📻 radio** at the top of the screen for messages from FBI HQ and the army.
+
+## 🥚 The secret (spoilers!)
+
+<details><summary>Click to see the secret</summary>
+
+Every city has a **TOTALLY NORMAL BAKERY**. It's pink, it has a croissant on the roof...
+and a giant satellite dish. It's really a secret FBI base!
+Smash it (you need to be a Big dino) to find the **GOLDEN EGG**:
+
+- 🌈 **RAINBOW POWER** for 25 seconds: run faster, smash things one size bigger, and nothing can hurt you
+- 🤖 The first time: unlock the **Robo Rex** skin
+- 🕵️ Find the bakery in **all 4 cities**: unlock the **FBI Agent Hat**
+
+</details>
 
 ## The Dino Closet 🎩
 
@@ -63,6 +98,7 @@ Stars unlock new looks for your dino:
 
 - **Skins**: Classic Green, Bubblegum Pink, Tiger Blue ⭐1, Zombie Dino ⭐3, Golden King ⭐5, Rainbow Rex ⭐7
 - **Hats**: Party Hat, Cool Shades ⭐1, Cowboy Hat ⭐2, Propeller Cap ⭐3, Chef Hat ⭐4, Flower Crown ⭐5, Royal Crown ⭐6
+- **Secret**: two more things you can only get by finding the secret... 🤫
 
 People notice your hat, too!
 
@@ -72,4 +108,5 @@ People notice your hat, too!
 - Every model, texture, sound and song is made with code. There are no image or sound files.
 - `js/city.js` builds each city from a little map of letters (H = houses, P = park, S = shops, T = towers...).
 - `tools/models.html` shows every model (`?show=dinos` for the dinos, hats and people).
+- `js/army.js` has the army vehicles, their shots, and all the funny radio messages.
 - `index.html?auto&level=2` lets a robot play by itself (used for testing). `?low` = fast graphics.

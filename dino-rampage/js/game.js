@@ -4,7 +4,7 @@
 window.DR = window.DR || {};
 
 DR.Game = (function () {
-  const U = DR.U, Mo = DR.Models, City = DR.City, FX = DR.FX, A = DR.Audio, In = DR.Input, H = DR.HUD, Dn = DR.Dino, P = DR.People;
+  const U = DR.U, Mo = DR.Models, City = DR.City, FX = DR.FX, A = DR.Audio, In = DR.Input, H = DR.HUD, Dn = DR.Dino, P = DR.People, Army = DR.Army;
   const D = Dn.D;
   const $ = (id) => document.getElementById(id);
   const params = new URLSearchParams(location.search);
@@ -17,8 +17,12 @@ DR.Game = (function () {
   const tipsShown = {};
 
   // ---------- saving (stars, best times, outfit) ----------
-  let save = { stars: [0, 0, 0], best: [null, null, null], skin: 'green', hat: 'none' };
+  const NL = City.LEVELS.length;
+  let save = { stars: [], best: [], skin: 'green', hat: 'none', secrets: [] };
   try { const s = JSON.parse(localStorage.getItem('dr.save')); if (s) save = Object.assign(save, s); } catch (e) { /* no save yet */ }
+  for (let i = 0; i < NL; i++) { save.stars[i] = save.stars[i] || 0; save.best[i] = save.best[i] || null; save.secrets[i] = !!save.secrets[i]; }
+  // secret closet items: find the FBI bakery once for Robo Rex, in EVERY city for the Agent Hat
+  const secretOpen = (it) => (it.secret === 'robo' ? save.secrets.some(Boolean) : it.secret === 'agent' ? save.secrets.every(Boolean) : true);
   function store() { try { localStorage.setItem('dr.save', JSON.stringify(save)); } catch (e) { /* ignore */ } }
   const totalStars = () => save.stars.reduce((a, b) => a + b, 0);
   const unlocked = (i) => i === 0 || save.stars[i - 1] > 0;
@@ -45,7 +49,7 @@ DR.Game = (function () {
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.03;
     scene.add(sun); scene.add(sun.target);
-    City.init(scene); FX.init(scene); P.init(scene); Dn.init(scene);
+    City.init(scene); FX.init(scene); P.init(scene); Dn.init(scene); Army.init(scene);
     H.init(); In.init();
     menuCam = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 2000);
     clock = new THREE.Clock();
@@ -53,8 +57,13 @@ DR.Game = (function () {
     Dn.on.smash = (o) => P.smashed(o, D);
     Dn.on.grow = onGrow;
     Dn.on.win = onWin;
+    Dn.on.secret = onSecret;
+    Dn.on.dizzy = () => {
+      H.center('DIZZY! 💫<small>The army got you! You shrank a little. Eat snacks to heal!</small>', 2.6);
+      if (Army.active) Army.radio(Army.RADIO.dizzy);
+    };
     window.addEventListener('resize', onResize);
-    loadLevel(params.has('level') ? U.clamp(+params.get('level') - 1, 0, 2) : 0);
+    loadLevel(params.has('level') ? U.clamp(+params.get('level') - 1, 0, NL - 1) : 0);
     $('loading').style.display = 'none';
     showBest();
     if (AUTO) { startPlaying(); } else showScreen('title');
@@ -79,7 +88,7 @@ DR.Game = (function () {
   }
   function showBest() {
     const n = totalStars();
-    $('best').textContent = n > 0 ? `⭐ You have ${n} star${n > 1 ? 's' : ''}! (out of 9)` : '';
+    $('best').textContent = n > 0 ? `⭐ You have ${n} star${n > 1 ? 's' : ''}! (out of ${NL * 3})` : '';
   }
   function wireUI() {
     const click = (id, f) => $(id).addEventListener('click', () => { A.init(); A.click(); f(); });
@@ -97,7 +106,7 @@ DR.Game = (function () {
     click('btn-resume', () => resume());
     click('btn-restart', () => { loadLevel(levelIdx); showIntro(); });
     click('btn-quit', () => quitToMenu());
-    click('btn-next', () => { if (levelIdx < 2) { loadLevel(levelIdx + 1); showIntro(); } else { buildCards(); showScreen('levels'); } });
+    click('btn-next', () => { if (levelIdx < NL - 1) { loadLevel(levelIdx + 1); showIntro(); } else { buildCards(); showScreen('levels'); } });
     click('btn-again', () => { loadLevel(levelIdx); showIntro(); });
     click('btn-menu', () => quitToMenu());
     const toggleMute = () => { A.setMuted(!A.isMuted()); $('mute').textContent = A.isMuted() ? '🔇' : '🔊'; $('btn-mute2').textContent = 'SOUND: ' + (A.isMuted() ? 'OFF' : 'ON'); };
@@ -159,18 +168,25 @@ DR.Game = (function () {
   function buildCloset() {
     const n = totalStars();
     $('closet-stars').textContent = `⭐ ${n} star${n === 1 ? '' : 's'} — earn stars to unlock more!`;
-    const HAT_ICONS = { none: '🚫', party: '🥳', shades: '😎', cowboy: '🤠', propeller: '🧢', chef: '👨‍🍳', flowers: '🌼', crown: '👑' };
+    const HAT_ICONS = { none: '🚫', party: '🥳', shades: '😎', cowboy: '🤠', propeller: '🧢', chef: '👨‍🍳', flowers: '🌼', crown: '👑', agent: '🕵️' };
+    const lockTxt = (it) => (it.secret ? (it.secret === 'robo' ? '🔍 Secret!' : '🔍 Secret ×' + NL) : `🔒 ${it.stars}⭐`);
     $('pick-skins').innerHTML = Mo.SKINS.map((s) => {
-      const lock = n < s.stars;
+      const lock = n < s.stars || !secretOpen(s);
+      if (s.secret && lock) return `<div class="pick locked" data-skin="${s.id}"><div class="sw" style="background:#333">?</div>???<div class="lk">${lockTxt(s)}</div></div>`;
       const bg = s.id === 'rainbow' ? 'conic-gradient(#ff4a4a,#ffe23a,#4ad84a,#3aa8ff,#8a5aff,#ff4a4a)' : s.base;
-      return `<div class="pick ${save.skin === s.id ? 'on' : ''} ${lock ? 'locked' : ''}" data-skin="${s.id}"><div class="sw" style="background:${bg}"></div>${s.name}${lock ? `<div class="lk">🔒 ${s.stars}⭐</div>` : ''}</div>`;
+      return `<div class="pick ${save.skin === s.id ? 'on' : ''} ${lock ? 'locked' : ''}" data-skin="${s.id}"><div class="sw" style="background:${bg}"></div>${s.name}${lock ? `<div class="lk">${lockTxt(s)}</div>` : ''}</div>`;
     }).join('');
     $('pick-hats').innerHTML = Mo.HATS.map((h) => {
-      const lock = n < h.stars;
-      return `<div class="pick ${save.hat === h.id ? 'on' : ''} ${lock ? 'locked' : ''}" data-hat="${h.id}"><div class="ic">${HAT_ICONS[h.id]}</div>${h.name}${lock ? `<div class="lk">🔒 ${h.stars}⭐</div>` : ''}</div>`;
+      const lock = n < h.stars || !secretOpen(h);
+      if (h.secret && lock) return `<div class="pick locked" data-hat="${h.id}"><div class="ic">❓</div>???<div class="lk">${lockTxt(h)}</div></div>`;
+      return `<div class="pick ${save.hat === h.id ? 'on' : ''} ${lock ? 'locked' : ''}" data-hat="${h.id}"><div class="ic">${HAT_ICONS[h.id]}</div>${h.name}${lock ? `<div class="lk">${lockTxt(h)}</div>` : ''}</div>`;
     }).join('');
     document.querySelectorAll('.pick').forEach((p) => p.addEventListener('click', () => {
-      if (p.classList.contains('locked')) { A.locked(); return; }
+      if (p.classList.contains('locked')) {
+        A.locked();
+        if (p.querySelector('.lk') && p.querySelector('.lk').textContent.includes('Secret')) $('closet-stars').textContent = '🤫 Psst... every city has a SECRET building. Smash it!';
+        return;
+      }
       if (p.dataset.skin) save.skin = p.dataset.skin;
       if (p.dataset.hat) save.hat = p.dataset.hat;
       store();
@@ -191,6 +207,8 @@ DR.Game = (function () {
     const L = City.build(i);
     FX.clear(); P.clear(); H.clearLabels();
     Dn.reset(save.skin, save.hat);
+    Army.setup(L);
+    H.hideRadio();
     P.setHat(save.hat);
     scene.fog.color.set(L.fog);
     scene.background = new THREE.Color(L.fog);
@@ -233,6 +251,25 @@ DR.Game = (function () {
     P.scare(D.x, D.z, 30 + D.scale * 10, null);
     if (tier === 2) setTimeout(() => { if (state === 'play') H.tip('Try your <b>TAIL WHIP</b> (right click or Q) and the <b>BELLY FLOP</b> (jump with Space, then click)!', 5); }, 5500);
   }
+  // THE EASTER EGG: you smashed the Totally Normal Bakery (the secret FBI base)!
+  function onSecret(o) {
+    const first = !save.secrets.some(Boolean);
+    save.secrets[levelIdx] = true;
+    store();
+    D.power = 25; D.hp = 1; D.roar = 1;
+    A.secret();
+    FX.confetti(o.x, o.h, o.z, 120, 6 + D.scale);
+    FX.sparkle(o.x, o.h, o.z, 2 + D.scale * 0.5, 30, 0xffd23a);
+    H.flash('#fff6a0', 0.5);
+    H.center('🥚 SECRET FOUND! 🥚<small>The FBI was hiding a GOLDEN EGG! 🌈 RAINBOW POWER!</small>', 4);
+    H.tip('🌈 <b>RAINBOW POWER</b>: you run faster, smash things one size <b>BIGGER</b>, and nothing can hurt you!', 4.5);
+    Army.radio(Army.RADIO.secret);
+    let msg = '';
+    if (first) msg = '🎉 You unlocked <b>ROBO REX</b> in the Dino Closet!';
+    else if (save.secrets.every(Boolean)) msg = '🎉 You found the secret in EVERY city! The <b>FBI AGENT HAT</b> is in the Dino Closet!';
+    else msg = `Secret bakeries found: <b>${save.secrets.filter(Boolean).length} of ${NL}</b>. Find them all for a special hat!`;
+    setTimeout(() => { if (state === 'play') H.tip(msg, 7); }, 4500);
+  }
   function onWin() {
     state = 'winning';
     winT = 0;
@@ -261,13 +298,14 @@ DR.Game = (function () {
       <div>🏆 Score: <b>${D.score.toLocaleString()}</b></div><div>⏱ Time: <b>${U.timeText(time)}</b></div>
       <div>💥 Things smashed: <b>${st.smashed}</b></div><div>🍉 Snacks eaten: <b>${st.eaten}</b></div>
       <div>🚗 Cars squished: <b>${st.cars}</b></div><div>🏠 Houses smashed: <b>${st.houses}</b></div>
-      <div>🏙️ Big towers: <b>${st.towers}</b></div><div>🔥 Best combo: <b>x${st.bestCombo}</b></div>`;
-    const newItems = [...Mo.SKINS, ...Mo.HATS].filter((it) => it.stars > before && it.stars <= after).map((it) => it.name);
+      <div>🏙️ Big towers: <b>${st.towers}</b></div><div>🔥 Best combo: <b>x${st.bestCombo}</b></div>
+      ${st.army ? `<div>🚁 Army stuff smashed: <b>${st.army}</b></div><div></div>` : ''}`;
+    const newItems = [...Mo.SKINS, ...Mo.HATS].filter((it) => !it.secret && it.stars > before && it.stars <= after).map((it) => it.name);
     let msg = newItems.length ? '🎉 NEW in the Dino Closet: ' + newItems.join(', ') + '!' : '';
-    if (levelIdx < 2 && old === 0) msg += (msg ? '<br>' : '') + '🗺️ New city unlocked: ' + City.LEVELS[levelIdx + 1].name + '!';
+    if (levelIdx < NL - 1 && old === 0) msg += (msg ? '<br>' : '') + '🗺️ New city unlocked: ' + City.LEVELS[levelIdx + 1].name + '!';
     if (stars < 3) msg += (msg ? '<br>' : '') + `<span style="color:#d8f0c8;font-weight:500">Finish in under ${U.timeText(stars === 1 ? L.par * 1.5 : L.par)} to get ${stars + 1} stars!</span>`;
     $('win-unlock').innerHTML = msg;
-    $('btn-next').textContent = levelIdx < 2 ? 'NEXT CITY →' : 'PICK A CITY';
+    $('btn-next').textContent = levelIdx < NL - 1 ? 'NEXT CITY →' : 'PICK A CITY';
     showScreen('win');
     showBest();
   }
@@ -322,6 +360,7 @@ DR.Game = (function () {
     const cam = Dn.camera;
     City.update(dt, t, D, cam.position, cam.far);
     P.update(dt, t, D, City.info, true);
+    Army.update(dt, t, D);
     FX.update(dt);
     if (state === 'play') time += dt;
     // HUD
@@ -329,13 +368,19 @@ DR.Game = (function () {
     H.setGrowth(D.tier, Dn.progress(), D.tier === 5);
     H.setScore(D.score);
     H.setRoar(D.roar, D.roar >= 1);
+    H.setHP(D.hp, Army.active || D.hp < 0.99);
+    H.setPower(D.power);
     mapT -= dt;
-    if (mapT <= 0) { mapT = 0.15; H.drawMap(City, D); }
+    if (mapT <= 0) { mapT = 0.15; H.drawMap(City, D, Army.units); }
     H.update(dt, cam);
     A.setIntensity((D.tier - 1) / 4);
     // helpful tips
     if (state === 'play') {
       if (!tipsShown.start && time > 3.5) { tipsShown.start = 1; H.tip('Walk into small things to <b>SMASH</b> them! Eat the <b>sparkly snacks</b> 🍉🍩 to grow fast. The pink dots on the map are snacks!', 6); }
+      if (!tipsShown.bakery && D.tier >= 2) {
+        const b = City.objects.find((o) => o.kind === 'fbibase' && o.alive);
+        if (b && U.dist(b.x, b.z, D.x, D.z) < 40 + D.scale * 6) { tipsShown.bakery = 1; H.tip('Hmm... why does that <b>bakery</b> have so many antennas? 🤔📡', 5); }
+      }
       if (!tipsShown.roar && D.roar >= 1) { tipsShown.roar = 1; H.tip('Your <b>SUPER ROAR</b> is ready! Press <b>R</b>!', 4); }
       if (time > 25) H.hint(false);
     }

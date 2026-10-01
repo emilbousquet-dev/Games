@@ -20,11 +20,12 @@ DR.HUD = (function () {
   let centerT = 0, tipT = 0, lastScore = -1;
 
   function init() {
-    for (const id of ['hud', 'lvl-name', 'timer', 'badges', 'grow-fill', 'size-name', 'can-smash', 'score', 'combo', 'roar-ring', 'roarbox', 'minimap', 'center-msg', 'tip', 'labels', 'flash', 'rampage-lbl', 'hint']) el[id] = $(id);
+    for (const id of ['hud', 'lvl-name', 'timer', 'badges', 'grow-fill', 'size-name', 'can-smash', 'score', 'combo', 'roar-ring', 'roarbox', 'minimap', 'center-msg', 'tip', 'labels', 'flash', 'rampage-lbl', 'hint', 'hpbox', 'hp-fill', 'radio', 'radio-text', 'powerbox']) el[id] = $(id);
     el.badges.innerHTML = SIZE_NAMES.map((n, i) => `<div class="badge" data-i="${i}"><span style="font-size:${14 + i * 5}px">🦖</span></div>`).join('');
     el.mapCtx = el.minimap.getContext('2d');
   }
   function show(on) { el.hud.style.display = on ? 'block' : 'none'; if (!on) clearLabels(); }
+  function hideRadio() { radioT = 0; el.radio.classList.remove('show'); }
   function setLevel(name) { el['lvl-name'].textContent = name; }
   function setTime(s) { el.timer.textContent = '⏱ ' + U.timeText(s); }
   function setGrowth(tier, p, rampage) {
@@ -67,6 +68,24 @@ DR.HUD = (function () {
     requestAnimationFrame(() => { f.style.transition = 'opacity 0.6s'; f.style.opacity = 0; });
   }
   function hint(on) { el.hint.style.display = on ? 'flex' : 'none'; }
+  // dino health (only shown when the army is around)
+  function setHP(v, show) {
+    el.hpbox.style.display = show ? 'flex' : 'none';
+    el['hp-fill'].style.width = (U.clamp(v, 0, 1) * 100).toFixed(0) + '%';
+    el.hpbox.classList.toggle('low', v < 0.35);
+  }
+  // funny messages from the FBI and army radio
+  let radioT = 0;
+  function radio(text) {
+    const i = text.indexOf(':');
+    el['radio-text'].innerHTML = i > 0 ? `<b>${text.slice(0, i)}:</b>${text.slice(i + 1)}` : text;
+    el.radio.classList.add('show');
+    radioT = 7;
+  }
+  function setPower(t) {
+    el.powerbox.style.display = t > 0 ? 'block' : 'none';
+    if (t > 0) el.powerbox.textContent = '🌈 RAINBOW POWER! ' + Math.ceil(t) + 's';
+  }
 
   // ---------- words floating in the 3D world ----------
   // speech bubble above a person (follows them around)
@@ -93,6 +112,7 @@ DR.HUD = (function () {
   function update(dt, cam) {
     if (centerT > 0) { centerT -= dt; if (centerT <= 0) el['center-msg'].classList.remove('show'); }
     if (tipT > 0) { tipT -= dt; if (tipT <= 0) el.tip.classList.remove('show'); }
+    if (radioT > 0) { radioT -= dt; if (radioT <= 0) el.radio.classList.remove('show'); }
     const W = innerWidth, H = innerHeight;
     for (let i = labels.length - 1; i >= 0; i--) {
       const l = labels[i];
@@ -111,7 +131,7 @@ DR.HUD = (function () {
   }
 
   // ---------- mini-map ----------
-  function drawMap(city, dino) {
+  function drawMap(city, dino, army) {
     const c = el.minimap, g = el.mapCtx;
     const S = 150;
     if (c.width !== S) { c.width = S; c.height = S; }
@@ -143,6 +163,13 @@ DR.HUD = (function () {
       g.fillStyle = o.tier <= dino.tier ? '#ff3a8a' : 'rgba(255,58,138,0.35)';
       g.beginPath(); g.arc(x, z, o.tier <= dino.tier ? 3.2 : 2, 0, 7); g.fill();
     }
+    // army vehicles (red)
+    for (const u of army || []) {
+      const x = tx(u.x), z = tz(u.z);
+      if (x < 0 || z < 0 || x > S || z > S) continue;
+      g.fillStyle = '#ff2a2a'; g.strokeStyle = '#fff'; g.lineWidth = 1.5;
+      g.beginPath(); g.rect(x - 3.5, z - 3.5, 7, 7); g.fill(); g.stroke();
+    }
     g.restore();
     // the dino (an arrow pointing where it looks)
     g.save();
@@ -152,5 +179,5 @@ DR.HUD = (function () {
     g.restore();
   }
 
-  return { init, show, setLevel, setTime, setGrowth, setScore, combo, setRoar, center, tip, flash, hint, say, popup, clearLabels, update, drawMap, SIZE_NAMES };
+  return { hideRadio, setHP, radio, setPower, init, show, setLevel, setTime, setGrowth, setScore, combo, setRoar, center, tip, flash, hint, say, popup, clearLabels, update, drawMap, SIZE_NAMES };
 })();

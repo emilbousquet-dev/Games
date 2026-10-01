@@ -23,6 +23,27 @@ DR.People = (function () {
     shades: ['Is that dino wearing SUNGLASSES?', 'Cool shades, dino!'],
     crown: ['All hail the Dino King!', 'Is that a real crown?!'],
     chef: ['A chef dino?! Is it hungry?!'],
+    // FBI agents (they follow the dino around and are VERY serious... not)
+    fbi: [
+      'FBI! Open up! ...Oh. You already opened the whole building.',
+      'This is the FBI. You have the right to remain... HUGE.',
+      "Agent, write this down: 'Suspect is green and VERY hungry.'",
+      'Sir, the dinosaur does not have a driving license!',
+      'We checked your search history. Why is it ALL snacks?',
+      'Quick, call the CIA! ...They hung up on us.',
+      "Is this classified? It's definitely classified as BIG.",
+      'Agent, did you bring the giant leash?',
+      'Our disguise is perfect. It will NEVER know we are FBI.',
+      'Suspect last seen eating a bus. Again.',
+      "My report just says 'RAWR' fifty times.",
+      'Stop! FBI! ...Please? Pretty please?',
+      'Nobody tell the boss we lost a whole city.',
+      "Hold on, I'm on hold with Dinosaur Control.",
+      'We need backup! And a BIGGER donut.',
+      "Act casual. We're just two normal guys in black suits. Watching.",
+    ],
+    fbiRun: ['Agent down! ...I am fine!', 'Tactical retreat! RUN!', 'This was NOT in the training video!', 'I want a raise!', 'Mom, I quit the FBI!', "Write in the report: we RAN."],
+    fbiBaby: ["Suspect is... adorable. Should we arrest it?", 'Agent, it is just a baby. Stand down. Aww.', "Put in the report: 'very cute'.", 'Is that... a top secret lizard?'],
   };
 
   let scene, list = [], globalCool = 0, hatId = 'none';
@@ -59,11 +80,12 @@ DR.People = (function () {
       if (z > info.shore - 3) continue;
       const d = U.dist(x, z, dino.x, dino.z);
       if (d < minD || d > maxD) continue;
-      const m = Mo.person(Math.floor(Math.random() * 1000));
+      const agent = Math.random() < (DR.Army.active ? 0.3 : dino.tier >= 2 ? 0.14 : 0.05);
+      const m = Mo.person(agent ? 'agent' : Math.floor(Math.random() * 1000));
       m.position.set(x, 0, z);
       scene.add(m);
       const kid = m.userData.kid;
-      const p = { m, x, z, y: 0, vy: 0, vx: 0, vz: 0, axis, at, dir: Math.random() < 0.5 ? 1 : -1, state: 'walk', t: 0, cool: Math.random() * 3, speed: (kid ? 1.1 : 1.4) + Math.random() * 0.3, run: kid ? 4.6 : 5.6, kid, spin: 0 };
+      const p = { m, x, z, y: 0, vy: 0, vx: 0, vz: 0, axis, at, dir: Math.random() < 0.5 ? 1 : -1, state: 'walk', t: 0, cool: Math.random() * 3, speed: (kid ? 1.1 : 1.4) + Math.random() * 0.3, run: kid ? 4.6 : 5.6, kid, spin: 0, agent, joke: 2 + Math.random() * 3 };
       list.push(p);
       return;
     }
@@ -155,12 +177,14 @@ DR.People = (function () {
         else tumble(p, dino.x, dino.z, 1 + dino.tier * 0.3);
       }
       // what should I do?
-      const scary = !baby && dist < 12 + dino.scale * 7;
-      if (p.state === 'walk' || p.state === 'curious' || p.state === 'watch') {
+      const scary = !baby && dist < (p.agent ? dino.r + 3 + dino.scale * 1.5 : 12 + dino.scale * 7);
+      if (p.agent && p.state === 'walk' && dist < 70) { p.state = 'agent'; p.t = 0; }
+      if (p.state === 'walk' || p.state === 'curious' || p.state === 'watch' || p.state === 'agent') {
         if (scary) {
           p.state = 'flee'; p.t = 0;
           if (Math.random() < 0.4) A.scream(U.clamp(dx / 30, -1, 1));
-          if (dino.tier === 5 && Math.random() < 0.5) say(p, pickLine('giant'));
+          if (p.agent) say(p, pickLine('fbiRun'), true);
+          else if (dino.tier === 5 && Math.random() < 0.5) say(p, pickLine('giant'));
           else say(p, pickLine('scared'));
         } else if (baby && p.state === 'walk' && dist < 14 && p.cool < 0 && Math.random() < dt * 0.6) {
           p.state = 'curious'; p.t = 0;
@@ -177,6 +201,17 @@ DR.People = (function () {
         panic = true;
         walkLane(p, dt, speed, xs, zs, info, dino);
         if (dist > 40 + dino.scale * 12 && p.t > 4) { p.state = 'walk'; p.t = 0; }
+      } else if (p.state === 'agent') {
+        // follow the dino (from a safe distance) and say silly FBI things
+        const keep = dino.r + 6 + dino.scale * 3;
+        if (dist > keep + 2) {
+          speed = p.speed * 1.8;
+          p.x -= dx / dist * speed * dt; p.z -= dz / dist * speed * dt;
+        } else wave = Math.sin(p.t * 0.7) > 0.6;
+        p.m.rotation.y = Math.atan2(-dx, -dz);
+        p.joke -= dt;
+        if (p.joke <= 0 && dist < 45) { p.joke = 7 + Math.random() * 6; say(p, pickLine(baby ? 'fbiBaby' : 'fbi'), true); }
+        if (dist > 90) { p.state = 'return'; p.t = 0; }
       } else if (p.state === 'curious') {
         // walk up to the baby dino and say hi
         if (dist > 3 + dino.r) {
@@ -191,7 +226,7 @@ DR.People = (function () {
         const d = U.dist(p.x, p.z, tx, tz);
         speed = baby ? p.speed : p.run;
         panic = !baby;
-        if (d < 0.3) { p.axis = L.axis; p.at = L.at; if (L.axis === 'z') p.x = L.at; else p.z = L.at; p.state = baby ? 'walk' : 'flee'; p.t = 0; }
+        if (d < 0.3) { p.axis = L.axis; p.at = L.at; if (L.axis === 'z') p.x = L.at; else p.z = L.at; p.state = baby || p.agent ? 'walk' : 'flee'; p.t = 0; }
         else { p.x += (tx - p.x) / d * speed * dt; p.z += (tz - p.z) / d * speed * dt; p.m.rotation.y = Math.atan2(tx - p.x, tz - p.z); }
       } else if (p.state === 'tumble') {
         p.vy -= 20 * dt;

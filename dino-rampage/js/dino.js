@@ -20,10 +20,13 @@ DR.Dino = (function () {
     bonkCd: 0, tipCd: {}, lastStep: 0,
     score: 0, combo: 0, comboT: 0,
     need: [0, 25, 100, 330, 900], rampNeed: 500, rampage: 0, won: false,
-    stats: { smashed: 0, eaten: 0, cars: 0, houses: 0, towers: 0, bestCombo: 0, people: 0 },
+    stats: { smashed: 0, eaten: 0, cars: 0, houses: 0, towers: 0, bestCombo: 0, people: 0, army: 0 },
     model: null, hit: new Set(), speedNow: 0,
+    hp: 1, dizzy: 0, power: 0, hurtCd: 0,
   };
-  const on = { smash() {}, grow() {}, win() {}, roar() {} };
+  const on = { smash() {}, grow() {}, win() {}, roar() {}, secret() {}, dizzy() {} };
+  // with RAINBOW POWER you can smash things one size bigger!
+  const smashTier = () => Math.min(5, D.tier + (D.power > 0 ? 1 : 0));
   let scene, camera;
 
   function init(sc) {
@@ -57,8 +60,8 @@ DR.Dino = (function () {
       act: null, actT: 0, spin: 0, eatT: 0, flop: false, roar: 0, roarReady: false,
       camYaw: PI * 1.25, camPitch: 0.32, camIdle: 0, camBoost: 0, zoom: 1, bonkCd: 0, tipCd: {}, lastStep: 0,
       score: 0, combo: 0, comboT: 0, rampage: 0, won: false,
-      stats: { smashed: 0, eaten: 0, cars: 0, houses: 0, towers: 0, bestCombo: 0, people: 0 },
-      speedNow: 0,
+      stats: { smashed: 0, eaten: 0, cars: 0, houses: 0, towers: 0, bestCombo: 0, people: 0, army: 0 },
+      speedNow: 0, hp: 1, dizzy: 0, power: 0, hurtCd: 0,
     });
     D.camDist = camTargetDist();
     computeNeeds();
@@ -136,36 +139,72 @@ DR.Dino = (function () {
       if (o.tier >= 3) { FX.collapse(o); City.addRubble(o); } else City.detachMesh(o);
     }
     FX.fx.shake = Math.min(1.5, FX.fx.shake + 0.08 + o.tier * 0.08 * (o.tier >= D.tier ? 1 : 0.5));
-    // how much you grow (smaller things count less when you're big)
-    const diff = D.tier - o.tier;
-    const k = diff <= 0 ? 1 : diff === 1 ? 0.45 : diff === 2 ? 0.15 : 0.05;
-    addGrowth(o.grow * k);
-    // points & combos
-    D.combo = D.comboT > 0 ? D.combo + 1 : 1;
-    D.comboT = 2.2;
-    D.stats.bestCombo = Math.max(D.stats.bestCombo, D.combo);
-    const pts = o.pts * Math.min(D.combo, 10);
-    D.score += pts;
-    H.combo(D.combo);
-    if (!o.food) H.popup('+' + pts, o.x, Math.min(o.h, 4 + D.scale * 2) + 0.5, o.z, D.combo >= 5 ? 'big' : '');
-    A.point(D.combo);
-    D.roar = Math.min(1, D.roar + (o.food ? 0.12 : 0.02 + o.tier * 0.012) * (diff >= 2 ? 0.4 : 1));
+    if (o.food) D.hp = Math.min(1, D.hp + 0.2);
+    reward(o.x, Math.min(o.h, 4 + D.scale * 2) + 0.5, o.z, o.pts, o.grow, o.tier, o.food);
     D.stats.smashed++;
+    if (o.kind === 'fbibase') on.secret(o);
     if (o.kind === 'car' || o.kind === 'bus' || o.kind === 'truck' || o.kind === 'icecreamtruck') D.stats.cars++;
     if (o.kind === 'house') D.stats.houses++;
     if (o.tier === 5) D.stats.towers++;
     on.smash(o, how);
   }
 
+  // growing, points & combos for something you smashed
+  function reward(x, y, z, basePts, grow, tier, food) {
+    // smaller things count less when you're big
+    const diff = D.tier - tier;
+    const k = diff <= 0 ? 1 : diff === 1 ? 0.45 : diff === 2 ? 0.15 : 0.05;
+    addGrowth(grow * k);
+    D.combo = D.comboT > 0 ? D.combo + 1 : 1;
+    D.comboT = 2.2;
+    D.stats.bestCombo = Math.max(D.stats.bestCombo, D.combo);
+    const pts = basePts * Math.min(D.combo, 10);
+    D.score += pts;
+    H.combo(D.combo);
+    if (!food) H.popup('+' + pts, x, y, z, D.combo >= 5 ? 'big' : '');
+    A.point(D.combo);
+    D.roar = Math.min(1, D.roar + (food ? 0.12 : 0.02 + tier * 0.012) * (diff >= 2 ? 0.4 : 1));
+  }
+
   // hit everything in a circle (that is small enough)
   function hitArea(x, z, r, how, once) {
     let n = 0, bonk = null;
+    const st = smashTier();
     for (const o of City.query(x, z, r)) {
       if (once && D.hit.has(o)) continue;
-      if (o.tier <= D.tier) { if (once) D.hit.add(o); smash(o, how); n++; }
+      if (o.tier <= st) { if (once) D.hit.add(o); smash(o, how); n++; }
       else if (!bonk) bonk = o;
     }
+    n += DR.Army.hit(x, z, r, how);
     return { n, bonk };
+  }
+
+  // the army hit you! (paintballs, shells, rockets)
+  function hurt(dmg, x, y, z) {
+    FX.dust(x, y, z, 1 + D.scale * 0.4, 5, 0xffa040);
+    FX.sparkle(x, y, z, 0.4 + D.scale * 0.15, 6, 0xffd060);
+    A.boom(0.5);
+    if (D.power > 0 || D.dizzy > 0 || D.won) { H.popup('BOING!', x, y + 1, z, 'nope'); return; }
+    D.hp -= dmg;
+    FX.fx.shake = Math.max(FX.fx.shake, 0.5);
+    H.flash('#ff4a3a', 0.18);
+    if (D.hurtCd <= 0) { D.hurtCd = 1.2; H.popup(U.pick(['OUCH!', 'HEY!', 'OOF!', 'RUDE!']), D.x, D.y + D.scale * 2.2, D.z, 'nope'); }
+    if (D.hp <= 0) goDizzy();
+  }
+  // too many hits: the dino gets dizzy for a bit and shrinks a little
+  function goDizzy() {
+    D.hp = 1;
+    D.dizzy = 3;
+    D.act = null; D.spin = 0; D.flop = false;
+    if (D.tier < 5) {
+      const a = D.need[D.tier - 1], b = D.need[D.tier];
+      D.growth = Math.max(a, D.growth - (b - a) * 0.2);
+    } else {
+      D.growth = Math.max(D.need[4], D.growth - D.rampNeed * 0.12);
+      D.rampage = U.clamp((D.growth - D.need[4]) / D.rampNeed, 0, 1);
+    }
+    A.dizzy();
+    on.dizzy();
   }
 
   // ------------------------------------------------------------
@@ -175,9 +214,21 @@ DR.Dino = (function () {
   function update(dt, inp) {
     const s = D.scale;
     D.comboT -= dt; if (D.comboT <= 0 && D.combo > 0) { D.combo = 0; H.combo(0); }
-    D.bonkCd -= dt;
+    D.bonkCd -= dt; D.hurtCd -= dt;
     for (const k in D.tipCd) D.tipCd[k] -= dt;
     if (D.eatT > 0) D.eatT -= dt;
+    D.hp = Math.min(1, D.hp + dt * 0.015);
+    if (D.power > 0) {
+      D.power -= dt;
+      D.hp = 1;
+      if (Math.random() < dt * 14) FX.sparkle(D.x, D.y + D.scale * 1.2, D.z, D.scale * 0.4, 2, [0xff4a4a, 0xffd23a, 0x4ad84a, 0x3aa8ff, 0xb05aff][Math.floor(Math.random() * 5)]);
+    }
+    if (D.dizzy > 0) {
+      // seeing stars! no moving for a moment
+      D.dizzy -= dt;
+      if (Math.random() < dt * 8) FX.sparkle(D.x, D.y + D.scale * 1.9, D.z, D.scale * 0.3, 1, 0xffe070);
+      inp = { move: 0, strafe: 0, run: false, jump: false, bite: false, tail: false, roar: false };
+    }
     // --- actions ---
     if (D.act) {
       D.actT += dt;
@@ -216,7 +267,7 @@ DR.Dino = (function () {
     let wx = f.x * inp.move + rt.x * inp.strafe, wz = f.z * inp.move + rt.z * inp.strafe;
     const len = Math.hypot(wx, wz);
     if (len > 1) { wx /= len; wz /= len; }
-    let spd = baseSpeed() * (inp.run ? 1.75 : 1);
+    let spd = baseSpeed() * (inp.run ? 1.75 : 1) * (D.power > 0 ? 1.4 : 1);
     if (D.act === 'roar') spd = 0;
     else if (D.act === 'bite') spd *= 0.35;
     else if (D.eatT > 0) spd *= 0.6;
@@ -248,7 +299,7 @@ DR.Dino = (function () {
       if (D.y > o.h * 0.85) continue;      // jumping over it
       const dist = City.boxDist(o, nx, nz);
       if (dist >= D.r) continue;
-      if (o.tier <= D.tier) { smash(o, 'stomp'); continue; }
+      if (o.tier <= smashTier()) { smash(o, 'stomp'); continue; }
       // too big: push the dino back out
       const cx = U.clamp(nx, o.x - o.hx, o.x + o.hx), cz = U.clamp(nz, o.z - o.hz, o.z + o.hz);
       if (dist > 0.001) {
@@ -322,7 +373,8 @@ DR.Dino = (function () {
     FX.ring(D.x, D.z, R * 0.6, 0xffe0a0, 0.7);
     FX.fx.shake = 2;
     H.flash('#ffb070', 0.3);
-    const list = City.query(D.x, D.z, R).filter((o) => o.tier <= D.tier).sort((a, b) => U.dist(a.x, a.z, D.x, D.z) - U.dist(b.x, b.z, D.x, D.z));
+    DR.Army.roar(D.x, D.z, R);
+    const list = City.query(D.x, D.z, R).filter((o) => o.tier <= smashTier()).sort((a, b) => U.dist(a.x, a.z, D.x, D.z) - U.dist(b.x, b.z, D.x, D.z));
     list.slice(0, 26).forEach((o) => {
       const d = Math.max(1, U.dist(o.x, o.z, D.x, D.z));
       const ux = (o.x - D.x) / d, uz = (o.z - D.z) / d;
@@ -347,7 +399,7 @@ DR.Dino = (function () {
     Mo.animateDino(m, dt, {
       walk: D.onGround ? w : 0, rate: 1 / Math.pow(D.scale, 0.25), air: !D.onGround && !D.flop, flop: D.flop,
       bite: actP('bite', 0.42), roar: actP('roar', 1.6), whip: actP('whip', 0.62), eat: D.eatT > 0 ? 1 - D.eatT / 0.9 : 0,
-      turn: 0,
+      turn: 0, dizzy: D.dizzy > 0,
     });
     if (D.shadowBlob) { D.shadowBlob.position.y = (0.03 - D.y) / D.scale; const k = 1 / (1 + D.y / (D.scale * 3)); D.shadowBlob.scale.set(1.6 * k, 1.6 * k, 1); }
   }
@@ -405,7 +457,7 @@ DR.Dino = (function () {
   }
 
   return {
-    D, on, init, resize, reset, update, updateCamera, place, makeModel, progress, smash, addGrowth, SIZES,
+    D, on, init, resize, reset, update, updateCamera, place, makeModel, progress, smash, addGrowth, reward, hurt, tooBig, smashTier, SIZES,
     get camera() { return camera; },
   };
 })();

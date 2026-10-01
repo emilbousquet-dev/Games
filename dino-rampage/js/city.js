@@ -70,6 +70,22 @@ DR.City = (function () {
     hotel: K(5, 'Hotel', ['My vacation!', 'I wanted room service!']),
     lighthouse: K(5, 'Lighthouse', ['How will the boats find their way?!']),
     ferris: K(5, 'Ferris wheel', ['I wanted to ride that!', 'The wheel is ROLLING AWAY!']),
+    // secret!
+    fbibase: K(3, 'Totally Normal Bakery', ["It's just a normal bakery! ...With 12 antennas.", 'NOT THE SECRET BA... I mean, NOT THE BAKERY!']),
+    'car:fbi': K(2, 'FBI van', ['Our secret van!', 'Hey! That van was UNDERCOVER!']),
+    // army base
+    sandbags: K(1, 'Sandbags', ['Our sandbag wall!', 'Those took forever to fill!']),
+    crates: K(1, 'Crates', ['Those were top secret socks!', 'The crates!']),
+    pudding: K(1, 'Army pudding', ["That was the General's PUDDING!", 'My pudding cup!'], { food: true }),
+    jeep: K(2, 'Jeep', ['My jeep!', 'Somebody call a tow truck!']),
+    fueltank: K(2, 'Fuel tank', ['Not the fuel!']),
+    flagpole: K(2, 'Flag pole', ['The flag! Salute... it?']),
+    armytank: K(3, 'Tank', ['It ate the TANK!', 'That tank was brand new!']),
+    barracks: K(3, 'Barracks', ['My bunk bed!', 'Where do we sleep now?!']),
+    hangar: K(4, 'Hangar', ['The hangar!', 'Our planes were in there! ...Oh wait, they flew away.']),
+    radar: K(4, 'Radar tower', ['Radar says... a big green blob. RIGHT HERE.']),
+    'shop:pudding': K(4, 'Mess hall', ['Lunch is CANCELED!', 'Not the pudding factory!'], { food: true }),
+    controltower: K(5, 'Control tower', ['Control tower to dinosaur: PLEASE STOP!']),
   };
   const GROW = [0, 1, 2.5, 10, 30, 80];       // how much bigger you get for each tier
   const POINTS = [0, 10, 50, 150, 400, 1000];
@@ -84,20 +100,26 @@ DR.City = (function () {
     {
       id: 1, name: 'Sleepy Suburbs', emoji: '🏡', seed: 11, par: 360,
       about: 'A quiet little town with houses, gardens and picnics. Nobody expects a dinosaur!',
-      map: ['HHHPHH', 'HPHHSH', 'HHSTHH', 'HHTSHP', 'PHHHHH', 'HHPHHH'],
+      map: ['HHHPHH', 'HPHHSH', 'HHSTHH', 'HHTSHP', 'PHHHHH', 'HHPHHF'],
       start: [0, 4], sky: [0x4aa8ff, 0xcfeeff], fog: 0xcfeeff,
     },
     {
       id: 2, name: 'Downtown', emoji: '🏙️', seed: 22, par: 390,
       about: 'The big city! Busy streets, fancy shops and LOTS of skyscrapers.',
-      map: ['APSTSGP', 'STTSTTA', 'GSTPTSS', 'TTSATTG', 'PSTTSAS', 'STGSTTP', 'ASPTSAS'],
-      start: [6, 0], sky: [0x3a90e8, 0xe0e8f0], fog: 0xe0e8f0,
+      map: ['APSTSGP', 'STTSTTA', 'GSTPTSS', 'TTSATTG', 'PSTTSAS', 'STGSTTP', 'FSPTSAS'],
+      start: [6, 0], sky: [0x3a90e8, 0xe0e8f0], fog: 0xe0e8f0, army: { from: 3, extra: 0 },
     },
     {
       id: 3, name: 'Beach Boardwalk', emoji: '🎡', seed: 33, par: 480,
       about: 'Sunshine, ice cream, a fair with a giant Ferris wheel... and the ocean!',
-      map: ['HHSPHHS', 'HOSHSOH', 'SHWOWHS', 'OSHWHSO', 'BBWBBWB', 'BBBBBBB'],
-      start: [3, 5], sky: [0x2aa0f0, 0xfff0d0], fog: 0xfff0d8, ocean: true,
+      map: ['HHSPHHF', 'HOSHSOH', 'SHWOWHS', 'OSHWHSO', 'BBWBBWB', 'BBBBBBB'],
+      start: [3, 5], sky: [0x2aa0f0, 0xfff0d0], fog: 0xfff0d8, ocean: true, army: { from: 3, extra: 0 },
+    },
+    {
+      id: 4, name: 'Army Base', emoji: '🚁', seed: 44, par: 480,
+      about: 'A little town right next to a big army base. The tanks and helicopters are READY... are you?',
+      map: ['HHPSMMM', 'HHSTMMM', 'PSHTMMM', 'HHSSMMM', 'HPHTTMF', 'HHSHTSM', 'HHHPSTM'],
+      start: [3, 6], sky: [0x5a9ad8, 0xe8e4d8], fog: 0xe8e4d8, army: { from: 2, extra: 1 },
     },
   ];
 
@@ -351,6 +373,47 @@ DR.City = (function () {
     foodSnack(cx - 14, cz - 12);
     sidewalk(cx, cz, true);
   }
+  // ---------- F: the TOTALLY NORMAL BAKERY (it's really a secret FBI base!) ----------
+  function blockFBI(cx, cz) {
+    place('fbibase', cx, cz - 5, 0);
+    place('car', cx - 12, cz + 9, 0, 'fbi'); place('car', cx + 12, cz + 9, 0, 'fbi');
+    for (let i = -2; i <= 2; i++) place('bush', cx + i * 3.6, cz - 14, 0);
+    for (const x of [-14, 14]) { place('tree', cx + x, cz - 8, 0, 'pine'); place('tree', cx + x, cz - 1, 0, 'pine'); }
+    place('mailbox', cx + 4, cz + 15, 0); place('flowers', cx - 4, cz + 3, 0);
+    place('donut', cx + 5, cz + 5, 0);
+    sidewalk(cx, cz, false);
+  }
+  // ---------- M: the army base ----------
+  function blockMilitary(cx, cz) {
+    const kind = Math.floor(rnd() * 3);
+    if (kind === 0) {
+      place('hangar', cx - 6, cz - 7, 0);
+      place('armytank', cx + 11, cz - 9, 0); place('armytank', cx + 11, cz + 1, 0);
+      place('jeep', cx - 12, cz + 9, 0); place('jeep', cx - 6, cz + 9, 0);
+      place('fueltank', cx + 2, cz + 7, 0);
+      place('crates', cx + 3, cz + 13, 0); place('sandbags', cx + 12, cz + 13, 0); place('pudding', cx - 14, cz + 15, 0);
+    } else if (kind === 1) {
+      place('barracks', cx - 6, cz - 10, 0); place('barracks', cx - 6, cz + 1, 0);
+      place('radar', cx + 11, cz - 10, 0); place('flagpole', cx + 11, cz + 1, 0);
+      place('jeep', cx + 12, cz + 9, 0); place('armytank', cx - 6, cz + 12, 1);
+      place('crates', cx + 5, cz + 14, 0); place('sandbags', cx + 5, cz + 9, 0); place('pudding', cx + 14, cz + 15, 0);
+    } else {
+      place('controltower', cx - 9, cz - 9, 0); place('radar', cx + 10, cz - 11, 0);
+      place('shop', cx + 6, cz + 9, 0, 'pudding');
+      place('armytank', cx - 10, cz + 7, 0); place('jeep', cx - 14, cz + 14, 0);
+      place('crates', cx - 2, cz + 1, 0); place('sandbags', cx + 4, cz - 2, 0); place('pudding', cx - 4, cz + 13, 0);
+    }
+    // sandbags, crates and lights around the edge
+    const off = BLOCK / 2 - RW / 2 - 1.2;
+    for (const [sx, sz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const q = faceTo(sx, sz);
+      for (let k = -2; k <= 2; k++) {
+        const t = k * 8.5, x = cx + (sx ? sx * off : t), z = cz + (sz ? sz * off : t);
+        if (k % 2 === 0) place('lamppost', x, z, q);
+        else place(chance(0.6) ? 'sandbags' : 'crates', x, z, q);
+      }
+    }
+  }
   // ---------- B: the beach ----------
   let hadLighthouse = false;
   function blockBeach(cx, cz, row) {
@@ -412,7 +475,7 @@ DR.City = (function () {
       const c = map[j][i], cx = i * BLOCK + BLOCK / 2, cz = j * BLOCK + BLOCK / 2;
       const inner = BLOCK - RW;
       if (c === 'B') { sand.push([cx, cz, BLOCK + 0.1, BLOCK + 0.1]); continue; }
-      if ('STAGOW'.includes(c)) conc.push([cx, cz, inner - SW * 2, inner - SW * 2]);
+      if ('STAGOWM'.includes(c)) conc.push([cx, cz, inner - SW * 2, inner - SW * 2]);
       // sidewalk ring
       walks.push([cx, cz - inner / 2 + SW / 2, inner, SW], [cx, cz + inner / 2 - SW / 2, inner, SW], [cx - inner / 2 + SW / 2, cz, SW, inner - SW * 2], [cx + inner / 2 - SW / 2, cz, SW, inner - SW * 2]);
     }
@@ -538,6 +601,8 @@ DR.City = (function () {
       else if (c === 'O') blockHotel(cx, cz);
       else if (c === 'W') blockFair(cx, cz);
       else if (c === 'B') blockBeach(cx, cz, j);
+      else if (c === 'F') blockFBI(cx, cz);
+      else if (c === 'M') blockMilitary(cx, cz);
     }
     // keep the start spot clear so the baby dino isn't stuck
     const s = startPos();
