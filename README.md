@@ -1,6 +1,9 @@
 # LAB 13 👽🩸
 
-> 🆕 **Also in this folder: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
+> 🆕 **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!
+> A Ratchet & Clank fan game: swipe to escape MEGA-BOT across 5 planets. Open `jetpack-city/index.html` to play.
+>
+> **Also: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
 > Open `monster-hotel/index.html` to play.
 
 A **3D co-op survival horror game** that runs in your web browser.
