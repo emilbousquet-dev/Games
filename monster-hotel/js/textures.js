@@ -645,6 +645,30 @@ MH.Tex = (function () {
       g.beginPath(); g.arc(64, 38, 8, 0, 7); outlined(g, '#f2c14a', 4);
       g.fillStyle = 'rgba(255,255,255,0.6)'; g.beginPath(); g.ellipse(46, 72, 6, 14, 0.4, 0, 7); g.fill();
     },
+    potion(g) {
+      g.beginPath(); g.arc(64, 78, 40, 0, 7); outlined(g, 'rgba(220,200,255,0.6)');
+      g.beginPath(); g.arc(64, 82, 33, 0.1, Math.PI - 0.1); g.closePath(); g.fillStyle = '#b040ff'; g.fill();
+      g.beginPath(); g.rect(52, 18, 24, 26); outlined(g, 'rgba(220,200,255,0.6)', 5);
+      g.beginPath(); g.rect(50, 10, 28, 14); outlined(g, '#9a6a3a', 5);
+      g.fillStyle = '#f0d0ff'; for (const [x, y, r] of [[52, 70, 6], [72, 60, 4], [62, 52, 3]]) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+    },
+    polish(g) {
+      g.beginPath(); U.rrect(g, 38, 34, 52, 82, 12); outlined(g, '#f4f0ff');
+      g.fillStyle = '#3a8ad8'; g.fillRect(41, 64, 46, 26);
+      g.beginPath(); U.rrect(g, 50, 14, 28, 22, 5); outlined(g, '#3a8ad8', 5);
+      g.beginPath(); g.rect(76, 18, 26, 9); outlined(g, '#3a8ad8', 4);
+      const star = (x, y, r) => { g.beginPath(); for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, rr = i % 2 ? r * 0.3 : r; g.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } g.closePath(); g.fillStyle = '#fff6a0'; g.fill(); };
+      star(106, 46, 12); star(110, 76, 8);
+    },
+    icecream(g) {
+      g.beginPath(); g.moveTo(40, 64); g.lineTo(88, 64); g.lineTo(64, 122); g.closePath(); outlined(g, '#d8a060');
+      g.strokeStyle = 'rgba(120,70,20,0.5)'; g.lineWidth = 3; g.beginPath(); g.moveTo(50, 70); g.lineTo(76, 100); g.moveTo(78, 70); g.lineTo(54, 100); g.stroke();
+      g.beginPath(); g.arc(64, 50, 30, 0, 7); outlined(g, '#ff8ab0');
+      g.strokeStyle = '#e05a88'; g.lineWidth = 4; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(44, 46); g.bezierCurveTo(52, 34, 58, 58, 66, 42); g.bezierCurveTo(72, 32, 80, 52, 84, 44); g.stroke();
+      g.beginPath(); g.moveTo(48, 60); g.bezierCurveTo(56, 52, 66, 66, 78, 58); g.stroke();
+      g.beginPath(); g.arc(64, 18, 7, 0, 7); outlined(g, '#d01030', 4);
+    },
     angry(g) {
       g.beginPath(); g.arc(64, 64, 50, 0, 7); outlined(g, '#ff5a3a');
       g.fillStyle = OUT; g.beginPath(); g.arc(46, 64, 7, 0, 7); g.arc(82, 64, 7, 0, 7); g.fill();

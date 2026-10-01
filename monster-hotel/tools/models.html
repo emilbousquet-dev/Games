@@ -12,9 +12,9 @@ const Mo = MH.Models;
 const list = {
   vampire: () => Mo.vampire(0), vampire2: () => Mo.vampire(1), vampireLady: () => Mo.vampire(2), werewolf: () => Mo.werewolf(0), werewolf2: () => Mo.werewolf(1),
   mummy: () => Mo.mummy(0), pharaoh: () => Mo.mummy(1), ghost: () => Mo.ghost(0), ghost2: () => Mo.ghost(2), frankie: () => Mo.frankie(0), frankieLady: () => Mo.frankie(2),
-  blob: () => Mo.blob(0), blob2: () => Mo.blob(1), human: () => Mo.human(0),
+  blob: () => Mo.blob(0), blob2: () => Mo.blob(1), human: () => Mo.human(0), skeleton: () => Mo.skeleton(0), skeleton2: () => Mo.skeleton(1), witch: () => Mo.witch(0), witch2: () => Mo.witch(1), zombie: () => Mo.zombie(0), zombie2: () => Mo.zombie(2),
   items: () => { const g = new THREE.Group(); Object.keys(MH.ITEMS).forEach((k, i) => { const m = Mo.item(k); m.scale.setScalar(4); m.position.set((i % 4) * 1.2 - 1.8, 0.2 + Math.floor(i / 4) * 1.2, 0); g.add(m); }); return g; },
-  hands: () => { const g = new THREE.Group(); ['vampire', 'werewolf', 'mummy', 'frankie'].forEach((b, i) => { const v = Mo.viewModel(b); v.scale.setScalar(2.5); v.position.set(i * 1.6 - 2.4, 1.5, 1); v.rotation.y = Math.PI; g.add(v); }); return g; },
+  hands: () => { const g = new THREE.Group(); ['vampire', 'werewolf', 'mummy', 'frankie', 'witch'].forEach((b, i) => { const v = Mo.viewModel(b); v.scale.setScalar(2.5); v.position.set(i * 1.6 - 2.4, 1.5, 1); v.rotation.y = Math.PI; g.add(v); }); return g; },
   desk: () => Mo.frontDesk(5.5), keyRack: () => Mo.keyRack(5), fireplace: () => Mo.fireplace(2.6), sofa: () => Mo.sofa(2.6), table: () => Mo.roundTable(), plant: () => Mo.plant(), armor: () => Mo.armor(), clock: () => Mo.grandClock(),
   coffin: () => Mo.coffinBed(), nightstand: () => Mo.nightstand(), wardrobe: () => Mo.wardrobe(), door: () => Mo.roomDoor(3), frontDoors: () => { const d = Mo.frontDoors(); d.scale.setScalar(0.5); return d; },
   chandelier: () => { const c = Mo.chandelier(1); c.position.y = 0.6; return c; }, cauldron: () => Mo.cauldron(), sink: () => Mo.sink(), stationBlood: () => Mo.station('blood'), shelfTowel: () => Mo.station('towel', true),

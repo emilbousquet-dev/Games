@@ -10,7 +10,7 @@ MH.Guests = (function () {
   const G = { list: [], humans: [], on: {} };
   let scene, W;
   let nextId = 1;
-  const SPEED = { vampire: 1.45, werewolf: 1.6, mummy: 0.95, ghost: 1.25, frankie: 1.05, blob: 1.0, human: 1.15 };
+  const SPEED = { vampire: 1.45, werewolf: 1.6, mummy: 0.95, ghost: 1.25, frankie: 1.05, blob: 1.0, human: 1.15, skeleton: 1.35, witch: 1.3, zombie: 0.8 };
   const usedNames = new Set();
 
   function init(sc) { scene = sc; W = MH.World; }
@@ -24,6 +24,7 @@ MH.Guests = (function () {
     const s = new THREE.Sprite(m);
     s.scale.set(0.7, 0.7, 1);
     s.renderOrder = 999;
+    s.userData.ownTex = true;
     return { sprite: s, canvas: c, tex, key: '' };
   }
   function drawBubble(g) {
@@ -89,6 +90,7 @@ MH.Guests = (function () {
   }
   function remove(g) {
     scene.remove(g.model);
+    Mo.disposeModel(g.model);
     G.list.splice(G.list.indexOf(g), 1);
     usedNames.delete(g.name);
     if (g.room && g.room.guest === g) g.room.guest = null;
@@ -139,6 +141,9 @@ MH.Guests = (function () {
     towel: ['I need a fluffy towel!', 'Towel please!', 'Where are my towels?!'],
     bandage: ['I\'m coming unwrapped! Bandages!', 'Fresh bandages, please!'],
     jar: ['My bolts need a Lightning Jar!', 'I\'m running out of power...'],
+    potion: ['Hee hee! Bring me a Bubbling Potion!', 'My cauldron is empty! A potion, please!'],
+    icecream: ['Braaaain Freeeeze...', 'Ice cream! Brain flavor, please!'],
+    polish: ['My bones are so dusty! Bone Polish, please!', 'I want to be SHINY!'],
   };
 
   // ---------- the brain of a guest ----------
@@ -406,7 +411,7 @@ MH.Guests = (function () {
       } else if (h.state === 'flee') {
         const e = W.entrance;
         if (!h.target || h.target.x !== e.x) goTo(h, e.x, e.z + 1);
-        if (walk(h, dt)) { scene.remove(h.model); G.humans.splice(G.humans.indexOf(h), 1); continue; }
+        if (walk(h, dt)) { scene.remove(h.model); Mo.disposeModel(h.model); G.humans.splice(G.humans.indexOf(h), 1); continue; }
       }
       h.flashT = Math.max(0, (h.flashT || 0) - dt);
       h.model.userData.rig.flash.scale.setScalar(h.flashT > 0 ? 0.25 : 0.012);
@@ -420,8 +425,8 @@ MH.Guests = (function () {
 
   // clear everyone (end of the night)
   G.clear = function () {
-    for (const g of G.list) scene.remove(g.model);
-    for (const h of G.humans) scene.remove(h.model);
+    for (const g of G.list) { scene.remove(g.model); Mo.disposeModel(g.model); }
+    for (const h of G.humans) { scene.remove(h.model); Mo.disposeModel(h.model); }
     G.list.length = 0; G.humans.length = 0;
     usedNames.clear();
   };

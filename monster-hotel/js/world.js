@@ -641,7 +641,10 @@ MH.World = (function () {
         const kind = letter === 'k' ? MH.KITCHEN[ki++] : MH.SUPPLIES[si++];
         const yaw = awayFromWall(c, r);
         let obj;
-        if (kind === 'cauldron') { obj = Mo.cauldron(); dyn.push({ type: 'cauldron', obj }); }
+        if (kind === 'cauldron' || kind === 'potion') {
+          obj = Mo.cauldron(); dyn.push({ type: 'cauldron', obj });
+          if (kind === 'potion') for (const sx of [-1, 1]) { const it = Mo.item('potion'); it.position.set(sx * 0.52, 0.955, 0.05); it.scale.setScalar(1.3); obj.add(it); }
+        }
         else if (kind === 'sink') obj = Mo.sink();
         else if (kind === 'shelf' || !kind) {
           obj = Mo.shelf();
@@ -663,7 +666,7 @@ MH.World = (function () {
           st.label = lab;
           W.stations.push(st);
         }
-        if (kind === 'cauldron') addLight(px, 1.8, pz + 0.6, 0x6aff4a, 9, 6, 0.3);
+        if (kind === 'cauldron' || kind === 'potion') addLight(px, 1.8, pz + 0.6, 0x6aff4a, 9, 6, 0.3);
       }
     }
     // kitchen & supply room lights and signs
@@ -674,9 +677,9 @@ MH.World = (function () {
       const x = cells.reduce((a, q) => a + cx(q[0]), 0) / cells.length, z = cells.reduce((a, q) => a + cx(q[1]), 0) / cells.length;
       const Hh = HEIGHT[zn];
       const lamp = Mo.chandelier(0.55);
-      place(lamp, x, Hh - 1.4, z);
-      lamp.children[0].scale.y = 1.4; lamp.children[0].position.y = 0.7;
-      addLight(x, Hh - 1.2, z, 0xffc890, 16, 10, 0.05);
+      place(lamp, x, Hh - 0.8, z);
+      lamp.children[0].scale.y = 0.8; lamp.children[0].position.y = 0.4;
+      addLight(x, Hh - 1.0, z, 0xffc890, 16, 10, 0.05);
       W[zn] = { x, z };
     }
     // lobby chandelier + rug + runner

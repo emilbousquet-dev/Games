@@ -250,6 +250,7 @@ MH.Models = (function () {
       if (list.length < 2) continue;
       const geo = mergeGeos(list.map((m) => { m.updateMatrix(); return [m.geometry, m.matrix]; }));
       list.forEach((m) => g.remove(m));
+      geo.userData.baked = true;
       g.add(new THREE.Mesh(geo, mat));
     }
     for (const c of g.children) if (!c.isMesh || c.children.length) bake(c);
@@ -721,7 +722,195 @@ MH.Models = (function () {
     return finish(ch, 1.75, 0.35);
   }
 
-  const MAKERS = { vampire, werewolf, mummy, ghost, frankie, blob, human };
+  // ============================================================
+  //  SKELETON (rattle rattle!)
+  // ============================================================
+  function skeleton(style = 0) {
+    const bone = C(0xece4cc, 0.45);
+    const dark = C(0x120a10, 0.8);
+    const hipY = 0.9;
+    const ch = rig(hipY);
+    const R = ch.userData.rig;
+    for (const [leg, sx] of [[R.legL, 1], [R.legR, -1]]) {
+      leg.position.x = sx * 0.1;
+      P(leg, G.cap(0.028, 0.36), bone, [0, -0.2, 0]);
+      P(leg, G.sphere(), bone, [0, -0.43, 0], 0.045);
+      P(leg, G.cap(0.026, 0.34), bone, [0, -0.65, 0]);
+      P(leg, G.rbox(0.09, 0.05, 0.2, 0.02), bone, [0, -hipY + 0.03, 0.05]);
+    }
+    // pelvis, spine and ribs
+    P(R.torso, G.rbox(0.28, 0.1, 0.14, 0.04), bone, [0, 0.02, 0]);
+    P(R.torso, G.cyl(), bone, [0, 0.3, -0.04], [0.025, 0.55, 0.025]);
+    for (let i = 0; i < 4; i++) {
+      const r = 0.15 - i * 0.012;
+      const rib = P(R.torso, geo('rib', () => new THREE.TorusGeometry(1, 0.12, 6, 18, Math.PI * 1.5)), bone, [0, 0.48 - i * 0.075, 0.01], [r, r * 0.8, r]);
+      rib.rotation.set(Math.PI / 2, 0, Math.PI * 0.75);
+    }
+    for (const sx of [-1, 1]) P(R.torso, G.sphere(), bone, [sx * 0.2, 0.55, 0], 0.05);
+    // a fancy bow tie (or a scarf)
+    const tie = C([0xc01830, 0x2a6ad8, 0xe0a020][style % 3], 0.4);
+    P(R.torso, G.cone(), tie, [0.05, 0.6, 0.07], [0.04, 0.07, 0.03], [0, 0, Math.PI / 2]);
+    P(R.torso, G.cone(), tie, [-0.05, 0.6, 0.07], [0.04, 0.07, 0.03], [0, 0, -Math.PI / 2]);
+    P(R.torso, G.sphere(), tie, [0, 0.6, 0.08], 0.02);
+    for (const [arm, sx] of [[R.armL, 1], [R.armR, -1]]) {
+      arm.position.set(sx * 0.22, 0.54, 0);
+      P(arm, G.cap(0.024, 0.26), bone, [0, -0.15, 0]);
+      P(arm, G.sphere(), bone, [0, -0.31, 0], 0.035);
+      P(arm, G.cap(0.022, 0.24), bone, [0, -0.46, 0]);
+      hand(arm, [0, -0.62, 0], 0.045, bone);
+    }
+    R.head.position.set(0, 0.64, 0);
+    P(R.head, G.cyl(), bone, [0, 0.04, -0.02], [0.025, 0.1, 0.025]);
+    const H = grp(R.head, [0, 0.22, 0]);
+    P(H, G.sphere(), bone, [0, 0.03, 0], [0.2, 0.19, 0.19]);
+    P(H, G.rbox(0.2, 0.08, 0.16, 0.04), bone, [0, -0.11, 0.04]);  // jaw
+    // big dark eye holes and a nose hole
+    for (const sx of [-1, 1]) P(H, G.sphere(), dark, [sx * 0.075, 0.03, 0.155], [0.055, 0.06, 0.03]);
+    P(H, G.cone(), dark, [0, -0.04, 0.18], [0.02, 0.035, 0.01], [0, 0, Math.PI]);
+    // teeth
+    P(H, G.box(), C(0xfff8e8, 0.3), [0, -0.085, 0.115], [0.12, 0.03, 0.01]);
+    for (let i = -2; i <= 2; i++) P(H, G.box(), dark, [i * 0.024, -0.085, 0.121], [0.003, 0.03, 0.002]);
+    const f = ch.userData.face;
+    // little glowing eyes inside the holes
+    for (const sx of [1, -1]) {
+      const e = grp(H, [sx * 0.075, 0.03, 0.165]);
+      const look = grp(e);
+      P(look, G.sphere(), C(0x8af0ff, 0.2, 0, { emissive: 0x40c8ff, emissiveIntensity: 1.5 }), [0, 0, 0.01], 0.02);
+      const lid = P(e, G.hemi(), bone, [0, 0, 0], [0.06, 0.065, 0.04]);
+      lid.rotation.x = -1.4; lid.userData.anim = true;
+      e.userData = { lid, look, r: 0.05, baseOpen: -1.4 };
+      f.eyes.push(e);
+    }
+    f.mouth = makeMouth(H, [0, -0.06, 0.15], 0.045);
+    if (style % 3 === 1) { // a top hat
+      P(H, G.cyl(), M.black(), [0, 0.2, -0.01], [0.2, 0.012, 0.2]);
+      P(H, G.cyl(), M.black(), [0, 0.32, -0.01], [0.13, 0.24, 0.13]);
+      P(H, G.cyl(), C(0xc01830, 0.5), [0, 0.23, -0.01], [0.132, 0.04, 0.132]);
+    }
+    ch.userData.kind = 'skeleton';
+    setMood(ch, 0.5);
+    return finish(ch, 1.75, 0.35);
+  }
+
+  // ============================================================
+  //  WITCH
+  // ============================================================
+  function witch(style = 0) {
+    const skin = C([0x8ac06a, 0x9ab878, 0x7ab08a][style % 3], 0.55);
+    const dress = C([0x4a2a7a, 0x1a1a2a, 0x2a5a4a][style % 3], 0.7);
+    const hair = C([0xe0602a, 0x1a1020, 0xd0d0e0][style % 3], 0.7);
+    const hipY = 0.85;
+    const ch = rig(hipY);
+    const R = ch.userData.rig;
+    for (const [leg, sx] of [[R.legL, 1], [R.legR, -1]]) {
+      leg.position.x = sx * 0.09;
+      limb(leg, 0.045, 0.66, C(0x2a2a2a, 0.8));
+      // pointy boots
+      P(leg, G.rbox(0.1, 0.09, 0.22, 0.04), M.blackShiny(), [0, -hipY + 0.05, 0.05]);
+      P(leg, G.cone(), M.blackShiny(), [0, -hipY + 0.08, 0.2], [0.035, 0.12, 0.035], [-1.3, 0, 0]);
+    }
+    // long dress
+    P(R.torso, lathe([[0.001, -0.5], [0.4, -0.5], [0.3, -0.15], [0.17, 0.2], [0.2, 0.45], [0.12, 0.58], [0.001, 0.6]]), dress, [0, 0, 0]);
+    P(R.torso, G.torus(), C(0xd4a445, 0.3, 0.8), [0, 0.18, 0], [0.18, 0.18, 0.15], [Math.PI / 2, 0, 0]); // belt
+    P(R.torso, G.rbox(0.08, 0.06, 0.03, 0.01), M.gold(), [0, 0.18, 0.18]);
+    for (const [arm, sx] of [[R.armL, 1], [R.armR, -1]]) {
+      arm.position.set(sx * 0.21, 0.5, 0);
+      limb(arm, 0.05, 0.42, dress);
+      P(arm, G.cone(), dress, [0, -0.48, 0], [0.08, 0.14, 0.08], [Math.PI, 0, 0]); // wide sleeve
+      hand(arm, [0, -0.58, 0], 0.05, skin);
+    }
+    // a broom in her right hand
+    const broom = grp(R.armR, [-0.02, -0.6, 0.07], [0.1, 0, 0]);
+    P(broom, G.cyl(), M.darkWood(), [0, 0.15, 0], [0.018, 1.25, 0.018]);
+    P(broom, G.cone(), C(0xc8a050, 0.9), [0, -0.58, 0], [0.1, 0.32, 0.1], [0, 0, 0]);
+    P(broom, G.torus(), C(0x8a2a2a, 0.6), [0, -0.42, 0], [0.035, 0.035, 0.06], [Math.PI / 2, 0, 0]);
+    R.head.position.set(0, 0.6, 0);
+    const H = grp(R.head, [0, 0.21, 0]);
+    const hr = 0.21;
+    P(H, G.sphere(), skin, [0, 0, 0], [hr, hr * 1.08, hr]);
+    // long nose with a wart
+    P(H, G.cone(), skin, [0, -0.02, hr + 0.04], [0.035, 0.13, 0.035], [Math.PI / 2 - 0.25, 0, 0]);
+    P(H, G.sphere(), C(0x6a9a4a, 0.6), [0.02, -0.01, hr + 0.07], 0.013);
+    // wild hair
+    for (let i = 0; i < 11; i++) {
+      const a = -1.75 + i / 10 * 3.5;   // around the sides and the back of the head
+      const hx = Math.sin(a) * 0.2, hz = -Math.cos(a) * 0.17 - 0.02;
+      const strand = P(H, G.cone(), hair, [hx, -0.07 - (i % 3) * 0.025, hz], [0.05, 0.26, 0.05]);
+      strand.rotation.set(-Math.cos(a) * 0.5, 0, Math.PI + Math.sin(a) * 0.5);
+    }
+    P(H, G.sphere(), hair, [0, 0.07, -0.03], [hr * 1.02, hr * 0.8, hr * 1.02]);
+    // the big pointy hat
+    const hat = C([0x3a1a5a, 0x101018, 0x1a3a2a][style % 3], 0.6);
+    P(H, G.cyl(), hat, [0, 0.13, -0.01], [0.36, 0.015, 0.36]);
+    const tip = P(H, G.cone(), hat, [0, 0.42, -0.04], [0.17, 0.58, 0.17]);
+    tip.rotation.x = -0.18;
+    P(H, G.cyl(), C(0x8a2a8a, 0.5), [0, 0.18, -0.02], [0.175, 0.05, 0.175]);
+    P(H, G.rbox(0.07, 0.06, 0.02, 0.01), M.gold(), [0, 0.18, 0.15]);
+    const f = ch.userData.face;
+    f.eyes.push(makeEye(H, [0.075, 0.04, hr * 0.84], 0.045, 0xa040e0, skin, { glow: true }));
+    f.eyes.push(makeEye(H, [-0.075, 0.04, hr * 0.84], 0.045, 0xa040e0, skin, { glow: true }));
+    for (const sx of [1, -1]) { const b = makeBrow(H, [sx * 0.075, 0.105, hr * 0.92], 0.05, 0.012, hair, sx); b.userData.y0 = b.position.y; f.brows.push(b); }
+    f.mouth = makeMouth(H, [0, -0.1, hr * 0.88], 0.05);
+    ch.userData.kind = 'witch';
+    setMood(ch, 0.5);
+    return finish(ch, 2.0, 0.42);
+  }
+
+  // ============================================================
+  //  ZOMBIE (a friendly one!)
+  // ============================================================
+  function zombie(style = 0) {
+    const skin = C([0x8aa88a, 0x9aa0b8, 0xa0b080][style % 3], 0.7);
+    const shirt = C([0x6a4a8a, 0x8a3a3a, 0x3a6a8a][style % 3], 0.85);
+    const pants = C(0x4a4038, 0.9);
+    const hipY = 0.88;
+    const ch = rig(hipY);
+    const R = ch.userData.rig;
+    for (const [leg, sx] of [[R.legL, 1], [R.legR, -1]]) {
+      leg.position.x = sx * 0.11;
+      limb(leg, 0.065, 0.66, pants);
+      P(leg, G.cyl(), skin, [0, -0.72, 0], [0.05, 0.08, 0.05]);
+      P(leg, G.rbox(0.12, 0.09, 0.24, 0.04), C(0x3a2a20, 0.8), [0, -hipY + 0.05, 0.05]);
+    }
+    // a torn shirt
+    P(R.torso, lathe([[0.001, -0.06], [0.2, -0.06], [0.22, 0.2], [0.25, 0.45], [0.14, 0.6], [0.001, 0.62]]), shirt, [0, 0, 0], [1, 1, 0.75]);
+    for (let i = 0; i < 4; i++) P(R.torso, G.cone(), shirt, [-0.15 + i * 0.1, -0.08, 0.1], [0.04, 0.08, 0.02], [Math.PI, 0, 0]);
+    P(R.torso, G.rbox(0.14, 0.08, 0.02, 0.01), C(0xb89a6a, 0.8), [0.08, 0.3, 0.165]); // patch
+    for (const [arm, sx] of [[R.armL, 1], [R.armR, -1]]) {
+      arm.position.set(sx * 0.27, 0.5, 0);
+      P(arm, G.cap(0.06, 0.14), shirt, [0, -0.08, 0]);
+      limb(arm, 0.05, 0.46, skin);
+      hand(arm, [0, -0.6, 0], 0.06, skin);
+    }
+    R.head.position.set(0, 0.62, 0.02);
+    const H = grp(R.head, [0, 0.2, 0]);
+    const hr = 0.21;
+    P(H, G.sphere(), skin, [0, 0, 0], [hr, hr * 1.05, hr * 0.98]);
+    // messy hair and stitches
+    for (let i = 0; i < 6; i++) P(H, G.cone(), C(0x2a2018, 0.8), [Math.sin(i * 2.1) * 0.1, 0.18, Math.cos(i * 2.1) * 0.08 - 0.02], [0.04, 0.12, 0.04], [Math.cos(i) * 0.6, 0, Math.sin(i) * 0.6]);
+    P(H, G.box(), C(0x2a3a2a, 0.8), [0.1, 0.12, 0.15], [0.1, 0.008, 0.01], [0, 0, 0.5]);
+    for (let i = 0; i < 3; i++) P(H, G.box(), C(0x2a3a2a, 0.8), [0.07 + i * 0.03, 0.105 + i * 0.016, 0.155], [0.005, 0.035, 0.008], [0, 0, 0.5]);
+    P(H, G.sphere(), skin, [0, -0.02, hr * 0.97], [0.03, 0.035, 0.03]);
+    const f = ch.userData.face;
+    // one big eye and one small droopy eye
+    f.eyes.push(makeEye(H, [0.075, 0.04, hr * 0.82], 0.055, 0xd8e040, skin));
+    f.eyes.push(makeEye(H, [-0.075, 0.03, hr * 0.84], 0.038, 0xd8e040, skin, { open: -0.2 }));
+    for (const sx of [1, -1]) { const b = makeBrow(H, [sx * 0.075, 0.11, hr * 0.9], 0.05, 0.013, C(0x2a2018, 0.8), sx); b.userData.y0 = b.position.y; f.brows.push(b); }
+    f.mouth = makeMouth(H, [0, -0.1, hr * 0.9], 0.055);
+    ch.userData.kind = 'zombie';
+    setMood(ch, 0.5);
+    return finish(ch, 1.8, 0.4);
+  }
+
+  // free the memory of a character that left the hotel
+  function disposeModel(root) {
+    root.traverse((o) => {
+      if (o.isMesh && o.geometry && o.geometry.userData.baked) o.geometry.dispose();
+      if (o.isSprite && o.userData.ownTex) { o.material.map.dispose(); o.material.dispose(); }
+    });
+  }
+
+  const MAKERS = { vampire, werewolf, mummy, ghost, frankie, blob, human, skeleton, witch, zombie };
   function monster(kind, style) { return MAKERS[kind](style); }
 
   // ============================================================
@@ -747,6 +936,7 @@ MH.Models = (function () {
     } else if (s.panic) { aL = -2.8 + Math.sin(t * 20) * 0.3; aR = -2.8 + Math.cos(t * 22) * 0.3; azL = 0.5; azR = -0.5; }
     else if (s.wave) { aR = -2.6; azR = -0.4 + Math.sin(t * 10) * 0.35; }
     else if (happy) { aL = -0.4 + Math.sin(t * 3) * 0.1; }
+    if (kind === 'zombie' && !angry && !s.panic && !s.wave) { aL = -1.35 + Math.sin(t * 2) * 0.08; aR = -1.4 + Math.cos(t * 2.2) * 0.08; azL = 0.15; azR = -0.15; }
     R.armL.rotation.x += (aL - R.armL.rotation.x) * Math.min(1, dt * 10);
     R.armR.rotation.x += (aR - R.armR.rotation.x) * Math.min(1, dt * 10);
     R.armL.rotation.z += (azL - R.armL.rotation.z) * Math.min(1, dt * 10);
@@ -822,6 +1012,26 @@ MH.Models = (function () {
       bm.userData.flicker = true;
       const gl = new THREE.Sprite(glowMat(0xffd23a)); gl.scale.set(0.35, 0.35, 1); gl.position.y = 0.1; g.add(gl);
     }
+    else if (kind === 'potion') {
+      P(g, G.sphere(), M.glass(), [0, 0.07, 0], 0.07);
+      P(g, G.sphere(), C(0xb040ff, 0.1, 0, { emissive: 0x6010a0, emissiveIntensity: 1.2 }), [0, 0.06, 0], 0.058);
+      P(g, G.cyl(), M.glass(), [0, 0.15, 0], [0.022, 0.05, 0.022]);
+      P(g, G.cyl(), C(0x8a6a3a, 0.8), [0, 0.18, 0], [0.024, 0.03, 0.024]);
+      for (let i = 0; i < 3; i++) P(g, G.sphereLo(), C(0xe0a0ff, 0.1, 0, { emissive: 0xa060ff }), [Math.sin(i * 2) * 0.03, 0.09 + i * 0.012, Math.cos(i * 2) * 0.03], 0.01);
+      const gl = new THREE.Sprite(glowMat(0xb040ff)); gl.scale.set(0.3, 0.3, 1); gl.position.y = 0.07; g.add(gl);
+    } else if (kind === 'polish') {
+      P(g, G.cyl(), C(0xf4f0ff, 0.25), [0, 0.07, 0], [0.04, 0.14, 0.04]);
+      P(g, G.cyl(), C(0x3a8ad8, 0.3), [0, 0.065, 0.001], [0.041, 0.06, 0.041]);
+      P(g, G.cyl(), C(0x3a8ad8, 0.3), [0, 0.155, 0], [0.025, 0.03, 0.025]);
+      P(g, G.box(), C(0x3a8ad8, 0.3), [0.02, 0.175, 0], [0.04, 0.012, 0.012]);
+      P(g, G.octa(), C(0xffffff, 0.1, 0, { emissive: 0xc8e0ff, emissiveIntensity: 1 }), [0.045, 0.12, 0.03], 0.012);
+    } else if (kind === 'icecream') {
+      P(g, G.cone(), C(0xd8a060, 0.7), [0, 0.07, 0], [0.04, 0.14, 0.04], [Math.PI, 0, 0]);
+      const sc = C(0xff8ab0, 0.4);
+      P(g, G.sphere(), sc, [0, 0.16, 0], [0.05, 0.045, 0.048]);
+      for (let i = 0; i < 4; i++) P(g, G.torus(), C(0xe86a98, 0.4), [0, 0.165 + (i % 2) * 0.01, 0], [0.04 - i * 0.006, 0.035, 0.03 + i * 0.004], [Math.PI / 2 + i * 0.4, i * 0.8, 0]);
+      P(g, G.sphereLo(), C(0xd01030, 0.3), [0, 0.21, 0], 0.012);
+    }
     g.userData.kind = kind;
     return g;
   }
@@ -833,6 +1043,7 @@ MH.Models = (function () {
     vampire: { sleeve: () => C(0x0c0a12, 0.85, 0, { envMapIntensity: 0.3 }), cuff: () => C(0xf4f2f8, 0.6), skin: () => C(0xd9d2e6, 0.5), nails: () => C(0x2a1a30, 0.3) },
     werewolf: { sleeve: () => std('wolfFurArm', { map: T.fur('#6a4a32'), roughness: 0.95 }), cuff: () => C(0x3a2a6a, 0.8), skin: () => std('wolfFurArm', { map: T.fur('#6a4a32'), roughness: 0.95 }), nails: () => M.teeth(), claws: true },
     mummy: { sleeve: () => M.bandage(), cuff: () => M.bandage(), skin: () => M.bandage(), nails: () => M.bandage() },
+    witch: { sleeve: () => C(0x3a1a5a, 0.85, 0, { envMapIntensity: 0.4 }), cuff: () => C(0x8a2a8a, 0.6), skin: () => C(0x8ac06a, 0.55), nails: () => C(0x2a1040, 0.3) },
     frankie: { sleeve: () => C(0x24241e, 0.9, 0, { envMapIntensity: 0.35 }), cuff: () => C(0xd8d4c0, 0.8), skin: () => C(0x86b070, 0.6), nails: () => C(0x2a3a20, 0.6), big: true },
   };
   function fpHand(boss, side) {
@@ -1414,7 +1625,7 @@ MH.Models = (function () {
 
   return {
     M, C, G, P, grp, lathe, std, glowMat, roundedBox,
-    vampire, werewolf, mummy, ghost, frankie, blob, human, monster, animate, setMood, animateFace,
+    vampire, werewolf, mummy, ghost, frankie, blob, human, skeleton, witch, zombie, monster, animate, setMood, animateFace, disposeModel,
     item, viewModel, candle, sconce, candelabra, chandelier,
     frontDesk, keyRack, fireplace, sofa, roundTable, armchair, plant, armor, grandClock, portraitFrame,
     coffinBed, nightstand, wardrobe, rug, roomDoor, frontDoors, curtains, windowPanes,
