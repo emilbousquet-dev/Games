@@ -8,6 +8,7 @@ const W = 1280, H = 720;
 const PX = MAP_W;                 // the shop panel starts here
 const KID_SIZE = 0.68;            // how big the kids are on the map
 const SAVE_KEY = 'kids-vs-video-games-best';
+const VISIBLE_X = TV.x + TV.w - 6;   // enemies still inside the TV can't be hit
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -260,7 +261,7 @@ function placeTower(type, x, y) {
 function findTargets(t, range, n, air) {
   const g = G;
   const sx = t.flier ? t.fx : t.x, sy = t.flier ? t.fy : t.y;
-  const list = g.enemies.filter(e => !e.dead && e.x > 0 && (air || !e.flies) && dist(sx, sy, e.x, e.y) <= range);
+  const list = g.enemies.filter(e => !e.dead && e.x > VISIBLE_X && (air || !e.flies) && dist(sx, sy, e.x, e.y) <= range);
   if (t.mode === 'strong') list.sort((a, b) => b.hp - a.hp);
   else if (t.mode === 'close') list.sort((a, b) => dist(sx, sy, a.x, a.y) - dist(sx, sy, b.x, b.y));
   else list.sort((a, b) => b.d - a.d);
@@ -320,7 +321,7 @@ function updateTowers(dt) {
         if (L.catchEvery) {
           t.catchCD -= dt;
           if (t.catchCD <= 0) {
-            const list = g.enemies.filter(e => !e.dead && !e.boss && e.x > 0 && dist(t.x, t.y, e.x, e.y) <= L.range).sort((a, b) => b.hp - a.hp);
+            const list = g.enemies.filter(e => !e.dead && !e.boss && e.x > VISIBLE_X && dist(t.x, t.y, e.x, e.y) <= L.range).sort((a, b) => b.hp - a.hp);
             if (list.length) {
               const e = list[0];
               hookFx(t, e, '#ffd23f');
@@ -353,14 +354,14 @@ function updateTowers(dt) {
           if (targets.length) {
             t.cd = L.rate;
             for (const e of targets) {
-              g.fx.push({ kind: 'beam', x0: t.fx + 30 * t.fface, y0: t.fy - 10, x1: e.x, y1: e.y - e.height / 2, life: 0.09, max: 0.09, color: '#7dfff0' });
+              g.fx.push({ kind: 'beam', x0: t.fx + 24 * t.fface, y0: t.fy - 9, x1: e.x, y1: e.y - e.height / 2, life: 0.09, max: 0.09, color: '#ffe066' });
               damage(e, L.dmg);
             }
             Sound.sfx('laser');
           }
         }
         t.banCD -= dt;
-        if (t.banCD <= 0 && g.enemies.some(e => !e.dead && e.x > 0)) {
+        if (t.banCD <= 0 && g.enemies.some(e => !e.dead && e.x > VISIBLE_X)) {
           t.banCD = L.banEvery;
           banHammer(t, L);
         }
@@ -387,7 +388,7 @@ function banHammer(t, L) {
   const g = G;
   let n = 0;
   for (const e of g.enemies) {
-    if (e.dead || e.x <= 0) continue;
+    if (e.dead || e.x <= VISIBLE_X) continue;
     if (e.boss) damage(e, L.banBoss);
     else { kill(e, true); n++; }
   }
@@ -703,8 +704,8 @@ function drawTower(t) {
   const sel = G.sel === t;
   if (t.flier) {
     drawEmile(ctx, t.fx, t.fy, 0.85, T, { face: t.fface });
-    text(ctx, 'ADMIN/EMILE', t.fx, t.fy - 48, 11, '#d6bcff', { lw: 3 });
-    if (t.level > 0) text(ctx, 'SUPER', t.fx, t.fy - 61, 10, '#ffd23f', { lw: 3 });
+    text(ctx, 'ADMIN/EMILE', t.fx, t.fy - 62, 11, '#ffe27a', { lw: 3 });
+    if (t.level > 0) text(ctx, 'SUPER', t.fx, t.fy - 75, 10, '#ffd23f', { lw: 3 });
     return;
   }
   if (sel) { ctx.strokeStyle = '#ffd23f'; ctx.lineWidth = 2; ell(ctx, t.x, t.y, 20, 6); ctx.stroke(); }
@@ -875,17 +876,17 @@ function drawShop() {
     const x = x0 + 10, y = 156 + i * 104, w = 184, h = 96;
     const can = g.coins >= TT.cost, on = hover(x, y, w, h), sel = g.placing === type;
     ctx.fillStyle = sel ? '#4a4020' : on ? '#2e3658' : '#252c48'; rr(ctx, x, y, w, h, 12); ctx.fill();
-    ctx.strokeStyle = sel ? '#ffd23f' : type === 'emile' ? '#9a5cff' : '#3c4670'; ctx.lineWidth = sel ? 3 : 2; ctx.stroke();
+    ctx.strokeStyle = sel ? '#ffd23f' : type === 'emile' ? '#e8b830' : '#3c4670'; ctx.lineWidth = sel ? 3 : 2; ctx.stroke();
     // portrait
     ctx.save();
     rr(ctx, x + 5, y + 5, 74, h - 10, 9); ctx.clip();
     const bg = ctx.createLinearGradient(0, y, 0, y + h);
-    bg.addColorStop(0, type === 'emile' ? '#3a1a70' : '#5a8a48'); bg.addColorStop(1, type === 'emile' ? '#1a0a40' : '#3d6a32');
+    bg.addColorStop(0, type === 'emile' ? '#6a4a10' : '#5a8a48'); bg.addColorStop(1, type === 'emile' ? '#2a1c06' : '#3d6a32');
     ctx.fillStyle = bg; ctx.fillRect(x, y, 80, h);
-    if (type === 'emile') drawEmile(ctx, x + 38, y + 58, 0.82, T, { face: 1 });
+    if (type === 'emile') drawEmile(ctx, x + 42, y + 40, 0.9, T, { face: 1 });
     else drawPerson(ctx, type, x + 42, y + 160, 1.45, T, { phase: i, noShadow: true, ball: type === 'nafti' });
     ctx.restore();
-    text(ctx, TT.name, x + 132, y + 26, type === 'emile' ? 14 : 20, type === 'emile' ? '#d6bcff' : '#fff', { fam: FONT_TITLE, weight: '400', lw: 4 });
+    text(ctx, TT.name, x + 132, y + 26, type === 'emile' ? 14 : 20, type === 'emile' ? '#ffe27a' : '#fff', { fam: FONT_TITLE, weight: '400', lw: 4 });
     drawCoin(ctx, x + 100, y + 58, 9);
     text(ctx, String(TT.cost), x + 113, y + 59, 18, can ? '#ffd23f' : '#ff7a7a', { stroke: false, align: 'left', weight: '700' });
     text(ctx, TT.air ? 'hits flyers' : 'ground only', x + 132, y + 82, 11, TT.air ? '#9fe8ff' : '#aab', { stroke: false });
@@ -911,11 +912,11 @@ function drawTowerPanel(t) {
   button('X', x0 + 160, 132, 28, 28, () => { g.sel = null; }, '#5a4266', 14);
   // portrait
   ctx.save(); rr(ctx, x0 + 20, 134, 120, 120, 10); ctx.clip();
-  ctx.fillStyle = t.flier ? '#2a1260' : '#4a7a3a'; ctx.fillRect(x0 + 20, 134, 120, 120);
-  if (t.flier) drawEmile(ctx, x0 + 80, 200, 1.2, T, { face: 1 });
+  ctx.fillStyle = t.flier ? '#4a3410' : '#4a7a3a'; ctx.fillRect(x0 + 20, 134, 120, 120);
+  if (t.flier) drawEmile(ctx, x0 + 80, 186, 1.25, T, { face: 1 });
   else drawPerson(ctx, t.type, x0 + 80, 330, 1.9, T, { phase: 0, noShadow: true, ball: t.type === 'nafti' });
   ctx.restore();
-  text(ctx, TT.name, x0 + 102, 274, t.flier ? 17 : 24, t.flier ? '#d6bcff' : '#fff', { fam: FONT_TITLE, weight: '400', lw: 4 });
+  text(ctx, TT.name, x0 + 102, 274, t.flier ? 17 : 24, t.flier ? '#ffe27a' : '#fff', { fam: FONT_TITLE, weight: '400', lw: 4 });
   for (let i = 0; i < TT.levels.length; i++) drawStar(ctx, x0 + 102 - (TT.levels.length - 1) * 12 + i * 24, 300, 9, 0, i <= t.level ? '#ffd23f' : '#3c4670', i <= t.level ? '#a07a10' : '#2a3050');
   text(ctx, (t.level === 0 ? 'Level 1' : L.name), x0 + 102, 322, 14, '#cfd6ff', { stroke: false });
   // upgrade

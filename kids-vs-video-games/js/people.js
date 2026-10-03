@@ -37,6 +37,14 @@ const PEOPLE = {
     shoes: { color: '#b9d8c8', sole: '#ffffff' },
     face: 'open',
   },
+  emile: {
+    skin: '#efc9a8', skinDark: '#d3a281', lip: '#b8665c', eyes: '#3d6a8a',
+    hair: 'short', hairColor: '#7a5432', hairDark: '#4e3420', hairLight: '#a87c4e',
+    top: { kind: 'hoodie', color: '#f6f2e6', trim: '#d9a92c', zip: '#c9961e', badge: true, hoodTrim: true },
+    pants: { color: '#2a2f48', style: 'jogger' },
+    shoes: { color: '#f4f4f0', sole: '#d9a92c', accent: '#d9a92c' },
+    face: 'grin',
+  },
 };
 
 const HEAD_SCALE = 1.35, HEAD_PIVOT = -82;
@@ -69,6 +77,10 @@ function poseFor(who, t, act, st) {
       return { lh: [-1.6, -84.2], rh: act > 0 ? [10 + 10 * act, -64 - 18 * act] : [5.5, -63.5] };
     case 'felix': // holding the stick fishing rod up by the shoulder
       return { lh: [-9 - 2 * act, -83 - 5 * act], rh: restR };
+    case 'emile': {
+      const f = Math.sin(t * 7) * 2;
+      return { lh: [-38, -88 + f], rh: [38, -88 - f] };
+    }
     case 'bill':
       if (st.mood === 'scared') return { lh: [-13, -96 + Math.sin(t * 20) * 2], rh: [13, -96 - Math.sin(t * 20) * 2] };
       return { lh: [-3.5, -63], rh: [3.5, -63] };
@@ -237,6 +249,13 @@ function drawTorso(ctx, P, px) {
       ctx.fillStyle = '#1b1d20'; rr(ctx, 2.4, -75.5, 1.6, 10, 0.7); ctx.fill();
       ctx.fillStyle = '#555'; rr(ctx, 2.5, -75, 1.4, 1.8, 0.3); ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 0.4; line(ctx, -12, -54, -8, -55); line(ctx, 8, -55, 12, -54);
+    }
+    if (T.badge) { // Emile's golden ADMIN shield
+      ctx.fillStyle = '#e8b830';
+      poly(ctx, [[3.6, -75.5], [9.6, -75.5], [9.6, -71.5], [6.6, -68.6], [3.6, -71.5]]); ctx.fill();
+      ctx.strokeStyle = '#a07810'; ctx.lineWidth = 0.4; ctx.stroke();
+      ctx.fillStyle = '#fff8dc'; ctx.font = '900 3.6px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('A', 6.6, -72.6);
     }
     if (T.logo) { // Mio's little green pixel creeper face
       ctx.fillStyle = '#5ec24a'; ctx.fillRect(4.4, -74.6, 4.6, 4.6);
@@ -551,82 +570,103 @@ function drawDizzy(ctx, t) {
 }
 
 // =====================================================================
-//  ADMIN/EMILE: the super-expensive flying creature
+//  ADMIN/EMILE: a flying human with angel wings and a golden aura
+//  (x, y) is the middle of the body. The laser comes out of the right hand.
 // =====================================================================
+const EMILE_BODY = 0.72;   // body size compared to s
 function drawEmile(ctx, x, y, s, t, st) {
   st = st || {};
-  const flap = Math.sin(t * 9);
+  const flap = Math.sin(t * 7);
+  const face = st.face || 1;
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(s * (st.face || 1), s);
-  // glow aura
-  const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, 55);
-  glow.addColorStop(0, 'rgba(160,110,255,0.45)'); glow.addColorStop(1, 'rgba(160,110,255,0)');
-  ctx.fillStyle = glow; circ(ctx, 0, 0, 55); ctx.fill();
-  // floating code symbols
-  ctx.font = '700 9px monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ['</>', '{ }', '01', '#'].forEach((sym, i) => {
-    const a = t * 1.5 + i * Math.PI / 2;
-    ctx.fillStyle = `rgba(150,255,240,${0.55 + Math.sin(t * 3 + i) * 0.3})`;
-    ctx.fillText(sym, Math.cos(a) * 40, Math.sin(a) * 26);
-  });
-  // tail
-  ctx.strokeStyle = '#5a24c8'; ctx.lineWidth = 7; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(-14, 4); ctx.quadraticCurveTo(-34, 14 + flap * 3, -44, 2); ctx.stroke();
-  ctx.fillStyle = '#ffcf3a'; poly(ctx, [[-44, -6], [-54, 2], [-44, 10], [-47, 2]]); ctx.fill();
-  // back wing
-  drawWing(ctx, -2, -8, flap, '#4b1ca6', -1);
-  // body
-  const bg = ctx.createLinearGradient(0, -16, 0, 16);
-  bg.addColorStop(0, '#9a5cff'); bg.addColorStop(1, '#5a24c8');
-  ctx.fillStyle = bg; ell(ctx, 0, 0, 22, 15); ctx.fill();
-  ctx.fillStyle = '#d6bcff'; ell(ctx, 4, 6, 13, 7); ctx.fill();
-  ctx.strokeStyle = 'rgba(90,36,200,0.6)'; ctx.lineWidth = 1;
-  for (let i = -2; i <= 2; i++) line(ctx, 4 + i * 4, 1, 4 + i * 4, 11);
-  // little legs
-  ctx.fillStyle = '#5a24c8'; ell(ctx, -6, 14, 4, 3); ctx.fill(); ell(ctx, 8, 14, 4, 3); ctx.fill();
-  // head
-  ctx.fillStyle = '#8a4cf2'; circ(ctx, 20, -12, 12); ctx.fill();
-  ctx.fillStyle = '#9a5cff'; ell(ctx, 31, -8, 9, 6.5); ctx.fill();
-  ctx.fillStyle = '#3a1290'; circ(ctx, 37, -10, 1.2); ctx.fill();
-  // horns
-  ctx.fillStyle = '#ffe9a8';
-  poly(ctx, [[12, -20], [6, -32], [16, -22]]); ctx.fill();
-  poly(ctx, [[18, -23], [16, -36], [23, -23]]); ctx.fill();
-  // golden crown
-  ctx.fillStyle = '#ffcf3a';
-  poly(ctx, [[12, -22], [12, -30], [16, -26], [20, -33], [24, -26], [28, -30], [28, -22]]); ctx.fill();
-  ctx.strokeStyle = '#c99410'; ctx.lineWidth = 0.8; ctx.stroke();
-  ctx.fillStyle = '#ff3b5c'; circ(ctx, 20, -25, 1.8); ctx.fill();
-  // glowing eyes
-  ctx.fillStyle = 'rgba(120,255,240,0.5)'; circ(ctx, 24, -14, 5); ctx.fill();
-  ctx.fillStyle = '#7dfff0'; ell(ctx, 24, -14, 3, 2.4); ctx.fill();
-  ctx.fillStyle = '#fff'; circ(ctx, 25, -15, 1); ctx.fill();
-  // smile with a fang
-  ctx.strokeStyle = '#2a0a70'; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(26, -4); ctx.quadraticCurveTo(31, -1, 37, -5); ctx.stroke();
-  ctx.fillStyle = '#fff'; poly(ctx, [[30, -2.4], [31.5, -2.6], [30.8, 0.5]]); ctx.fill();
-  // red admin cape
-  ctx.fillStyle = '#e8304a';
-  ctx.beginPath(); ctx.moveTo(8, -10); ctx.quadraticCurveTo(-8, -6, -20, 8 + flap * 2); ctx.lineTo(-10, 10); ctx.quadraticCurveTo(0, 2, 10, -4); ctx.closePath(); ctx.fill();
-  // front wing
-  drawWing(ctx, 2, -10, flap, '#7a3cff', 1);
+  // golden aura
+  const R = 72 * s;
+  const glow = ctx.createRadialGradient(0, -6 * s, 4 * s, 0, -6 * s, R);
+  glow.addColorStop(0, 'rgba(255,236,140,0.75)');
+  glow.addColorStop(0.45, 'rgba(255,205,70,0.35)');
+  glow.addColorStop(1, 'rgba(255,190,40,0)');
+  ctx.fillStyle = glow; circ(ctx, 0, -6 * s, R); ctx.fill();
+  // slowly turning rays of light
+  ctx.save();
+  ctx.translate(0, -6 * s); ctx.rotate(t * 0.4);
+  ctx.fillStyle = 'rgba(255,220,90,0.16)';
+  for (let i = 0; i < 12; i++) {
+    ctx.rotate(Math.PI / 6);
+    poly(ctx, [[0, 0], [-4 * s, -R * 1.15], [4 * s, -R * 1.15]]); ctx.fill();
+  }
+  ctx.restore();
+  // golden sparkles
+  for (let i = 0; i < 7; i++) {
+    const a = t * 1.1 + i * Math.PI * 2 / 7, r = (40 + Math.sin(t * 2 + i) * 8) * s;
+    const k = 0.5 + Math.sin(t * 5 + i * 2) * 0.5;
+    ctx.fillStyle = `rgba(255,240,170,${0.4 + k * 0.6})`;
+    sparkle(ctx, Math.cos(a) * r, -6 * s + Math.sin(a) * r * 0.75, (1.5 + k * 2.5) * s);
+  }
+  // the body (in person units, feet at 0)
+  const p = s * EMILE_BODY;
+  ctx.translate(0, 50 * s);
+  ctx.scale(face, 1);
+  ctx.rotate(0.08 + Math.sin(t * 1.3) * 0.04);
+  ctx.save();
+  ctx.scale(p, p);
+  drawAngelWing(ctx, -1, flap);
+  drawAngelWing(ctx, 1, flap);
+  ctx.restore();
+  drawPerson(ctx, 'emile', 0, 0, p, t, { noShadow: true, phase: 1.5, zoom: 1 });
+  ctx.scale(p, p);
+  // golden halo
+  ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2.4;
+  ctx.shadowColor = '#ffe680'; ctx.shadowBlur = 8 * p;
+  ell(ctx, 0, -118, 11, 3); ctx.stroke();
+  ctx.shadowBlur = 0;
+  // power glowing in the laser hand
+  const pulse = 0.6 + Math.sin(t * 12) * 0.4;
+  ctx.fillStyle = `rgba(255,240,150,${0.45 * pulse})`; circ(ctx, 40, -86, 9 + pulse * 3); ctx.fill();
+  ctx.fillStyle = '#fffbe0'; circ(ctx, 40, -86, 3.5); ctx.fill();
   ctx.restore();
 }
 
-function drawWing(ctx, x, y, flap, color, layer) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.scale(1, 0.35 + (flap * 0.5 + 0.5) * 0.85 * (layer > 0 ? 1 : 0.9));
-  ctx.fillStyle = color;
+function sparkle(ctx, x, y, r) {
   ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.lineTo(-10, -38); ctx.lineTo(8, -46); ctx.lineTo(26, -36);
-  ctx.quadraticCurveTo(20, -28, 22, -20);
-  ctx.quadraticCurveTo(14, -20, 12, -12);
-  ctx.quadraticCurveTo(6, -10, 0, 0);
-  ctx.fill();
-  ctx.strokeStyle = shade(color, 0.35); ctx.lineWidth = 1.4;
-  line(ctx, 0, 0, -10, -38); line(ctx, 0, 0, 8, -46); line(ctx, 0, 0, 26, -36);
+  ctx.moveTo(x, y - r * 2); ctx.quadraticCurveTo(x, y, x + r * 2, y);
+  ctx.quadraticCurveTo(x, y, x, y + r * 2); ctx.quadraticCurveTo(x, y, x - r * 2, y);
+  ctx.quadraticCurveTo(x, y, x, y - r * 2); ctx.fill();
+}
+
+// One big feathered angel wing growing out of the back. side = -1 (left) or 1 (right)
+function drawAngelWing(ctx, side, flap) {
+  ctx.save();
+  ctx.translate(side * 5, -74);
+  ctx.scale(side * 1.35, 1.35);
+  ctx.rotate(-0.45 - flap * 0.38);
+  // long flight feathers
+  for (let i = 7; i >= 0; i--) {
+    const k = i / 7;
+    const bx = k * 52, by = -k * k * 22;
+    const len = 20 + k * 26;
+    ctx.save();
+    ctx.translate(bx, by); ctx.rotate(1.05 - k * 0.75);
+    const g = ctx.createLinearGradient(0, 0, 0, len);
+    g.addColorStop(0, '#ffffff'); g.addColorStop(0.7, '#fff6dc'); g.addColorStop(1, '#f2cf6a');
+    ctx.fillStyle = g;
+    ell(ctx, 0, len * 0.5, 5, len * 0.55); ctx.fill();
+    ctx.strokeStyle = '#d9b45a'; ctx.lineWidth = 0.6; ctx.stroke();
+    ctx.strokeStyle = 'rgba(200,160,60,0.5)'; ctx.lineWidth = 0.4; line(ctx, 0, 2, 0, len * 0.95);
+    ctx.restore();
+  }
+  // small soft feathers along the top
+  for (let i = 0; i < 7; i++) {
+    const k = i / 6;
+    ctx.save();
+    ctx.translate(k * 46, -k * k * 20 + 2); ctx.rotate(1.2 - k * 0.6);
+    ctx.fillStyle = '#fffdf6'; ell(ctx, 0, 6, 4.4, 8); ctx.fill();
+    ctx.strokeStyle = '#e6c97a'; ctx.lineWidth = 0.5; ctx.stroke();
+    ctx.restore();
+  }
+  // the top edge of the wing
+  ctx.strokeStyle = '#fffaf0'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(28, -2, 52, -22); ctx.stroke();
+  ctx.strokeStyle = '#e8c766'; ctx.lineWidth = 1; ctx.stroke();
   ctx.restore();
 }

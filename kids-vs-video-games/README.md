@@ -33,7 +33,7 @@ who is hiding in the climbing fort. Put **Mio**, **Nafti** and **Felix** next to
 | **Nafti** | 250 | Throws dodgeballs super fast. Can't hit flying enemies. | Double Throw | **Time Watch**: freezes time for every enemy nearby! |
 | **Felix** | 350 | Stick fishing rod: hooks enemies and yanks them BACK. | Double Hook | **Big Catch**: catches the strongest enemy and takes it out of the game! |
 | **Mio** | 400 | "Shhh!" Magic stick bolts from far away. Puts enemies to sleep. | Sleepy Spell | **Creeper Blast**: every bolt explodes! |
-| **ADMIN/EMILE** | 5000 | A flying creature that zooms around the WHOLE map shooting lasers, and slams the **BAN HAMMER** that deletes every enemy on screen. Totally overpowered. | **SUPER ADMIN** (7500) | |
+| **ADMIN/EMILE** | 5000 | A flying human with angel wings, a halo and a golden aura who zooms around the WHOLE map shooting lasers, and slams the **BAN HAMMER** that deletes every enemy on screen. Totally overpowered. | **SUPER ADMIN** (7500) | |
 
 ## The video game characters
 
