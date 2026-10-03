@@ -11,6 +11,10 @@ SR.Input = (function () {
   let locked = false, canvas = null, enabled = false;
   const touch = { on: false, stick: null, look: null, jumpHeld: false, slideHeld: false, sx: 0, sy: 0 };
   let pad = null, padPrev = {};
+  // AUTO PARKOUR steering: -1 = far left, 1 = far right. Mouse, finger and keys all change it.
+  let steer = 0;
+  const isAuto = () => SR.settings.controls !== 'manual';
+  const steerFromX = (x) => { steer = SR.U.clamp((x / window.innerWidth * 2 - 1) * 1.35, -1, 1); };
 
   const BIND = {
     KeyW: 'fwd', ArrowUp: 'fwd', KeyS: 'back', ArrowDown: 'back', KeyA: 'left', KeyD: 'right',
@@ -38,14 +42,21 @@ SR.Input = (function () {
       if (was && !locked && enabled) presses.add('unlock');
     });
     document.addEventListener('mousemove', (e) => {
+      // auto parkour: where the mouse is on the screen is where you run
+      if (isAuto()) { if (enabled && !touch.on) steerFromX(e.clientX); return; }
       // if the mouse can't be locked (some browsers and embedded pages), moving it still steers
       if (!locked) { if (enabled && !touch.on && Math.abs(e.movementX) < 200) look.x += e.movementX * 1.2; return; }
       // some browsers send giant jumps sometimes, ignore those
       if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;
       look.x += e.movementX; look.y += e.movementY;
     });
+    const autoClick = (e) => {
+      if (e.button === 0) presses.add('fire');
+      if (e.button === 2) presses.add('sigma');
+    };
     canvas.addEventListener('mousedown', (e) => {
       if (touch.on) return;
+      if (isAuto()) { if (enabled) autoClick(e); return; }
       if (!locked && enabled) { lock(); return; }
       if (e.button === 0) presses.add('fire');
       if (e.button === 2) presses.add('sigma');
@@ -53,7 +64,7 @@ SR.Input = (function () {
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
     // touch screen
-    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) initTouch();
+    initTouch();
     window.addEventListener('gamepadconnected', (e) => { pad = e.gamepad.index; });
   }
 
@@ -76,6 +87,12 @@ SR.Input = (function () {
     const area = document.getElementById('touchArea');
     const stickEl = document.getElementById('stick'), knob = document.getElementById('knob');
     area.addEventListener('pointerdown', (e) => {
+      if (isAuto()) {
+        // auto parkour: touch anywhere and slide your finger left and right to steer
+        if (e.pointerType === 'mouse') { if (enabled) autoClick(e); return; }
+        touchOn(); touch.look = { id: e.pointerId }; steerFromX(e.clientX);
+        return;
+      }
       if (e.pointerType === 'mouse') return;
       touchOn();
       const left = e.clientX < window.innerWidth * 0.4;
@@ -87,6 +104,7 @@ SR.Input = (function () {
       }
     });
     area.addEventListener('pointermove', (e) => {
+      if (isAuto()) { if (e.pointerType === 'mouse') { if (enabled) steerFromX(e.clientX); } else if (touch.look && touch.look.id === e.pointerId) steerFromX(e.clientX); return; }
       if (touch.stick && touch.stick.id === e.pointerId) {
         let dx = e.clientX - touch.stick.x0, dy = e.clientY - touch.stick.y0;
         const l = Math.hypot(dx, dy), max = 50;
@@ -129,6 +147,7 @@ SR.Input = (function () {
     padPrev = st;
     look.x += dz(gp.axes[2] || 0) * 900 * dt;
     look.y += dz(gp.axes[3] || 0) * 600 * dt;
+    if (isAuto() && Math.abs(gp.axes[0] || 0) > 0.15) steer = SR.U.clamp(gp.axes[0], -1, 1);
     return { x: dz(gp.axes[0] || 0), y: -dz(gp.axes[1] || 0), jump: st.jump, slide: st.slide };
   }
 
@@ -139,6 +158,11 @@ SR.Input = (function () {
     let my = (keys.fwd ? 1 : 0) - (keys.back ? 1 : 0);
     if (p) { mx += p.x; my += p.y; }
     if (touch.stick) { mx += touch.sx; my -= touch.sy; }
+    // auto parkour: keys move you left and right
+    if (isAuto()) {
+      const dir = (keys.right || keys.turnR ? 1 : 0) - (keys.left || keys.turnL ? 1 : 0);
+      if (dir) steer = SR.U.clamp(steer + dir * 2.6 * dt, -1, 1);
+    }
     // keyboard turning with the arrow keys
     const turn = (keys.turnR ? 1 : 0) - (keys.turnL ? 1 : 0);
     const out = {
@@ -147,6 +171,7 @@ SR.Input = (function () {
       jumpHeld: !!keys.jump || touch.jumpHeld || (p && p.jump),
       slideHeld: !!keys.slide || touch.slideHeld || (p && p.slide),
       pressed: new Set(presses),
+      steer,
     };
     look.x = look.y = 0;
     presses.clear();
@@ -157,6 +182,8 @@ SR.Input = (function () {
     init, read, lock, unlock,
     setEnabled(v) { enabled = v; if (!v) { presses.clear(); look.x = look.y = 0; } },
     clear() { presses.clear(); look.x = look.y = 0; },
+    resetSteer() { steer = 0; },
+    isAuto,
     get locked() { return locked; },
     get touch() { return touch.on; },
     keyHeld: (k) => !!keys[k],

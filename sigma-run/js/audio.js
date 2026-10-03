@@ -2,9 +2,9 @@
 //  SIGMA RUN — MUSIC & SOUNDS
 //  Every sound is made with math (oscillators + noise), so
 //  there are no sound files at all!
-//  The music is a PHONK beat: cowbell melody, booming 808 bass,
-//  half-time drums and fast hi-hats. It gets more intense when
-//  the FBI is after you, and goes CRAZY in SIGMA MODE.
+//  Two songs: SKYLINE (upbeat EDM) and SIGMA PHONK (cowbells and
+//  808 bass). Pick one in SETTINGS. They get more intense when
+//  the FBI is after you, and go CRAZY in SIGMA MODE.
 // ============================================================
 window.SR = window.SR || {};
 
@@ -31,7 +31,7 @@ SR.Audio = (function () {
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     // echo (like between tall buildings)
-    echo = ctx.createDelay(1.5); echo.delayTime.value = 60 / 140 * 0.75;
+    echo = ctx.createDelay(1.5); echo.delayTime.value = 60 / BPMS[track] * 0.75;
     const fb = ctx.createGain(); fb.gain.value = 0.32;
     const eFilt = ctx.createBiquadFilter(); eFilt.type = 'lowpass'; eFilt.frequency.value = 3000;
     echoSend = ctx.createGain(); echoSend.gain.value = 1;
@@ -110,7 +110,10 @@ SR.Audio = (function () {
   }
 
   // ======================= MUSIC =======================
-  const BPM = 140, STEP = 60 / BPM / 4;
+  // the song that plays: 'edm' (SKYLINE), 'phonk' (SIGMA PHONK) or 'off'
+  let track = SR.settings.track || 'edm';
+  const BPMS = { edm: 128, phonk: 140, off: 128 };
+  let STEP = 60 / BPMS[track] / 4;
   const ROOT = 61; // C#4
   // cowbell melody, 4 bars x 16 steps (null = rest), numbers = semitones above the root
   const _ = null;
@@ -188,7 +191,7 @@ SR.Audio = (function () {
     }
   }
 
-  function scheduleStep(t) {
+  function phonkStep(t) {
     const s = step % 16, b = bar % 4;
     const section = Math.floor(bar / 8) % 2; // switch melody every 8 bars
     const I = intensity;
@@ -222,6 +225,102 @@ SR.Audio = (function () {
         if (I >= 3) cowbell(t, m + 12, 0.45);
       }
     }
+  }
+
+  // ---------------- SKYLINE: an upbeat EDM song (128 BPM, A minor) ----------------
+  const E_CH = [[57, 60, 64], [53, 57, 60], [48, 52, 55], [55, 59, 62]];   // Am, F, C, G
+  const E_BASS = [45, 41, 48, 43];
+  const E_LEAD_A = [
+    [76, _, 76, _, 74, _, 76, _, _, _, 79, _, 76, _, 74, _],
+    [72, _, 72, _, 69, _, 72, _, _, _, 74, _, 72, _, 69, _],
+    [76, _, 76, _, 79, _, 81, _, _, _, 79, _, 76, _, 74, _],
+    [74, _, _, 71, 74, _, 76, _, 79, _, _, _, 74, _, _, _],
+  ];
+  const E_LEAD_B = [
+    [81, _, 79, _, 76, _, 79, _, 81, _, 84, _, 81, _, 79, _],
+    [77, _, 76, _, 72, _, 76, _, 77, _, 81, _, 79, _, 77, _],
+    [79, _, 76, _, 72, _, 76, _, 79, _, 84, _, 83, _, 81, _],
+    [79, _, _, _, 74, _, 76, _, 78, _, 79, _, _, _, _, _],
+  ];
+  // chords that "pump" with the kick drum
+  function pumpChord(t, notes, len, vol) {
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.03 * vol, t + len * 0.45);
+    g.gain.setValueAtTime(0.03 * vol, t + len * 0.85);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = intensity >= 2 ? 3200 : 2000; f.Q.value = 0.8;
+    f.connect(g); g.connect(music); g.connect(verbSend);
+    for (const n of notes) for (const det of [-14, 0, 14]) {
+      const o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.value = hz(n); o.detune.value = det;
+      o.connect(f); o.start(t); o.stop(t + len + 0.02);
+    }
+  }
+  function lead(t, n, vol = 1) {
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.075 * vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.025 * vol, t + 0.12);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 4200;
+    f.connect(g); g.connect(music); g.connect(echoSend);
+    for (const [type, det, mul] of [['sawtooth', -8, 1], ['sawtooth', 8, 1], ['square', 0, 0.5]]) {
+      const o = ctx.createOscillator(); o.type = type; o.frequency.value = hz(n) * mul; o.detune.value = det;
+      o.connect(f); o.start(t); o.stop(t + 0.35);
+    }
+  }
+  function pluckBass(t, n, len, vol = 1) {
+    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = hz(n);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.Q.value = 3;
+    f.frequency.setValueAtTime(1400, t); f.frequency.exponentialRampToValueAtTime(220, t + len);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.28 * vol, t + 0.005); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(f); f.connect(g); g.connect(music);
+    const sub = ctx.createOscillator(); sub.type = 'sine'; sub.frequency.value = hz(n - 12);
+    const sg = ctx.createGain(); sg.gain.setValueAtTime(0.0001, t); sg.gain.exponentialRampToValueAtTime(0.3 * vol, t + 0.01); sg.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    sub.connect(sg); sg.connect(music);
+    o.start(t); o.stop(t + len + 0.02); sub.start(t); sub.stop(t + len + 0.02);
+  }
+  function edmStep(t) {
+    const s = step % 16, b = bar % 4, in8 = bar % 8, sec = Math.floor(bar / 8) % 2;
+    const I = intensity;
+    const ch = E_CH[b];
+    if (s % 4 === 0) pumpChord(t, ch, STEP * 4, I === 0 ? 1.3 : 1);
+    const arpNote = ch[[0, 1, 2, 1][s % 4]] + 12 + (s >= 8 ? 12 : 0);
+    if (I === 0) {
+      // menu: just chords and a soft sparkle
+      if (s % 2 === 0) tone('triangle', hz(arpNote), hz(arpNote), 0.12, 0.03, { at: t, bus: music, echo: true });
+      if (s === 0) pluckBass(t, E_BASS[b], STEP * 8, 0.6);
+      return;
+    }
+    // drums: four on the floor
+    if (s % 4 === 0) kick(t, 1);
+    if (s === 4 || s === 12) clap(t, 0.75);
+    if (s % 4 === 2) hat(t, true, 0.65);
+    if (I >= 2 && s % 2 === 1) hat(t, false, 0.45);
+    // bass bounces between the kicks
+    if (s % 4 === 2) pluckBass(t, E_BASS[b] + 12, STEP * 1.8);
+    if (I >= 2 && s % 4 === 3) pluckBass(t, E_BASS[b] + 12, STEP * 0.9, 0.6);
+    // sparkly arpeggio
+    if (I >= 2 || in8 >= 2) tone('triangle', hz(arpNote), hz(arpNote), 0.09, 0.03, { at: t, bus: music, echo: true });
+    // the catchy hook
+    if (I >= 2 || in8 >= 4) {
+      const n = (sec ? E_LEAD_B : E_LEAD_A)[b][s];
+      if (n !== null) { lead(t, n); if (I >= 3) lead(t, n + 12, 0.5); }
+    }
+    // drum roll before the next part
+    if (in8 === 7 && s >= 8) clap(t, 0.25 + (s - 8) * 0.07);
+  }
+  function scheduleStep(t) {
+    if (track === 'phonk') phonkStep(t);
+    else if (track === 'edm') edmStep(t);
+  }
+  function setTrack(name) {
+    track = name;
+    STEP = 60 / BPMS[name] / 4;
+    if (echo) echo.delayTime.value = 60 / BPMS[name] * 0.75;
+    if (ctx) { step = 0; bar = 0; nextStep = now() + 0.08; }
   }
   function tick() {
     if (!ctx || !musicOn) return;
@@ -446,7 +545,7 @@ SR.Audio = (function () {
   }
 
   return {
-    init, S, setLoop, stopLoops, startMusic, stopMusic, setIntensity, restartBeat, muffle, applyVolumes, setMuted,
+    init, S, setLoop, stopLoops, startMusic, setTrack, stopMusic, setIntensity, restartBeat, muffle, applyVolumes, setMuted,
     get ready() { return !!ctx; },
     get intensity() { return intensity; },
   };

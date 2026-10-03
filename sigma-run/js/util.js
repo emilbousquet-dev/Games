@@ -22,6 +22,8 @@ SR.settings = Object.assign({
   music: 0.8,
   sfx: 0.9,
   invertY: false,
+  controls: 'auto',   // 'auto' = AUTO PARKOUR (you only steer), 'manual' = do every move yourself
+  track: 'edm',       // music: 'edm', 'phonk' or 'off'
 }, SR.store.get('settings', {}));
 // phones and tablets start on MEDIUM graphics
 if (!SR.store.get('settings', null) && (navigator.maxTouchPoints > 0 && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent))) SR.settings.gfx = 'medium';

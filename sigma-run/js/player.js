@@ -614,7 +614,7 @@ SR.Player = (function () {
       P.pos.z + r.z * bobX + (Math.random() - 0.5) * sh * 0.5);
     // the roll after a big fall spins the camera forward all the way round
     const spin = P.rollAnim > 0 ? (1 - P.rollAnim) * Math.PI * 2 : 0;
-    cam.rotation.set(P.pitch - spin + (Math.random() - 0.5) * sh * 0.06, P.yaw, P.roll + Math.sin(P.bob) * 0.006 * P.bobAmp, 'YXZ');
+    cam.rotation.set(P.pitch - spin + (Math.random() - 0.5) * sh * 0.06, P.yaw + (P.camYaw || 0), P.roll + Math.sin(P.bob) * 0.006 * P.bobAmp, 'YXZ');
     if (P.rollAnim > 0) cam.position.y -= Math.sin((1 - P.rollAnim) * Math.PI) * 0.7;
     const speedFov = U.clamp((P.speed - 11) * 1.1, 0, 14);
     const fov = SR.settings.fov + speedFov + P.fovKick;

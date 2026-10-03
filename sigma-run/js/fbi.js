@@ -512,15 +512,17 @@ SR.FBI = (function () {
   // ------------------------------------------------------------
   //  YOUR ROCKETS
   // ------------------------------------------------------------
-  function pickTarget(origin, dir) {
-    let best = null, bestScore = -1;
+  // any = true: don't care where you look (auto parkour), just pick the best target in front of you
+  function pickTarget(origin, dir, any) {
+    let best = null, bestScore = -Infinity;
     const consider = (pos, kind, ref, weight) => {
       const v = pos.clone().sub(origin);
       const dist = v.length();
       if (dist > 170 || dist < 2) return;
+      if (any && pos.z > origin.z + 15) return;
       const dot = v.normalize().dot(dir);
-      if (dot < 0.82) return;
-      const score = dot * weight - dist * 0.001;
+      if (!any && dot < 0.82) return;
+      const score = any ? weight * 10 - dist * 0.02 : dot * weight - dist * 0.001;
       if (score > bestScore) { bestScore = score; best = { kind, ref }; }
     };
     if (heli && heli.state !== 'crash') consider(heli.pos, 'heli', heli, 1.2);
@@ -535,14 +537,17 @@ SR.FBI = (function () {
     if (t.kind === 'agent') return (t.ref.state === 'chase' || t.ref.state === 'pop') ? new THREE.Vector3(t.ref.x, t.ref.y + 1, t.ref.z) : null;
     return null;
   }
-  function fireRocket(camera, from) {
+  function fireRocket(camera, from, any) {
     const r = rockets.find((q) => !q.on);
     if (!r) return false;
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
     r.on = true; r.t = 0;
     r.g.visible = true; r.g.position.copy(from);
+    r.target = pickTarget(camera.position, dir, any);
+    const tp = targetPos(r.target);
+    // in auto mode the rocket starts flying toward its target (a bit upward, it looks cool)
+    if (any && tp) dir.copy(tp).sub(from).normalize().add(new THREE.Vector3(0, 0.35, 0)).normalize();
     r.vel.copy(dir).multiplyScalar(48);
-    r.target = pickTarget(camera.position, dir);
     return true;
   }
   function updateRockets(dt, P) {
@@ -603,9 +608,9 @@ SR.FBI = (function () {
     for (const d of drones) if (d.on && d.state !== 'come') n++;
     return n;
   }
-  function lockTarget(camera) {
+  function lockTarget(camera, any) {
     const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-    const t = pickTarget(camera.position, dir);
+    const t = pickTarget(camera.position, dir, any);
     return t ? targetPos(t) : null;
   }
   function missileDirs(P) {

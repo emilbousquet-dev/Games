@@ -159,7 +159,19 @@
 
   /* touch controls */
   #touch { position: fixed; inset: 0; z-index: 12; display: none; pointer-events: none; }
-  body.touchmode #touch.on { display: block; }
+  body.touchmode #touch.on, body.automode #touch.on { display: block; }
+  /* AUTO PARKOUR: no jump/slide buttons, just two big ones (they work with the mouse too) */
+  body.automode #tJump, body.automode #tSlide, body.automode #stick { display: none !important; }
+  body.automode .tbtn { cursor: pointer; }
+  body.automode #tFire { right: 24px; bottom: 24px; width: 112px; height: 112px; font-size: 40px; flex-direction: column; background: rgba(255,122,26,0.28); border-color: #ff9a4a; }
+  body.automode #tSigma { left: 24px; right: auto; bottom: 24px; width: 112px; height: 112px; font-size: 40px; flex-direction: column; background: rgba(255,210,26,0.22); border-color: var(--gold); color: var(--gold); }
+  body.automode .tbtn small { font-family: var(--display); font-size: 15px; letter-spacing: 2px; }
+  body.automode #tFire small { color: #fff; }
+  body.automode .sigmaReady { display: none !important; }
+  body.automode #tSigma:not(.dim) { animation: pulse 0.5s infinite alternate; box-shadow: 0 0 26px var(--gold); background: rgba(255,210,26,0.5); color: #fff; }
+  body.automode #tFire:not(.dim) { box-shadow: 0 0 20px rgba(255,140,40,0.7); }
+  body.automode #touchArea { cursor: crosshair; }
+  @media (max-width: 700px) { body.automode #tFire, body.automode #tSigma { width: 88px; height: 88px; font-size: 30px; } }
   #touchArea { position: absolute; inset: 0; pointer-events: auto; }
   .tbtn { position: absolute; pointer-events: auto; border-radius: 50%; background: rgba(255,255,255,0.14); border: 3px solid rgba(255,255,255,0.45); color: #fff; font-family: var(--display); font-size: 18px;
     display: flex; align-items: center; justify-content: center; letter-spacing: 1px; }
@@ -221,8 +233,8 @@
   <div id="stick"><div id="knob"></div></div>
   <div class="tbtn" id="tJump">JUMP</div>
   <div class="tbtn" id="tSlide">SLIDE</div>
-  <div class="tbtn" id="tFire">🚀</div>
-  <div class="tbtn" id="tSigma">SIGMA</div>
+  <div class="tbtn" id="tFire">🚀<small>ROCKET</small></div>
+  <div class="tbtn" id="tSigma">Σ<small>SIGMA</small></div>
   <div class="tbtn" id="tPause">❚❚</div>
 </div>
 
@@ -247,7 +259,15 @@
 <div class="screen dim" id="sHow">
   <div class="panel">
     <h2>HOW TO PLAY</h2>
-    <table class="controls">
+    <table class="controls" id="howAuto">
+      <tr><td>AUTO PARKOUR</td><td>Your runner runs, jumps, climbs, wall runs, slides and grabs ziplines <b>by himself</b>!</td></tr>
+      <tr><td>Steer</td><td>Move the <b>mouse</b> left and right (or slide your finger anywhere on the screen, or <kbd>A</kbd> <kbd>D</kbd>). Grab coins and dodge missiles!</td></tr>
+      <tr><td>🚀 Rocket</td><td>Press the <b>ROCKET</b> button (or click, or <kbd>F</kbd>). Rockets fly to the helicopter by themselves!</td></tr>
+      <tr><td>Σ Sigma mode</td><td>Do tricks to fill the Σ bar, then press the <b>SIGMA</b> button (or <kbd>E</kbd>)</td></tr>
+      <tr><td>Pause</td><td><kbd>Esc</kbd> or <kbd>P</kbd> · <kbd>M</kbd> mutes the sound</td></tr>
+      <tr><td>Want to do every move yourself?</td><td>Pick <b>MANUAL</b> controls in SETTINGS</td></tr>
+    </table>
+    <table class="controls" id="howManual" hidden>
       <tr><td>Run</td><td>You run by yourself! (hold <kbd>S</kbd> to stop)</td></tr>
       <tr><td>Steer</td><td>Move the <b>mouse</b>, or <kbd>A</kbd> <kbd>D</kbd> to step sideways, or <kbd>←</kbd> <kbd>→</kbd> to turn</td></tr>
       <tr><td>Jump</td><td><kbd>Space</kbd>. Jump near a wall to <b>WALL RUN</b>, press <kbd>Space</kbd> again to jump off it!</td></tr>
@@ -269,6 +289,8 @@
 <div class="screen dim" id="sSettings">
   <div class="panel">
     <h2>SETTINGS</h2>
+    <div class="setRow">Controls <div class="seg" id="setCtrl"><button data-v="auto">AUTO PARKOUR</button><button data-v="manual">MANUAL</button></div></div>
+    <div class="setRow">Music <div class="seg" id="setTrack"><button data-v="edm">SKYLINE</button><button data-v="phonk">SIGMA PHONK</button><button data-v="off">OFF</button></div></div>
     <div class="setRow">Graphics <div class="seg" id="setGfx"><button data-v="low">LOW</button><button data-v="medium">MEDIUM</button><button data-v="high">HIGH</button><button data-v="ultra">ULTRA</button></div></div>
     <div class="setRow">Mouse speed <input type="range" id="setSens" min="0.2" max="3" step="0.05"></div>
     <div class="setRow">Field of view <input type="range" id="setFov" min="65" max="105" step="1"></div>
@@ -299,6 +321,7 @@
   <div class="row">
     <button class="btn alt" id="bRestart">↻ RESTART</button>
     <button class="btn alt" id="bPSettings">⚙ SETTINGS</button>
+    <button class="btn alt" id="bMusic">♪ MUSIC: SKYLINE</button>
     <button class="btn alt" id="bQuit">⌂ MENU</button>
   </div>
 </div>
@@ -339,6 +362,7 @@
 <script src="js/level.js"></script>
 <script src="js/player.js"></script>
 <script src="js/fbi.js"></script>
+<script src="js/auto.js"></script>
 <script src="js/hud.js"></script>
 <script src="js/game.js"></script>
 </body>

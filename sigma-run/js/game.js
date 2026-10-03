@@ -17,6 +17,8 @@ SR.Game = (function () {
   // when the FBI gets more serious (distance in meters)
   const WANTED_AT = [0, 250, 600, 1000, 1600, 2300];
   const WANTED_MSG = ['', 'THE FBI IS ON TO YOU!', 'HELICOPTER INCOMING!', 'THEY HAVE MISSILES! WATCH THE RED RINGS!', 'ATTACK DRONES!', 'MAXIMUM WANTED LEVEL!'];
+  const WANTED_TIP_AUTO = ['', 'FBI agents! Your runner slide-tackles them by himself!', 'Grab a 🚀 and press the ROCKET button to shoot the helicopter down!',
+    'Missiles land on the RED RINGS: steer away from them!', 'Drones dive at you: steer left or right!', ''];
   const WANTED_TIP = ['', 'FBI agents! SLIDE into them, or JUMP on their heads!', 'Grab a 🚀 ROCKET LAUNCHER to shoot the helicopter down!',
     'Missiles land on the RED RINGS: get out of the way!', 'Drones dive at you: move left or right!', ''];
 
@@ -147,7 +149,7 @@ SR.Game = (function () {
     if (run.sigmaT <= 0) {
       const before = run.sigma;
       run.sigma = Math.min(1, run.sigma + pts / 420);
-      if (before < 1 && run.sigma >= 1) { S().aura(); SR.HUD.big('Σ SIGMA READY', SR.Input.touch ? 'TAP THE SIGMA BUTTON!' : 'PRESS E!', '#ffd21a'); }
+      if (before < 1 && run.sigma >= 1) { S().aura(); SR.HUD.big('Σ SIGMA READY', SR.Input.touch || SR.Input.isAuto() ? 'PRESS THE SIGMA BUTTON!' : 'PRESS E!', '#ffd21a'); }
     }
     SR.HUD.feed(name, total);
   }
@@ -172,7 +174,7 @@ SR.Game = (function () {
         case 'double': run.double = 15; break;
         case 'heart': if (run.hearts < run.maxHearts) run.hearts++; else run.aura += 100; break;
       }
-      SR.HUD.big(T.name + '!', type === 'rocket' ? (SR.Input.touch ? 'TAP 🚀 TO FIRE' : 'CLICK TO FIRE AT THE HELICOPTER') : type === 'jump' ? 'JUMP AGAIN IN THE AIR!' : '', '#' + new THREE.Color(T.color).getHexString());
+      SR.HUD.big(T.name + '!', type === 'rocket' ? (SR.Input.isAuto() ? 'PRESS THE 🚀 BUTTON TO FIRE!' : SR.Input.touch ? 'TAP 🚀 TO FIRE' : 'CLICK TO FIRE AT THE HELICOPTER') : type === 'jump' ? 'JUMP AGAIN IN THE AIR!' : '', '#' + new THREE.Color(T.color).getHexString());
       run.aura += 20;
     };
     const F = SR.FBI.cb;
@@ -291,7 +293,10 @@ SR.Game = (function () {
     SR.HUD.big('READY?', SR.Level.tutorial ? 'GET TO THE END OF THE CITY... IF YOU CAN' : '', '#ffffff');
     showScreen(null);
     SR.Input.setEnabled(true);
-    SR.Input.lock();
+    SR.Input.resetSteer(); SR.Auto.reset();
+    applyControlMode();
+    if (!SR.Input.isAuto()) SR.Input.lock();
+    else SR.HUD.hint(SR.Input.touch ? 'Slide your finger LEFT and RIGHT to steer. Everything else is automatic!' : 'Move the mouse LEFT and RIGHT to steer. Everything else is automatic!', 6);
     S().countdown(false);
   }
   function pause() {
@@ -306,7 +311,7 @@ SR.Game = (function () {
     showScreen(null);
     state = 'play';
     SR.Input.setEnabled(true); SR.Input.clear();
-    SR.Input.lock();
+    if (!SR.Input.isAuto()) SR.Input.lock();
     SR.Audio.muffle(0);
   }
   function toMenu() {
@@ -354,7 +359,10 @@ SR.Game = (function () {
 
   function playFrame(dt) {
     const inp = SR.Input.read(dt);
-    if ((state === 'play' || state === 'ready') && (inp.pressed.has('pause') || (inp.pressed.has('unlock') && !SR.Input.touch))) { pause(); return; }
+    if ((state === 'play' || state === 'ready') && (inp.pressed.has('pause') || (inp.pressed.has('unlock') && !SR.Input.touch && !SR.Input.isAuto()))) { pause(); return; }
+    // AUTO PARKOUR: the runner does the moves, you steer
+    const auto = SR.Input.isAuto();
+    if (auto && state !== 'dying') SR.Auto.drive(P, inp, dt);
     if (inp.pressed.has('mute')) { const m = !SR.store.get('muted', false); SR.store.set('muted', m); SR.Audio.setMuted(m); SR.HUD.feed(m ? 'SOUND OFF' : 'SOUND ON'); }
     if (state === 'ready') {
       readyT -= dt;
@@ -369,6 +377,13 @@ SR.Game = (function () {
 
     if (!dying) {
       SR.Player.update(dt, inp, opts);
+      if (auto) {
+        // the camera looks a little where you're going
+        const hs = Math.hypot(P.vel.x, P.vel.z);
+        const want = hs > 2 && P.mode !== 'wallrun' ? U.clamp(Math.atan2(-P.vel.x, -P.vel.z), -0.6, 0.6) * 0.4 : 0;
+        P.camYaw = U.damp(P.camYaw || 0, want, 4, dt);
+        P.pitch = U.damp(P.pitch, P.mode === 'zip' ? -0.12 : -0.07, 4, dt);
+      } else P.camYaw = 0;
       handleEvents();
     } else {
       // getting caught: everything goes slow
@@ -402,7 +417,7 @@ SR.Game = (function () {
         const r = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
         const u = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
         const from = camera.position.clone().addScaledVector(f, 1.1).addScaledVector(r, 0.35).addScaledVector(u, -0.25);
-        if (SR.FBI.fireRocket(camera, from)) {
+        if (SR.FBI.fireRocket(camera, from, auto)) {
           P.rockets--; P.fireAnim = 1; P.shake = Math.max(P.shake, 0.3);
           S().rocketFire();
           for (let i = 0; i < 6; i++) SR.FX.trail(from.x, from.y, from.z, 1.2);
@@ -423,7 +438,7 @@ SR.Game = (function () {
       run.wanted = w; run.maxWanted = Math.max(run.maxWanted, w);
       S().wantedUp(w);
       SR.HUD.big('★'.repeat(w), WANTED_MSG[w], '#ff5a5a');
-      const tip = WANTED_TIP[w];
+      const tip = (auto ? WANTED_TIP_AUTO : WANTED_TIP)[w];
       if (tip) SR.HUD.hint(SR.Input.touch ? tip.replace('SLIDE', 'Tap SLIDE') : tip, 5);
       if (w === 2) SR.FBI.heliTimer = 1.5;
     }
@@ -431,7 +446,7 @@ SR.Game = (function () {
 
     // tutorial hints
     for (const s of SR.Level.segs) for (const h of s.hints) {
-      if (!h.text || run.shown.has(h)) continue;
+      if (!h.text || run.shown.has(h) || auto) continue;
       if (P.pos.z < h.z && P.pos.z > h.z - 25) { run.shown.add(h); SR.HUD.hint(touchText(h.text), 4); }
     }
     if (SR.Level.tutorial && P.maxDist > 430) { SR.store.set('tutorialDone', true); }
@@ -517,15 +532,15 @@ SR.Game = (function () {
     H.powers(pw);
     H.warn(SR.FBI.incoming(P) > 0);
     if (P.rockets > 0) {
-      const t = SR.FBI.lockTarget(camera);
+      const t = SR.FBI.lockTarget(camera, SR.Input.isAuto());
       if (t) {
         const v = t.clone().project(camera);
         if (v.z < 1) H.lock({ x: (v.x * 0.5 + 0.5) * window.innerWidth, y: (-v.y * 0.5 + 0.5) * window.innerHeight }); else H.lock(null);
       } else H.lock(null);
     } else H.lock(null);
     H.hurt(run.hurt * 0.9);
-    H.clickToPlay(state === 'play' && !SR.Input.locked && !SR.Input.touch);
-    if (SR.Input.touch) H.touchButtons(P.rockets > 0, run.sigma >= 1 && run.sigmaT <= 0);
+    H.clickToPlay(state === 'play' && !SR.Input.locked && !SR.Input.touch && !SR.Input.isAuto());
+    if (SR.Input.touch || SR.Input.isAuto()) H.touchButtons(P.rockets > 0, run.sigma >= 1 && run.sigmaT <= 0);
     H.update(dt);
   }
 
@@ -611,6 +626,11 @@ SR.Game = (function () {
     segBtns('setGfx', () => SR.settings.gfx, (v) => { if (v !== SR.settings.gfx) { SR.settings.gfx = v; SR.saveSettings(); location.reload(); } });
     segBtns('setAuto', () => (SR.settings.autoRun ? '1' : '0'), (v) => { SR.settings.autoRun = v === '1'; });
     segBtns('setInv', () => (SR.settings.invertY ? '1' : '0'), (v) => { SR.settings.invertY = v === '1'; });
+    segBtns('setCtrl', () => SR.settings.controls || 'auto', (v) => { SR.settings.controls = v; SR.Input.resetSteer(); applyControlMode(); });
+    paintTrack = segBtns('setTrack', () => SR.settings.track || 'edm', (v) => setTrack(v));
+    click('bMusic', () => { const order = ['edm', 'phonk', 'off']; setTrack(order[(order.indexOf(SR.settings.track || 'edm') + 1) % 3]); });
+    $('bMusic').textContent = '♪ MUSIC: ' + TRACKS[SR.settings.track || 'edm'];
+    applyControlMode();
     const slider = (id, key, after) => {
       const el = $(id); el.value = SR.settings[key];
       el.addEventListener('input', () => { SR.settings[key] = parseFloat(el.value); SR.saveSettings(); if (after) after(); });
@@ -619,6 +639,18 @@ SR.Game = (function () {
     slider('setMusic', 'music', () => SR.Audio.applyVolumes()); slider('setSfx', 'sfx', () => { SR.Audio.applyVolumes(); S().coin(); });
   }
   function openSettings(from) { backTo = from; showScreen('sSettings'); }
+  function applyControlMode() {
+    document.body.classList.toggle('automode', SR.Input.isAuto());
+    $('howAuto').hidden = !SR.Input.isAuto(); $('howManual').hidden = SR.Input.isAuto();
+  }
+  const TRACKS = { edm: 'SKYLINE', phonk: 'SIGMA PHONK', off: 'OFF' };
+  function setTrack(v) {
+    SR.settings.track = v; SR.saveSettings();
+    SR.Audio.setTrack(v);
+    $('bMusic').textContent = '♪ MUSIC: ' + TRACKS[v];
+    if (paintTrack) paintTrack();
+  }
+  let paintTrack = null;
 
   let shopTab = 'up';
   function openShop(from) { backTo = from; renderShop(); showScreen('sShop'); }

@@ -9,11 +9,28 @@ Grab a **rocket launcher** and shoot the helicopter down. 🚀💥
 
 1. Open **`sigma-run/index.html`** in Chrome, Edge or Firefox (just double-click it).
 2. Click **PLAY** (or press **Enter**).
-3. Put the sound on: the music is a **phonk** beat that gets crazier when the FBI is after you. 🔊
+3. Put the sound on: the music gets crazier when the FBI is after you. 🔊
 
 The first run has a **tutorial**: messages at the bottom of the screen show you every move.
 
-## Controls
+## AUTO PARKOUR (the normal way to play)
+
+Like **Rooftop Run**: your runner runs, jumps, climbs, wall runs, slides under things, slide-tackles FBI agents
+and grabs ziplines **all by himself**. You just:
+
+- **Steer**: move the mouse left and right (or slide your finger anywhere on the screen, or `A` `D` / `←` `→`).
+  Grab coins and get away from the missiles!
+- Press the big **🚀 ROCKET** button (or click, or `F`) to shoot the helicopter.
+- Press the big **Σ SIGMA** button (or `E`) when the Σ bar is full.
+
+Want to do every move yourself? Pick **MANUAL** controls in **SETTINGS**. The table below is for MANUAL controls.
+
+## Music
+
+Pick the song in **SETTINGS** (or with the **♪ MUSIC** button in the pause menu):
+**SKYLINE** (upbeat electronic), **SIGMA PHONK** (cowbells and 808 bass), or **OFF**.
+
+## Manual controls
 
 | | ⌨️🖱️ Computer | 🎮 Controller | 📱 Phone |
 |---|---|---|---|
@@ -102,6 +119,7 @@ On a strong computer, try **ULTRA**! The game also lowers the picture sharpness 
 | `index.html` | the page, menus, HUD and the shop |
 | `js/game.js` | the main loop, aura, sigma mode, hearts, wanted stars, shop, menus |
 | `js/player.js` | running, jumping, wall runs, slides, vaults, ziplines, and your arms |
+| `js/auto.js` | AUTO PARKOUR: does all the moves for you while you steer |
 | `js/level.js` | builds the city course forever: roofs, gaps, walls, ziplines, pads, cranes |
 | `js/city.js` | the skyline, traffic far below, and the FBI cars |
 | `js/fbi.js` | agents, the helicopter, missiles, drones and your rockets |
@@ -111,6 +129,6 @@ On a strong computer, try **ULTRA**! The game also lowers the picture sharpness 
 | `js/fx.js` | explosions, smoke, sparks and glass |
 | `js/textures.js` | every picture, painted with code |
 | `js/mats.js` | what everything is made of (glass, metal, concrete...) |
-| `js/audio.js` | the phonk music and all the sounds (made with math, no sound files!) |
+| `js/audio.js` | the two songs and all the sounds (made with math, no sound files!) |
 | `js/input.js` | keyboard, mouse, controller and touch |
 | `js/hud.js` | the numbers and icons on the screen |
