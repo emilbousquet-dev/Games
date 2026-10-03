@@ -1,6 +1,9 @@
 # LAB 13 👽🩸
 
-> 🆕 **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!
+> 🆕 **NEW: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
+> Run on walls across the rooftops, escape the FBI helicopter, shoot it down with rockets. Open `sigma-run/index.html` to play.
+>
+> **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!
 > A Ratchet & Clank fan game: swipe to escape MEGA-BOT across 5 planets. Open `jetpack-city/index.html` to play.
 >
 > **Also: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
