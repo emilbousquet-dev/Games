@@ -38,7 +38,8 @@ SR.Input = (function () {
       if (was && !locked && enabled) presses.add('unlock');
     });
     document.addEventListener('mousemove', (e) => {
-      if (!locked) return;
+      // if the mouse can't be locked (some browsers and embedded pages), moving it still steers
+      if (!locked) { if (enabled && !touch.on && Math.abs(e.movementX) < 200) look.x += e.movementX * 1.2; return; }
       // some browsers send giant jumps sometimes, ignore those
       if (Math.abs(e.movementX) > 400 || Math.abs(e.movementY) > 400) return;
       look.x += e.movementX; look.y += e.movementY;
