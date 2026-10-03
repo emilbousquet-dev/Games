@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LIL' PLUT ODYSSEY</title>
+<link rel="icon" href="data:,">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; height: 100%; background: #1a0f2a; overflow: hidden; user-select: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; color: #ffd23f;
+             font: 800 42px 'Baloo 2', 'Trebuchet MS', sans-serif; letter-spacing: 2px; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="loading">LOADING... 👶</div>
+<script src="js/util.js"></script>
+<script src="js/input.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/level.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/story.js"></script>
+<script src="js/art.js"></script>
+<script src="js/backgrounds.js"></script>
+<script src="js/terrain.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemies.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/screens.js"></script>
+<script src="js/game.js"></script>
+<script>
+  // wait a little for the nice font, then hide the loading text
+  window.addEventListener('load', () => {
+    const done = () => { const l = document.getElementById('loading'); if (l) l.remove(); };
+    if (document.fonts && document.fonts.load) document.fonts.load("800 40px 'Baloo 2'").then(done, done); else done();
+    setTimeout(done, 2500);
+  });
+</script>
+</body>
+</html>
