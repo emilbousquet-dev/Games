@@ -321,7 +321,7 @@ LP.Screens = (function () {
     if (G.totalMilk) H().text(c, `/ ${G.totalMilk}`, 40, -44, 26, '#8a6a9a', 'left', 0);
     if (t > 1.1) {
       medal(c, -110, 40, G.medal, 1.3);
-      H().text(c, ['no medal... try to get more milk!', 'BRONZE BOTTLE!', 'SILVER BOTTLE!', 'GOLD BOTTLE!'][G.medal], -60, 40, 28, ['#8a6a9a', '#d08a4a', '#8a92a8', '#e8a020'][G.medal], 'left', 0);
+      H().text(c, ['No medal. Get more milk!', 'BRONZE BOTTLE!', 'SILVER BOTTLE!', 'GOLD BOTTLE!'][G.medal], -60, 40, 28, ['#8a6a9a', '#d08a4a', '#8a92a8', '#e8a020'][G.medal], 'left', 0);
     }
     if (G.def.type === 'normal') {
       for (let i = 0; i < 3; i++) {

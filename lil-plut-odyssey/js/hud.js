@@ -12,8 +12,8 @@ LP.HUD = (function () {
     c.font = `800 ${size}px ${LP.FONT}`;
     c.textAlign = align || 'left'; c.textBaseline = 'middle';
     c.lineJoin = 'round';
-    c.lineWidth = stroke === undefined ? Math.max(4, size * 0.18) : stroke;
-    if (c.lineWidth > 0) { c.strokeStyle = 'rgba(40,16,60,0.9)'; c.strokeText(str, x, y); }
+    const lw = stroke === undefined ? Math.max(4, size * 0.18) : stroke;
+    if (lw > 0) { c.lineWidth = lw; c.strokeStyle = 'rgba(40,16,60,0.9)'; c.strokeText(str, x, y); }
     c.fillStyle = color || '#fff'; c.fillText(str, x, y);
   }
 

@@ -136,7 +136,7 @@ LP.Things = (function () {
     update(dt, g) {
       this.t += dt;
       const p = g.player;
-      if (Math.abs(p.cx - this.cx) < 90 && Math.abs(p.bottom - this.bottom) < 120) g.showSign(this);
+      if (Math.abs(p.cx - this.cx) < 130 && Math.abs(p.bottom - this.bottom) < 120) g.showSign(this);
     }
     draw(c) { A.sign(c, this.cx, this.bottom); }
   }

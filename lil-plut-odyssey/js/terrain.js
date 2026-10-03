@@ -368,7 +368,7 @@ LP.Terrain = (function () {
       ctx.fillStyle = U.alpha(theme.water, 0.72);
       if (surface) {
         // the water looks a bit higher than its tile, so it reaches up to the lily pads
-        const sy = y - 26;
+        const sy = y - 36;
         ctx.beginPath(); ctx.moveTo(x, y + T);
         for (let k = 0; k <= T; k += 8) ctx.lineTo(x + k, sy + Math.sin((x + k) * 0.06 + time * 3) * 4);
         ctx.lineTo(x + T, y + T); ctx.fill();

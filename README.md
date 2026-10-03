@@ -1,6 +1,9 @@
 # LAB 13 👽🩸
 
-> 🆕 **NEW: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
+> 🆕 **NEW: [LIL' PLUT ODYSSEY](lil-plut-odyssey/README.md)** 👶🍼: a 2D story platformer like Rayman Legends!
+> Play as the most annoying baby in the world and get your teddy back from the cat. Open `lil-plut-odyssey/index.html` to play.
+>
+> **Also: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
 > Run on walls across the rooftops, escape the FBI helicopter, shoot it down with rockets. Open `sigma-run/index.html` to play.
 >
 > **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!
