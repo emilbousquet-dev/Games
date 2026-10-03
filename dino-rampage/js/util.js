@@ -3,8 +3,16 @@
 // ============================================================
 window.DR = window.DR || {};
 
-// graphics quality (FAST = better for old computers)
-DR.lowGfx = (() => { try { return localStorage.getItem('dr.gfx') === 'low' || location.search.includes('low'); } catch (e) { return false; } })();
+// is this a phone or a tablet? (a finger instead of a mouse)
+DR.touch = (() => { try { return matchMedia('(pointer: coarse)').matches || location.search.includes('touch'); } catch (e) { return false; } })();
+
+// graphics quality (FAST = better for old computers and phones)
+DR.lowGfx = (() => {
+  try {
+    const saved = localStorage.getItem('dr.gfx');
+    return saved === 'low' || location.search.includes('low') || (DR.touch && saved !== 'high');
+  } catch (e) { return DR.touch; }
+})();
 
 DR.U = {
   clamp: (v, a, b) => Math.max(a, Math.min(b, v)),

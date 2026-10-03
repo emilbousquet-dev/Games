@@ -48,8 +48,12 @@ DR.HUD = (function () {
   }
   function setRoar(v, ready) {
     const deg = (U.clamp(v, 0, 1) * 360).toFixed(0);
-    el['roar-ring'].style.background = `conic-gradient(${ready ? '#ff5a3a' : '#ffb03a'} ${deg}deg, rgba(255,255,255,0.15) ${deg}deg)`;
+    const bg = `conic-gradient(${ready ? '#ff5a3a' : '#ffb03a'} ${deg}deg, rgba(255,255,255,0.15) ${deg}deg)`;
+    el['roar-ring'].style.background = bg;
     el.roarbox.classList.toggle('ready', ready);
+    // the ROAR button on phones shows the same circle
+    const tb = document.getElementById('tb-roar');
+    if (tb) { tb.style.setProperty('--ring', bg); tb.classList.toggle('ready', ready); }
   }
   function center(html, secs = 2, cls = '') {
     const c = el['center-msg'];
@@ -57,7 +61,13 @@ DR.HUD = (function () {
     c.className = 'show ' + cls;
     centerT = secs;
   }
+  // on phones, talk about buttons instead of keys
+  const TOUCH_WORDS = [
+    [/\(right click or Q\)/g, '(the 🌀 TAIL button)'], [/\(jump with Space, then click\)/g, '(⬆️ JUMP, then JUMP again in the air)'],
+    [/Press <b>R<\/b>/g, 'Tap the <b>ROAR</b> button'],
+  ];
   function tip(html, secs = 4) {
+    if (DR.touch) for (const [a, b] of TOUCH_WORDS) html = html.replace(a, b);
     el.tip.innerHTML = html;
     el.tip.classList.add('show');
     tipT = secs;

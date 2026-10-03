@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>Dino Rampage</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -144,6 +144,71 @@
   #lockmsg { position: fixed; left: 50%; bottom: 26%; transform: translateX(-50%); z-index: 15; font-size: 22px; padding: 10px 22px; display: none; pointer-events: none; }
   #mute { position: fixed; right: 14px; bottom: 14px; z-index: 30; font-size: 22px; background: rgba(20,40,16,0.85); border: 3px solid var(--green); color: #fff; border-radius: 50%; width: 50px; height: 50px; cursor: pointer; display: none; }
   #loading { position: fixed; inset: 0; background: #9ad8ff; z-index: 50; display: flex; align-items: center; justify-content: center; font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 56px; color: #fff; letter-spacing: 3px; text-shadow: 0 4px 0 #2a8a2a; }
+  /* ---------------- TOUCH CONTROLS (phones & tablets) ---------------- */
+  .mob { display: none; }
+  body.touch .mob { display: block; }
+  body.touch .desk { display: none !important; }
+  canvas#game, #touch { touch-action: none; -webkit-touch-callout: none; -webkit-user-select: none; }
+  #touch { display: none; position: absolute; inset: 0; pointer-events: none; }
+  body.touch #touch { display: block; }
+  #stick-zone { position: absolute; left: 0; bottom: 0; width: 42%; height: 62%; pointer-events: auto; }
+  #look-zone { position: absolute; right: 0; top: 0; width: 58%; height: 100%; pointer-events: auto; }
+  #stick-hint { position: absolute; left: max(40px, env(safe-area-inset-left, 0px)); bottom: calc(40px + env(safe-area-inset-bottom, 0px)); width: 110px; height: 110px; border-radius: 50%; border: 3px dashed rgba(255,255,255,0.45); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.8); text-shadow: 0 1px 3px #000; pointer-events: none; }
+  #stick-base { display: none; position: fixed; width: 120px; height: 120px; margin: -60px 0 0 -60px; border-radius: 50%; background: rgba(255,255,255,0.15); border: 3px solid rgba(255,255,255,0.55); pointer-events: none; }
+  #stick-knob { position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #c8e8b8); box-shadow: 0 3px 10px rgba(0,0,0,0.4); }
+  #tbtns { position: absolute; right: max(14px, env(safe-area-inset-right, 0px)); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); width: 196px; height: 196px; pointer-events: none; }
+  .tb { position: absolute; pointer-events: auto; border: 3px solid rgba(255,255,255,0.8); border-radius: 50%; color: #fff; font-size: 24px; line-height: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); touch-action: none; padding: 0; font-family: inherit; }
+  .tb span { font-family: Bangers, 'Arial Black', Impact, sans-serif; font-size: 13px; letter-spacing: 1px; }
+  .tb.down { transform: scale(0.9); filter: brightness(1.3); }
+  #tb-bite { right: 0; bottom: 0; width: 92px; height: 92px; font-size: 34px; background: rgba(220,70,50,0.75); }
+  #tb-jump { right: 0; bottom: 104px; width: 70px; height: 70px; background: rgba(60,140,230,0.75); }
+  #tb-tail { right: 104px; bottom: 0; width: 70px; height: 70px; background: rgba(80,170,70,0.75); }
+  #tb-roar { right: 88px; bottom: 88px; width: 74px; height: 74px; background: var(--ring, rgba(255,160,40,0.6)); }
+  #tb-roar::before { content: ''; position: absolute; inset: 7px; border-radius: 50%; background: rgba(30,40,24,0.85); z-index: -1; }
+  #tb-roar { z-index: 0; }
+  #tb-roar.ready { animation: ready 0.5s ease-in-out infinite alternate; }
+  #tb-pause { position: absolute; pointer-events: auto; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: 48px; height: 48px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.7); background: rgba(20,40,16,0.7); color: #fff; font-size: 20px; padding: 0; }
+  /* on phones the HUD moves around to make room for your thumbs */
+  body.touch #roarbox, body.touch #hint, body.touch #lockmsg, body.touch #mute { display: none !important; }
+  body.touch #minimap-box { bottom: auto; top: calc(78px + env(safe-area-inset-top, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); }
+  body.touch #minimap { width: 100px; height: 100px; }
+  body.touch #hpbox { bottom: auto; top: calc(78px + env(safe-area-inset-top, 0px)); left: max(12px, env(safe-area-inset-left, 0px)); width: 190px; }
+  body.touch #radio { top: calc(122px + env(safe-area-inset-top, 0px)); }
+  body.touch #combo { top: auto; bottom: 230px; right: 20px; }
+  body.touch #lvlbox { left: max(12px, env(safe-area-inset-left, 0px)); }
+  body.touch #scorebox { right: max(12px, env(safe-area-inset-right, 0px)); }
+  /* small screens (phones held sideways) */
+  @media (max-height: 520px) {
+    #lvlbox { padding: 3px 10px 4px; } #lvl-name { font-size: 17px; } #timer { font-size: 15px; }
+    #growbox { width: min(360px, 42vw); padding: 3px 10px 5px; } #badges { height: 22px; } .badge span { font-size: 14px !important; }
+    #grow-bar { height: 11px; } #size-name { font-size: 15px; } #size-line { font-size: 11px; } #can-smash { display: none; }
+    #scorebox { min-width: 100px; padding: 3px 10px 4px; } #score { font-size: 26px; } #scorebox .lbl { font-size: 10px; }
+    #center-msg { font-size: 48px; top: 20%; } #center-msg small { font-size: 17px; }
+    #tip { top: auto; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); max-width: 46vw; font-size: 13px; padding: 6px 12px; transform: translateX(-50%) translateY(20px); }
+    body.touch #tip { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+    #radio { font-size: 12px; max-width: 46vw; padding: 5px 8px; }
+    body.touch #minimap-box, body.touch #hpbox { top: 68px; } body.touch #hpbox { width: 170px; padding: 4px 10px; } body.touch #minimap { width: 86px; height: 86px; } body.touch #radio { top: 108px; }
+    #powerbox { top: 74px; font-size: 20px; }
+    .bubble { font-size: 12px; padding: 3px 8px; }
+    .panel { padding: 14px 18px; } .panel h2 { font-size: 36px; } .panel p { font-size: 15px; }
+    .btn { font-size: 24px; padding: 6px 30px 4px; min-width: 200px; } .btn.alt { font-size: 18px; min-width: 150px; }
+    .title-logo { font-size: min(11vw, 78px); } .subtitle { font-size: 15px; margin: 8px 0 10px; }
+    .bigstars { font-size: 40px; } .stats { font-size: 14px; gap: 4px 18px; }
+  }
+  /* phones held upright */
+  @media (max-width: 600px) {
+    #lvlbox { top: 10px; max-width: 54vw; padding: 4px 10px 5px; } #lvl-name { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } #timer { font-size: 15px; }
+    #scorebox { top: 10px; min-width: 0; padding: 4px 12px 5px; } #score { font-size: 26px; } #scorebox .lbl { font-size: 10px; }
+    #growbox { width: calc(100vw - 24px); top: 70px; padding: 4px 12px 6px; } #can-smash { font-size: 11px; }
+    body.touch #minimap-box, body.touch #hpbox { top: 168px; } body.touch #hpbox { width: 150px; } body.touch #minimap { width: 90px; height: 90px; }
+    #radio, body.touch #radio { top: 214px; max-width: 64vw; font-size: 12px; }
+    #tip { top: 280px; max-width: 88vw; font-size: 15px; }
+    #center-msg { font-size: 44px; top: 34%; } #center-msg small { font-size: 16px; }
+    #powerbox { top: 132px; font-size: 18px; white-space: nowrap; }
+    #closet { align-items: center; justify-content: flex-end; padding: 8px; }
+    #closet .panel { max-height: 58vh; }
+    #tbtns { transform: scale(0.85); transform-origin: 100% 100%; }
+  }
   @media (max-width: 900px) { #can-smash, #hint { display: none !important; } #minimap { width: 110px; height: 110px; } }
 </style>
 </head>
@@ -160,7 +225,7 @@
     <button class="btn alt" id="btn-closet">🎩 DINO CLOSET</button>
     <button class="btn alt" id="btn-how">HOW TO PLAY</button>
   </div>
-  <div class="row"><button class="btn alt small" id="btn-gfx">GRAPHICS: PRETTY</button></div>
+  <div class="row"><button class="btn alt small" id="btn-gfx">GRAPHICS: PRETTY</button><button class="btn alt small mob" id="btn-full">⛶ FULL SCREEN</button></div>
   <div class="best" id="best"></div>
 </div>
 
@@ -171,7 +236,11 @@
     <p>You start as a tiny <b>baby T-Rex</b>. Walk into small things to <b>SMASH</b> them, and eat the <b>sparkly snacks</b> 🍉🍩🍕 to grow faster!<br>
     Every time you grow, you can smash <b>bigger</b> things: cars 🚗 → houses 🏠 → shops 🏬 → <b>SKYSCRAPERS</b> 🏙️<br>
     Become a <b>GIANT</b> and fill the rampage bar to win!</p>
-    <div class="keys">
+    <div class="keys mob" style="text-align:center">
+      📱 <b>Left thumb</b>: joystick to walk (push it far to RUN)<br>👆 <b>Right thumb</b>: swipe to look around<br>
+      🦷 <b>BITE</b> · 🌀 <b>TAIL</b> whip · ⬆️ <b>JUMP</b> (jump again in the air = BELLY FLOP) · 🦖 <b>ROAR</b> when the circle is full
+    </div>
+    <div class="keys desk">
       <div><b>W</b><b>A</b><b>S</b><b>D</b> walk</div><div><b>Mouse</b> look around</div>
       <div><b>Shift</b> run</div><div><b>Space</b> jump</div>
       <div><b>Left click</b> or <b>E</b> bite</div><div><b>Right click</b> or <b>Q</b> tail whip</div>
@@ -213,14 +282,15 @@
   <div class="big" id="intro-name">SLEEPY SUBURBS</div>
   <div class="news" id="intro-about"></div>
   <button class="btn" id="btn-go">STOMP TIME!</button>
-  <div class="best">Tip: click the game so the mouse moves the camera</div>
+  <div class="best desk">Tip: click the game so the mouse moves the camera</div>
+  <div class="best mob">👍 Left thumb: walk (push far to RUN) · Right thumb: swipe to look around<br>📱 Turn your phone sideways for the best view!</div>
 </div>
 
 <!-- ======= PAUSE ======= -->
 <div id="pause" class="screen dim">
   <div class="panel">
     <h2>Paused</h2>
-    <div class="keys">
+    <div class="keys desk">
       <div><b>W</b><b>A</b><b>S</b><b>D</b> walk</div><div><b>Shift</b> run</div>
       <div><b>Click</b> / <b>E</b> bite</div><div><b>Right click</b> / <b>Q</b> tail whip</div>
       <div><b>Space</b> jump (+click = flop)</div><div><b>R</b> super roar</div>
@@ -274,6 +344,19 @@
   <div id="minimap-box" class="hud-box"><canvas id="minimap" width="150" height="150"></canvas></div>
   <div id="center-msg"></div>
   <div id="tip"></div>
+  <!-- touch controls (only on phones & tablets) -->
+  <div id="touch">
+    <div id="look-zone"></div>
+    <div id="stick-zone"><div id="stick-hint">put your<br>thumb here<br>to WALK</div></div>
+    <div id="stick-base"><div id="stick-knob"></div></div>
+    <div id="tbtns">
+      <button class="tb" id="tb-roar">🦖<span>ROAR</span></button>
+      <button class="tb" id="tb-jump">⬆️<span>JUMP</span></button>
+      <button class="tb" id="tb-tail">🌀<span>TAIL</span></button>
+      <button class="tb" id="tb-bite">🦷<span>BITE</span></button>
+    </div>
+    <button id="tb-pause">⏸</button>
+  </div>
 </div>
 <div id="lockmsg" class="hud-box">Click to control the camera with the mouse</div>
 <button id="mute" title="Sound on/off (M)">🔊</button>

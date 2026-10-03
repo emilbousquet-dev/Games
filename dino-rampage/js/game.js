@@ -32,7 +32,10 @@ DR.Game = (function () {
   // ============================================================
   function init() {
     renderer = new THREE.WebGLRenderer({ canvas: $('game'), antialias: !DR.lowGfx, powerPreference: 'high-performance', preserveDrawingBuffer: AUTO });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DR.lowGfx ? 0.8 : 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, DR.lowGfx ? (DR.touch ? 1 : 0.8) : 1.5));
+    if (DR.touch) document.body.classList.add('touch');
+    // a finger touched the screen: show the touch buttons
+    window.addEventListener('touchstart', () => { if (!DR.touch) { DR.touch = true; document.body.classList.add('touch'); } }, { passive: true });
     renderer.setSize(innerWidth, innerHeight);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.05;
@@ -103,6 +106,14 @@ DR.Game = (function () {
     $('btn-gfx').textContent = 'GRAPHICS: ' + (DR.lowGfx ? 'FAST' : 'PRETTY');
     click('btn-gfx', () => { try { localStorage.setItem('dr.gfx', DR.lowGfx ? 'high' : 'low'); } catch (e) { /* ignore */ } location.reload(); });
     click('btn-go', () => startPlaying());
+    // phones: fill the whole screen and turn sideways (if the phone allows it)
+    click('btn-full', () => {
+      const el = document.documentElement;
+      try {
+        const p = (el.requestFullscreen || el.webkitRequestFullscreen || (() => null)).call(el);
+        if (p && p.then) p.then(() => { try { screen.orientation.lock('landscape').catch(() => {}); } catch (e) { /* not allowed */ } }).catch(() => {});
+      } catch (e) { /* not allowed here */ }
+    });
     click('btn-resume', () => resume());
     click('btn-restart', () => { loadLevel(levelIdx); showIntro(); });
     click('btn-quit', () => quitToMenu());
@@ -222,8 +233,8 @@ DR.Game = (function () {
     showScreen(null);
     state = 'play';
     A.init(); A.startMusic();
-    if (!AUTO) { In.lock($('game')); setTimeout(() => { if (state === 'play' && !In.mouse.locked) $('lockmsg').style.display = 'block'; }, 600); }
-    H.hint(levelIdx === 0);
+    if (!AUTO && !DR.touch) { In.lock($('game')); setTimeout(() => { if (state === 'play' && !In.mouse.locked && !DR.touch) $('lockmsg').style.display = 'block'; }, 600); }
+    H.hint(levelIdx === 0 && !DR.touch);
     clock.getDelta();
     H.center(City.LEVELS[levelIdx].name.toUpperCase() + '<small>Eat the sparkly snacks and smash small things to grow!</small>', 3);
   }
@@ -420,9 +431,10 @@ DR.Game = (function () {
     if (state === 'closet') {
       // the camera stands still and the dino turns around slowly (like a fashion show!)
       const a = closetYaw, dx = Math.sin(a), dz = Math.cos(a);
-      const want = new THREE.Vector3(D.x + dx * 4.6, 1.35, D.z + dz * 4.6);
+      const tall = menuCam.aspect < 1;   // phone held upright: the dino stands above the closet panel
+      const want = new THREE.Vector3(D.x + dx * (tall ? 6 : 4.6), tall ? 2.2 : 1.35, D.z + dz * (tall ? 6 : 4.6));
       menuCam.position.lerp(want, Math.min(1, dt * 4));
-      menuCam.lookAt(D.x + dz * 1.5, 0.95, D.z - dx * 1.5);
+      if (tall) menuCam.lookAt(D.x, -0.5, D.z); else menuCam.lookAt(D.x + dz * 1.5, 0.95, D.z - dx * 1.5);
       D.yaw += dt * 0.5;
     } else {
       const a = menuT * 0.07;

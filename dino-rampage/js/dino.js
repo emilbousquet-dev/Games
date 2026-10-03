@@ -407,7 +407,8 @@ DR.Dino = (function () {
   // ------------------------------------------------------------
   //  THE CAMERA (floats behind the dino)
   // ------------------------------------------------------------
-  function camTargetDist() { return (3.6 + 3.2 * D.scale) * D.zoom; }
+  // (phones held upright see a bit more by zooming out)
+  function camTargetDist() { return (3.6 + 3.2 * D.scale) * (camera && camera.aspect < 1 ? 1.35 : 1) * D.zoom; }
   const cv = new THREE.Vector3();
   function updateCamera(dt, inp) {
     const s = D.scale;
@@ -449,7 +450,8 @@ DR.Dino = (function () {
     if (sh > 0) cv.add(new THREE.Vector3((Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh, (Math.random() - 0.5) * sh));
     camera.position.copy(cv);
     camera.lookAt(tx, ty + 0.3 * s, tz);
-    const fov = 60 + (inp.run && D.speedNow > baseSpeed() ? 6 : 0);
+    // phones held upright get a wider view
+    const fov = (camera.aspect < 1 ? 80 : 60) + (inp.run && D.speedNow > baseSpeed() ? 6 : 0);
     camera.fov = U.damp(camera.fov, fov, 4, dt || 1);
     camera.far = 500 + 260 * s;
     camera.near = 0.1 * Math.max(1, s * 0.5);

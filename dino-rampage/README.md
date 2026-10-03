@@ -25,6 +25,23 @@ and grow bigger and bigger... until you're a **GIANT**!
 | Pause | `Esc` | Start |
 | Sound on/off | `M` | |
 
+## 📱 On a phone or tablet
+
+Touch controls appear by themselves. Turn your phone sideways for the best view!
+Press **⛶ FULL SCREEN** on the title screen to fill the whole screen.
+
+| | Touch |
+|---|---|
+| Walk | Put your **left thumb** anywhere on the left side: a joystick appears. Push it far to **run** |
+| Look around | Swipe with your **right thumb** |
+| Bite | 🦷 **BITE** button |
+| Tail whip | 🌀 **TAIL** button |
+| Jump / belly flop | ⬆️ **JUMP** button (tap it again in the air for a belly flop) |
+| Super Roar | 🦖 **ROAR** button (it fills up like the orange circle) |
+| Pause | ⏸ button |
+
+Phones start with **GRAPHICS: FAST** so the game runs smoothly.
+
 ## Growing up
 
 Walk into things to **smash** them. Eat the **sparkly snacks** 🍉🍩🍕🍦 to grow extra fast
