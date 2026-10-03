@@ -1,0 +1,637 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>SNAKE</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #0d1310;
+    --ink: #e6f2e6;
+    --dim: #7f9c87;
+    --green: #7ee05a;
+    --green-dark: #2f9a4a;
+    --line: #2a3a2f;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    touch-action: none; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  }
+  #app { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 12px; }
+  #app.side { flex-direction: row; gap: 24px; }
+  #main { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  /* ---------- top bar ---------- */
+  #bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 40px; }
+  .stat { font-size: 13px; letter-spacing: 2px; color: var(--dim); min-width: 90px; }
+  .stat b { font-size: 24px; color: var(--ink); letter-spacing: 1px; margin-left: 6px; vertical-align: -2px; }
+  .stat.right { text-align: right; }
+  .stat.right b { color: #ffd04a; }
+  .tools { display: flex; gap: 8px; }
+  .tool { width: 40px; height: 40px; border-radius: 10px; border: 2px solid var(--line); background: #141e18; color: var(--ink);
+          font-size: 18px; line-height: 1; cursor: pointer; padding: 0; }
+  .tool:hover { border-color: var(--green-dark); }
+  .tool:disabled { opacity: 0.35; cursor: default; border-color: var(--line); }
+
+  /* ---------- board ---------- */
+  #boardWrap { position: relative; border-radius: 10px; overflow: hidden; box-shadow: 0 0 0 3px var(--line), 0 12px 40px rgba(0,0,0,0.6); }
+  #board { display: block; }
+  #hint { position: absolute; left: 0; right: 0; bottom: 12%; text-align: center; pointer-events: none; display: none; }
+  #hint span { display: inline-block; background: rgba(8,14,10,0.8); border: 2px solid var(--green-dark); border-radius: 999px;
+               padding: 8px 18px; font-weight: bold; font-size: min(calc(var(--u) * 0.5), 18px); animation: blink 1.2s infinite; }
+  @keyframes blink { 50% { opacity: 0.45; } }
+
+  #overlay { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center;
+             text-align: center; background: rgba(8,14,10,0.82); padding: 12px; overflow: auto; }
+  #overlay > :first-child { margin-top: auto; }  /* centered, but never cut off at the top */
+  #overlay > :last-child { margin-bottom: auto; }
+  #overlay h1 { margin: 0; font-family: Impact, "Arial Black", system-ui, sans-serif; font-weight: 900; letter-spacing: 4px; line-height: 1;
+                font-size: min(calc(var(--u) * 1.15), 84px); white-space: nowrap; color: var(--green); text-shadow: 0 4px 0 #1d5a2c, 0 0 30px rgba(126,224,90,0.35); }
+  #overlay h1.red { color: #ff5a4a; text-shadow: 0 4px 0 #6a1a14, 0 0 30px rgba(255,90,74,0.35); }
+  #overlay h1.gold { color: #ffd04a; text-shadow: 0 4px 0 #6a5010, 0 0 30px rgba(255,208,74,0.4); }
+  #overlay .label { color: var(--dim); letter-spacing: 3px; font-size: min(calc(var(--u) * 0.4), 14px); margin: min(calc(var(--u) * 0.6), 24px) 0 8px; }
+  #overlay .big { font-size: min(calc(var(--u) * 0.6), 22px); margin: min(calc(var(--u) * 0.35), 14px) 0 0; }
+  #overlay .big b { color: var(--ink); font-size: 1.4em; }
+  #overlay .newbest { color: #ffd04a; font-weight: bold; letter-spacing: 3px; margin-top: 8px; font-size: min(calc(var(--u) * 0.55), 20px); animation: blink 0.7s infinite; }
+  .speeds { display: flex; gap: 8px; }
+  .btn { font: inherit; font-weight: bold; letter-spacing: 2px; cursor: pointer; border-radius: 10px; color: var(--ink);
+         border: 2px solid var(--line); background: #141e18; padding: 8px 12px; font-size: min(calc(var(--u) * 0.42), 15px); }
+  .btn:hover { border-color: var(--green-dark); }
+  .btn.sel { border-color: var(--green); background: #1f3a24; color: #fff; }
+  .btn.play { margin-top: min(calc(var(--u) * 0.7), 26px); padding: 12px 34px; font-size: min(calc(var(--u) * 0.6), 22px);
+              background: var(--green-dark); border-color: var(--green); color: #fff; }
+  .btn.play:hover { background: #38b356; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: min(calc(var(--u) * 0.5), 26px); }
+  .row .btn.play { margin-top: 0; }
+  .keyhint { color: var(--dim); font-size: 12px; margin-top: 10px; }
+
+  #footer { color: var(--dim); font-size: 13px; text-align: center; }
+  kbd { background: #1a251e; border: 1px solid #3a4c40; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-family: inherit; font-size: 12px; color: var(--ink); }
+
+  /* ---------- phone arrows ---------- */
+  #pad { display: none; grid-template-columns: repeat(3, 62px); grid-template-rows: repeat(3, 62px); gap: 6px; }
+  #pad button { border-radius: 14px; border: 2px solid var(--line); background: #141e18; color: var(--ink); font-size: 26px; padding: 0; touch-action: none; }
+  #pad button:active { background: #1f3a24; border-color: var(--green); }
+  #pad .u { grid-column: 2; grid-row: 1; } #pad .l { grid-column: 1; grid-row: 2; }
+  #pad .r { grid-column: 3; grid-row: 2; } #pad .d { grid-column: 2; grid-row: 3; }
+  body.touch #pad { display: grid; }
+  body.touch #footer { display: none; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="main">
+    <div id="bar">
+      <div class="stat">SCORE<b id="score">0</b></div>
+      <div class="tools">
+        <button class="tool" id="pauseBtn" title="Pause (Space)">⏸</button>
+        <button class="tool" id="muteBtn" title="Sound on/off (M)">🔊</button>
+      </div>
+      <div class="stat right">BEST<b id="best">0</b></div>
+    </div>
+    <div id="boardWrap">
+      <canvas id="board"></canvas>
+      <div id="hint"><span id="hintText"></span></div>
+      <div id="overlay"></div>
+    </div>
+    <div id="footer"><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd> or <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move · <kbd>Space</kbd> pause · <kbd>M</kbd> sound</div>
+  </div>
+  <div id="pad">
+    <button class="u" data-dir="up" aria-label="Up">▲</button>
+    <button class="l" data-dir="left" aria-label="Left">◀</button>
+    <button class="r" data-dir="right" aria-label="Right">▶</button>
+    <button class="d" data-dir="down" aria-label="Down">▼</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ===================== SETTINGS =====================
+const COLS = 20;            // board width in squares
+const ROWS = 20;            // board height in squares
+const SPEEDS = [            // milliseconds per move (smaller = faster)
+  { id: 'slow',   name: 'SLOW',   ms: 150 },
+  { id: 'normal', name: 'NORMAL', ms: 110 },
+  { id: 'fast',   name: 'FAST',   ms: 75 },
+];
+const COLORS = {
+  board1: '#16211b', board2: '#1a2720',
+  head: [126, 224, 90], tail: [38, 140, 64],
+  deadHead: [150, 156, 150], deadTail: [86, 92, 88],
+  apple: '#e8433a', appleShine: '#ff9a8a', leaf: '#5cc94a', stem: '#7a4a22',
+};
+
+const DIRS = { up: { x: 0, y: -1 }, down: { x: 0, y: 1 }, left: { x: -1, y: 0 }, right: { x: 1, y: 0 } };
+// e.code = the physical key, so W A S D also works as Z Q S D on a French keyboard
+const KEYS = {
+  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+  KeyW: 'up', KeyS: 'down', KeyA: 'left', KeyD: 'right',
+};
+
+// ===================== PAGE PARTS =====================
+const app = document.getElementById('app');
+const bar = document.getElementById('bar');
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const boardWrap = document.getElementById('boardWrap');
+const overlay = document.getElementById('overlay');
+const hint = document.getElementById('hint');
+const hintText = document.getElementById('hintText');
+const footer = document.getElementById('footer');
+const pad = document.getElementById('pad');
+const scoreEl = document.getElementById('score');
+const bestEl = document.getElementById('best');
+const pauseBtn = document.getElementById('pauseBtn');
+const muteBtn = document.getElementById('muteBtn');
+
+let isTouch = false;
+try { isTouch = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+if (isTouch) document.body.classList.add('touch');
+
+// ===================== SAVED STUFF =====================
+function loadNumber(key) {
+  try { return parseInt(localStorage.getItem(key), 10) || 0; } catch (e) { return 0; }
+}
+function loadSpeed() {
+  let i = 1; // NORMAL if nothing is saved yet
+  try {
+    const saved = localStorage.getItem('snake-speed');
+    if (saved !== null && /^[0-9]+$/.test(saved)) i = parseInt(saved, 10);
+  } catch (e) {}
+  return i < SPEEDS.length ? i : 1;
+}
+function saveValue(key, value) {
+  try { localStorage.setItem(key, String(value)); } catch (e) {}
+}
+
+// ===================== GAME STATE =====================
+// state is one of: 'menu', 'ready', 'playing', 'paused', 'dying', 'over', 'won'
+let state = 'menu';
+let speedIndex = loadSpeed();
+let snake = [];        // list of squares, snake[0] is the head
+let dir = DIRS.right;  // where the head is going now
+let turns = [];        // turns waiting for the next move (so quick key presses are never lost)
+let food = null;
+let score = 0;
+let best = 0;
+let newBest = false;
+let acc = 0;           // time saved up for the next move
+let now = 0;
+let deadAt = 0;
+let shakeUntil = 0;
+let cell = 20;
+
+function speed() { return SPEEDS[speedIndex]; }
+
+function reset() {
+  const cx = Math.floor(COLS / 2), cy = Math.floor(ROWS / 2);
+  snake = [{ x: cx, y: cy }, { x: cx - 1, y: cy }, { x: cx - 2, y: cy }];
+  dir = DIRS.right;
+  turns = [];
+  score = 0;
+  newBest = false;
+  acc = 0;
+  best = loadNumber('snake-best-' + speed().id);
+  placeFood();
+  updateBar();
+}
+
+// Put the apple on a random EMPTY square. Returns false if there is no empty square left.
+function placeFood() {
+  const taken = new Set(snake.map(s => s.y * COLS + s.x));
+  const free = [];
+  for (let i = 0; i < COLS * ROWS; i++) if (!taken.has(i)) free.push(i);
+  if (free.length === 0) { food = null; return false; }
+  const i = free[Math.floor(Math.random() * free.length)];
+  food = { x: i % COLS, y: Math.floor(i / COLS) };
+  return true;
+}
+
+function turn(name) {
+  const d = DIRS[name];
+  if (!d) return;
+  if (state === 'ready') {
+    if (d.x === -dir.x && d.y === -dir.y) return; // can't start by going backwards into yourself
+    state = 'playing';
+    acc = speed().ms; // move right away
+    updateScreen();
+  }
+  if (state !== 'playing') return;
+  // compare with the LAST planned turn, so two fast presses can't make the snake reverse into itself
+  const last = turns.length ? turns[turns.length - 1] : dir;
+  if (d === last) return;
+  if (d.x === -last.x && d.y === -last.y) return;
+  if (turns.length < 3) turns.push(d);
+}
+
+function step() {
+  if (turns.length) dir = turns.shift();
+  const head = snake[0];
+  const nx = head.x + dir.x, ny = head.y + dir.y;
+
+  if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) return die();
+
+  const eating = food !== null && nx === food.x && ny === food.y;
+  // the tail moves out of the way this turn, unless we are eating (then the snake grows)
+  const checkUpTo = eating ? snake.length : snake.length - 1;
+  for (let i = 0; i < checkUpTo; i++) {
+    if (snake[i].x === nx && snake[i].y === ny) return die();
+  }
+
+  snake.unshift({ x: nx, y: ny });
+  if (eating) {
+    score++;
+    updateBar();
+    sound('eat');
+    if (!placeFood()) return win();
+  } else {
+    snake.pop();
+  }
+}
+
+function checkBest() {
+  if (score > best) {
+    best = score;
+    newBest = true;
+    saveValue('snake-best-' + speed().id, best);
+  }
+  updateBar();
+}
+
+function die() {
+  state = 'dying';
+  deadAt = now;
+  shakeUntil = now + 300;
+  checkBest();
+  sound('die');
+  updateScreen();
+}
+
+function win() {
+  state = 'won';
+  checkBest();
+  sound('win');
+  updateScreen();
+}
+
+function startGame() {
+  reset();
+  state = 'ready';
+  updateScreen();
+}
+
+function goToMenu() {
+  reset();
+  state = 'menu';
+  updateScreen();
+}
+
+function pause() {
+  if (state !== 'playing') return;
+  state = 'paused';
+  updateScreen();
+}
+
+function resume() {
+  if (state !== 'paused') return;
+  state = 'playing';
+  updateScreen();
+}
+
+function changeSpeed(i) {
+  speedIndex = (i + SPEEDS.length) % SPEEDS.length;
+  saveValue('snake-speed', speedIndex);
+  best = loadNumber('snake-best-' + speed().id);
+  updateBar();
+  updateScreen();
+}
+
+// ===================== SCREENS =====================
+function updateBar() {
+  scoreEl.textContent = score;
+  bestEl.textContent = Math.max(best, score);
+}
+
+function updateScreen() {
+  pauseBtn.disabled = !(state === 'playing' || state === 'paused');
+  pauseBtn.textContent = state === 'paused' ? '▶' : '⏸';
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+
+  hint.style.display = state === 'ready' ? 'block' : 'none';
+  hintText.textContent = isTouch ? 'Swipe or tap an arrow to start' : 'Press an arrow key to start';
+
+  let html = '';
+  if (state === 'menu') {
+    html = '<h1>SNAKE</h1>' +
+      '<div class="label">SPEED</div><div class="speeds">' +
+      SPEEDS.map((s, i) => '<button class="btn' + (i === speedIndex ? ' sel' : '') + '" data-action="speed" data-i="' + i + '">' + s.name + '</button>').join('') +
+      '</div>' +
+      '<button class="btn play" data-action="play">PLAY</button>' +
+      (isTouch ? '' : '<div class="keyhint"><kbd>←</kbd> <kbd>→</kbd> change speed · <kbd>Enter</kbd> play</div>');
+  } else if (state === 'paused') {
+    html = '<h1>PAUSED</h1>' +
+      '<div class="row"><button class="btn play" data-action="resume">RESUME</button><button class="btn" data-action="menu">QUIT</button></div>' +
+      (isTouch ? '' : '<div class="keyhint"><kbd>Space</kbd> resume</div>');
+  } else if (state === 'over' || state === 'won') {
+    const won = state === 'won';
+    html = (won ? '<h1 class="gold">YOU WIN!</h1><div class="big">You filled the whole board!</div>' : '<h1 class="red">GAME OVER</h1>') +
+      '<div class="big">Score <b>' + score + '</b></div>' +
+      (newBest ? '<div class="newbest">★ NEW BEST! ★</div>' : '<div class="big">Best <b>' + best + '</b></div>') +
+      '<div class="row"><button class="btn play" data-action="play">PLAY AGAIN</button><button class="btn" data-action="menu">MENU</button></div>' +
+      (isTouch ? '' : '<div class="keyhint"><kbd>Enter</kbd> play again · <kbd>Esc</kbd> menu</div>');
+  }
+  if (html) {
+    overlay.innerHTML = html;
+    overlay.style.display = 'flex';
+  } else {
+    overlay.innerHTML = '';
+    overlay.style.display = 'none';
+  }
+}
+
+overlay.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  b.blur();
+  unlockAudio();
+  const a = b.dataset.action;
+  if (a === 'play') startGame();
+  else if (a === 'resume') resume();
+  else if (a === 'menu') goToMenu();
+  else if (a === 'speed') { changeSpeed(parseInt(b.dataset.i, 10)); sound('click'); }
+});
+
+pauseBtn.addEventListener('click', () => {
+  pauseBtn.blur();
+  if (state === 'playing') pause(); else if (state === 'paused') resume();
+});
+muteBtn.addEventListener('click', () => {
+  muteBtn.blur();
+  unlockAudio();
+  toggleMute();
+});
+
+// ===================== CONTROLS =====================
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return; // leave browser shortcuts alone
+  unlockAudio();
+  const key = e.key;
+  const letter = key && key.length === 1 ? key.toLowerCase() : '';
+  const d = KEYS[e.code] || KEYS[key];
+
+  if (d) {
+    e.preventDefault();
+    if (state === 'ready' || state === 'playing') turn(d);
+    else if (state === 'menu' && !e.repeat && (d === 'left' || d === 'right')) { changeSpeed(speedIndex + (d === 'left' ? -1 : 1)); sound('click'); }
+    return;
+  }
+
+  const isSpace = key === ' ' || key === 'Spacebar';
+  const isEnter = key === 'Enter';
+  if (isSpace || isEnter || key === 'Escape' || letter === 'p' || letter === 'm' || (letter >= '1' && letter <= '3')) e.preventDefault();
+  if (e.repeat) return; // holding a key down must not flip pause on and off
+
+  if (letter === 'm') { toggleMute(); return; }
+
+  if (state === 'playing') {
+    if (isSpace || letter === 'p' || key === 'Escape') pause();
+  } else if (state === 'paused') {
+    if (isSpace || isEnter || letter === 'p' || key === 'Escape') resume();
+  } else if (state === 'menu') {
+    if (isSpace || isEnter) startGame();
+    else if (letter >= '1' && letter <= String(SPEEDS.length)) { changeSpeed(parseInt(letter, 10) - 1); sound('click'); }
+  } else if (state === 'over' || state === 'won') {
+    if (isSpace || isEnter) startGame();
+    else if (key === 'Escape') goToMenu();
+  }
+});
+
+// swipe anywhere on the screen
+let touchStart = null;
+document.addEventListener('touchstart', e => {
+  unlockAudio();
+  if (e.target.closest('button') || e.touches.length !== 1) { touchStart = null; return; }
+  touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!touchStart) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  const dx = t.clientX - touchStart.x, dy = t.clientY - touchStart.y;
+  if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+  const d = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up');
+  if (state === 'ready' || state === 'playing') turn(d);
+  touchStart = { x: t.clientX, y: t.clientY }; // you can keep swiping without lifting your finger
+}, { passive: false });
+document.addEventListener('touchend', () => { touchStart = null; });
+document.addEventListener('touchcancel', () => { touchStart = null; });
+
+// arrow buttons for phones
+pad.addEventListener('pointerdown', e => {
+  const b = e.target.closest('button');
+  if (!b) return;
+  e.preventDefault();
+  unlockAudio();
+  if (state === 'ready' || state === 'playing') turn(b.dataset.dir);
+});
+pad.addEventListener('contextmenu', e => e.preventDefault());
+
+// pause by itself if you switch to another tab or window
+window.addEventListener('blur', pause);
+document.addEventListener('visibilitychange', () => { if (document.hidden) pause(); });
+
+// ===================== SOUND (made with code, no sound files) =====================
+let actx = null;
+let muted = loadNumber('snake-muted') === 1;
+
+function unlockAudio() {
+  try {
+    if (!actx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    if (actx && actx.state === 'suspended') actx.resume().catch(() => {});
+  } catch (e) { actx = null; }
+}
+
+function toggleMute() {
+  muted = !muted;
+  saveValue('snake-muted', muted ? 1 : 0);
+  updateScreen();
+  if (!muted) sound('click');
+}
+
+function tone(freq, start, dur, type, vol, slideTo) {
+  const t0 = actx.currentTime + start;
+  const o = actx.createOscillator();
+  const g = actx.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t0);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  o.connect(g).connect(actx.destination);
+  o.start(t0);
+  o.stop(t0 + dur + 0.02);
+}
+
+function sound(name) {
+  if (muted || !actx || actx.state !== 'running') return;
+  try {
+    if (name === 'eat') { tone(520, 0, 0.08, 'square', 0.06, 880); }
+    else if (name === 'click') { tone(660, 0, 0.05, 'square', 0.04); }
+    else if (name === 'die') { tone(330, 0, 0.35, 'sawtooth', 0.07, 70); tone(160, 0.05, 0.4, 'square', 0.05, 50); }
+    else if (name === 'win') { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.13, 0.22, 'square', 0.06)); }
+  } catch (e) {}
+}
+
+// ===================== DRAWING =====================
+function layout() {
+  const side = isTouch && window.innerWidth > window.innerHeight;
+  app.classList.toggle('side', side);
+  const barH = bar.offsetHeight + 10;
+  const footH = isTouch ? 0 : footer.offsetHeight + 10;
+  const padW = side ? pad.offsetWidth + 24 : 0;
+  const padH = isTouch && !side ? pad.offsetHeight + 14 : 0;
+  const availW = window.innerWidth - 24 - padW;
+  const availH = window.innerHeight - 24 - barH - footH - padH;
+  cell = Math.max(8, Math.floor(Math.min(availW / COLS, availH / ROWS, 32)));
+  const w = cell * COLS, h = cell * ROWS;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  boardWrap.style.setProperty('--u', (w / 10) + 'px');
+  bar.style.width = w + 'px';
+  draw();
+}
+
+function mix(a, b, t) {
+  return 'rgb(' + Math.round(a[0] + (b[0] - a[0]) * t) + ',' + Math.round(a[1] + (b[1] - a[1]) * t) + ',' + Math.round(a[2] + (b[2] - a[2]) * t) + ')';
+}
+
+function circle(x, y, r) {
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function draw() {
+  const w = cell * COLS, h = cell * ROWS;
+  ctx.save();
+  ctx.fillStyle = COLORS.board1;
+  ctx.fillRect(0, 0, w, h);
+  if (now < shakeUntil) {
+    const m = (shakeUntil - now) / 300 * cell * 0.3;
+    ctx.translate((Math.random() - 0.5) * 2 * m, (Math.random() - 0.5) * 2 * m);
+    ctx.fillRect(-cell, -cell, w + 2 * cell, h + 2 * cell);
+  }
+
+  // checkered board
+  ctx.fillStyle = COLORS.board2;
+  for (let y = 0; y < ROWS; y++) {
+    for (let x = (y % 2); x < COLS; x += 2) ctx.fillRect(x * cell, y * cell, cell, cell);
+  }
+
+  // apple
+  if (food) {
+    const cx = (food.x + 0.5) * cell, cy = (food.y + 0.55) * cell;
+    const r = cell * 0.36 * (1 + 0.07 * Math.sin(now / 160));
+    ctx.strokeStyle = COLORS.stem;
+    ctx.lineWidth = Math.max(1.5, cell * 0.08);
+    ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, cy - r * 0.7); ctx.lineTo(cx + r * 0.15, cy - r * 1.25); ctx.stroke();
+    ctx.fillStyle = COLORS.leaf;
+    ctx.beginPath(); ctx.ellipse(cx + r * 0.45, cy - r * 1.05, r * 0.38, r * 0.18, -0.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = COLORS.apple;
+    circle(cx, cy, r);
+    ctx.fillStyle = COLORS.appleShine;
+    circle(cx - r * 0.35, cy - r * 0.3, r * 0.22);
+  }
+
+  // snake body: a thick line through the middle of each square, from the tail to the head
+  const dead = state === 'dying' || state === 'over';
+  const cHead = dead ? COLORS.deadHead : COLORS.head;
+  const cTail = dead ? COLORS.deadTail : COLORS.tail;
+  const n = snake.length;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  for (let i = n - 1; i > 0; i--) {
+    const a = snake[i], b = snake[i - 1];
+    const t = i / (n - 1);
+    ctx.strokeStyle = mix(cHead, cTail, t);
+    ctx.lineWidth = cell * (0.74 - 0.2 * t);
+    ctx.beginPath();
+    ctx.moveTo((a.x + 0.5) * cell, (a.y + 0.5) * cell);
+    ctx.lineTo((b.x + 0.5) * cell, (b.y + 0.5) * cell);
+    ctx.stroke();
+  }
+
+  // head with eyes
+  if (n > 0) {
+    const hx = (snake[0].x + 0.5) * cell, hy = (snake[0].y + 0.5) * cell;
+    ctx.fillStyle = mix(cHead, cTail, 0);
+    circle(hx, hy, cell * 0.43);
+    const px = -dir.y, py = dir.x; // sideways from where the head points
+    for (const s of [-1, 1]) {
+      const ex = hx + dir.x * cell * 0.12 + px * s * cell * 0.19;
+      const ey = hy + dir.y * cell * 0.12 + py * s * cell * 0.19;
+      if (dead) {
+        const k = cell * 0.09;
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = Math.max(1.5, cell * 0.07);
+        ctx.beginPath();
+        ctx.moveTo(ex - k, ey - k); ctx.lineTo(ex + k, ey + k);
+        ctx.moveTo(ex + k, ey - k); ctx.lineTo(ex - k, ey + k);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = '#fff';
+        circle(ex, ey, cell * 0.12);
+        ctx.fillStyle = '#111';
+        circle(ex + dir.x * cell * 0.04, ey + dir.y * cell * 0.04, cell * 0.065);
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// ===================== MAIN LOOP =====================
+let lastT = performance.now();
+function frame(t) {
+  let dt = t - lastT;
+  lastT = t;
+  now = t;
+  if (!(dt > 0)) dt = 0;
+  if (dt > 100) dt = 100; // after a hiccup, never jump many squares at once
+
+  if (state === 'playing') {
+    acc += dt;
+    const ms = speed().ms;
+    while (acc >= ms && state === 'playing') {
+      acc -= ms;
+      step();
+    }
+  } else if (state === 'dying' && now - deadAt > 800) {
+    state = 'over';
+    updateScreen();
+  }
+
+  draw();
+  requestAnimationFrame(frame);
+}
+
+window.addEventListener('resize', layout);
+reset();
+updateScreen();
+layout();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
