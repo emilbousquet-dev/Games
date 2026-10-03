@@ -1,6 +1,9 @@
 # LAB 13 👽🩸
 
-> 🆕 **Also in this folder: [KIDS vs HOMEWORK](kids-vs-homework/README.md)** ✏️📚: a tower defense game
+> 🆕 **NEW: [KIDS vs VIDEO GAMES](kids-vs-video-games/README.md)** 🎮🛡️: a tower defense game where Mio, Nafti
+> and Felix protect Bill from video game characters! Open `kids-vs-video-games/index.html` to play.
+>
+> **Also in this folder: [KIDS vs HOMEWORK](kids-vs-homework/README.md)** ✏️📚: a tower defense game
 > starring Natti, Mio and Bill! Open `kids-vs-homework/index.html` to play.
 >
 > **And: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
