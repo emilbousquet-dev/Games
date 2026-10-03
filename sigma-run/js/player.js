@@ -96,7 +96,8 @@ SR.Player = (function () {
     const stripe = new THREE.Mesh(new THREE.CylinderGeometry(0.077, 0.077, 0.06, 16), new THREE.MeshStandardMaterial({ color: 0xffd21a, emissive: 0x443300 }));
     stripe.rotation.x = Math.PI / 2; stripe.position.z = 0.25;
     L.add(tube, r1, r2, grip, sight, tip, stripe);
-    L.position.set(0.24, -0.2, -0.35);
+    L.position.set(0.26, -0.23, -0.42);
+    L.scale.setScalar(0.85);
     L.visible = false;
     armsCam.add(L);
     arms.launcher = L; arms.launcherTip = tip;
@@ -647,7 +648,7 @@ SR.Player = (function () {
         else { y = -0.12; z = 0.05; rx = 0.1; }
       }
       if (P.mode === 'wallrun' && P.wr) {
-        if (s === P.wr.side) { x = s * 0.02; y = 0.15 + Math.sin(ph * 2) * 0.015; z = -0.04; rx = 1.0; ry = s * 0.02; rz = s * 0.7; grip = 0; }
+        if (s === P.wr.side) { x = s * 0.05; y = 0.05 + Math.sin(ph * 2) * 0.015; z = -0.02; rx = 0.72; ry = -s * 0.08; rz = s * 0.5; grip = 0; }
         else { y = pump * 0.06; z = pump * -0.07; rx = 0.55 + pump * 0.5; }
       }
       if (P.mode === 'vault' || P.mode === 'mantle') { y = 0.1; z = -0.1; rx = 0.3; ry = s * 0.2; rz = 0; grip = 0; }
@@ -663,7 +664,7 @@ SR.Player = (function () {
       for (const f of a.fingers) f.rotation.x = -T.grip * 1.5;
     }
     const L = arms.launcher;
-    L.position.set(0.22, -0.2 + armT.R.y * 0.6 + Math.sin(ph) * 0.01 * run, -0.38 + P.fireAnim * 0.14);
+    L.position.set(0.26, -0.23 + armT.R.y * 0.6 + Math.sin(ph) * 0.01 * run, -0.42 + P.fireAnim * 0.14);
     L.rotation.set(P.fireAnim * 0.35, 0.04, 0);
   }
   // arm lighting follows the sun
