@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NINJA CAT</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --red: #e8302a;
+    --gold: #ffcf40;
+    --ink: #fff6e8;
+    --dim: #b8a8c8;
+    --panel: rgba(18, 12, 40, 0.86);
+    --line: rgba(255, 207, 64, 0.45);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0c0820; color: var(--ink); overflow: hidden; font-family: "Trebuchet MS", "Segoe UI", Arial, sans-serif; user-select: none; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  b, strong { font-weight: bold; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+  .pane { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+  .pane.split.p1 { border-right: 3px solid #000; }
+  .stats { position: absolute; left: 14px; top: 52px; font-size: 18px; text-shadow: 0 2px 0 #000, 0 0 6px #000; }
+  .pname { font-weight: 900; letter-spacing: 2px; font-size: 15px; margin-bottom: 2px; }
+  .p1 .pname { color: #ffa040; } .p2 .pname { color: #60c0ff; }
+  .pname .lives { color: #fff; margin-left: 8px; letter-spacing: 0; }
+  .hearts { font-size: 28px; line-height: 1; letter-spacing: 2px; }
+  .hearts .on { color: #ff3a4a; } .hearts .off { color: rgba(0,0,0,0.55); text-shadow: 0 0 2px #fff; }
+  .row span { margin-right: 14px; font-weight: bold; }
+  .star { color: #d8e4ff; }
+  .invis { display: none; width: 150px; height: 8px; margin-top: 6px; border-radius: 4px; background: rgba(0,0,0,0.5); overflow: hidden; }
+  .invis i { display: block; height: 100%; background: linear-gradient(90deg, #8a50c0, #e0a0ff); }
+  .msg { position: absolute; left: 0; right: 0; top: 30%; text-align: center; font-size: clamp(22px, 4vw, 44px); font-weight: 900; color: var(--gold);
+    text-shadow: 0 3px 0 #a02010, 0 0 12px #000; opacity: 0; transform: scale(0.6); transition: opacity 0.4s, transform 0.4s; letter-spacing: 2px; padding: 0 10px; }
+  .msg.show { opacity: 1; transform: scale(1); transition: transform 0.18s cubic-bezier(.2,1.8,.4,1), opacity 0.1s; }
+  .hint { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%) translateY(20px); width: min(560px, 90%); background: rgba(70, 40, 16, 0.92);
+    border: 3px solid #e0a040; border-radius: 12px; padding: 12px 16px; font-size: 17px; line-height: 1.4; text-align: center; opacity: 0; transition: all 0.25s; box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+  .hint.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hint .key { display: inline-block; background: #fff6e0; color: #3a2010; border-radius: 6px; padding: 0 7px; margin: 0 2px; box-shadow: 0 2px 0 #a07040; font-size: 15px; }
+  .flashfx { position: absolute; inset: 0; opacity: 0; }
+  .flashfx.hurt { background: radial-gradient(ellipse at center, rgba(255,0,0,0) 40%, rgba(255,0,0,0.6) 100%); }
+  .flashfx.go { animation: flash 0.5s ease-out; }
+  @keyframes flash { from { opacity: 1; } to { opacity: 0; } }
+  #topbar { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: var(--panel); border: 2px solid var(--line); border-radius: 20px; padding: 5px 16px;
+    font-size: 15px; font-weight: bold; white-space: nowrap; display: flex; gap: 14px; align-items: center; }
+  #topbar .bells .on { filter: none; } #topbar .bells .off { filter: grayscale(1) brightness(0.45); }
+  #timer { position: absolute; top: 12px; right: 16px; font-size: 18px; font-weight: bold; text-shadow: 0 2px 0 #000; font-variant-numeric: tabular-nums; }
+  #bossbar { position: absolute; top: 52px; left: 50%; transform: translateX(-50%); width: min(560px, 70%); display: none; text-align: center; }
+  #bossname { font-weight: 900; letter-spacing: 4px; color: #ff6050; text-shadow: 0 2px 0 #000; font-size: 18px; }
+  .bossback { height: 16px; background: rgba(0,0,0,0.7); border: 2px solid #ffcf40; border-radius: 9px; overflow: hidden; margin-top: 3px; }
+  #bossfill { height: 100%; width: 100%; background: linear-gradient(90deg, #a01010, #ff4030, #ffa040); transition: width 0.2s; }
+  #announce { position: fixed; left: 0; right: 0; top: 18%; text-align: center; pointer-events: none; opacity: 0; transition: opacity 0.8s; }
+  #announce.show { opacity: 1; }
+  #announce .big { font-size: clamp(30px, 6vw, 64px); font-weight: 900; color: var(--gold); letter-spacing: 4px; text-shadow: 0 4px 0 #a02010, 0 0 20px #000; }
+  #announce .sub { font-size: clamp(15px, 2vw, 21px); max-width: 640px; margin: 10px auto 0; padding: 0 16px; text-shadow: 0 2px 4px #000, 0 0 10px #000; }
+
+  /* ---------- MENUS ---------- */
+  .menu { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; padding: 16px; overflow-y: auto; }
+  .menu.show { display: flex; }
+  .menu.dark { background: rgba(8, 4, 24, 0.6); }
+  .card { background: var(--panel); border: 3px solid var(--line); border-radius: 18px; padding: 22px 26px; max-width: 760px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.6); text-align: center; }
+  h1.logo { font-size: clamp(48px, 10vw, 110px); margin: 0; font-weight: 900; letter-spacing: 6px; color: var(--gold); line-height: 1;
+    text-shadow: 0 6px 0 #a02010, 0 10px 30px rgba(0,0,0,0.8); font-family: "Arial Black", "Trebuchet MS", sans-serif; }
+  .logo-sub { font-size: clamp(14px, 2vw, 20px); margin: 10px 0 26px; color: #ffe8f0; text-shadow: 0 2px 4px #000; letter-spacing: 1px; }
+  h2 { margin: 0 0 14px; color: var(--gold); letter-spacing: 3px; font-size: 28px; text-shadow: 0 3px 0 #a02010; }
+  .btns { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .btns.row { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+  button { font: inherit; font-weight: 900; letter-spacing: 2px; font-size: 19px; color: #3a1a08; background: linear-gradient(#ffe48a, #f0b030); border: 3px solid #7a3a10;
+    border-radius: 12px; padding: 10px 26px; min-width: 240px; cursor: pointer; box-shadow: 0 4px 0 #7a3a10; transition: transform 0.08s; }
+  button.sel, button:hover { transform: scale(1.07); background: linear-gradient(#fff6c8, #ffc840); outline: 3px solid #fff; outline-offset: 2px; }
+  button:active { transform: translateY(3px); box-shadow: 0 1px 0 #7a3a10; }
+  button.red { background: linear-gradient(#ff7a6a, #d02a20); color: #fff; border-color: #6a0a08; box-shadow: 0 4px 0 #6a0a08; text-shadow: 0 2px 0 #6a0a08; }
+  button.small { min-width: 0; font-size: 15px; padding: 7px 14px; }
+  button[disabled] { filter: grayscale(1) brightness(0.6); cursor: default; }
+  .pads { margin-top: 18px; font-size: 14px; color: var(--dim); }
+  /* level select */
+  .levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .levels button { min-width: 0; padding: 10px 8px; font-size: 14px; letter-spacing: 1px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
+  .levels .num { font-size: 30px; }
+  .levels .lstars { color: #a02010; font-size: 18px; letter-spacing: 1px; }
+  .levels .meta { font-size: 12px; font-weight: bold; letter-spacing: 0; }
+  /* shop */
+  .wallet { font-size: 22px; font-weight: 900; color: var(--gold); margin-bottom: 10px; }
+  .shopgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 10px 0 14px; }
+  .shopgrid button { min-width: 0; font-size: 14px; letter-spacing: 0; padding: 8px 6px; }
+  .shopgrid button .price { display: block; font-size: 13px; opacity: 0.85; }
+  .shopgrid button.on { background: linear-gradient(#b8ff9a, #50c030); border-color: #1a5a10; box-shadow: 0 4px 0 #1a5a10; }
+  .section { text-align: left; font-weight: 900; color: #ffd8e0; letter-spacing: 2px; margin-top: 6px; }
+  .tabs { display: flex; gap: 8px; justify-content: center; }
+  .tabs button { min-width: 140px; }
+  .tabs button.on { background: linear-gradient(#b8e8ff, #40a0f0); border-color: #0a3a6a; box-shadow: 0 4px 0 #0a3a6a; }
+  #shop .card { max-width: 820px; background: rgba(18, 12, 40, 0.78); }
+  #shop { justify-content: flex-end; align-items: flex-start; }
+  #shop .card { max-width: 520px; max-height: 100%; overflow-y: auto; }
+  /* results */
+  .results { font-size: 19px; line-height: 1.7; margin-bottom: 16px; }
+  .bigstars { font-size: 54px; letter-spacing: 6px; }
+  .bigstars .on { color: var(--gold); text-shadow: 0 3px 0 #a02010; } .bigstars .off { color: rgba(255,255,255,0.15); }
+  .new { color: #80ff80; font-weight: 900; }
+  table.controls { margin: 0 auto 16px; border-collapse: collapse; font-size: 15px; }
+  table.controls td, table.controls th { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.15); text-align: left; }
+  table.controls th { color: var(--gold); }
+  .settings-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 6px 0; font-weight: bold; }
+  .settings-row .val { min-width: 90px; }
+  .story { font-size: 18px; line-height: 1.6; margin: 0 0 18px; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; background: #0c0820; }
+  @media (max-width: 600px) { button { min-width: 200px; font-size: 16px; } .stats { font-size: 14px; } .hearts { font-size: 22px; } }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div id="panes"></div>
+  <div id="topbar"></div>
+  <div id="timer"></div>
+  <div id="bossbar"><div id="bossname"></div><div class="bossback"><div id="bossfill"></div></div></div>
+</div>
+<div id="announce"></div>
+
+<!-- TITLE -->
+<div class="menu" id="title">
+  <h1 class="logo">NINJA CAT</h1>
+  <div class="logo-sub">🐱🥷 Get the GOLDEN FISH back from Lord Woofmoto! 🐟</div>
+  <div class="btns">
+    <button data-act="play1">1 PLAYER</button>
+    <button data-act="play2">2 PLAYERS</button>
+    <button data-act="shop">SHOP 🎩</button>
+    <button data-act="help">HOW TO PLAY</button>
+    <button data-act="settings">SETTINGS</button>
+  </div>
+  <div class="pads" id="padinfo"></div>
+</div>
+
+<!-- LEVEL SELECT -->
+<div class="menu dark" id="select">
+  <div class="card">
+    <h2 id="selectTitle">CHOOSE A LEVEL</h2>
+    <div class="levels" id="levelList"></div>
+    <div class="btns"><button data-act="back" class="small red">BACK</button></div>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div class="menu dark" id="pause">
+  <div class="card" style="max-width: 420px">
+    <h2>PAUSED</h2>
+    <div class="btns">
+      <button data-act="resume">RESUME</button>
+      <button data-act="restart">RESTART LEVEL</button>
+      <button data-act="help">HOW TO PLAY</button>
+      <button data-act="music" id="musicBtn">MUSIC: ON</button>
+      <button data-act="levels" class="red">QUIT TO LEVELS</button>
+    </div>
+  </div>
+</div>
+
+<!-- LEVEL COMPLETE -->
+<div class="menu dark" id="complete">
+  <div class="card" style="max-width: 520px">
+    <h2>LEVEL COMPLETE!</h2>
+    <div class="bigstars" id="resStars"></div>
+    <div class="results" id="results"></div>
+    <div class="btns">
+      <button data-act="next" id="nextBtn">NEXT LEVEL ▶</button>
+      <button data-act="shop">SHOP 🎩</button>
+      <button data-act="restart">PLAY AGAIN</button>
+      <button data-act="levels" class="red">LEVELS</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="menu dark" id="gameover">
+  <div class="card" style="max-width: 460px">
+    <h2>OUT OF LIVES!</h2>
+    <p class="story">Even a ninja cat only has 9 lives... 😿<br>But you can try again!</p>
+    <div class="btns">
+      <button data-act="restart">TRY AGAIN</button>
+      <button data-act="levels" class="red">LEVELS</button>
+    </div>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div class="menu" id="shop">
+  <div class="card">
+    <h2>NEKO SHOP</h2>
+    <div class="wallet" id="wallet"></div>
+    <div class="tabs" id="shopTabs"></div>
+    <div id="shopItems"></div>
+    <div class="btns"><button data-act="back" class="red">DONE</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="menu dark" id="settings">
+  <div class="card" style="max-width: 480px">
+    <h2>SETTINGS</h2>
+    <div class="btns">
+      <button data-act="gfx" id="gfxBtn">GRAPHICS: HIGH</button>
+      <div class="settings-row"><button class="small" data-act="musicDown">−</button><span class="val" id="musicVal">MUSIC</span><button class="small" data-act="musicUp">+</button></div>
+      <div class="settings-row"><button class="small" data-act="sfxDown">−</button><span class="val" id="sfxVal">SOUND</span><button class="small" data-act="sfxUp">+</button></div>
+      <button data-act="back" class="red">BACK</button>
+    </div>
+  </div>
+</div>
+
+<!-- HOW TO PLAY -->
+<div class="menu dark" id="help">
+  <div class="card">
+    <h2>HOW TO PLAY</h2>
+    <table class="controls">
+      <tr><th></th><th>🐱 MOCHI (P1)</th><th>🐈‍⬛ SHADOW (P2)</th><th>🎮 Controller</th></tr>
+      <tr><td>Move</td><td>W A S D</td><td>Arrows</td><td>Left stick</td></tr>
+      <tr><td>Camera</td><td>Mouse or Q E</td><td>, .</td><td>Right stick</td></tr>
+      <tr><td>Jump / double jump / wall jump</td><td>Space</td><td>Enter</td><td>A</td></tr>
+      <tr><td>Katana (3× = spin!)</td><td>F or click</td><td>L</td><td>X / RT</td></tr>
+      <tr><td>Ground pound (katana in the air)</td><td>F in the air</td><td>L in the air</td><td>X in the air</td></tr>
+      <tr><td>Shuriken</td><td>R or right click</td><td>K</td><td>Y / RB</td></tr>
+      <tr><td>Smoke bomb (invisible!)</td><td>G</td><td>J</td><td>B / LB</td></tr>
+      <tr><td>Wash your paw</td><td>T</td><td>H</td><td>Back</td></tr>
+      <tr><td>Pause</td><td>Esc / P</td><td></td><td>Start</td></tr>
+    </table>
+    <p class="story" style="font-size:15px">Jump at a tall wall and keep pushing to <b>climb</b>. Hit a dog from behind before it sees you for a one-hit <b>SNEAK ATTACK</b>.
+      Find the <b>3 golden bells 🔔</b> in every level. 100 🐟 = 1 extra life. In 2 players, jump on your friend's head and jump again for a <b>SUPER JUMP</b>!</p>
+    <div class="btns"><button data-act="back" class="red">BACK</button></div>
+  </div>
+</div>
+
+<!-- THE END -->
+<div class="menu" id="ending">
+  <div class="card" style="max-width: 560px; background: rgba(18, 12, 40, 0.7)">
+    <h2>🐟 YOU DID IT! 🐟</h2>
+    <p class="story" id="endText"></p>
+    <div class="btns"><button data-act="title">THE END ✦</button></div>
+  </div>
+</div>
+
+<div id="loading">Loading NINJA CAT... 🐱</div>
+
+<script src="../lib/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/input.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/models.js"></script>
+<script src="js/levels.js"></script>
+<script src="js/world.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/shots.js"></script>
+<script src="js/items.js"></script>
+<script src="js/player.js"></script>
+<script src="js/enemies.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>
