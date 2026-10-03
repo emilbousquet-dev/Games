@@ -1,6 +1,10 @@
 # LAB 13 👽🩸
 
-> 🆕 **NEW: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
+> 🆕 **NEW: [NINJA CAT](ninja-cat/README.md)** 🐱🥷: a 3D ninja cat rooftop adventure for 1 or 2 players!
+> Double jump, climb walls, slash with your katana, throw shuriken and vanish in smoke. Beat Lord Woofmoto and get the Golden Fish back!
+> Open `ninja-cat/index.html` to play.
+>
+> **Also: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
 > Run on walls across the rooftops, escape the FBI helicopter, shoot it down with rockets. Open `sigma-run/index.html` to play.
 >
 > **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!

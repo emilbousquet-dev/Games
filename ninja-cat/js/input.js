@@ -7,6 +7,7 @@ window.NC = window.NC || {};
 NC.Input = (function () {
   const U = NC.U;
   const keys = new Set();
+  const tapped = new Set(); // keys pressed since the last frame (so a super quick tap is never missed)
   const KEYMAP = [
     { // PLAYER 1: MOCHI (left side of the keyboard)
       up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'],
@@ -35,6 +36,7 @@ NC.Input = (function () {
     window.addEventListener('keydown', (e) => {
       if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab', 'Enter'].includes(e.code)) e.preventDefault();
       keys.add(e.code);
+      tapped.add(e.code);
     });
     window.addEventListener('keyup', (e) => keys.delete(e.code));
     window.addEventListener('blur', () => { keys.clear(); mouse.left = mouse.right = mouse.drag = false; });
@@ -60,7 +62,7 @@ NC.Input = (function () {
   }
   function unlockMouse() { try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* fine */ } }
 
-  const down = (list) => list.some((k) => keys.has(k));
+  const down = (list) => list.some((k) => keys.has(k) || tapped.has(k));
   const dz = (v) => (Math.abs(v) < 0.2 ? 0 : (v - Math.sign(v) * 0.2) / 0.8);
   function getPads() { try { return navigator.getGamepads ? navigator.getGamepads() : []; } catch (e) { return []; } }
 
@@ -89,7 +91,7 @@ NC.Input = (function () {
       camX: (any('camR') ? 1 : 0) - (any('camL') ? 1 : 0), // turn the camera with keys
       camDX: 0, camDY: 0,                                   // mouse / stick camera
       jump: any('jump'), katana: any('katana'), star: any('star'), smoke: any('smoke'), taunt: any('taunt'),
-      pause: i === 0 && (keys.has('Escape') || keys.has('KeyP')), pad: false,
+      pause: i === 0 && (down(['Escape', 'KeyP'])), pad: false,
     };
     if (i === 0 && solo && (mouse.locked || mouse.drag)) {
       s.camDX = mouse.dx * 0.0032; s.camDY = mouse.dy * 0.0025;
@@ -120,6 +122,8 @@ NC.Input = (function () {
     }
     s.x = U.clamp(s.x, -1, 1);
     s.y = U.clamp(s.y, -1, 1);
+    for (const k of maps) for (const n in k) for (const code of k[n]) tapped.delete(code);
+    tapped.delete('Escape'); tapped.delete('KeyP');
     // NEW presses: true only on the first frame you press
     const p = prev[i];
     for (const n of ['jump', 'katana', 'star', 'smoke', 'taunt', 'pause']) s[n + 'Pressed'] = s[n] && !p[n];
@@ -130,14 +134,16 @@ NC.Input = (function () {
   // ---------- menus: arrows / WASD / sticks to move, ENTER / SPACE / A to pick ----------
   const menuPrev = {};
   function menuRead() {
+    const k = (...codes) => codes.some((c) => keys.has(c) || tapped.has(c));
     const now = {
-      up: keys.has('ArrowUp') || keys.has('KeyW'),
-      down: keys.has('ArrowDown') || keys.has('KeyS'),
-      left: keys.has('ArrowLeft') || keys.has('KeyA'),
-      right: keys.has('ArrowRight') || keys.has('KeyD'),
-      ok: keys.has('Enter') || keys.has('Space') || keys.has('NumpadEnter'),
-      back: keys.has('Escape') || keys.has('Backspace'),
+      up: k('ArrowUp', 'KeyW'),
+      down: k('ArrowDown', 'KeyS'),
+      left: k('ArrowLeft', 'KeyA'),
+      right: k('ArrowRight', 'KeyD'),
+      ok: k('Enter', 'Space', 'NumpadEnter'),
+      back: k('Escape', 'Backspace'),
     };
+    tapped.clear();
     for (const gp of getPads()) {
       if (!gp) continue;
       const b = (n) => gp.buttons[n] && gp.buttons[n].pressed;

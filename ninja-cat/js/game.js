@@ -346,10 +346,11 @@ window.NC = window.NC || {};
     sc.add(new THREE.HemisphereLight(0xb8a0ff, 0x402848, 1.7));
     const dl = new THREE.DirectionalLight(0xffe8d0, 1.5); dl.position.set(3, 5, 4); sc.add(dl);
     // the roof
+    // the textures repeat every 3 meters, like in the levels
+    const rep = (t, x, y) => { const c = t.clone(); c.repeat.set(x, y); c.needsUpdate = true; return c; };
+    const wall = new THREE.MeshLambertMaterial({ map: rep(NC.Tex.shoji(), 14 / 3, 4 / 3) });
     const roof = new THREE.Mesh(new THREE.BoxGeometry(14, 4, 8), [
-      new THREE.MeshLambertMaterial({ map: NC.Tex.shoji() }), new THREE.MeshLambertMaterial({ map: NC.Tex.shoji() }),
-      new THREE.MeshLambertMaterial({ map: NC.Tex.roofTiles('roofBlue', '#5a6a8a', '#262c40') }), new THREE.MeshLambertMaterial({ color: 0x222222 }),
-      new THREE.MeshLambertMaterial({ map: NC.Tex.shoji() }), new THREE.MeshLambertMaterial({ map: NC.Tex.shoji() }),
+      wall, wall, new THREE.MeshLambertMaterial({ map: rep(NC.Tex.roofTiles('roofBlue', '#5a6a8a', '#262c40'), 14 / 3, 8 / 3) }), new THREE.MeshLambertMaterial({ color: 0x222222 }), wall, wall,
     ]);
     roof.position.y = -2; sc.add(roof);
     const tree = NC.Models.cherryTree(U.seeded(4)); tree.position.set(-4.5, 0, -2.2); sc.add(tree);
@@ -389,11 +390,13 @@ window.NC = window.NC || {};
     if (S.mode === 'shop') {
       const c = S.cats[shopCat];
       const tx = c.position.x;
-      S.cam.position.set(tx - 1.6 + Math.sin(S.t * 0.4) * 0.3, 1.4, 3.2);
-      S.cam.lookAt(tx - 0.9, 0.7, 0);
+      S.cam.position.set(tx - 1.7 + Math.sin(S.t * 0.4) * 0.2, 1.25, 4.4);
+      S.cam.lookAt(tx - 1.25, 0.65, 0);
     } else {
-      S.cam.position.set(Math.sin(S.t * 0.15) * 2.5, 1.7 + Math.sin(S.t * 0.2) * 0.2, 6.5);
-      S.cam.lookAt(0, 1.6, 0);
+      // on a wide screen the menu is on the left, so look a bit to the left: the cats show up on the right
+      const wide = w / h > 1.2 && S.mode === 'title';
+      S.cam.position.set(Math.sin(S.t * 0.15) * 1.5 - (wide ? 1.2 : 0), 1.6 + Math.sin(S.t * 0.2) * 0.2, wide ? 5.2 : 6.5);
+      S.cam.lookAt(wide ? -2.4 : 0, 1.3, 0);
     }
     S.cats.forEach((c, i) => {
       const ending = S.mode === 'ending';

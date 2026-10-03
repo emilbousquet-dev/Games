@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NINJA CAT: all the models</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #1a1040; color: #fff; font-family: "Trebuchet MS", Arial, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #info { position: fixed; left: 12px; top: 10px; text-shadow: 0 2px 4px #000; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="info"><b>NINJA CAT: all the 3D models</b><br>Drag the mouse to turn around. Scroll to zoom.</div>
+<script src="../../lib/three.min.js"></script>
+<script src="../js/util.js"></script>
+<script src="../js/textures.js"></script>
+<script src="../js/models.js"></script>
+<script>
+  const M = NC.Models;
+  const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true });
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x2a1a50);
+  scene.add(new THREE.HemisphereLight(0xb8a0ff, 0x402848, 1.7));
+  const dl = new THREE.DirectionalLight(0xffe8d0, 1.5); dl.position.set(3, 6, 5); scene.add(dl);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(80, 30), new THREE.MeshLambertMaterial({ color: 0x3a3060 }));
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+  // every model with its name
+  const list = [
+    ['Mochi', M.cat('mochi')], ['Shadow', M.cat('shadow')], ['Guard dog', M.dog()], ['Rat ninja', M.rat()], ['Crow', M.crow()], ['Frog', M.frog()],
+    ['Big Bulldog', M.dog({ fur: 0xa86a3a, muzzle: 0xf0e0d0, armor: 0x5a2a20, trim: 0x888888, ears: 'floppy', jaw: true, lantern: false, spear: false, collar: true, size: 1.9 })],
+    ['Lord Woofmoto', M.dog({ fur: 0xd8a050, armor: 0xa01818, trim: 0xffd030, sword: true, cape: true, helmet: true, lantern: false, spear: false, size: 1.5 })],
+    ['Robo-dog', M.roboDog()], ['Torii gate', M.torii()], ['Stone lantern', M.stoneLantern()], ['Cherry tree', M.cherryTree()], ['Bamboo', M.bamboo(6)],
+    ['Crate', M.crate()], ['Pot', M.pot()], ['Taiko drum', M.taikoDrum()], ['Spike trap', M.spikeTrap()], ['Searchlight', M.searchlight()],
+    ['Golden fish', M.fishCoin()], ['Bell', M.bell()], ['Scroll', M.scroll()], ['Smoke bomb', M.smokePouch()], ['Rice ball', M.onigiri()],
+    ['Shuriken', M.shuriken()], ['Fish bone', M.boneModel()], ['Rocket', M.rocket()], ['Hint sign', M.sign()], ['THE GOLDEN FISH', M.goldenFish()],
+  ];
+  M.setLanternLit(list[10][1], true);
+  const cols = 7;
+  list.forEach(([name, m], i) => {
+    const x = (i % cols - (cols - 1) / 2) * 4, z = -Math.floor(i / cols) * 5;
+    m.position.set(x, ['Golden fish', 'Bell', 'Scroll', 'Rice ball', 'Shuriken', 'Fish bone', 'Rocket', 'Crow', 'THE GOLDEN FISH'].includes(name) ? 1 : 0, z);
+    scene.add(m);
+    const c = NC.U.canvas(256, 48, (g) => { g.fillStyle = '#fff'; g.font = 'bold 30px Trebuchet MS, Arial'; g.textAlign = 'center'; g.fillText(name, 128, 34); });
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true }));
+    s.scale.set(3, 0.56, 1); s.position.set(x, -0.3 + (name === 'Robo-dog' || name === 'Torii gate' ? 0 : 0), z + 1.6);
+    s.position.y = 0.3;
+    scene.add(s);
+  });
+  const cam = new THREE.PerspectiveCamera(50, 1, 0.1, 200);
+  let yaw = 0, pitch = 0.45, dist = 17, drag = false;
+  addEventListener('mousedown', () => drag = true);
+  addEventListener('mouseup', () => drag = false);
+  addEventListener('mousemove', (e) => { if (drag) { yaw -= e.movementX * 0.005; pitch = Math.max(0.05, Math.min(1.4, pitch + e.movementY * 0.005)); } });
+  addEventListener('wheel', (e) => { dist = Math.max(5, Math.min(60, dist + e.deltaY * 0.02)); });
+  let t = 0, last = performance.now();
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000); last = now; t += dt;
+    renderer.setSize(innerWidth, innerHeight, false);
+    cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix();
+    cam.position.set(Math.sin(yaw) * Math.cos(pitch) * dist, Math.sin(pitch) * dist + 2, -6 + Math.cos(yaw) * Math.cos(pitch) * dist);
+    cam.lookAt(0, 1, -6);
+    M.animCat(list[0][1], { t, run: (Math.sin(t * 0.5) + 1) / 2, phase: t * 12, mode: 'ground' }, dt);
+    M.animCat(list[1][1], { t: t + 2, run: 0, phase: 0, mode: Math.sin(t * 0.7) > 0.3 ? 'taunt' : 'ground', slash: (t % 2) < 0.26 ? 1 - (t % 2) / 0.26 : 0, combo: 1 }, dt);
+    renderer.render(scene, cam);
+  }
+  requestAnimationFrame(frame);
+</script>
+</body>
+</html>

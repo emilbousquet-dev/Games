@@ -291,15 +291,15 @@ NC.Models = (function () {
     P.root.position.y = U.damp(P.root.position.y, rootY, 20, dt);
     P.root.rotation.x = rootRX;
     P.root.rotation.y = rootRY;
-    // tail swish
-    const tailUp = s.mode === 'air' ? 0.1 : 0.35;
+    // tail swish: it curls UP like a happy cat
+    const tailUp = s.mode === 'air' ? 0.05 : 0.2;
     P.tail.forEach((seg, i) => {
-      seg.rotation.x = (i === 0 ? -0.9 : tailUp * 0.5) + Math.sin(t * 4 - i * 0.6) * 0.06 - run * 0.05;
+      seg.rotation.x = (i === 0 ? 0.5 : tailUp) + Math.sin(t * 4 - i * 0.6) * 0.06 - run * 0.08;
       seg.rotation.y = Math.sin(t * 2.5 - i * 0.5) * (0.15 + run * 0.1);
     });
-    // scarf flaps faster when you run
+    // headband tails hang down, and fly back when you run
     P.scarf.forEach((sc, i) => {
-      sc.rotation.x = 0.3 + run * 0.6 + Math.sin(t * (8 + run * 10) + i) * (0.15 + run * 0.2);
+      sc.rotation.x = -0.9 + run * 0.75 + Math.sin(t * (8 + run * 10) + i) * (0.1 + run * 0.2);
     });
     // ears twitch and eyes blink
     const blink = (t % 3.7) < 0.12 ? 0.1 : 1;

@@ -76,6 +76,10 @@
   button.small { min-width: 0; font-size: 15px; padding: 7px 14px; }
   button[disabled] { filter: grayscale(1) brightness(0.6); cursor: default; }
   .pads { margin-top: 18px; font-size: 14px; color: var(--dim); }
+  #title { align-items: flex-start; padding-left: max(16px, 6vw); }
+  #title .btns { align-items: flex-start; }
+  #title .logo-sub { max-width: 46vw; }
+  @media (max-width: 700px) { #title { align-items: center; padding-left: 16px; } #title .btns { align-items: center; } #title .logo-sub { max-width: none; } }
   /* level select */
   .levels { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
   .levels button { min-width: 0; padding: 10px 8px; font-size: 14px; letter-spacing: 1px; display: flex; flex-direction: column; gap: 4px; align-items: center; }
