@@ -261,6 +261,7 @@ HG.Game = (function () {
 
   return {
     init, startRace, endRace, pause,
+    kartView: (k) => kartViews.find((v) => v.kart === k), kartViewsList: () => kartViews,
     get renderer() { return renderer; }, get scene() { return scene; }, get race() { return race; },
     get state() { return state; }, set state(s) { state = s; }, get paused() { return paused; },
     get views() { return views; }, get fps() { return fps; },

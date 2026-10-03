@@ -89,7 +89,7 @@ HG.AI = (function () {
     const ts = k.s + look;
     const tf = track.frame(ts, HG.AI.fr2);
     const hw = tf.w / 2;
-    let td = lineAt(ts) + (ai.offset * 0.4 + wander) * (1 - ai.skill * 0.5) + ai.dodge;
+    let td = lineAt(ts) + (ai.offset * 0.4 + wander) * (1 - ai.skill * 0.5) + ai.dodge + (ai.pass || 0);
     td = U.clamp(td, -hw + 2.2, hw - 2.2);
     // boost pads and coins pull us in
     const target = tmpA.copy(tf.p).addScaledVector(tf.r, td);
@@ -138,6 +138,18 @@ HG.AI = (function () {
     if (ai.reverseT > 0) { ai.reverseT -= dt; inp.gas = 0; inp.brake = 1; inp.steer = -Math.sign(err) || 1; inp.drift = false; }
     if (Math.abs(k.yaw) > 2.2 && k.spd < 6) { inp.steer = Math.sign(k.yaw) * -1; }
     if (k.wrongT > 4) { k.startFall(track); k.wrongT = 0; }
+    // overtake: don't drive into the back of someone
+    let block = null, bd = 14;
+    for (const o of race.karts) {
+      if (o === k || o.falling > 0) continue;
+      const ds = track.diff(k.s, o.s);
+      if (ds > 0.5 && ds < bd && Math.abs(o.d - k.d) < 2.6 && o.spd < k.spd + 2) { bd = ds; block = o; }
+    }
+    if (block) {
+      const room = (side) => { const nd = block.d + side * 3.2; return Math.abs(nd) < kf.w / 2 - 1.5 ? 1 : 0; };
+      if (!ai.passSide || !room(ai.passSide)) ai.passSide = room(Math.sign(k.d - block.d) || 1) ? (Math.sign(k.d - block.d) || 1) : -(Math.sign(k.d - block.d) || 1);
+      ai.pass = U.clamp((ai.pass || 0) + ai.passSide * dt * 10, -3.5, 3.5);
+    } else ai.pass = U.damp(ai.pass || 0, 0, 1.2, dt);
     // dodge things on the road (slime, mines...)
     ai.dodge = U.damp(ai.dodge, 0, 1.5, dt);
     if (HG.Items && HG.Items.dangerAhead) {
@@ -145,7 +157,7 @@ HG.AI = (function () {
       if (d !== null && ai.skill > 0.4) ai.dodge = U.clamp(ai.dodge + (d > k.d ? -1 : 1) * dt * 14 * ai.skill, -6, 6);
     }
     // items
-    if (HG.Items && HG.Items.aiUse) HG.Items.aiUse(k, race, dt);
+    if (HG.Items && HG.Items.aiUse && k.ctrl === 'cpu') HG.Items.aiUse(k, race, dt);
   }
 
   return { setup, drive, lineAt, get line() { return line; }, fr: HG.Track.makeFrame(), fr2: HG.Track.makeFrame() };

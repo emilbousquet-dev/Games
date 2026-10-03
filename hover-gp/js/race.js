@@ -93,8 +93,12 @@ HG.Race = (function () {
     const tr = R.track;
     for (const k of R.karts) {
       if (k.ctrl === 'remote') continue;
-      if (k.ctrl === 'cpu' && HG.AI) HG.AI.drive(k, R, dt);
-      if (k.finished && k.ctrl === 'local' && HG.AI) HG.AI.drive(k, R, dt);   // the computer drives you after the finish
+      // CPUs drive themselves; the computer also drives you after the finish and in a Sigma Missile
+      if (HG.AI && (k.ctrl === 'cpu' || (k.ctrl === 'local' && (k.finished || k.missileT > 0)))) {
+        const keepItem = k.ctrl === 'local' ? k.input.item : null;
+        HG.AI.drive(k, R, dt);
+        if (keepItem !== null) k.input.item = keepItem;
+      }
       if (k.out) continue;
       k.step(dt, tr, R);
     }
