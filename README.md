@@ -1,9 +1,12 @@
 # LAB 13 👽🩸
 
-> 🆕 **NEW: [KIDS vs VIDEO GAMES](kids-vs-video-games/README.md)** 🎮🛡️: a tower defense game where Mio, Nafti
+> 🆕 **NEW: [DRESS TO IMPRESS BILL](dress-to-impress-bill/README.md)** 👗🕶️: a fashion show game where
+> Bill is the judge! Dress up Mio, Nafti, Felix or Emile for his theme. Open `dress-to-impress-bill/index.html` to play.
+>
+> **Also in this folder: [KIDS vs VIDEO GAMES](kids-vs-video-games/README.md)** 🎮🛡️: a tower defense game where Mio, Nafti
 > and Felix protect Bill from video game characters! Open `kids-vs-video-games/index.html` to play.
 >
-> **Also in this folder: [KIDS vs HOMEWORK](kids-vs-homework/README.md)** ✏️📚: a tower defense game
+> **Also: [KIDS vs HOMEWORK](kids-vs-homework/README.md)** ✏️📚: a tower defense game
 > starring Natti, Mio and Bill! Open `kids-vs-homework/index.html` to play.
 >
 > **And: [MONSTER HOTEL](monster-hotel/README.md)** 🧛🏨: run a spooky hotel for monsters in 3D!
