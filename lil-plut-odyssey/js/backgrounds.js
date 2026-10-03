@@ -217,17 +217,12 @@ LP.BG = (function () {
         c.fillStyle = theme.fg;
         for (let i = 0; i < 3; i++) {
           const x = 300 + i * 800 + rnd() * 200;
-          // the bottom of a chair, seen from below
-          const t = TOPPAD;
-          c.fillRect(x, 0, 46, t + 150); c.fillRect(x + 220, 0, 46, t + 130);
-          c.fillRect(x - 20, 0, 310, t + 40);
-          // toy mobile hanging
-          const mx = x + 520;
-          c.fillRect(mx, 0, 6, t + 70);
-          c.fillRect(mx - 100, t + 70, 206, 8);
-          for (const k of [-100, 0, 100]) { c.fillRect(mx + k, t + 70, 3, 60); LP.Art.starShape(c, mx + k + 2, t + 150, 26, 11, 5); c.fill(); }
+          // toy mobile hanging from the ceiling
+          const t = TOPPAD, mx = x + 300;
+          c.fillRect(mx, 0, 5, t + 50);
+          c.fillRect(mx - 100, t + 50, 206, 7);
+          for (const k of [-100, 0, 100]) { c.fillRect(mx + k, t + 50, 3, 50 + (k + 100) / 5); LP.Art.starShape(c, mx + k + 2, t + 120 + (k + 100) / 5, 24, 10, 5); c.fill(); }
           // block at the bottom
-          roundRect(c, x + 360, LH - 130, 140, 160, 14); c.fill();
         }
       },
     },
@@ -311,8 +306,8 @@ LP.BG = (function () {
       fg(c, rnd) {
         c.fillStyle = theme.fg;
         for (let i = 0; i < 40; i++) {
-          const x = rnd() * LW, hgt = 120 + rnd() * 260, lean = (rnd() - 0.5) * 140;
-          if ((x % 800) > 420) continue;   // leave big gaps so you can see the game
+          const x = rnd() * LW, hgt = 90 + rnd() * 170, lean = (rnd() - 0.5) * 140;
+          if ((x % 1200) > 300) continue;   // leave big gaps so you can see the game
           c.beginPath(); c.moveTo(x - 18, LH + 10); c.quadraticCurveTo(x + lean * 0.3, LH - hgt * 0.6, x + lean, LH - hgt); c.quadraticCurveTo(x + lean * 0.3 + 12, LH - hgt * 0.5, x + 18, LH + 10); c.fill();
         }
         // leaves hanging from the top
@@ -392,8 +387,8 @@ LP.BG = (function () {
         c.fillStyle = theme.fg;
         for (let i = 0; i < 50; i++) {
           const x = rnd() * LW;
-          if ((x % 800) > 380) continue;
-          const hgt = 150 + rnd() * 260, lean = (rnd() - 0.5) * 100;
+          if ((x % 1200) > 300) continue;
+          const hgt = 110 + rnd() * 180, lean = (rnd() - 0.5) * 100;
           c.beginPath(); c.moveTo(x - 10, LH + 10); c.quadraticCurveTo(x + lean * 0.2, LH - hgt * 0.5, x + lean, LH - hgt); c.quadraticCurveTo(x + lean * 0.2 + 8, LH - hgt * 0.5, x + 10, LH + 10); c.fill();
           if (rnd() < 0.3) { roundRect(c, x + lean - 10, LH - hgt - 20, 20, 60, 10); c.fill(); }
         }
@@ -480,7 +475,6 @@ LP.BG = (function () {
           c.lineWidth = 5; c.beginPath(); c.moveTo(x - 60, LH - 380); c.lineTo(x + 80, LH - 380); c.moveTo(x - 40, LH - 340); c.lineTo(x + 60, LH - 340); c.stroke();
           // wires from the top
           c.lineWidth = 4; c.beginPath(); c.moveTo(x + 10, LH - 420); c.quadraticCurveTo(x + 300, LH - 300, x + 620, LH - 560); c.stroke();
-          roundRect(c, x + 420, LH - 120, 200, 160, 10); c.fill();
         }
       },
     },

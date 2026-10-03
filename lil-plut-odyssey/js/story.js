@@ -88,9 +88,9 @@ LP.Scenes = (function () {
   const S = {
     nursery(c, w, h, t) {
       room(c, w, h, t); windowMoon(c, w - 220, 50, false);
-      A.crib(c, w * 0.42, h - 30, 1.3);
       pl(c, w * 0.42, h - 82, 2.2, 'idle', t, { idleT: 5 });
       A.teddy(c, w * 0.42 + 70, h - 80, 1.2, t);
+      A.crib(c, w * 0.42, h - 30, 1.3);
     },
     annoying(c, w, h, t) {
       sky(c, w, h, '#ffe0b0', '#ffb0a0');
@@ -109,8 +109,8 @@ LP.Scenes = (function () {
     },
     catsteal(c, w, h, t) {
       room(c, w, h, t); windowMoon(c, w - 220, 50, false);
+      pl(c, w * 0.3, h - 82, 2.2, 'sleep', t);
       A.crib(c, w * 0.3, h - 30, 1.3);
-      pl(c, w * 0.3, h - 82, 2.2, 'hurt', t);
       c.font = `800 34px ${LP.FONT}`; c.fillStyle = '#ffffff'; c.textAlign = 'center'; c.fillText('z z z', w * 0.3 + 70, 70 + Math.sin(t * 2) * 6);
       A.cat(c, w * 0.66 + Math.sin(t) * 10, h - 30, -1, t, { bobo: true, s: 1.1, crouch: 0.5 });
     },
@@ -185,9 +185,9 @@ LP.Scenes = (function () {
     },
     home(c, w, h, t) {
       room(c, w, h, t); windowMoon(c, w - 220, 50, false);
-      A.crib(c, w * 0.45, h - 30, 1.3);
-      pl(c, w * 0.42, h - 82, 2.2, 'hurt', 0);
+      pl(c, w * 0.42, h - 82, 2.2, 'sleep', t);
       A.teddy(c, w * 0.42 + 60, h - 82, 1.1, t);
+      A.crib(c, w * 0.45, h - 30, 1.3);
       c.font = `800 34px ${LP.FONT}`; c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText('z z z', w * 0.45 + 90, 80 + Math.sin(t * 2) * 6);
     },
     waaah(c, w, h, t) {
@@ -195,8 +195,8 @@ LP.Scenes = (function () {
       c.save(); c.globalCompositeOperation = 'lighter';
       for (let i = 0; i < 4; i++) { const r = ((t * 300 + i * 120) % 480); c.strokeStyle = `rgba(255,220,120,${1 - r / 480})`; c.lineWidth = 10; A.circle(c, w * 0.45, h * 0.55, r); c.stroke(); }
       c.restore();
-      A.crib(c, w * 0.45, h - 30, 1.3);
       pl(c, w * 0.45, h - 82, 2.6, 'scream', t);
+      A.crib(c, w * 0.45, h - 30, 1.3);
       c.font = `800 64px ${LP.FONT}`; c.fillStyle = '#ffe14a'; c.textAlign = 'center'; c.strokeStyle = '#7a1e2e'; c.lineWidth = 8;
       c.save(); c.translate(w * 0.5, 80); c.rotate(Math.sin(t * 30) * 0.03); c.strokeText('WAAAAAAH!!!', 0, 0); c.fillText('WAAAAAAH!!!', 0, 0); c.restore();
     },

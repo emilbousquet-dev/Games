@@ -182,7 +182,9 @@ LP.game = (function () {
     if (p.state === 'bubble') return;
     const want = Math.abs(p.vx) > 60 ? Math.sign(p.vx) * 110 : c.look;
     c.look = U.lerp(c.look, want, Math.min(1, dt * 2.5));
-    const tx = p.cx + c.look - g.viewW / 2;
+    let tx = p.cx + c.look - g.viewW / 2;
+    // in a boss fight, keep both Plut and the boss on the screen
+    if (g.boss && g.boss.state !== 'dead') tx = (p.cx + g.boss.cx) / 2 - g.viewW / 2;
     let ty = p.y + p.h / 2 - VH * 0.56;
     if (g.def.type === 'boss') ty = g.level.ph - VH;
     c.x += (tx - c.x) * Math.min(1, dt * 7);
@@ -390,6 +392,7 @@ LP.game = (function () {
     LP.BG.drawBack(ctx, c, W, g.time, g.level);
     const ox = Math.round((c.x + shx) * s) / s, oy = Math.round((c.y + shy) * s) / s;
     ctx.setTransform(s, 0, 0, s, -ox * s, -oy * s);
+    if (g.def.boss === 'whiskers') LP.Art.clockTower(ctx, g.level.pw / 2, 15 * T, g.time);
     LP.Terrain.draw(ctx, { x: ox, y: oy }, W, VH);
     const vis = (t) => t.x + t.w > ox - 200 && t.x < ox + W + 200;
     // scenery first, then things to pick up, then enemies

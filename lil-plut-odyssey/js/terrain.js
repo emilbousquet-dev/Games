@@ -104,7 +104,7 @@ LP.Terrain = (function () {
     pc.setTransform(new DOMMatrix().scale(pattern.scale));
     c.fillStyle = pc; c.fill(path);
 
-    // ---- 2. shading inside the ground ----
+    // ---- 2. shading inside the ground (darker the deeper you go) ----
     c.save(); c.clip(path);
     for (let ty = 0; ty < level.h; ty++) {
       let run = -1;
@@ -112,19 +112,14 @@ LP.Terrain = (function () {
         const top = tx <= tx1 && tx >= 0 && tx < level.w && isTop(tx, ty);
         if (top && run < 0) run = tx;
         if (!top && run >= 0) {
-          const y = ty * T;
-          const g = c.createLinearGradient(0, y, 0, y + T * 5);
-          g.addColorStop(0, U.alpha(theme.bodyDark, 0)); g.addColorStop(0.15, U.alpha(theme.bodyDark, 0.05)); g.addColorStop(1, U.alpha(theme.bodyDark, 0.75));
-          c.fillStyle = g; c.fillRect(run * T, y, (tx - run) * T, T * 5);
+          const y = ty * T, len = Math.max(T, level.ph - y);
+          const k = Math.min(1, (T * 5) / len);
+          const g = c.createLinearGradient(0, y, 0, y + len);
+          g.addColorStop(0, U.alpha(theme.bodyDark, 0)); g.addColorStop(0.15 * k, U.alpha(theme.bodyDark, 0.05)); g.addColorStop(k, U.alpha(theme.bodyDark, 0.75)); g.addColorStop(1, U.alpha(theme.bodyDark, 0.8));
+          c.fillStyle = g; c.fillRect(run * T, y, (tx - run) * T, len);
           run = -1;
         }
       }
-    }
-    // deep inside = dark
-    for (let ty = 0; ty < level.h; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-      if (!solidT(tx, ty)) continue;
-      let d = 0; while (d < 6 && solidT(tx, ty - d - 1)) d++;
-      if (d >= 5) { c.fillStyle = U.alpha(theme.bodyDark, 0.75); c.fillRect(tx * T - 0.5, ty * T - 0.5, T + 1, T + 1); }
     }
     // edges: darker line on the sides and bottom
     c.strokeStyle = theme.edge; c.lineWidth = 8;
@@ -285,7 +280,7 @@ LP.Terrain = (function () {
 
   function drawThin(c, tx, ty, leftEnd, rightEnd) {
     const x = tx * T, y = ty * T;
-    if (key === 'park' && level.get(tx, ty + 1) === TL.WATER) {
+    if ((key === 'park' || key === 'garden') && level.get(tx, ty + 1) === TL.WATER) {
       // lily pad
       c.fillStyle = '#3f9a45'; c.beginPath(); c.ellipse(x + T / 2, y + 6, T * 0.62, 10, 0, 0.15, Math.PI * 2 - 0.15); c.lineTo(x + T / 2, y + 6); c.fill();
       c.fillStyle = '#6fd060'; c.beginPath(); c.ellipse(x + T / 2, y + 3, T * 0.55, 7, 0, 0.2, Math.PI * 2 - 0.2); c.lineTo(x + T / 2, y + 3); c.fill();
@@ -372,14 +367,16 @@ LP.Terrain = (function () {
       const surface = level.get(tx, ty - 1) !== TL.WATER;
       ctx.fillStyle = U.alpha(theme.water, 0.72);
       if (surface) {
+        // the water looks a bit higher than its tile, so it reaches up to the lily pads
+        const sy = y - 26;
         ctx.beginPath(); ctx.moveTo(x, y + T);
-        for (let k = 0; k <= T; k += 8) ctx.lineTo(x + k, y + 12 + Math.sin((x + k) * 0.06 + time * 3) * 4);
+        for (let k = 0; k <= T; k += 8) ctx.lineTo(x + k, sy + Math.sin((x + k) * 0.06 + time * 3) * 4);
         ctx.lineTo(x + T, y + T); ctx.fill();
         ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 3;
         ctx.beginPath();
-        for (let k = 0; k <= T; k += 8) ctx.lineTo(x + k, y + 12 + Math.sin((x + k) * 0.06 + time * 3) * 4);
+        for (let k = 0; k <= T; k += 8) ctx.lineTo(x + k, sy + Math.sin((x + k) * 0.06 + time * 3) * 4);
         ctx.stroke();
-        if (U.hash(tx, Math.floor(time * 2)) < 0.15) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x + U.hash(tx, 3) * 40, y + 22, 8, 2); }
+        if (U.hash(tx, Math.floor(time * 2)) < 0.15) { ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.fillRect(x + U.hash(tx, 3) * 40, sy + 12, 8, 2); }
       } else {
         ctx.fillRect(x, y, T, T);
       }

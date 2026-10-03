@@ -121,6 +121,8 @@ LP.Art = (function () {
       headY -= 2;
     } else if (a === 'pound') {
       legL = -1.2; legR = 1.0; armF = -2.8; armB = -2.8; mouth = 'grit'; bob = 6;
+    } else if (a === 'sleep') {
+      armF = 0.6; armB = -0.5; mouth = 'o'; eyeMood = 'shut'; bob = Math.sin(t * 2) * 1.5; capeWave = 0.6;
     } else if (a === 'hurt') {
       armF = -2.6; armB = -2.4; mouth = 'cry'; eyeMood = 'shut';
     } else if (a === 'win') {
@@ -177,7 +179,8 @@ LP.Art = (function () {
     // eyebrows (naughty!)
     c.strokeStyle = P.hair; c.lineWidth = 2.2;
     c.beginPath();
-    if (mouth === 'cry' || a === 'scream') { c.moveTo(-1, -12); c.lineTo(6, -9); c.moveTo(10, -9); c.lineTo(16, -12); }
+    if (a === 'sleep') { c.moveTo(-1, -10); c.lineTo(6, -10.5); c.moveTo(10, -10.5); c.lineTo(16, -10); }
+    else if (mouth === 'cry' || a === 'scream') { c.moveTo(-1, -12); c.lineTo(6, -9); c.moveTo(10, -9); c.lineTo(16, -12); }
     else { c.moveTo(-1, -9.5); c.lineTo(6, -11); c.moveTo(10, -12); c.lineTo(16, -9); }
     c.stroke();
     eyes(c, 2, -3, look, blink && eyeMood === 'open' ? 'shut' : eyeMood, 1);
@@ -844,7 +847,29 @@ LP.Art = (function () {
     c.restore();
   }
 
+  function clockTower(c, x, bottom, t) {
+    // the big clock tower behind the last boss fight
+    c.fillStyle = '#2a2a5e'; c.fillRect(x - 260, bottom - 900, 520, 900);
+    c.fillStyle = 'rgba(0,0,0,0.2)'; c.fillRect(x + 200, bottom - 900, 60, 900);
+    c.fillStyle = '#33336e';
+    for (let k = 0; k < 6; k++) { c.fillRect(x - 230 + k * 85, bottom - 330, 30, 110); }
+    const cy = bottom - 560;
+    const gl = c.createRadialGradient(x, cy, 0, x, cy, 300);
+    gl.addColorStop(0, 'rgba(255,230,150,0.35)'); gl.addColorStop(1, 'rgba(255,230,150,0)');
+    c.fillStyle = gl; c.fillRect(x - 300, cy - 300, 600, 600);
+    c.fillStyle = '#c8a050'; circle(c, x, cy, 190); c.fill();
+    c.fillStyle = '#fff4cc'; circle(c, x, cy, 172); c.fill();
+    c.fillStyle = '#4a3a2a';
+    for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; c.save(); c.translate(x + Math.cos(a) * 145, cy + Math.sin(a) * 145); c.rotate(a + PI / 2); c.fillRect(-4, -14, 8, 28); c.restore(); }
+    c.strokeStyle = '#2a1e14'; c.lineCap = 'round';
+    const m = t * 0.2, hr = t * 0.02;
+    c.lineWidth = 14; c.beginPath(); c.moveTo(x, cy); c.lineTo(x + Math.cos(hr - PI / 2) * 90, cy + Math.sin(hr - PI / 2) * 90); c.stroke();
+    c.lineWidth = 9; c.beginPath(); c.moveTo(x, cy); c.lineTo(x + Math.cos(m - PI / 2) * 135, cy + Math.sin(m - PI / 2) * 135); c.stroke();
+    c.fillStyle = '#c8a050'; circle(c, x, cy, 16); c.fill();
+  }
+
   return {
+    clockTower,
     PLUT, starShape, circle, ell, plut, milk, bottle, heart, duck, cage, checkpoint, finish, spring, fan, sign, platform, box,
     walker, flyer, hopper, spitter, shot, stunStars, teddy, cat, gnome, vacuum, swan, crib, angryEyes,
   };
