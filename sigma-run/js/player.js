@@ -640,7 +640,7 @@ SR.Player = (function () {
         y = pump * 0.06 * run; z = pump * -0.07 * run; rx = 0.55 + pump * 0.5 * run;
       } else if (P.mode === 'run' && !P.grounded) {
         // in the air: arms up and out for balance
-        y = 0.04; z = -0.02; rx = 0.95; ry = s * 0.25; rz = s * -0.5;
+        y = 0.0; z = 0.02; rx = 0.8; ry = s * 0.32; rz = s * -0.45;
       }
       if (P.sliding) {
         if (s < 0) { y = 0.06; z = -0.06; rx = 0.75; ry = s * 0.2; rz = 0.2; grip = 0.2; }

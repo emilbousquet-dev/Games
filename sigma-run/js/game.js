@@ -123,7 +123,7 @@ SR.Game = (function () {
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
-    const pr = Math.max(0.5, Math.min(dpr, { low: 1, medium: 1.25, high: 1.5, ultra: 2 }[SR.settings.gfx] || 1.5) * resScale);
+    const pr = Math.max(0.5, Math.min(dpr, { low: 1, medium: 1, high: 1.35, ultra: 2 }[SR.settings.gfx] || 1.35) * resScale);
     renderer.setPixelRatio(pr);
     renderer.setSize(w, h, false);
     camera.aspect = w / h; camera.updateProjectionMatrix();
