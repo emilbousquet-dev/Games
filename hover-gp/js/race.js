@@ -28,7 +28,7 @@ HG.Race = (function () {
     R.countdown = 3.8;
     const tr = R.track;
     cfg.racers.forEach((rc, i) => {
-      const k = new HG.Kart(Object.assign({}, rc, { cc: cfg.cc || 150 }));
+      const k = new HG.Kart(Object.assign({}, rc, { cc: cfg.cc || 150, stats: HG.Vehicles.stats(rc.charId || 'sigma', rc.parts || { body: 'kart', engine: 'twin', fins: 'standard' }) }));
       k.mirror = !!cfg.mirror;
       k.smart = rc.ctrl === 'local' ? !!HG.settings.smartSteer[rc.player] : rc.ctrl === 'cpu';
       // the starting grid: two by two, staggered

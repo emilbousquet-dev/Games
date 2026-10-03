@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hover GP Garage</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1830; font-family: 'Arial Black', Arial, sans-serif; color: #fff; }
+  canvas { display: block; }
+  #bar { position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; flex-wrap: wrap; z-index: 2; }
+  #bar button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; border: 2px solid #fff; background: #3a2a6a; color: #fff; cursor: pointer; }
+  #labels div { position: fixed; transform: translate(-50%, 0); font-size: 13px; text-shadow: 0 0 4px #000, 2px 2px 0 #000; pointer-events: none; white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <button data-m="racers">RACERS</button><button data-m="bodies">BODIES</button><button data-m="engines">ENGINES</button>
+  <button data-m="fins">FINS</button><button data-m="standing">STANDING</button><button data-m="tricks">TRICKS</button><button data-m="faces">FACES</button>
+</div>
+<div id="labels"></div>
+<script src="../../lib/three.min.js"></script>
+<script src="../js/util.js"></script>
+<script src="../js/textures.js"></script>
+<script src="../js/models.js"></script>
+<script src="../js/characters.js"></script>
+<script src="../js/vehicles.js"></script>
+<script>window.HG.Race = { karts: [], battle: false, track: { isArena: true } };</script>
+<script src="../js/racer.js"></script>
+<script>
+// See every character, vehicle part and animation. Click the buttons on top.
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled = true;
+document.body.appendChild(renderer.domElement);
+HG.Tex.init(renderer);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#2a2850');
+const pm = new THREE.PMREMGenerator(renderer);
+const envS = new THREE.Scene();
+envS.add(new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), new THREE.MeshBasicMaterial({ color: 0x8090c0, side: THREE.BackSide })));
+const topLight = new THREE.Mesh(new THREE.SphereGeometry(3, 8, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); topLight.position.y = 8; envS.add(topLight);
+scene.environment = pm.fromScene(envS).texture;
+scene.add(new THREE.HemisphereLight(0xc0d8ff, 0x403050, 0.9));
+const sun = new THREE.DirectionalLight(0xffffff, 2.5); sun.position.set(5, 10, 8); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -20, right: 20, top: 20, bottom: -20 });
+scene.add(sun);
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(200, 200), new THREE.MeshStandardMaterial({ color: 0x3a3860, roughness: 0.9 }));
+floor.rotation.x = -Math.PI / 2; floor.position.y = -0.55; floor.receiveShadow = true; scene.add(floor);
+const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 500);
+let items = [], t = 0;
+const params = new URLSearchParams(location.search);
+let mode = params.get('mode') || 'racers';
+let orbit = parseFloat(params.get('angle') || '0.5');
+
+function fakeKart(charId, parts, color) {
+  return { charId, parts, color, anim: { lean: 0, throwT: 0 }, steerSm: 0, drift: { dir: 0, level: 0 }, input: { gas: 0.4 }, grounded: true, place: 1, spd: 10, menu: true, trick: 0, trickType: 0, hitT: 0, events: [], boostT: 0, id: Math.random() * 100 | 0 };
+}
+function clear() { for (const it of items) scene.remove(it.obj); items = []; document.getElementById('labels').innerHTML = ''; }
+function label(text, obj, y) { const d = document.createElement('div'); d.textContent = text; document.getElementById('labels').appendChild(d); return { el: d, obj, y }; }
+function layout(list, cols, gap) {
+  list.forEach((it, i) => { const r = Math.floor(i / cols), c = i % cols; it.obj.position.set((c - (cols - 1) / 2) * gap, 0, -r * gap * 0.9); scene.add(it.obj); });
+  const rows = Math.ceil(list.length / cols);
+  return { w: cols * gap, d: rows * gap };
+}
+function build() {
+  clear();
+  const C = HG.Chars.LIST, B = HG.Vehicles.BODIES, E = HG.Vehicles.ENGINES, Fn = HG.Vehicles.FINS;
+  let size;
+  if (mode === 'racers' || mode === 'tricks' || mode === 'faces') {
+    items = C.map((c, i) => {
+      const k = fakeKart(c.id, { body: c.defaultBody || B[i % B.length].id, engine: E[i % 3].id, fins: Fn[i % Fn.length].id }, c.kart);
+      const r = HG.Models.racer(k);
+      return { obj: r.group, r, k, lab: label(c.name, r.group, 2.0) };
+    });
+    size = layout(items, 5, 4.2);
+  } else if (mode === 'bodies') {
+    items = B.map((b, i) => { const k = fakeKart(C[i % C.length].id, { body: b.id, engine: 'twin', fins: 'standard' }, C[i % C.length].kart); const r = HG.Models.racer(k); return { obj: r.group, r, k, lab: label(b.name, r.group, 2.0) }; });
+    size = layout(items, 5, 4.2);
+  } else if (mode === 'engines') {
+    items = E.map((e, i) => { const k = fakeKart('sigma', { body: 'kart', engine: e.id, fins: 'standard' }, '#3a8aff'); k.boostT = 1; const r = HG.Models.racer(k); return { obj: r.group, r, k, lab: label(e.name, r.group, 2.0) }; });
+    size = layout(items, 3, 4.5);
+    orbit = 2.6;
+  } else if (mode === 'fins') {
+    items = Fn.map((f, i) => { const k = fakeKart('kisse', { body: 'kart', engine: 'twin', fins: f.id }, '#ff5a8a'); k.gliding = i % 2 === 1; const r = HG.Models.racer(k); return { obj: r.group, r, k, lab: label(f.name + (k.gliding ? ' (gliding)' : ''), r.group, 2.6) }; });
+    size = layout(items, 3, 5);
+  } else if (mode === 'one') {
+    // close-up: ?mode=one&char=kisse&body=bike&engine=fan&fins=wing
+    const c = params.get('char') || 'sigma', cd = HG.Chars.byId[c];
+    const k = fakeKart(c, { body: params.get('body') || cd.defaultBody || 'kart', engine: params.get('engine') || 'twin', fins: params.get('fins') || 'standard' }, params.get('color') || cd.kart);
+    if (params.get('trick')) { k.trickType = +params.get('trick'); }
+    const r = HG.Models.racer(k);
+    items = [{ obj: r.group, r, k, lab: label(cd.name, r.group, 2.2) }];
+    size = layout(items, 1, 1);
+    size.w = 2.2; size.d = 0;
+  } else if (mode === 'onestand') {
+    const s = HG.Models.character(params.get('char') || 'plut'); s.root.position.y = -0.55; const g = new THREE.Group(); g.add(s.root);
+    items = [{ obj: g, s, lab: label(s.rig.def.name, g, 1.9) }];
+    size = layout(items, 1, 1); size.w = 1.4; size.d = 0;
+  } else if (mode === 'standing') {
+    items = C.map((c, i) => { const s = HG.Models.character(c.id); s.root.position.y = -0.55; const g = new THREE.Group(); g.add(s.root); return { obj: g, s, lab: label(c.name, g, 1.9) }; });
+    size = layout(items, 5, 2.2);
+  }
+  const dist = Math.max(size.w, size.d) * 1.25 + 4;
+  camera.userData = { dist, cz: size.d ? -size.d / 2 + 2 : 0 };
+  resize();
+}
+document.querySelectorAll('#bar button').forEach((b) => b.onclick = () => { mode = b.dataset.m; build(); });
+function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+window.addEventListener('resize', resize);
+build();
+const EXPRS = ['normal', 'happy', 'ouch', 'angry', 'sad', 'cheeky', 'cry'];
+function frame(dt) {
+  t += dt;
+  const { dist, cz } = camera.userData;
+  camera.position.set(Math.sin(orbit) * dist * 0.75, dist * 0.42, cz + Math.cos(orbit) * dist * 0.75);
+  camera.lookAt(0, 0.4, cz);
+  items.forEach((it, i) => {
+    if (it.r) {
+      const k = it.k;
+      k.steerSm = params.get('steer') ? +params.get('steer') : Math.sin(t * 0.9 + i) * 0.8;
+      k.anim.lean = -k.steerSm * 0.5;
+      if (params.get('steer')) k.steerSm = +params.get('steer');
+      if (params.get('trick')) { k.trick = 0.25; }
+      if (params.get('expr')) { const e = params.get('expr'); k.hitT = e === 'ouch' ? 1 : 0; k.finished = e === 'sad' || e === 'happy'; k.place = e === 'sad' ? 8 : 1; }
+      if (mode === 'tricks') { k.trick = (t * 0.8 + i * 0.13) % 1 * 0.6 + 0.0001; k.trickType = i % 5; }
+      if (mode === 'faces') { const e = EXPRS[Math.floor(t / 1.2 + i) % EXPRS.length]; k.hitT = e === 'ouch' ? 1 : 0; k.finished = e === 'sad' || e === 'happy'; k.place = e === 'sad' ? 8 : 1; }
+      it.r.update(dt, k);
+    }
+    if (it.s) it.s.update(dt, { mode: params.get('pose') || ['idle', 'wave', 'walk', 'win', 'idle'][i % 5], toddle: it.s.rig.def.baby });
+  });
+  renderer.render(scene, camera);
+  for (const it of items) {
+    const p = it.obj.position.clone(); p.y += it.lab.y; p.project(camera);
+    it.lab.el.style.left = ((p.x + 1) / 2 * innerWidth) + 'px'; it.lab.el.style.top = ((1 - p.y) / 2 * innerHeight) + 'px';
+  }
+}
+let last = performance.now();
+function loop(now) { requestAnimationFrame(loop); const dt = Math.min(0.05, (now - last) / 1000); last = now; frame(dt); }
+requestAnimationFrame(loop);
+window.__garage = { frame, setMode(m) { mode = m; build(); }, setOrbit(o) { orbit = o; } };
+</script>
+</body>
+</html>

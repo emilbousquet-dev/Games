@@ -35,8 +35,8 @@ HG.ChaseCam = class {
     const up = fr.n;
     this.up.lerp(up, 1 - Math.exp(-5 * dt)).normalize();
     const boost = k.boosting ? 1 : 0;
-    const dist = (6.4 + boost * 0.9 + U.clamp(k.speedFrac, 0, 1.3) * 0.6) * HG.settings.camDist;
-    const height = 2.5 * HG.settings.camDist;
+    const dist = (5.3 + boost * 0.8 + U.clamp(k.speedFrac, 0, 1.3) * 0.5) * HG.settings.camDist;
+    const height = 2.25 * HG.settings.camDist;
     this.lookBlend = U.damp(this.lookBlend, k.input.lookBack && !k.finished ? 1 : 0, 14, dt);
     const back = this.lookBlend > 0.5 ? -1 : 1;
     const want = HG.V.e.copy(kp).addScaledVector(this.fwd, -dist * back).addScaledVector(this.up, height);
@@ -49,7 +49,7 @@ HG.ChaseCam = class {
     if (k.falling > 0) want.copy(this.pos);
     if (this.first) { this.pos.copy(want); this.first = false; this.up.copy(up); }
     // the camera follows a bit softly (more when going fast)
-    const stiff = this.lookBlend > 0.05 && this.lookBlend < 0.95 ? 40 : 11;
+    const stiff = this.lookBlend > 0.05 && this.lookBlend < 0.95 ? 40 : 15;
     this.pos.x = U.damp(this.pos.x, want.x, stiff, dt);
     this.pos.y = U.damp(this.pos.y, want.y, stiff * 0.8, dt);
     this.pos.z = U.damp(this.pos.z, want.z, stiff, dt);

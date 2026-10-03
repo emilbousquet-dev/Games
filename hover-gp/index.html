@@ -97,6 +97,10 @@
 <script src="js/trackmesh.js"></script>
 <script src="js/env.js"></script>
 <script src="js/input.js"></script>
+<script src="js/models.js"></script>
+<script src="js/characters.js"></script>
+<script src="js/vehicles.js"></script>
+<script src="js/racer.js"></script>
 <script src="js/kart.js"></script>
 <script src="js/ai.js"></script>
 <script src="js/race.js"></script>
@@ -108,9 +112,9 @@
   HG.Game.init();
   // quick test race
   const racers = [];
-  const cols = ['#ff3b3b', '#3bd0ff', '#ffd21a', '#7cff6a', '#ff7ae0', '#ff9a2a', '#a070ff', '#ffffff'];
-  for (let i = 0; i < 7; i++) racers.push({ name: 'CPU ' + (i + 1), ctrl: 'cpu', color: cols[i] });
-  racers.push({ name: 'YOU', ctrl: 'local', player: 0, color: '#ffcc1a' });
+  const chars = HG.Chars.LIST.filter((c) => c.id !== 'sigma');
+  for (let i = 0; i < 11; i++) { const c = chars[i]; racers.push({ name: c.name, charId: c.id, ctrl: 'cpu', color: c.kart, parts: { body: c.defaultBody || HG.Vehicles.BODIES[i % 9].id, engine: HG.Vehicles.ENGINES[i % 6].id, fins: HG.Vehicles.FINS[i % 5].id } }); }
+  racers.push({ name: 'SIGMA', charId: 'sigma', ctrl: 'local', player: 0, color: '#ffcc1a', parts: { body: 'kart', engine: 'twin', fins: 'standard' } });
   HG.Game.startRace({ track: 'neon', mode: 'vs', cc: 150, racers, skipIntro: location.search.includes('skip') });
 </script>
 </body>
