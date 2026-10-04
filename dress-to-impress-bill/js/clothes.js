@@ -183,7 +183,6 @@ const MODELS = {
   mio:   { name: 'MIO', hair: 'wavy', hairColor: 'blond', outfit: { top: ['hoodie', 'black'], bottom: ['cargo', 'tan'], shoes: ['sneakers', 'silver'] } },
   nafti: { name: 'NAFTI', hair: 'curly', hairColor: 'black', outfit: { top: ['hoodie', 'aqua'], bottom: ['joggers', 'black'], shoes: ['sneakers', 'blue'] } },
   felix: { name: 'FELIX', hair: 'short', hairColor: 'darkbrown', outfit: { top: ['tshirt', 'navy'], bottom: ['cargo', 'bill'], shoes: ['sneakers', 'black'] } },
-  emile: { name: 'EMILE', hair: 'short', hairColor: 'brown', outfit: { top: ['hoodie', 'white'], bottom: ['joggers', 'navy'], shoes: ['sneakers', 'white'] } },
 };
 
 const ROUNDS = 5;          // rounds in one fashion show

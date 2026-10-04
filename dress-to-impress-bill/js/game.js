@@ -21,7 +21,7 @@ let screen = 'title';   // title, pick, intro, dress, runway, end
 let G = null;
 let T = 0;
 let fx = [];
-let best = 0, timerOn = true;
+let best = 0, timerOn = true, pickOnline = false;
 try { best = +localStorage.getItem(SAVE_KEY) || 0; timerOn = localStorage.getItem(TIMER_KEY) !== 'off'; } catch (e) { /* no storage */ }
 
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -157,9 +157,13 @@ function newShow(model) {
 }
 
 function startRound() {
-  G.theme = G.themes[G.round];
+  beginRound(G.themes[G.round], makeHint(G.themes[G.round]));
+}
+
+function beginRound(theme, hint) {
+  G.theme = theme;
   G.outfit = defaultOutfit(G.model);
-  G.hint = makeHint(G.theme);
+  G.hint = hint;
   G.colorPicked = {};
   G.time = ROUND_TIME;
   G.lastTick = ROUND_TIME;
@@ -167,14 +171,11 @@ function startRound() {
   G.introT = 0;
   screen = 'intro';
   Sound.sfx('whistle');
-  const th = THEMES[G.theme];
-  Sound.say(`Round ${G.round + 1}! Today's theme is: ${th.name.toLowerCase()}! Dress like ${th.say}! And psst... I really want to see ${G.hint.text.toLowerCase()}.`);
 }
 
 function startDressing() {
   screen = 'dress';
   Sound.sfx('go');
-  if (window.speechSynthesis) try { speechSynthesis.cancel(); } catch (e) { /* ignore */ }
 }
 
 function selectItem(cat, id) {
@@ -211,6 +212,7 @@ function randomize() {
 }
 
 function goRunway() {
+  if (G.online) { onlineDone(); return; }
   const res = judge(G.outfit, G.theme, G.hint);
   G.res = res;
   G.lines = billSays(res);
@@ -232,8 +234,6 @@ function endShow() {
   screen = 'end';
   G.endT = 0;
   Sound.sfx(G.totalStars >= 13 ? 'win' : 'sad');
-  const r = rankOf(G.totalStars);
-  Sound.say(`The show is over! You got ${G.totalStars} stars. You are... ${r.name.toLowerCase()}!`);
 }
 
 function rankOf(stars) {
@@ -298,7 +298,7 @@ window.addEventListener('keydown', e => {
   if (k === 'm') { Sound.toggleMute(); return; }
   const go = k === 'enter' || k === ' ';
   if (go) e.preventDefault();
-  if (screen === 'title' && go) { Sound.sfx('click'); screen = 'pick'; }
+  if (screen === 'title' && go) { Sound.sfx('click'); pickOnline = false; screen = 'pick'; }
   else if (screen === 'intro' && go) startDressing();
   else if (screen === 'dress') {
     if (go) goRunway();
@@ -424,11 +424,11 @@ let titleOutfits = null, titleSwap = 0;
 function drawTitle() {
   stageBackground([300, 640, 980]);
   if (!titleOutfits || T > titleSwap) {
-    titleOutfits = ['mio', 'nafti', 'felix', 'emile'].map(() => randomOutfit());
+    titleOutfits = [0, 1, 2].map(() => randomOutfit());
     titleSwap = T + 1.6;
   }
-  const kids = ['mio', 'nafti', 'felix', 'emile'];
-  const spots = [180, 380, 900, 1100];
+  const kids = ['mio', 'nafti', 'felix'];
+  const spots = [190, 400, 1040];
   kids.forEach((k, i) => drawPerson(ctx, lookOf(k, titleOutfits[i]), spots[i], 650, 2.6, T, { phase: i, pose: i % 2 ? 'hips' : 'wave' }));
   drawBill(640, 660, 3.4, { pose: 'wow', mood: 'wow' });
 
@@ -440,7 +440,8 @@ function drawTitle() {
   text(ctx, 'BILL', 0, 92, 120, '#4bd06a', { fam: FONT_TITLE, weight: '400', lw: 18, stroke: '#0d2219' });
   ctx.restore();
 
-  button('PLAY', 540, 600, 200, 70, () => { screen = 'pick'; }, '#ff4a8a', 40);
+  button('PLAY', 420, 600, 210, 70, () => { pickOnline = false; screen = 'pick'; }, '#ff4a8a', 40);
+  button('ONLINE', 650, 600, 210, 70, () => { pickOnline = true; screen = 'pick'; }, '#2fa86a', 40);
   button(timerOn ? 'TIMER: ON' : 'TIMER: OFF', 40, 640, 190, 50, () => {
     timerOn = !timerOn; try { localStorage.setItem(TIMER_KEY, timerOn ? 'on' : 'off'); } catch (e) { /* no storage */ }
   }, '#8a4fd8', 22);
@@ -451,16 +452,17 @@ function drawTitle() {
 function drawPick() {
   stageBackground([640]);
   text(ctx, 'WHO WILL BE YOUR MODEL?', 640, 80, 54, '#fff', { fam: FONT_TITLE, weight: '400', lw: 12, stroke: '#2a0f45' });
-  const kids = ['mio', 'nafti', 'felix', 'emile'];
+  const kids = Object.keys(MODELS);
+  const left = (W - (kids.length * 245 + (kids.length - 1) * 40)) / 2;
   kids.forEach((k, i) => {
-    const x = 90 + i * 285, y = 140, w = 245, h = 450;
+    const x = left + i * 285, y = 140, w = 245, h = 450;
     const hover = inside(mouse, x, y, w, h);
     ctx.fillStyle = 'rgba(0,0,0,0.3)'; rr(ctx, x + 5, y + 8, w, h, 26); ctx.fill();
     ctx.fillStyle = hover ? '#ffe4f2' : '#f3e6ff'; rr(ctx, x, y - (hover ? 6 : 0), w, h, 26); ctx.fill();
     ctx.strokeStyle = hover ? '#ff4a8a' : '#2a0f45'; ctx.lineWidth = hover ? 6 : 4; ctx.stroke();
     drawPerson(ctx, lookOf(k, defaultOutfit(k)), x + w / 2, y + h - 70 - (hover ? 6 : 0), 3.1, T, { phase: i, pose: hover ? 'wave' : 'rest' });
     text(ctx, MODELS[k].name, x + w / 2, y + h - 34 - (hover ? 6 : 0), 40, '#ff4a8a', { fam: FONT_TITLE, weight: '400', lw: 8, stroke: '#2a0f45' });
-    buttons.push({ x, y, w, h, fn: () => { Sound.sfx('go'); newShow(k); } });
+    buttons.push({ x, y, w, h, fn: () => { Sound.sfx('go'); if (pickOnline) { Net.model = k; Net.msg = ''; screen = 'online'; } else newShow(k); } });
   });
   button('BACK', 40, 640, 150, 54, () => { screen = 'title'; }, '#8a4fd8', 26);
   text(ctx, 'Bill can\'t be the model... he\'s the JUDGE!', 640, 660, 24, '#ffe66b', { lw: 5 });
@@ -479,8 +481,9 @@ function drawIntro() {
   ctx.restore();
   text(ctx, 'Psst... I really want to see', 870, 370, 26, '#2a1840', { stroke: false });
   text(ctx, G.hint.short + '!', 870, 418, 40, G.hint.type === 'color' ? (COLORS[G.hint.key] === COLORS.white ? '#9aa' : COLORS[G.hint.key]) : '#36b04f', { fam: FONT_TITLE, weight: '400', lw: 6, stroke: '#2a1840' });
-  text(ctx, timerOn ? `You have ${ROUND_TIME} seconds!` : 'Take your time!', 870, 480, 22, '#7a6a8a', { stroke: false });
-  button("LET'S GO!", 760, 580, 260, 80, startDressing, '#ff4a8a', 40);
+  text(ctx, timerOn || G.online ? `You have ${ROUND_TIME} seconds!` : 'Take your time!', 870, 480, 22, '#7a6a8a', { stroke: false });
+  if (G.online) text(ctx, 'Everyone gets the same theme! Starting in ' + Math.max(1, Math.ceil(5 - G.introT)) + '...', 870, 560, 24, '#ffe66b', { lw: 5 });
+  button("LET'S GO!", 760, 600, 260, 80, startDressing, '#ff4a8a', 40);
 }
 
 // ---------------------------------------------------------------- DRESS
@@ -580,7 +583,7 @@ function drawWardrobe() {
     text(ctx, cur.id === 'none' ? 'Pick something to color it!' : "This one can't change color!", PX + PW / 2, 597, 22, '#e6d6ff', { stroke: false });
   }
   button('🎲 RANDOM', PX, 648, 190, 60, randomize, '#8a4fd8', 24);
-  button('DONE! WALK! ▶', PX + 202, 648, PW - 202, 60, goRunway, '#ff4a8a', 32);
+  button(G.online ? 'DONE! ✔' : 'DONE! WALK! ▶', PX + 202, 648, PW - 202, 60, goRunway, '#ff4a8a', 32);
 }
 
 function drawDress() {
@@ -602,7 +605,7 @@ function drawDress() {
   text(ctx, "Bill's wish:", PX - 50, 36, 18, '#ffd1ea', { align: 'right', stroke: false, weight: '700' });
   const met = hintMet(G.outfit, G.hint);
   text(ctx, (met ? '✔ ' : '') + G.hint.short, PX - 50, 66, G.hint.short.length > 12 ? 20 : 26, met ? '#7dff9a' : '#fff', { fam: FONT_TITLE, weight: '400', align: 'right', lw: 5 });
-  if (timerOn) {
+  if (timerOn || G.online) {
     const k = clamp(G.time / ROUND_TIME, 0, 1);
     const hurry = G.time <= 10;
     ctx.fillStyle = 'rgba(0,0,0,0.4)'; rr(ctx, 38, 92, PX - 88, 10, 5); ctx.fill();
@@ -701,10 +704,6 @@ function updateRunway(dt) {
     else Sound.sfx('boo');
     for (let i = 0; i < s; i++) setTimeout(() => Sound.sfx('star'), 250 * i);
   }
-  if (!R.said && R.t >= 7.4) {
-    R.said = true;
-    Sound.say(G.lines.join(' '), 1.5, 1.05);
-  }
 }
 
 // ---------------------------------------------------------------- END
@@ -729,13 +728,339 @@ function drawEnd() {
 }
 
 // =====================================================================
+//  ONLINE: compete with friends who have this game open at the same time
+//  One player hosts. The host's "game" (theme, Bill's wish, round) is shared
+//  with everyone in the game room. Each player shares their outfit and points.
+// =====================================================================
+const Net = {
+  lobby: null, user: null, myId: null, room: null, code: '', host: false, model: 'mio',
+  game: { phase: 'lobby', seq: 0 }, seen: -1, names: {}, hostGone: 0,
+  pts: 0, stars: 0, done: -1, msg: '', busy: false, themes: [], phaseT: 0, cheered: false,
+};
+
+(async () => {
+  try {
+    if (!window.claude || !window.claude.use) return;
+    const [room, user] = await Promise.all([window.claude.use('room'), window.claude.use('user')]);
+    if (!room) return;
+    Net.user = user;
+    if (user) Net.myId = await user.id();
+    Net.lobby = room;
+    room.onPeers(ch => resolveNames(ch.peers), () => { Net.lobby = null; });
+  } catch (e) { /* online play is not available here */ }
+})();
+
+function resolveNames(peers) {
+  if (!Net.user) return;
+  const ids = [...new Set(peers.map(peerId).filter(Boolean))];
+  if (!ids.length) return;
+  Net.user.profiles(ids).then(ps => { for (const id of ids) if (ps[id] && ps[id].name) Net.names[id] = ps[id].name; }).catch(() => {});
+}
+function peerId(p) { return p.by || (p.presence && typeof p.presence.uid === 'string' ? p.presence.uid : null); }
+function peerName(p) {
+  const id = peerId(p);
+  const first = ((id && Net.names[id]) || '').split(' ')[0];
+  const M = MODELS[peerModel(p)];
+  return (first || (M ? M.name : 'PLAYER')).slice(0, 14);
+}
+function peerModel(p) { return MODELS[p.presence && p.presence.model] ? p.presence.model : 'mio'; }
+const num = (v, max) => clamp(Math.round(+v || 0), 0, max);
+
+// Other players' outfits come from the network: only keep real items and colors
+function cleanOutfit(o, model) {
+  const d = defaultOutfit(model);
+  if (!o || typeof o !== 'object') return d;
+  for (const C of CATEGORIES) {
+    const v = o[C.key];
+    if (!v || typeof v !== 'object' || !Object.prototype.hasOwnProperty.call(ITEMS[C.key], v.id)) continue;
+    const pal = C.key === 'hair' ? HAIR_COLORS : COLORS;
+    const color = Object.prototype.hasOwnProperty.call(pal, v.color) ? v.color : null;
+    d[C.key] = { id: v.id, color: C.key === 'hair' ? (color || d.hair.color) : color };
+  }
+  return d;
+}
+function cleanHint(h, theme) {
+  if (h && h.type === 'color' && Object.prototype.hasOwnProperty.call(COLORS, h.key)) return { type: 'color', key: h.key, text: 'something ' + colorName(h.key), short: colorName(h.key) };
+  if (h && h.type === 'item' && PIECES.includes(h.cat) && Object.prototype.hasOwnProperty.call(ITEMS[h.cat], h.id) && h.id !== 'none') {
+    const name = ITEMS[h.cat][h.id].name;
+    return { type: 'item', cat: h.cat, id: h.id, text: withArticle(name), short: name.toUpperCase() };
+  }
+  return makeHint(theme);
+}
+
+function players() {
+  if (!Net.room) return [];
+  return Net.room.peers().filter(p => p.presence && (p.presence.role === 'host' || p.presence.role === 'player'));
+}
+function hostPeer() { return players().find(p => p.presence.role === 'host'); }
+
+function myPresence(extra) {
+  if (!Net.room) return;
+  const p = { role: Net.host ? 'host' : 'player', model: Net.model, uid: Net.myId, pts: Net.pts, stars: Net.stars, done: Net.done };
+  if (Net.host) p.game = Net.game;
+  Net.room.presence(Object.assign(p, extra || {})).catch(() => {});
+  if (Net.host) lobbyPresence();
+}
+function lobbyPresence() {
+  if (!Net.lobby || !Net.host) return;
+  Net.lobby.presence({ hosting: Net.code, open: Net.game.phase === 'lobby', n: Math.max(1, players().length), model: Net.model, uid: Net.myId }).catch(() => {});
+}
+
+async function enterRoom(code, asHost) {
+  if (Net.busy || !Net.lobby) return;
+  Net.busy = true; Net.msg = '';
+  try {
+    Net.room = await Net.lobby.join(code);
+  } catch (e) {
+    Net.busy = false; Net.msg = "Couldn't connect to that game. Try again!"; return;
+  }
+  Net.busy = false;
+  Object.assign(Net, { code, host: asHost, seen: -1, hostGone: 0, pts: 0, stars: 0, done: -1, game: { phase: 'lobby', seq: 0 } });
+  Net.room.onPeers(ch => { resolveNames(ch.peers); if (Net.host) lobbyPresence(); }, () => leaveGame('You lost the connection to the game.'));
+  myPresence({ outfit: null, res: null });
+  screen = 'lobby';
+  Sound.sfx('go');
+}
+function createGame() { enterRoom('bill-' + Math.random().toString(36).slice(2, 7), true); }
+
+function leaveGame(msg) {
+  const r = Net.room;
+  Net.room = null;
+  if (r) r.leave().catch(() => {});
+  if (Net.lobby && Net.host) Net.lobby.presence({ hosting: null, open: null, n: null, model: null }).catch(() => {});
+  Net.host = false;
+  Net.msg = msg || '';
+  if (G) G.online = false;
+  screen = 'online';
+}
+
+// ---- the host runs the show
+function hostSet(game) {
+  Net.game = Object.assign({}, game, { seq: (Net.game.seq || 0) + 1 });
+  Net.phaseT = 0;
+  myPresence();
+}
+function hostStart() {
+  Net.themes = shuffle(Object.keys(THEMES)).slice(0, ROUNDS);
+  hostRound(0);
+}
+function hostRound(r) {
+  const theme = Net.themes[r] || pick(Object.keys(THEMES));
+  const h = makeHint(theme);
+  hostSet({ phase: 'dress', round: r, theme, hint: h.type === 'color' ? { type: 'color', key: h.key } : { type: 'item', cat: h.cat, id: h.id } });
+}
+function hostResults() {
+  hostSet({ phase: 'results', round: Net.game.round, theme: Net.game.theme, dressSeq: Net.game.seq });
+}
+function hostNext() {
+  const r = Net.game.round + 1;
+  if (r >= ROUNDS) hostSet({ phase: 'final', round: Net.game.round });
+  else hostRound(r);
+}
+
+// ---- everyone follows the host
+function updateOnline(dt) {
+  Net.phaseT += dt;
+  const h = hostPeer();
+  if (!Net.host) {
+    if (!h) { Net.hostGone += dt; if (Net.hostGone > 5) leaveGame('The host left the game.'); return; }
+    Net.hostGone = 0;
+  }
+  const g = Net.host ? Net.game : h.presence.game;
+  if (g && typeof g === 'object' && typeof g.seq === 'number' && g.seq !== Net.seen) {
+    Net.seen = g.seq;
+    if (!Net.host) { Net.game = g; Net.phaseT = 0; }
+    followPhase(g);
+  }
+  // the host moves on when everyone is done (or after the time is up)
+  if (Net.host && Net.game.phase === 'dress') {
+    const ps = players();
+    const allDone = ps.length > 0 && ps.every(p => p.presence.done === Net.game.seq);
+    if (allDone || Net.phaseT > ROUND_TIME + 30) hostResults();
+  }
+  if (screen === 'oresults') {
+    const list = roundList();
+    if (!Net.cheered && list.length && Net.phaseT > revealTime(list.length)) {
+      Net.cheered = true;
+      Sound.sfx('scream'); Sound.sfx('cheer'); confetti(120);
+    }
+  }
+}
+
+function followPhase(g) {
+  if (g.phase === 'lobby') {
+    Net.pts = 0; Net.stars = 0; Net.done = -1;
+    myPresence({ outfit: null, res: null });
+    screen = 'lobby';
+  } else if (g.phase === 'dress' && THEMES[g.theme]) {
+    const round = num(g.round, ROUNDS - 1);
+    if (round === 0) { Net.pts = 0; Net.stars = 0; }
+    G = { model: Net.model, online: true, round, cat: 'top', results: [], dressSeq: g.seq };
+    beginRound(g.theme, cleanHint(g.hint, g.theme));
+  } else if (g.phase === 'results') {
+    if (screen === 'dress' || screen === 'intro') { if (G) G.online = false; }
+    Net.cheered = false;
+    screen = 'oresults';
+    Sound.sfx('whistle');
+  } else if (g.phase === 'final') {
+    screen = 'ofinal';
+    Sound.sfx('win');
+    confetti(150);
+  }
+}
+
+function onlineDone() {
+  const res = judge(G.outfit, G.theme, G.hint);
+  Net.pts += res.total; Net.stars += res.stars; Net.done = G.dressSeq;
+  myPresence({ outfit: G.outfit, res: { total: res.total, stars: res.stars, theme: res.theme, style: res.style, bill: res.bill } });
+  screen = 'owait';
+  Sound.sfx('go');
+}
+
+// The players who finished this round, worst first (the winner is revealed last)
+function roundList() {
+  const seq = Net.game.dressSeq;
+  return players().filter(p => p.presence.done === seq && p.presence.res)
+    .map(p => ({ p, name: peerName(p), model: peerModel(p), outfit: cleanOutfit(p.presence.outfit, peerModel(p)), total: num(p.presence.res.total, 30), stars: num(p.presence.res.stars, 5), pts: num(p.presence.pts, 30 * ROUNDS) }))
+    .sort((a, b) => a.total - b.total);
+}
+const revealTime = n => 1 + n * 1.3;
+
+// ---- screens
+function drawOnline() {
+  stageBackground([640]);
+  text(ctx, 'PLAY ONLINE', 640, 76, 56, '#7dff9a', { fam: FONT_TITLE, weight: '400', lw: 12, stroke: '#0d2219' });
+  drawPerson(ctx, lookOf(Net.model, defaultOutfit(Net.model)), 1110, 600, 2.4, T, { pose: 'wave' });
+  text(ctx, 'YOUR MODEL: ' + MODELS[Net.model].name, 1110, 640, 20, '#fff', { lw: 5 });
+  button('BACK', 40, 640, 150, 54, () => { if (Net.room) leaveGame(); screen = 'title'; }, '#8a4fd8', 26);
+  if (!Net.lobby) {
+    ctx.fillStyle = 'rgba(26,10,42,0.85)'; rr(ctx, 240, 180, 760, 260, 24); ctx.fill();
+    text(ctx, 'Online play only works when the game', 620, 260, 28, '#fff', { stroke: false });
+    text(ctx, 'is open on claude.ai.', 620, 300, 28, '#fff', { stroke: false });
+    text(ctx, 'You can still play alone with PLAY!', 620, 370, 24, '#ffe66b', { stroke: false });
+    return;
+  }
+  button(Net.busy ? 'CONNECTING...' : '➕ MAKE A GAME', 340, 130, 560, 74, createGame, '#ff4a8a', 34, Net.busy);
+  text(ctx, 'or join a friend\'s game:', 620, 240, 24, '#ffd1ea', { lw: 5 });
+  const games = Net.lobby.peers().filter(p => !p.sameTab && p.presence && typeof p.presence.hosting === 'string' && /^bill-[a-z0-9]{1,8}$/.test(p.presence.hosting) && p.presence.open);
+  if (!games.length) {
+    text(ctx, 'No games yet. Make one and tell your friends to press ONLINE!', 620, 300, 22, '#c9b6e6', { stroke: false });
+  }
+  games.slice(0, 4).forEach((p, i) => {
+    const y = 270 + i * 84;
+    ctx.fillStyle = 'rgba(26,10,42,0.85)'; rr(ctx, 290, y, 660, 72, 18); ctx.fill();
+    ctx.save(); ctx.beginPath(); ctx.rect(300, y + 4, 70, 64); ctx.clip();
+    drawPerson(ctx, lookOf(peerModel(p), defaultOutfit(peerModel(p))), 335, y + 160, 1.5, T, { noShadow: true });
+    ctx.restore();
+    text(ctx, peerName(p) + "'s game", 390, y + 28, 28, '#fff', { align: 'left', fam: FONT_TITLE, weight: '400', lw: 5 });
+    text(ctx, num(p.presence.n, 99) + ' player' + (num(p.presence.n, 99) === 1 ? '' : 's') + ' waiting', 390, y + 54, 18, '#c9b6e6', { align: 'left', stroke: false });
+    button('JOIN', 800, y + 10, 130, 52, () => enterRoom(p.presence.hosting, false), '#2fa86a', 26, Net.busy);
+  });
+  if (Net.msg) text(ctx, Net.msg, 620, 620, 22, '#ff8a9a', { lw: 5 });
+}
+
+function drawPlayersRow(list, y, s, opts) {
+  const n = list.length;
+  const gap = Math.min(220, (W - 120) / Math.max(1, n));
+  list.forEach((it, i) => {
+    const x = W / 2 + (i - (n - 1) / 2) * gap;
+    drawPerson(ctx, lookOf(it.model, it.outfit), x, y, s, T, { phase: i, pose: it.pose || 'rest', mood: it.mood || '', zoom: view.px });
+    text(ctx, it.name, x, y + 26, 22, it.me ? '#7dff9a' : '#fff', { fam: FONT_TITLE, weight: '400', lw: 5 });
+    if (it.tag) text(ctx, it.tag, x, y + 52, 17, it.tagColor || '#ffe66b', { lw: 4 });
+    if (opts && opts.after) opts.after(it, x, i);
+  });
+}
+
+function drawLobby() {
+  stageBackground([640]);
+  text(ctx, 'GAME ROOM', 640, 70, 54, '#7dff9a', { fam: FONT_TITLE, weight: '400', lw: 12, stroke: '#0d2219' });
+  const list = players().map(p => ({ name: peerName(p), model: peerModel(p), outfit: defaultOutfit(peerModel(p)), me: p.sameTab, pose: 'wave', tag: (p.presence.role === 'host' ? '👑 HOST' : '') + (p.sameTab ? ' (you)' : '') }));
+  text(ctx, list.length + ' player' + (list.length === 1 ? '' : 's') + ' here', 640, 120, 24, '#ffd1ea', { lw: 5 });
+  drawPlayersRow(list, 520, list.length > 5 ? 2 : 2.6);
+  if (Net.host) {
+    button('START THE SHOW ▶', 440, 616, 400, 76, hostStart, '#ff4a8a', 34);
+    text(ctx, 'Friends join by pressing ONLINE on their screen.', 640, 160, 20, '#c9b6e6', { stroke: false });
+  } else {
+    text(ctx, 'Waiting for the host to start' + '...'.slice(0, 1 + Math.floor(T * 2) % 3), 640, 650, 30, '#ffe66b', { lw: 6 });
+  }
+  button('LEAVE', 40, 640, 150, 54, () => leaveGame(), '#8a4fd8', 26);
+}
+
+function drawWait() {
+  stageBackground([640]);
+  text(ctx, 'YOU ARE DONE! ✔', 640, 76, 54, '#7dff9a', { fam: FONT_TITLE, weight: '400', lw: 12, stroke: '#0d2219' });
+  text(ctx, 'Waiting for everyone to finish getting dressed...', 640, 128, 24, '#ffd1ea', { lw: 5 });
+  const seq = Net.game.seq;
+  const list = players().map(p => {
+    const done = p.presence.done === seq;
+    return { name: peerName(p), model: peerModel(p), outfit: done ? cleanOutfit(p.presence.outfit, peerModel(p)) : defaultOutfit(peerModel(p)), me: p.sameTab,
+      pose: done ? 'hips' : 'rest', tag: done ? 'READY ✔' : 'getting dressed...', tagColor: done ? '#7dff9a' : '#c9b6e6' };
+  });
+  drawPlayersRow(list, 560, list.length > 5 ? 2 : 2.6);
+  if (Net.host) button('SHOW RESULTS NOW', 900, 640, 340, 60, hostResults, '#8a4fd8', 24);
+}
+
+function drawRoundResults() {
+  stageBackground([640]);
+  const th = THEMES[Net.game.theme] || { name: '', emoji: '' };
+  text(ctx, `ROUND ${num(Net.game.round, ROUNDS) + 1} RESULTS`, 640, 64, 48, '#ffd1ea', { fam: FONT_TITLE, weight: '400', lw: 10, stroke: '#2a0f45' });
+  text(ctx, th.name + ' ' + th.emoji, 640, 112, 28, '#ffe66b', { fam: FONT_TITLE, weight: '400', lw: 6 });
+  const list = roundList();
+  const n = list.length;
+  const done = Net.phaseT > revealTime(n);
+  const top = n ? list[n - 1].total : 0;
+  const shown = list.map((it, i) => {
+    const visible = Net.phaseT > 1 + i * 1.3;
+    const win = done && it.total === top;
+    return Object.assign({}, it, {
+      me: it.p.sameTab, pose: win ? 'wave' : 'hips',
+      outfit: visible ? it.outfit : defaultOutfit(it.model),
+      tag: visible ? it.total + ' points' : '?', tagColor: win ? '#ffe66b' : '#fff', visible, win,
+    });
+  });
+  if (!n) text(ctx, 'Nobody finished this round!', 640, 360, 30, '#fff', { lw: 6 });
+  drawPlayersRow(shown, 540, n > 5 ? 1.9 : 2.4, {
+    after: (it, x) => {
+      if (!it.visible) return;
+      drawStarsRow(x, 618, 5, it.stars, 10);
+      if (it.win) { ctx.save(); ctx.translate(x, 540 - 112 * (n > 5 ? 1.9 : 2.4) - 30); text(ctx, '🏆 WINNER!', 0, 0, 26, '#ffe66b', { fam: FONT_TITLE, weight: '400', lw: 6 }); ctx.restore(); }
+    },
+  });
+  drawBill(80, 712, 1.6, { pose: done ? 'wow' : 'card', mood: done ? 'wow' : '' });
+  if (Net.host && done) button(Net.game.round + 1 >= ROUNDS ? 'FINAL RESULTS ▶' : 'NEXT ROUND ▶', 900, 640, 340, 64, hostNext, '#ff4a8a', 28);
+  else if (done) text(ctx, 'Waiting for the host...', 1070, 672, 22, '#ffe66b', { lw: 5 });
+  drawFx();
+}
+
+function drawFinal() {
+  stageBackground([640]);
+  text(ctx, 'THE SHOW IS OVER!', 640, 64, 52, '#ffd1ea', { fam: FONT_TITLE, weight: '400', lw: 12, stroke: '#2a0f45' });
+  const list = players().map(p => ({ p, name: peerName(p), model: peerModel(p), outfit: cleanOutfit(p.presence.outfit, peerModel(p)), pts: num(p.presence.pts, 30 * ROUNDS), stars: num(p.presence.stars, 5 * ROUNDS), me: p.sameTab }))
+    .sort((a, b) => b.pts - a.pts);
+  const medals = ['🥇', '🥈', '🥉'];
+  // podium order: 2nd, 1st, 3rd, then the rest
+  const order = list.length >= 3 ? [list[1], list[0], list[2]].concat(list.slice(3)) : list.length === 2 ? [list[1], list[0]] : list;
+  const shown = order.map(it => {
+    const place = list.indexOf(it);
+    return Object.assign({}, it, { pose: place === 0 ? 'wave' : 'hips', tag: (medals[place] || '#' + (place + 1)) + ' ' + it.pts + ' pts  ★' + it.stars, tagColor: place === 0 ? '#ffe66b' : '#fff' });
+  });
+  if (list.length) text(ctx, '👑 ' + list[0].name + ' WINS! 👑', 640, 122, 36, '#7dff9a', { fam: FONT_TITLE, weight: '400', lw: 8 });
+  drawPlayersRow(shown, 560, list.length > 5 ? 1.9 : 2.5);
+  if (Net.host) button('PLAY AGAIN', 900, 640, 340, 60, () => hostSet({ phase: 'lobby' }), '#ff4a8a', 28);
+  button('LEAVE', 40, 640, 150, 54, () => leaveGame(), '#8a4fd8', 26);
+  drawFx();
+}
+
+// =====================================================================
 //  MAIN LOOP
 // =====================================================================
 function update(dt) {
   updateFx(dt);
+  if (Net.room) updateOnline(dt);
+  if (screen === 'intro') { G.introT += dt; if (G.online && G.introT > 5) startDressing(); }
   if (screen === 'dress') {
     G.flash = Math.max(0, G.flash - dt);
-    if (timerOn) {
+    if (timerOn || G.online) {
       G.time -= dt;
       if (G.time <= 10 && Math.ceil(G.time) < G.lastTick) { G.lastTick = Math.ceil(G.time); if (G.time > 0) Sound.sfx('tick'); }
       if (G.time <= 0) { Sound.sfx('timeup'); goRunway(); }
@@ -756,6 +1081,11 @@ function draw() {
   else if (screen === 'dress') drawDress();
   else if (screen === 'runway') drawRunway();
   else if (screen === 'end') drawEnd();
+  else if (screen === 'online') drawOnline();
+  else if (screen === 'lobby') drawLobby();
+  else if (screen === 'owait') drawWait();
+  else if (screen === 'oresults') drawRoundResults();
+  else if (screen === 'ofinal') drawFinal();
 }
 
 function resize() {
@@ -785,5 +1115,6 @@ window.DTIB = {
   newShow, goRunway, nextRound, randomize, selectItem, selectColor, judge,
   set cat(c) { G.cat = c; }, get G() { return G; }, get screen() { return screen; },
   skip(t) { if (G && G.rw) G.rw.t = t; },
+  get net() { return Net; }, hostStart, hostNext, createGame,
 };
 })();

@@ -2,8 +2,9 @@
 
 A **dress-up fashion show game** that runs in your web browser.
 **Bill** (from Kids vs Video Games) is the judge of the fashion show!
-Pick your model (**Mio**, **Nafti**, **Felix** or **Emile**), dress them up for Bill's theme,
+Pick your model (**Mio**, **Nafti** or **Felix**), dress them up for Bill's theme,
 then walk the runway and see if Bill is impressed... or NOT impressed. 😬
+Play alone, or **ONLINE** against your friends!
 
 ## How to play
 
@@ -16,6 +17,17 @@ then walk the runway and see if Bill is impressed... or NOT impressed. 😬
 6. There are **5 rounds**. Get all **25 stars** to become **BILL'S FAVORITE** 👑
 
 Don't like the timer? Turn it off on the title screen (**TIMER: OFF**).
+
+## Play online with friends 🌍
+
+Online play works when the game is open on **claude.ai** (the game's artifact page),
+and your friends need to be able to open that page too (use its **Share** button).
+
+1. Press **ONLINE** and pick your model.
+2. One player presses **MAKE A GAME**. Everyone else presses **JOIN** on that game.
+3. The host presses **START THE SHOW**. Everyone gets the **same theme and the same Bill's wish**.
+4. Everyone gets dressed in 60 seconds, then the results show up: the **WINNER** of the round gets a trophy 🏆
+5. After 5 rounds, the player with the most points wins the show! 👑
 
 ## How Bill gives points
 

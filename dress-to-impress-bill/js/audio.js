@@ -132,22 +132,11 @@ const Sound = (() => {
   }
   function setTempo(bpm) { tempo = bpm; }
 
-  // Bill talks with a high kid voice
-  function say(text, pitch, rate) {
-    if (muted || !window.speechSynthesis) return;
-    try {
-      const u = new SpeechSynthesisUtterance(text);
-      u.pitch = pitch || 1.5; u.rate = rate || 1.05;
-      speechSynthesis.cancel(); speechSynthesis.speak(u);
-    } catch (e) { /* no voice */ }
-  }
-
   function toggleMute() {
     muted = !muted;
     if (out) out.gain.value = muted ? 0 : 0.5;
     try { localStorage.setItem('dtib-muted', muted ? '1' : '0'); } catch (e) { /* no storage */ }
-    if (muted && window.speechSynthesis) speechSynthesis.cancel();
   }
 
-  return { init, sfx, say, toggleMute, setTempo, get muted() { return muted; } };
+  return { init, sfx, toggleMute, setTempo, get muted() { return muted; } };
 })();

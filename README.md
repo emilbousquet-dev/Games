@@ -1,7 +1,7 @@
 # LAB 13 👽🩸
 
 > 🆕 **NEW: [DRESS TO IMPRESS BILL](dress-to-impress-bill/README.md)** 👗🕶️: a fashion show game where
-> Bill is the judge! Dress up Mio, Nafti, Felix or Emile for his theme. Open `dress-to-impress-bill/index.html` to play.
+> Bill is the judge! Dress up Mio, Nafti or Felix for his theme, alone or online. Open `dress-to-impress-bill/index.html` to play.
 >
 > **Also in this folder: [KIDS vs VIDEO GAMES](kids-vs-video-games/README.md)** 🎮🛡️: a tower defense game where Mio, Nafti
 > and Felix protect Bill from video game characters! Open `kids-vs-video-games/index.html` to play.
