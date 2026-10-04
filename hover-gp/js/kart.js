@@ -261,7 +261,7 @@ HG.Kart = (function () {
           const spd = Math.max(8, this.spd);
           let vh = spd * (r.height / (r.s1 - r.s0)) * 1.2 + 2;
           if (r.gap) {
-            const need = (G * (r.glide ? 0.35 : 1)) * (r.gap + 10) / Math.max(18, spd) / 2;
+            const need = (G * ((race && race.grav) || 1) * (r.glide ? 0.35 : 1)) * (r.gap + 10) / Math.max(18, spd) / 2;
             vh = Math.max(vh, need * (spd > 14 ? 1.1 : 0.7));
           }
           this.vh = vh; this.gliding = r.glide;
@@ -272,7 +272,7 @@ HG.Kart = (function () {
       }
       if (!this.grounded) {
         this.airT += dt;
-        const g = this.gliding ? G * 0.32 : G;
+        const g = (this.gliding ? G * 0.32 : G) * ((race && race.grav) || 1);
         this.vh -= g * dt;
         if (this.gliding) this.vh = Math.max(this.vh, -6);
         this.h += this.vh * dt;

@@ -16,7 +16,7 @@ HG.FX = (function () {
     void main() {
       vCol = col;
       vec4 mv = modelViewMatrix * vec4(position, 1.0);
-      gl_PointSize = size * scale / max(0.1, -mv.z);
+      gl_PointSize = min(size * scale / max(0.1, -mv.z), 90.0);
       gl_Position = projectionMatrix * mv;
     }`;
   const fs = `

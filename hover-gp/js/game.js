@@ -143,10 +143,10 @@ HG.Game = (function () {
     HG.Input.poll();
     const m = HG.Input.menu();
     if (state === 'race' && race) {
-      if ((m.pause || HG.Input.padPausePressed()) && race.phase !== 'done') pause(!paused);
+      if ((m.pause || HG.Input.padPausePressed()) && race.phase !== 'done' && !race.ended) pause(!paused);
       if (!paused || isOnline()) raceFrame(dt);
-      else if (HG.Menu) HG.Menu.update(dt, m);
-      render(dt);
+      if ((paused || race.ended) && HG.Menu) HG.Menu.update(dt, m);
+      if (race) render(dt);
     } else {
       if (HG.Menu) HG.Menu.update(dt, m);
       if (HG.Menu && HG.Menu.render3D) HG.Menu.render3D(renderer, dt);
@@ -173,12 +173,14 @@ HG.Game = (function () {
     for (const kv of kartViews) kv.update(dt, race.track);
     if (HG.Items) HG.Items.animate(dt, race);
     if (HG.Hazards) HG.Hazards.animate(dt, race);
+    if (HG.Scenery) HG.Scenery.animate(dt, views[0].cam.position);
     if (HG.FX) HG.FX.update(dt, race, kartViews, views);
     for (const v of views) v.chase.update(dt, race.track, race);
     if (race.phase === 'intro') HG.IntroCam.update(introCam, race.track, race.t, race.cfg.introTime || 4.5);
     else if (race.phase === 'countdown' && race.countdown > 3.3) { for (const v of views) v.chase.snap(); }
     HG.Env.follow(views[0].kart ? kartPos(views[0].kart) : new THREE.Vector3(), dt);
     HG.HUD.update(dt, race);
+    if (HG.Menu && HG.Menu.tick) HG.Menu.tick(dt);
     if (HG.Audio) HG.Audio.raceUpdate(dt, race, views);
     // start lights
     startLights();
@@ -262,6 +264,7 @@ HG.Game = (function () {
   return {
     init, startRace, endRace, pause,
     kartView: (k) => kartViews.find((v) => v.kart === k), kartViewsList: () => kartViews,
+    addKartView(k) { const v = new HG.KartView(k, world); kartViews.push(v); return v; },
     get renderer() { return renderer; }, get scene() { return scene; }, get race() { return race; },
     get state() { return state; }, set state(s) { state = s; }, get paused() { return paused; },
     get views() { return views; }, get fps() { return fps; },

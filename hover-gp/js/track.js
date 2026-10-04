@@ -33,7 +33,8 @@ HG.Track = (function () {
 
   // ---------------- walk the turtle ----------------
   // returns raw points every ~1 m with all their settings
-  function walk(def, extra) {
+  function walk(def, adj) {
+    const extra = adj && adj.len, extraR = adj && adj.rad;
     const pts = [];
     const info = [];
     let x = 0, y = 0, z = 0, yaw = 0;      // yaw 0 = going +z. Turning right makes yaw smaller.
@@ -47,18 +48,18 @@ HG.Track = (function () {
       if (p.kind === 'width') { width = p.nums[0]; continue; }
       if (p.kind === 'offroad') { offL = offR = p.nums[0]; continue; }
       const startIndex = pts.length;
-      info[pieces.indexOf(p)] = { yaw, kind: p.kind };
+      info[pieces.indexOf(p)] = { yaw, kind: p.kind, x, z };
       let len = 0, turn = 0, radius = 50, loopR = 0, twist = 0, shiftLoop = 0;
       if (p.kind === 'straight' || p.kind === 'jump' || p.kind === 'glide' || p.kind === 'gap') len = (p.nums[0] || 40) + (extra ? extra[pieces.indexOf(p)] || 0 : 0);
       else if (p.kind === 'left' || p.kind === 'right') {
         const ang = (p.nums[0] || 90) * Math.PI / 180;
-        radius = p.nums[1] || 50;
+        radius = (p.nums[1] || 50) + (extraR ? extraR[pieces.indexOf(p)] || 0 : 0);
         len = ang * radius;
         turn = p.kind === 'left' ? ang : -ang;
       } else if (p.kind === 'loop') {
         loopR = p.nums[0] || 24;
         len = Math.PI * 2 * loopR;
-        shiftLoop = (m.shift || width + 6) * (m.left ? -1 : 1);
+        shiftLoop = (m.shift || width + 16) * (m.left ? -1 : 1);
       } else if (p.kind === 'twist') { len = p.nums[0] || 90; twist = 360; }
       else { console.warn('Unknown track command:', p.kind); continue; }
 
@@ -140,35 +141,68 @@ HG.Track = (function () {
     return { pts, feats, endX: x, endY: y, endZ: z, endYaw: yaw, info, pieces };
   }
 
+  // ---------------- closing the loop ----------------
+  // Find small changes to straight lengths and curve sizes so the end
+  // of the track lands exactly on the start (a tiny bit of math magic).
+  function autoClose(def, W0) {
+    const pieces = W0.pieces;
+    const vars = [];
+    const minR = (def.width || 24) * 0.75 + 4;
+    pieces.forEach((p, i) => {
+      if (p.mods.fixed) return;
+      if (p.kind === 'straight') vars.push({ i, kind: 'len', base: p.nums[0] || 40, min: 14 - (p.nums[0] || 40), max: 400 });
+      else if (p.kind === 'left' || p.kind === 'right') { const r = p.nums[1] || 50; vars.push({ i, kind: 'rad', base: r, min: minR - r, max: r * 1.6 }); }
+    });
+    if (vars.length < 2) return W0;
+    const x = vars.map(() => 0);
+    const adjOf = (xs) => { const a = { len: [], rad: [] }; vars.forEach((v, k) => { a[v.kind][v.i] = xs[k]; }); return a; };
+    const err = (w) => [w.endX - w.pts[0].x, w.endZ - w.pts[0].z];
+    let W = W0;
+    const free = vars.map(() => true);
+    for (let it = 0; it < 10; it++) {
+      const e = err(W);
+      if (Math.hypot(e[0], e[1]) < 0.05) break;
+      // how the end moves when each number changes a bit
+      const J = vars.map((v, k) => {
+        if (!free[k]) return [0, 0];
+        const xs = x.slice(); xs[k] += 1;
+        const e2 = err(walk(def, adjOf(xs)));
+        return [e2[0] - e[0], e2[1] - e[1]];
+      });
+      // weighted smallest change that fixes the error
+      let a = 0, b = 0, c = 0;
+      const wt = vars.map((v) => v.base);
+      J.forEach((j, k) => { a += wt[k] * j[0] * j[0]; b += wt[k] * j[0] * j[1]; c += wt[k] * j[1] * j[1]; });
+      const det = a * c - b * b;
+      if (Math.abs(det) < 1e-9) break;
+      const lx = (c * -e[0] - b * -e[1]) / det, lz = (a * -e[1] - b * -e[0]) / det;
+      let hitBound = false;
+      vars.forEach((v, k) => {
+        if (!free[k]) return;
+        x[k] += wt[k] * (J[k][0] * lx + J[k][1] * lz);
+        if (x[k] < v.min) { x[k] = v.min; free[k] = false; hitBound = true; }
+        if (x[k] > v.max) { x[k] = v.max; free[k] = false; hitBound = true; }
+      });
+      W = walk(def, adjOf(x));
+    }
+    const e = err(W);
+    if (Math.hypot(e[0], e[1]) > 3) console.warn(def.name + ': the track does not close well (' + Math.hypot(e[0], e[1]).toFixed(0) + ' m)');
+    W.adjust = vars.map((v, k) => ({ piece: v.i, kind: v.kind, change: Math.round(x[k]) })).filter((q) => q.change);
+    return W;
+  }
+
   // ---------------- build the track ----------------
   class Track {
     constructor(def) {
       this.def = def;
       let W = walk(def);
-      // make the track meet itself: stretch or shrink the straights a little (as little as possible)
-      if (def.autoClose !== false) {
-        const st = [];
-        W.info.forEach((inf, i) => { if (inf && inf.kind === 'straight' && !W.pieces[i].mods.fixed) st.push({ i, ux: Math.sin(inf.yaw), uz: Math.cos(inf.yaw), len: W.pieces[i].nums[0] || 40 }); });
-        const ex = W.endX - W.pts[0].x, ez = W.endZ - W.pts[0].z;
-        if (st.length >= 2) {
-          // least squares: deltas = -U^T (U U^T)^-1 e, weighted so long straights change more
-          let a = 0, b = 0, c = 0;
-          for (const q of st) { const wgt = q.len; a += wgt * q.ux * q.ux; b += wgt * q.ux * q.uz; c += wgt * q.uz * q.uz; }
-          const det = a * c - b * b;
-          if (Math.abs(det) > 1e-6) {
-            const lx = (c * -ex - b * -ez) / det, lz = (a * -ez - b * -ex) / det;
-            const extra = [];
-            let ok = true;
-            for (const q of st) { const dlt = q.len * (q.ux * lx + q.uz * lz); extra[q.i] = dlt; if (q.len + dlt < 12) ok = false; }
-            if (ok) W = walk(def, extra);
-            else console.warn(def.name + ': could not close the track by changing straights');
-          }
-        }
-      }
+      // make the track meet itself: change the straights and curves a little (as little as possible)
+      if (def.autoClose !== false) W = autoClose(def, W);
       const pts = W.pts;
       // close the loop: spread the small error over the whole lap
       const ex = W.endX - pts[0].x, ey = W.endY - pts[0].y, ez = W.endZ - pts[0].z;
       this.closeError = Math.hypot(ex, ey, ez);
+      this.adjust = W.adjust || [];
       const turnErr = U.wrapAngle(W.endYaw) * 180 / Math.PI;
       this.turnError = turnErr;
       if (Math.abs(turnErr) > 2) console.warn(def.name + ': the turns don\'t add up to a full circle (off by ' + turnErr.toFixed(1) + '°)');

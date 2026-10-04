@@ -57,8 +57,8 @@ HG.Env = (function () {
     scene.background = new THREE.Color(th.sky[2]);
     // lights
     sun.color.set(th.sunColor || 0xfff4e0);
-    sun.intensity = th.sun !== undefined ? th.sun : 2.4;
-    hemi.color.set(th.hemiSky || 0xbfdfff); hemi.groundColor.set(th.hemiGround || 0x4a5a3a); hemi.intensity = th.hemi !== undefined ? th.hemi : 0.8;
+    sun.intensity = (th.sun !== undefined ? th.sun : 2.4) * 0.8;
+    hemi.color.set(th.hemiSky || 0xbfdfff); hemi.groundColor.set(th.hemiGround || 0x4a5a3a); hemi.intensity = (th.hemi !== undefined ? th.hemi : 0.8) * 0.7;
     amb.intensity = th.amb !== undefined ? th.amb : 0.15;
     // ground
     const gy = track ? track.minY + (th.groundY !== undefined ? th.groundY : -1) : -1;
@@ -90,7 +90,8 @@ HG.Env = (function () {
     } else groundMesh = null;
     // reflections come from the sky
     const envScene = new THREE.Scene();
-    envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide })));
+    // the reflections are a darker copy of the sky (a bright sky would make everything glow white)
+    envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10, 16, 8), new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, color: new THREE.Color(th.envDim || 0x5a5a5a) })));
     const lowRing = new THREE.Mesh(new THREE.CylinderGeometry(9.5, 9.5, 6, 16, 1, true), new THREE.MeshBasicMaterial({ color: th.envGround || th.fog, side: THREE.BackSide }));
     lowRing.position.y = -4; envScene.add(lowRing);
     if (envRT) envRT.dispose();

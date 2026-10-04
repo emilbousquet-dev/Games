@@ -82,7 +82,7 @@ HG.KartView = class {
     this.shadow.scale.set(shS, shS, 1);
     this.shadow.visible = k.falling <= 0 && track.hasGround(k.s);
     this.glow.position.set(0, -groundH + 0.09, 0);
-    this.glow.material.opacity = (0.35 + Math.min(0.5, Math.abs(k.spd) * 0.012) + (k.boosting ? 0.3 : 0)) * U.clamp(1 - k.h * 0.15, 0, 1);
+    this.glow.material.opacity = (0.2 + Math.min(0.25, Math.abs(k.spd) * 0.007) + (k.boosting ? 0.2 : 0)) * U.clamp(1 - k.h * 0.15, 0, 1);
     this.glow.visible = this.shadow.visible;
     this.glow.scale.setScalar(this.scale);
     // ghost: see-through

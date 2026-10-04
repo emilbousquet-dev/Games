@@ -457,7 +457,7 @@ HG.Items = (function () {
   }
 
   function hitBy(owner, victim) {
-    if (owner && owner !== victim) { owner.events.push({ type: 'hitother', victim }); if (race.battle) owner.score++; }
+    if (owner && owner !== victim) owner.events.push({ type: 'hitother', victim });
   }
 
   // explosion: hits everyone close by
@@ -583,7 +583,7 @@ HG.Items = (function () {
     for (const kv of HG.Game.kartViewsList()) {
       const k = kv.kart;
       let extra = kv.itemExtra;
-      const want = (k.dragged || '') + '|' + (k.orbiting ? k.item + k.orbiting : '') + '|' + (k.shieldT > 0 ? 's' : '') + '|' + (k.missileT > 0 ? 'm' : '');
+      const want = (k.dragged || '') + '|' + (k.orbiting ? k.item + k.orbiting : '') + '|' + (k.shieldT > 0 ? 's' : '') + '|' + (k.missileT > 0 ? 'm' : '') + '|' + (race.battle ? k.balloons : '');
       if (!extra || extra.key !== want) {
         if (extra) kv.root.remove(extra.g);
         extra = kv.itemExtra = { key: want, g: new THREE.Group(), orbs: [] };
@@ -597,9 +597,23 @@ HG.Items = (function () {
         if (k.missileT > 0) {
           const m = model('rocket'); m.scale.setScalar(3.2); m.position.set(0, 0.6, 0.3); extra.g.add(m); extra.missile = m;
         }
+        if (race.battle && k.balloons > 0) {
+          extra.balloons = [];
+          for (let i = 0; i < k.balloons; i++) {
+            const b = new THREE.Group();
+            const ball = new THREE.Mesh(M.sphere(0.55, 16, 12), new THREE.MeshStandardMaterial({ color: k.color, roughness: 0.25, emissive: k.color, emissiveIntensity: 0.15 }));
+            ball.scale.set(1, 1.2, 1); ball.position.y = 1.4; b.add(ball);
+            b.add(new THREE.Mesh(M.cyl(0.01, 0.01, 1.4, 4), M.mat('#ffffff')));
+            b.children[1].position.y = 0.7;
+            b.position.set((i - (k.balloons - 1) / 2) * 0.7, 1.4, -1.0);
+            b.rotation.z = (i - (k.balloons - 1) / 2) * 0.3;
+            extra.g.add(b); extra.balloons.push(b);
+          }
+        }
       }
       extra.orbs.forEach((m, i) => { const a = animT * 4 + (i / extra.orbs.length) * Math.PI * 2; m.position.set(Math.cos(a) * 2.2, 0.3, Math.sin(a) * 2.2); });
       if (extra.shield) extra.shield.scale.setScalar(1 + Math.sin(animT * 8) * 0.04);
+      if (extra.balloons) extra.balloons.forEach((b, i) => { b.rotation.x = Math.sin(animT * 3 + i) * 0.15 - Math.min(0.5, Math.abs(k.spd) * 0.015); });
       if (extra.missile) kv.racer.group.visible = false; else kv.racer.group.visible = true;
     }
   }
@@ -625,6 +639,8 @@ HG.Items = (function () {
 
   // is there something dangerous in front of this CPU? (returns its sideways position)
   function dangerAhead(k, r, look) {
+    if (track.isArena) return null;
+    if (HG.Hazards) { const h = HG.Hazards.danger(k, look); if (h !== null) return h; }
     for (const t of things) {
       if (t.type !== 'banana' && t.type !== 'mine') continue;
       const ds = track.diff(k.s, t.s);
@@ -647,11 +663,12 @@ HG.Items = (function () {
     if (!k.item || k.roulette > 0 || k.ai.itemT > 0) return;
     const id = k.item;
     const ahead = targetAhead(k);
-    const gapAhead = ahead ? (track.diff(k.s, ahead.s) + track.length) % track.length : 999;
+    const gapAhead = !ahead ? 999 : track.isArena ? Math.hypot(ahead.s - k.s, ahead.d - k.d) : (track.diff(k.s, ahead.s) + track.length) % track.length;
+    const inLine = ahead && (track.isArena ? Math.abs(U.angleDiff(k.yaw, Math.atan2(ahead.d - k.d, ahead.s - k.s))) < 0.25 : Math.abs(ahead.d - k.d) < 2.5);
     let use = false;
     if (id === 'turbo' || id === 'goldturbo') use = Math.abs(track.K[track.idx(k.s + 20)]) < 0.01 || k.offroad;
     else if (id === 'rocket') use = ahead && gapAhead < 80;
-    else if (id === 'orb') use = ahead && gapAhead < 30 && Math.abs(ahead.d - k.d) < 2.5;
+    else if (id === 'orb') use = ahead && gapAhead < 30 && inLine;
     else if (id === 'banana' || id === 'mine') { use = true; }
     else if (id === 'horn') use = !!heli || things.some((t) => (t.type === 'rocket' || t.type === 'orb') && Math.abs(track.diff(k.s, t.s)) < 18);
     else if (id === 'fbi' || id === 'emp' || id === 'smoke') use = k.place > 1;

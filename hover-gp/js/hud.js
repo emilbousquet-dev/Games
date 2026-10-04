@@ -75,9 +75,11 @@ HG.HUD = (function () {
     if (track.isArena) {
       const r = track.size;
       mapScale = 190 / (r * 2); mapOff = { x: -r, z: -r };
+      const pil = track.pillars || [];
       mapCanvas = U.canvas(220, 220, (g) => {
         g.fillStyle = 'rgba(255,255,255,0.18)'; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.lineWidth = 3;
         g.beginPath(); if (track.round) g.arc(110, 110, 95, 0, 7); else g.rect(15, 15, 190, 190); g.fill(); g.stroke();
+        g.fillStyle = 'rgba(0,0,0,0.5)'; for (const p of pil) { g.beginPath(); g.arc(110 - p.x * mapScale, 110 - p.z * mapScale, p.r * mapScale, 0, 7); g.fill(); }
       });
       return;
     }
@@ -151,13 +153,13 @@ HG.HUD = (function () {
         for (const o of order) {
           if (o.out) continue;
           let x, y;
-          if (race.track.isArena) [x, y] = [110 - o.s * mapScale, 110 - o.d * mapScale];
+          if (race.track.isArena) [x, y] = [110 + o.d * mapScale, 110 - o.s * mapScale];
           else { race.track.point(o.s, o.d, 0, pos); [x, y] = mp(pos.x, pos.z); }
           const me = o === k;
           g.fillStyle = o.color; g.strokeStyle = me ? '#fff' : '#000'; g.lineWidth = me ? 3 : 1.5;
           g.beginPath(); g.arc(x, y, me ? 7 : 5, 0, 7); g.fill(); g.stroke();
         }
-        if (HG.Items && HG.Items.mapMarks) HG.Items.mapMarks(g, race, (o) => { if (race.track.isArena) return [110 - o.s * mapScale, 110 - o.d * mapScale]; race.track.point(o.s, o.d, 0, pos); return mp(pos.x, pos.z); });
+        if (HG.Items && HG.Items.mapMarks) HG.Items.mapMarks(g, race, (o) => { if (race.track.isArena) return [110 + o.d * mapScale, 110 - o.s * mapScale]; race.track.point(o.s, o.d, 0, pos); return mp(pos.x, pos.z); });
       }
       // the list of racers on the left
       if (h.list && race.order) {

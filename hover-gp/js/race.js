@@ -16,11 +16,12 @@ HG.Race = (function () {
 
   function setup(cfg) {
     R.cfg = cfg;
-    R.battle = cfg.mode === 'battle';
-    R.def = cfg.trackDef || HG.TRACKS.find((t) => t.id === cfg.track) || HG.TRACKS[0];
+    R.def = cfg.trackDef || HG.TRACKS.find((t) => t.id === cfg.track) || HG.ARENAS.find((t) => t.id === cfg.track) || HG.TRACKS[0];
+    R.battle = cfg.mode === 'battle' || !!R.def.arena;
     R.theme = HG.THEMES[R.def.theme] || HG.THEMES.grass;
     R.track = R.def.arena ? new HG.Arena(R.def) : new HG.Track(R.def);
     R.laps = cfg.laps || R.def.laps || 3;
+    R.grav = R.theme.lowGravity ? 0.55 : 1;
     R.karts = [];
     R.finishOrder = [];
     R.phase = cfg.skipIntro ? 'countdown' : 'intro';
@@ -92,7 +93,7 @@ HG.Race = (function () {
   function physics(dt) {
     const tr = R.track;
     for (const k of R.karts) {
-      if (k.ctrl === 'remote') continue;
+      if (k.ctrl === 'remote') { if (k.playback) k.playback(R.time, dt); continue; }
       // CPUs drive themselves; the computer also drives you after the finish and in a Sigma Missile
       if (HG.AI && (k.ctrl === 'cpu' || (k.ctrl === 'local' && (k.finished || k.missileT > 0)))) {
         const keepItem = k.ctrl === 'local' ? k.input.item : null;
@@ -101,10 +102,13 @@ HG.Race = (function () {
       }
       if (k.out) continue;
       k.step(dt, tr, R);
+      if (tr.isArena) tr.collide(k);
     }
     collide(dt);
     if (HG.Items) HG.Items.update(dt, R);
+    if (HG.Hazards) HG.Hazards.update(dt, R);
     if (!R.battle) laps();
+    else if (HG.Battle) { HG.Battle.update(R, dt); if (R.phase === 'done') R.doneT += dt; }
     slipstream(dt);
     updatePlaces();
   }
@@ -114,10 +118,10 @@ HG.Race = (function () {
     const tr = R.track, ks = R.karts;
     for (let i = 0; i < ks.length; i++) {
       const a = ks[i];
-      if (a.falling > 0 || a.respawnT > 0 || a.out) continue;
+      if (a.falling > 0 || a.respawnT > 0 || a.out || a.isGhost) continue;
       for (let j = i + 1; j < ks.length; j++) {
         const b = ks[j];
-        if (b.falling > 0 || b.respawnT > 0 || b.out) continue;
+        if (b.falling > 0 || b.respawnT > 0 || b.out || b.isGhost) continue;
         if (a.ghostT > 0 || b.ghostT > 0) continue;
         const ds = tr.isArena ? b.s - a.s : tr.diff(a.s, b.s);
         const dd = b.d - a.d, dh = b.h - a.h;
@@ -161,7 +165,7 @@ HG.Race = (function () {
   function laps() {
     const L = R.track.length;
     for (const k of R.karts) {
-      if (k.finished) continue;
+      if (k.finished || k.isGhost) continue;
       const lap = Math.floor(k.dist / L) + 1;
       if (lap > k.lap) {
         if (k.lap >= 1) { k.lapTimes.push(R.time - k.lapStart); }
@@ -181,7 +185,7 @@ HG.Race = (function () {
       if (lap < k.lap && lap >= 0 && k.lap > 0 && k.dist < (k.lap - 1) * L - 5) k.lap = lap;
     }
     // everybody (or every player) done?
-    const humans = R.karts.filter((k) => k.ctrl === 'local' || k.ctrl === 'remote');
+    const humans = R.karts.filter((k) => k.ctrl === 'local' || (k.ctrl === 'remote' && !k.isGhost));
     if (R.phase === 'race' && (humans.length ? humans.every((k) => k.finished) : R.karts.every((k) => k.finished))) {
       R.phase = 'done'; R.doneT = 0; R.events.push({ type: 'alldone' });
     }
