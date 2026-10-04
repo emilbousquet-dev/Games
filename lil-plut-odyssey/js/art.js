@@ -393,10 +393,10 @@ LP.Art = (function () {
   function spring(c, key, x, y, sq) {
     const s = 1 - (sq || 0) * 0.45;
     c.save(); c.translate(x, y);
-    if (key === 'garden' || key === 'park') {
+    if (key === 'garden' || key === 'park' || key === 'dream') {
       // bouncy mushroom
       c.fillStyle = '#f0e2c8'; c.fillRect(-9, -24 * s, 18, 24 * s);
-      c.fillStyle = key === 'park' ? '#ff7ab0' : '#e8343c';
+      c.fillStyle = key === 'park' ? '#ff7ab0' : key === 'dream' ? '#b88aff' : '#e8343c';
       c.beginPath(); c.ellipse(0, -24 * s, 30 + (sq || 0) * 8, 22 * s, 0, PI, 0); c.fill();
       c.fillStyle = '#fff'; circle(c, -12, -32 * s, 5); c.fill(); circle(c, 8, -38 * s, 6); c.fill(); circle(c, 18, -28 * s, 4); c.fill();
     } else if (key === 'city') {
@@ -433,7 +433,12 @@ LP.Art = (function () {
     c.font = `800 26px ${LP.FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillStyle = '#e8345a'; c.fillText('!', x, y - 48);
   }
   function platform(c, key, x, y, w, t) {
-    if (key === 'garden') {
+    if (key === 'dream') {
+      // a little cloud
+      c.fillStyle = '#ffffff';
+      for (let k = 0; k < 5; k++) { circle(c, x + 6 + k * (w - 12) / 4, y + 8 + Math.sin(k * 2) * 3, 13); c.fill(); }
+      c.fillStyle = '#ffd0ef'; c.fillRect(x + 2, y + 12, w - 4, 8);
+    } else if (key === 'garden') {
       // a big floating leaf
       c.fillStyle = '#3f9a45'; c.beginPath(); c.ellipse(x + w / 2, y + 8, w / 2 + 8, 14, 0, 0, TAU); c.fill();
       c.fillStyle = '#6fd060'; c.beginPath(); c.ellipse(x + w / 2, y + 5, w / 2 + 4, 10, 0, 0, TAU); c.fill();
@@ -466,6 +471,11 @@ LP.Art = (function () {
       c.fillStyle = 'rgba(255,255,255,0.85)'; c.beginPath(); c.roundRect(x + 8, y + 7, T - 16, T - 18, 4); c.fill();
       c.font = `800 26px ${LP.FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillStyle = col; c.fillText('ABCDPLUT'[Math.floor(h * 8)], x + T / 2, y + T / 2 - 1);
+    } else if (key === 'dream') {
+      // candy box
+      c.fillStyle = '#b88aff'; c.beginPath(); c.roundRect(x + 1, y + 1, T - 2, T - 2, 8); c.fill();
+      c.fillStyle = '#ffffff'; c.fillRect(x + T / 2 - 4, y + 1, 8, T - 2); c.fillRect(x + 1, y + T / 2 - 4, T - 2, 8);
+      c.fillStyle = '#ff7ac8'; circle(c, x + T / 2, y + T / 2, 7); c.fill();
     } else if (key === 'city' && h < 0.5) {
       // cardboard box
       c.fillStyle = '#c8955a'; c.fillRect(x + 1, y + 1, T - 2, T - 2);
@@ -538,6 +548,16 @@ LP.Art = (function () {
       }
       c.strokeStyle = '#d8402a'; c.lineWidth = 2; c.beginPath(); c.moveTo(-5, -26); c.lineTo(-6, -34); c.moveTo(5, -26); c.lineTo(6, -34); c.stroke();
       angryEyes(c, 0, -36, 0.7);
+    } else if (key === 'dream') {
+      // gummy bear
+      c.globalAlpha *= 0.92;
+      c.fillStyle = '#ff4f8a';
+      ell(c, -8, -4 - Math.max(0, step) * 3, 6, 5); c.fill(); ell(c, 8, -4 - Math.max(0, -step) * 3, 6, 5); c.fill();
+      ell(c, 0, -18, 14, 13); c.fill();
+      circle(c, 0, -38, 12); c.fill(); circle(c, -9, -48, 5); c.fill(); circle(c, 9, -48, 5); c.fill();
+      ell(c, -14, -22, 4, 7, 0.5); c.fill(); ell(c, 14, -22, 4, 7, -0.5); c.fill();
+      c.fillStyle = 'rgba(255,255,255,0.45)'; ell(c, -5, -42, 3, 5, 0.3); c.fill(); ell(c, -6, -22, 3, 6, 0.3); c.fill();
+      angryEyes(c, 2, -38, 0.6);
     } else {
       // rat
       c.strokeStyle = '#ff9ab0'; c.lineWidth = 3; c.beginPath(); c.moveTo(-16, -8); c.quadraticCurveTo(-34, -6 + step * 4, -38, -20); c.stroke();
@@ -563,7 +583,7 @@ LP.Art = (function () {
       c.beginPath(); c.moveTo(-8, -8); c.lineTo(-6, -18); c.lineTo(-2, -9); c.moveTo(8, -8); c.lineTo(6, -18); c.lineTo(2, -9); c.fill();
       angryEyes(c, 0, -1, 0.6, '#ff3a3a');
     } else {
-      const body = key === 'garden' ? '#ffd23f' : key === 'park' ? '#3ad0c0' : '#b58ad8';
+      const body = key === 'garden' ? '#ffd23f' : key === 'park' ? '#3ad0c0' : key === 'dream' ? '#7ad8ff' : '#b58ad8';
       c.fillStyle = 'rgba(230,245,255,0.75)';
       ell(c, -6, -14 - flap * 4, 12, 6 + flap * 3, -0.5); c.fill(); ell(c, 6, -14 - flap * 4, 12, 6 + flap * 3, 0.5); c.fill();
       c.fillStyle = body; ell(c, 0, 0, 14, 11); c.fill();
@@ -586,7 +606,7 @@ LP.Art = (function () {
       angryEyes(c, 3, -20, 0.7);
     } else {
       // frog
-      const col = key === 'city' ? '#8a9a7a' : key === 'park' ? '#6ad06a' : '#4ac05a';
+      const col = key === 'city' ? '#8a9a7a' : key === 'park' ? '#6ad06a' : key === 'dream' ? '#b88aff' : '#4ac05a';
       c.scale(1 / sq, sq);
       c.fillStyle = U.mix(col, '#000000', 0.2); ell(c, -10, -6, 10, 6); c.fill(); ell(c, 10, -6, 10, 6); c.fill();
       c.fillStyle = col; ell(c, 0, -14, 18, 13); c.fill();
@@ -628,7 +648,7 @@ LP.Art = (function () {
       c.strokeStyle = '#3f9a45'; c.lineWidth = 5; c.beginPath(); c.moveTo(0, -16); c.quadraticCurveTo(-6, -30, 0, -40); c.stroke();
       c.fillStyle = '#5ccf48'; ell(c, -10, -24, 8, 4, 0.5); c.fill();
       c.save(); c.translate(0, -46); c.scale(k, k);
-      c.fillStyle = key === 'park' ? '#b06ad0' : '#5ccf48'; circle(c, 0, 0, 14); c.fill();
+      c.fillStyle = key === 'park' ? '#b06ad0' : key === 'dream' ? '#ff7ac8' : '#5ccf48'; circle(c, 0, 0, 14); c.fill();
       c.beginPath(); c.roundRect(8, -7, 14, 14, 4); c.fill();
       c.fillStyle = '#1e1430'; ell(c, 22, 0, 3, 6); c.fill();
       angryEyes(c, -2, -3, 0.6);
@@ -638,7 +658,7 @@ LP.Art = (function () {
   }
 
   function shot(c, key, x, y, t, back) {
-    c.fillStyle = back ? '#ffd23f' : key === 'house' ? '#3a3a52' : key === 'city' ? '#6ac0ff' : '#5ccf48';
+    c.fillStyle = back ? '#ffd23f' : key === 'house' ? '#3a3a52' : key === 'city' ? '#6ac0ff' : key === 'dream' ? '#ff7ac8' : '#5ccf48';
     circle(c, x, y, 8); c.fill();
     c.fillStyle = 'rgba(255,255,255,0.5)'; circle(c, x - 2, y - 3, 3); c.fill();
   }
@@ -664,47 +684,51 @@ LP.Art = (function () {
   function cat(c, x, y, f, t, pose) {
     // MR. WHISKERS, the grumpy cat who stole Bobo
     pose = pose || {};
+    const sh = pose.shadow;
+    const K = sh ? { a: '#1a1030', b: '#2a1a48', c: '#120a24', d: '#3a2a5e', w: '#4a3a70', eye: '#ff3a6a', pink: '#5a2a6a' } : { a: '#7a7a90', b: '#9a9ab0', c: '#5a5a6e', d: '#6a6a7e', w: '#ffffff', eye: '#c8f060', pink: '#ff9ab0' };
     c.save(); c.translate(x, y); c.scale(f * (pose.s || 1), pose.s || 1);
     const crouch = pose.crouch || 0, run = pose.run ? Math.sin(t * 16) : 0;
     c.translate(0, crouch * 10);
     // tail
-    c.strokeStyle = '#6a6a7e'; c.lineWidth = 12; c.lineCap = 'round';
+    c.strokeStyle = K.d; c.lineWidth = 12; c.lineCap = 'round';
     c.beginPath(); c.moveTo(-40, -40); c.bezierCurveTo(-80, -50, -70, -110 + Math.sin(t * 3) * 10, -50 + Math.sin(t * 2) * 10, -120); c.stroke();
-    c.strokeStyle = '#4a4a5a'; c.lineWidth = 12; c.beginPath(); c.moveTo(-54 + Math.sin(t * 2) * 10, -116); c.lineTo(-50 + Math.sin(t * 2) * 10, -120); c.stroke();
+    c.strokeStyle = K.c; c.lineWidth = 12; c.beginPath(); c.moveTo(-54 + Math.sin(t * 2) * 10, -116); c.lineTo(-50 + Math.sin(t * 2) * 10, -120); c.stroke();
     // legs
-    c.fillStyle = '#5a5a6e';
+    c.fillStyle = K.c;
     c.beginPath(); c.roundRect(-34 + run * 8, -30, 18, 30, 8); c.fill(); c.beginPath(); c.roundRect(18 - run * 8, -30, 18, 30, 8); c.fill();
     // body
-    c.fillStyle = '#7a7a90'; ell(c, 0, -52, 50, 38 - crouch * 6); c.fill();
-    c.fillStyle = '#9a9ab0'; ell(c, 14, -44, 26, 22); c.fill();
-    c.strokeStyle = '#5a5a6e'; c.lineWidth = 4; c.lineCap = 'round';
+    c.fillStyle = K.a; ell(c, 0, -52, 50, 38 - crouch * 6); c.fill();
+    c.fillStyle = K.b; ell(c, 14, -44, 26, 22); c.fill();
+    c.strokeStyle = K.c; c.lineWidth = 4; c.lineCap = 'round';
     for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(-30 + k * 14, -86); c.lineTo(-24 + k * 14, -70); c.stroke(); }
     // front legs
-    c.fillStyle = '#7a7a90'; c.beginPath(); c.roundRect(26 - run * 6, -40, 18, 40, 8); c.fill();
-    c.fillStyle = '#fff'; ell(c, 36 - run * 6, -2, 11, 5); c.fill(); ell(c, -25 + run * 8, -2, 11, 5); c.fill();
+    c.fillStyle = K.a; c.beginPath(); c.roundRect(26 - run * 6, -40, 18, 40, 8); c.fill();
+    c.fillStyle = K.w; ell(c, 36 - run * 6, -2, 11, 5); c.fill(); ell(c, -25 + run * 8, -2, 11, 5); c.fill();
     // claws when attacking
     if (pose.claw) {
       c.save(); c.translate(58, -60); c.rotate(-0.4 + pose.claw * 1.2);
-      c.fillStyle = '#7a7a90'; c.beginPath(); c.roundRect(-10, -12, 40, 20, 10); c.fill();
+      c.fillStyle = K.a; c.beginPath(); c.roundRect(-10, -12, 40, 20, 10); c.fill();
       c.fillStyle = '#fff'; for (let k = 0; k < 3; k++) { c.beginPath(); c.moveTo(28, -10 + k * 7); c.lineTo(42, -8 + k * 7); c.lineTo(28, -5 + k * 7); c.fill(); }
       c.restore();
     }
     // head
     c.save(); c.translate(38, -98 + crouch * 6);
-    c.fillStyle = '#7a7a90';
+    c.fillStyle = K.a;
     c.beginPath(); c.moveTo(-30, -12); c.lineTo(-24, -48); c.lineTo(-6, -26); c.fill();
     c.beginPath(); c.moveTo(30, -12); c.lineTo(24, -48); c.lineTo(6, -26); c.fill();
-    c.fillStyle = '#ff9ab0'; c.beginPath(); c.moveTo(-24, -20); c.lineTo(-21, -38); c.lineTo(-11, -25); c.fill(); c.beginPath(); c.moveTo(24, -20); c.lineTo(21, -38); c.lineTo(11, -25); c.fill();
-    c.fillStyle = '#7a7a90'; ell(c, 0, 0, 36, 30); c.fill();
-    c.fillStyle = '#5a5a6e'; c.fillRect(-4, -30, 8, 12); c.fillRect(-14, -28, 6, 10); c.fillRect(8, -28, 6, 10);
-    c.fillStyle = '#e8e8f0'; ell(c, 0, 12, 18, 13); c.fill();
+    c.fillStyle = K.pink; c.beginPath(); c.moveTo(-24, -20); c.lineTo(-21, -38); c.lineTo(-11, -25); c.fill(); c.beginPath(); c.moveTo(24, -20); c.lineTo(21, -38); c.lineTo(11, -25); c.fill();
+    c.fillStyle = K.a; ell(c, 0, 0, 36, 30); c.fill();
+    c.fillStyle = K.c; c.fillRect(-4, -30, 8, 12); c.fillRect(-14, -28, 6, 10); c.fillRect(8, -28, 6, 10);
+    c.fillStyle = K.b; ell(c, 0, 12, 18, 13); c.fill();
     // eyes
     const dizzy = pose.dizzy;
     if (dizzy) {
       c.strokeStyle = '#1e1430'; c.lineWidth = 3;
       for (const ex of [-14, 14]) { c.beginPath(); for (let a = 0; a < TAU * 1.5; a += 0.3) c.lineTo(ex + Math.cos(a + t * 8) * a * 1.6, -4 + Math.sin(a + t * 8) * a * 1.6); c.stroke(); }
     } else {
-      c.fillStyle = '#c8f060'; ell(c, -14, -4, 9, 8); c.fill(); ell(c, 14, -4, 9, 8); c.fill();
+      if (sh) { c.shadowColor = '#ff3a6a'; c.shadowBlur = 20; }
+      c.fillStyle = K.eye; ell(c, -14, -4, 9, 8); c.fill(); ell(c, 14, -4, 9, 8); c.fill();
+      c.shadowBlur = 0;
       c.fillStyle = '#1e1430'; ell(c, -13, -3, 2.5, 7); c.fill(); ell(c, 15, -3, 2.5, 7); c.fill();
       c.strokeStyle = '#3a3a4a'; c.lineWidth = 4; c.beginPath(); c.moveTo(-26, -16); c.lineTo(-6, -9); c.moveTo(26, -16); c.lineTo(6, -9); c.stroke();
     }
@@ -847,6 +871,55 @@ LP.Art = (function () {
     c.restore();
   }
 
+  function crumbleColors(key) {
+    return key === 'dream' ? ['#ff9ad8', '#ffffff', '#9ae8ff'] : key === 'city' ? ['#a0504a', '#7a3a35', '#c8706a'] : key === 'garden' ? ['#d0703a', '#a8502a'] : key === 'park' ? ['#8a8a7a', '#6a7a5a'] : ['#d89a50', '#6a3a1a'];
+  }
+  // a crumbly block (crack = 0..1, how close it is to breaking)
+  function crumble(c, key, x, y, crack) {
+    const T = LP.T;
+    c.save(); c.translate(x, y);
+    if (key === 'garden') {
+      // clay flower pot
+      c.fillStyle = '#c8653a'; c.beginPath(); c.moveTo(2, 8); c.lineTo(T - 2, 8); c.lineTo(T - 8, T - 2); c.lineTo(8, T - 2); c.fill();
+      c.fillStyle = '#e07a48'; c.beginPath(); c.roundRect(0, 2, T, 12, 4); c.fill();
+      c.fillStyle = '#4ac05a'; for (let k = 0; k < 3; k++) { ell(c, 12 + k * 12, 1, 4, 7, -0.3 + k * 0.3); c.fill(); }
+    } else if (key === 'park') {
+      c.fillStyle = '#8a8a7a'; c.beginPath(); c.roundRect(1, 1, T - 2, T - 2, 10); c.fill();
+      c.fillStyle = '#9fd06a'; c.beginPath(); c.roundRect(1, 1, T - 2, 10, [10, 10, 0, 0]); c.fill();
+      c.fillStyle = 'rgba(0,0,0,0.12)'; circle(c, 16, 26, 6); c.fill(); circle(c, 32, 34, 4); c.fill();
+    } else if (key === 'city') {
+      c.fillStyle = '#5a2a28'; c.fillRect(0, 0, T, T);
+      c.fillStyle = '#a0504a';
+      for (let r = 0; r < 4; r++) for (let k = -1; k < 3; k++) c.fillRect(k * 24 + (r % 2) * 12 + 1, r * 12 + 1, 22, 10);
+      c.fillStyle = '#7a8296'; c.fillRect(0, 0, T, 5);
+    } else if (key === 'dream') {
+      c.fillStyle = '#ff9ad8'; c.beginPath(); c.roundRect(1, 1, T - 2, T - 2, 14); c.fill();
+      c.fillStyle = '#ffd0ef'; c.beginPath(); c.roundRect(5, 4, T - 10, 14, 7); c.fill();
+      const cols = ['#ffffff', '#9ae8ff', '#fff27a', '#b08aff'];
+      for (let k = 0; k < 9; k++) { c.fillStyle = cols[k % 4]; c.save(); c.translate(8 + (k * 37) % 32, 20 + (k * 23) % 22); c.rotate(k); c.fillRect(-3, -1, 6, 2.4); c.restore(); }
+    } else {
+      // a big cookie
+      c.fillStyle = '#b8783a'; circle(c, T / 2, T / 2 + 1, T / 2); c.fill();
+      c.fillStyle = '#d89a50'; circle(c, T / 2, T / 2 - 1, T / 2 - 2); c.fill();
+      c.fillStyle = '#5a2a10';
+      for (const [px, py] of [[14, 14], [30, 12], [22, 26], [34, 30], [12, 32]]) { circle(c, px, py, 3.5); c.fill(); }
+    }
+    if (crack > 0) {
+      c.strokeStyle = 'rgba(40,10,0,0.75)'; c.lineWidth = 2.5; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(T * 0.5, 2); c.lineTo(T * 0.42, T * 0.35); c.lineTo(T * 0.58, T * 0.55); c.lineTo(T * 0.45, T * 0.9);
+      if (crack > 0.5) { c.moveTo(T * 0.42, T * 0.35); c.lineTo(T * 0.15, T * 0.45); c.moveTo(T * 0.58, T * 0.55); c.lineTo(T * 0.9, T * 0.62); }
+      c.stroke();
+    }
+    c.restore();
+  }
+  function bubble(c, x, y, t, s) {
+    const r = 22 * (s || 1);
+    const g = c.createRadialGradient(x - 7, y - 8, 2, x, y, r);
+    g.addColorStop(0, 'rgba(255,255,255,0.45)'); g.addColorStop(0.6, 'rgba(170,230,255,0.15)'); g.addColorStop(0.9, 'rgba(255,170,240,0.35)'); g.addColorStop(1, 'rgba(255,255,255,0.7)');
+    c.fillStyle = g; circle(c, x, y, r); c.fill();
+    c.strokeStyle = `hsla(${(t * 80) % 360},90%,80%,0.8)`; c.lineWidth = 2; circle(c, x, y, r); c.stroke();
+    c.fillStyle = 'rgba(255,255,255,0.9)'; ell(c, x - r * 0.4, y - r * 0.45, r * 0.25, r * 0.13, -0.6); c.fill();
+  }
   function clockTower(c, x, bottom, t) {
     // the big clock tower behind the last boss fight
     c.fillStyle = '#2a2a5e'; c.fillRect(x - 260, bottom - 900, 520, 900);
@@ -869,7 +942,7 @@ LP.Art = (function () {
   }
 
   return {
-    clockTower,
+    clockTower, crumble, crumbleColors, bubble,
     PLUT, starShape, circle, ell, plut, milk, bottle, heart, duck, cage, checkpoint, finish, spring, fan, sign, platform, box,
     walker, flyer, hopper, spitter, shot, stunStars, teddy, cat, gnome, vacuum, swan, crib, angryEyes,
   };

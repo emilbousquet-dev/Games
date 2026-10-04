@@ -113,7 +113,7 @@ LP.Screens = (function () {
   function nodePos(i) {
     const L = LP.LEVELS[i];
     let k = 0; for (let j = 0; j < i; j++) if (LP.LEVELS[j].world === L.world) k++;
-    const x = 260 + L.world * 620 + k * 180;
+    const x = 120 + L.world * 880 + 110 + k * 165;
     const y = 360 + Math.sin(i * 1.3) * 60;
     return { x, y };
   }
@@ -122,6 +122,7 @@ LP.Screens = (function () {
     (c, x, y, tt) => { A.gnome(c, x, y, 1, tt, { s: 0.45 }); },
     (c, x, y, tt) => { c.save(); c.translate(x, y); c.scale(0.28, 0.28); A.swan(c, 0, 0, tt); c.restore(); },
     (c, x, y, tt) => { A.cat(c, x, y, -1, tt, { s: 0.45, bobo: true }); },
+    (c, x, y, tt) => { A.bubble(c, x - 30, y - 110 + Math.sin(tt * 2) * 8, tt, 1.2); A.teddy(c, x, y - 10, 0.9, tt); A.bubble(c, x + 34, y - 70, tt, 0.7); },
   ];
 
   function drawMap(c) {
@@ -133,22 +134,29 @@ LP.Screens = (function () {
     const target = nodePos(mapSel).x - w / 2;
     mapCam += (target - mapCam) * Math.min(1, (g().lastDt || 0.016) * 6);
     c.save(); c.translate(-mapCam, 0);
-    // the 4 world islands
+    // the world islands
     LP.WORLDS.forEach((Wd, wi) => {
       const th = LP.THEMES[Wd.theme];
-      const x0 = 120 + wi * 620, open = LP.Save.worldOpen(wi);
+      const x0 = 120 + wi * 880, open = LP.Save.worldOpen(wi), IW = 820;
       const gr = c.createLinearGradient(0, 130, 0, 600);
       gr.addColorStop(0, th.sky[0]); gr.addColorStop(0.6, th.sky[1]); gr.addColorStop(1, th.sky[2]);
-      c.fillStyle = gr; c.beginPath(); c.roundRect(x0, 130, 580, 470, 40); c.fill();
-      c.fillStyle = th.top; c.beginPath(); c.roundRect(x0, 520, 580, 80, [0, 0, 40, 40]); c.fill();
-      c.fillStyle = th.body; c.beginPath(); c.roundRect(x0, 548, 580, 52, [0, 0, 40, 40]); c.fill();
-      c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 4; c.beginPath(); c.roundRect(x0, 130, 580, 470, 40); c.stroke();
-      H().text(c, `WORLD ${wi + 1}: ${Wd.name.toUpperCase()}`, x0 + 290, 168, 30, '#ffffff', 'center');
-      WORLD_ART[wi](c, x0 + 490, 520, t);
+      c.fillStyle = gr; c.beginPath(); c.roundRect(x0, 130, IW, 470, 40); c.fill();
+      c.fillStyle = th.top; c.beginPath(); c.roundRect(x0, 520, IW, 80, [0, 0, 40, 40]); c.fill();
+      c.fillStyle = th.body; c.beginPath(); c.roundRect(x0, 548, IW, 52, [0, 0, 40, 40]); c.fill();
+      c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 4; c.beginPath(); c.roundRect(x0, 130, IW, 470, 40); c.stroke();
+      const hidden = Wd.secret && !open;
+      H().text(c, hidden ? `WORLD ${wi + 1}: ???` : `WORLD ${wi + 1}: ${Wd.name.toUpperCase()}`, x0 + IW / 2, 168, 30, '#ffffff', 'center');
+      WORLD_ART[wi](c, x0 + IW - 70, 520, t);
       if (!open) {
-        c.fillStyle = 'rgba(20,10,40,0.55)'; c.beginPath(); c.roundRect(x0, 130, 580, 470, 40); c.fill();
-        A.duck(c, x0 + 250, 470, 1.6, 0, t);
-        H().text(c, `x ${Wd.ducks} ducks to open`, x0 + 330, 466, 26, '#ffe14a', 'center');
+        c.fillStyle = hidden ? 'rgba(20,10,40,0.85)' : 'rgba(20,10,40,0.55)'; c.beginPath(); c.roundRect(x0, 130, IW, 470, 40); c.fill();
+        if (hidden) {
+          H().text(c, '?', x0 + IW / 2, 330, 140, '#ffd0ef', 'center');
+          H().text(c, 'A SECRET WORLD!', x0 + IW / 2, 440, 30, '#ffffff', 'center');
+          H().text(c, `Beat Mr. Whiskers and free ${Wd.ducks} ducks to open it`, x0 + IW / 2, 480, 22, '#ffe14a', 'center');
+        } else {
+          A.duck(c, x0 + IW / 2 - 80, 470, 1.6, 0, t);
+          H().text(c, `x ${Wd.ducks} ducks to open`, x0 + IW / 2, 466, 26, '#ffe14a', 'center');
+        }
       }
     });
     // the path
@@ -194,7 +202,9 @@ LP.Screens = (function () {
     let info;
     if (!un) {
       const need = LP.WORLDS[L.world].ducks, have = LP.Save.totalDucks();
-      info = have < need ? `Free ${need - have} more rubber ducks to open this world!` : 'Finish the level before this one first!';
+      const W2 = LP.WORLDS[L.world];
+      if (W2.after && !LP.Save.lvl(W2.after).done) info = 'A secret! Beat Mr. Whiskers at the Clock Tower first...';
+      else info = have < need ? `Free ${need - have} more rubber ducks to open this world!` : 'Finish the level before this one first!';
     } else if (L.type === 'chase') info = 'CHASE! Run and don\'t look back!' + (rec.done ? '   ✔ done' : '');
     else if (L.type === 'boss') info = 'BOSS FIGHT!' + (rec.done ? '   ✔ beaten' : '');
     else info = `Best milk: ${rec.milk}   ·   Ducks: ${rec.ducks.filter(Boolean).length}/3   ·   ${['no medal yet', 'bronze bottle', 'silver bottle', 'GOLD bottle'][rec.medal]}`;
@@ -339,8 +349,8 @@ LP.Screens = (function () {
       const G = g(), L = G.def, i = G.levelIndex;
       const next = Math.min(i + 1, LP.LEVELS.length - 1);
       if (L.storyAfter && (G.firstTime || L.storyAfter === 'ending')) {
-        const last = i === LP.LEVELS.length - 1;
-        open('story', { story: L.storyAfter, then: () => last ? open('credits') : goMap(next) });
+        const end = L.storyAfter === 'ending' || L.storyAfter === 'trueEnding';
+        open('story', { story: L.storyAfter, then: () => end ? open('credits', { trueEnd: L.storyAfter === 'trueEnding' }) : goMap(next) });
       } else goMap(next);
     }
   }
@@ -351,12 +361,24 @@ LP.Screens = (function () {
     const gr = c.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, '#ff9ac0'); gr.addColorStop(1, '#ffd88a');
     c.fillStyle = gr; c.fillRect(0, 0, w, VH);
     for (let i = 0; i < 14; i++) { const k = (t * 0.2 + i / 14) % 1; A.duck(c, U.hash(i, 3) * w, VH + 40 - k * (VH + 80), 1.4, Math.sin(t * 3 + i) * 0.3, t); }
-    H().text(c, 'THE END', w / 2, 120, 96, '#ffffff', 'center');
-    A.plut(c, w / 2 - 80, 420, { anim: 'scream', animT: t, facing: 1, sx: 2.6, sy: 2.6, time: t });
-    A.teddy(c, w / 2 + 90, 420, 2.4, t);
-    H().text(c, `Rubber ducks saved: ${LP.Save.totalDucks()} / 24`, w / 2, 500, 32, '#4a1e3a', 'center', 0);
-    H().text(c, 'A game made by YOU and Claude', w / 2, 560, 28, '#ffffff', 'center');
-    H().text(c, 'Can you find all the ducks and get every GOLD bottle?', w / 2, 610, 22, '#4a1e3a', 'center', 0);
+    const S = LP.Save, ducks = S.totalDucks(), all = S.totalCages(), gold = S.goldBottles(), N = LP.LEVELS.length;
+    const full = ducks >= all && gold >= N;
+    H().text(c, cur.trueEnd ? 'THE TRUE END' : 'THE END', w / 2, 100, 88, '#ffffff', 'center');
+    A.plut(c, w / 2 - 80, 380, { anim: 'scream', animT: t, facing: 1, sx: 2.4, sy: 2.4, time: t });
+    A.teddy(c, w / 2 + 90, 380, 2.2, t);
+    if (cur.trueEnd) A.cat(c, w / 2 + 230, 380, -1, t, { s: 0.6 });
+    H().text(c, `Rubber ducks saved: ${ducks} / ${all}      Gold bottles: ${gold} / ${N}`, w / 2, 450, 28, '#4a1e3a', 'center', 0);
+    if (full) {
+      c.save(); c.translate(w / 2, 510); c.rotate(Math.sin(t * 3) * 0.05);
+      c.fillStyle = '#ffd23f'; c.beginPath(); c.roundRect(-170, -28, 340, 56, 28); c.fill();
+      H().text(c, '100% COMPLETE!', 0, 2, 34, '#4a1e3a', 'center', 0);
+      c.restore();
+    } else if (!S.worldOpen(4)) {
+      H().text(c, `Free ${LP.WORLDS[4].ducks} rubber ducks to open the SECRET WORLD...`, w / 2, 510, 24, '#7a1e5a', 'center', 0);
+    } else {
+      H().text(c, 'Can you find every duck and get every GOLD bottle?', w / 2, 510, 24, '#4a1e3a', 'center', 0);
+    }
+    H().text(c, 'A game made by YOU and Claude', w / 2, 580, 28, '#ffffff', 'center');
     H().text(c, 'ENTER', w / 2, VH - 40, 22, '#ffffff', 'center');
   }
   function updateCredits() {

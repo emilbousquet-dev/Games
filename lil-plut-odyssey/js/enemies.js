@@ -201,6 +201,67 @@ LP.Things = (function () {
     draw(c, g) { A.platform(c, g.theme.key, this.x, this.y, this.w, g.time); }
   }
 
+  // crumbly block: shakes when you stand on it, falls, and comes back later
+  class Crumble extends Thing {
+    constructor(x, y) {
+      super(x, y, T, T);
+      this.x0 = x; this.y0 = y; this.dx = 0; this.dy = 0;
+      this.isPlatform = true; this.state = 'idle'; this.timer = 0; this.fall = 0; this.vy = 0;
+    }
+    move(dt, g) {
+      this.dx = 0; this.dy = 0;
+      const p = g.player;
+      if (this.state === 'idle') {
+        if (p.platform === this && p.state === 'play') { this.state = 'shake'; this.timer = 0; LP.Audio.play('crack'); }
+      } else if (this.state === 'shake') {
+        this.timer += dt;
+        if (this.timer > 0.5) {
+          this.state = 'fall'; this.timer = 0; this.vy = 0; this.fall = 0; this.y = -99999;
+          g.fx.bits(this.x0 + T / 2, this.y0 + T / 2, 6, LP.Art.crumbleColors(g.theme.key));
+          LP.Audio.play('break');
+        }
+      } else {
+        this.timer += dt; this.vy += 1800 * dt; this.fall += this.vy * dt;
+        if (this.timer > 3.2 && !U.overlap({ x: this.x0, y: this.y0, w: T, h: T }, p)) {
+          this.state = 'idle'; this.y = this.y0; this.fall = 0;
+          g.fx.sparkle(this.x0 + T / 2, this.y0 + T / 2, 8, '#ffffff');
+        }
+      }
+    }
+    draw(c, g) {
+      if (this.state === 'fall') {
+        if (this.fall < 700) { c.globalAlpha = Math.max(0, 1 - this.fall / 700); A.crumble(c, g.theme.key, this.x0, this.y0 + this.fall, 1); c.globalAlpha = 1; }
+        return;
+      }
+      const shake = this.state === 'shake' ? Math.sin(g.time * 90) * 3 : 0;
+      A.crumble(c, g.theme.key, this.x0 + shake, this.y0, this.state === 'shake' ? this.timer / 0.5 : 0);
+    }
+  }
+
+  // soap bubble: land on it to bounce up, then it pops (and comes back)
+  class Bubble extends Thing {
+    constructor(x, y) { super(x - 22, y - 22, 44, 44); this.y0 = y - 22; this.popT = 0; }
+    update(dt, g) {
+      this.t += dt;
+      if (this.popT > 0) { this.popT -= dt; return; }
+      this.y = this.y0 + Math.sin(this.t * 2) * 6;
+      const p = g.player;
+      if (p.state !== 'play' || p.vy < 0) return;
+      if (p.x + p.w > this.x + 4 && p.x < this.x + this.w - 4 && p.bottom >= this.y && p.bottom <= this.y + 26) {
+        p.y = this.y - p.h;
+        p.doJump(1100, true);
+        this.popT = 2.5;
+        LP.Audio.play('bubblePop');
+        g.fx.sparkle(this.cx, this.cy, 14, '#d8f4ff');
+        g.fx.ring(this.cx, this.cy, 'rgba(220,240,255,0.9)', 40, 0.3);
+      }
+    }
+    draw(c, g) {
+      if (this.popT > 0) { if (this.popT < 0.4) { c.globalAlpha = 1 - this.popT / 0.4; A.bubble(c, this.cx, this.y0 + 22, g.time, 1 - this.popT / 0.4); c.globalAlpha = 1; } return; }
+      A.bubble(c, this.cx, this.cy, g.time, 1);
+    }
+  }
+
   // ================= ENEMIES =================
   class Enemy extends Thing {
     constructor(x, y, w, h) {
@@ -350,13 +411,14 @@ LP.Things = (function () {
       const sp = this.speed + (gap > 700 ? (gap - 700) * 0.8 : 0);
       this.x += sp * dt;
       if (Math.random() < dt * 30) g.fx.add({ kind: 'dust', x: this.x + U.rand(0, 200), y: g.cam.y + U.rand(100, LP.VH), vx: -U.rand(200, 500), vy: 0, r: U.rand(3, 7), life: 0.5, color: 'rgba(255,255,255,0.6)' });
-      if (gap < 70) { p.die(g, 'caught'); LP.Audio.play(this.kind === 'swan' ? 'honk' : 'suck'); }
-      if (Math.random() < dt * 0.4) LP.Audio.play(this.kind === 'swan' ? 'honk' : 'vroom');
+      if (gap < 70) { p.die(g, 'caught'); LP.Audio.play(this.kind === 'swan' ? 'honk' : this.kind === 'shadow' ? 'meow' : 'suck'); }
+      if (Math.random() < dt * 0.4) LP.Audio.play(this.kind === 'swan' ? 'honk' : this.kind === 'shadow' ? 'growl' : 'vroom');
     }
     reset(x) { this.x = x; this.wait = 1.6; }
     draw(c, g) {
       const bottom = g.cam.y + LP.VH - 10;
       if (this.kind === 'swan') A.swan(c, this.x - 70, g.cam.y + LP.VH * 0.62 + Math.sin(this.t * 2) * 30, this.t);
+      else if (this.kind === 'shadow') A.cat(c, this.x - 150, bottom, 1, this.t, { run: true, s: 2.3, shadow: true, hiss: Math.sin(this.t * 2) > 0 });
       else A.vacuum(c, this.x - 124, bottom, this.t);
       // a warning arrow when it's close but you can't see it
       if (this.x < g.cam.x && g.player.cx - this.x < 650) {
@@ -593,6 +655,8 @@ LP.Things = (function () {
       case 'W': return new Fan(x + T / 2, y + T, level);
       case 'M': return new Platform(x + T / 2, y + T / 2, false);
       case 'V': return new Platform(x + T / 2, y + T / 2, true);
+      case 'X': return new Crumble(x, y);
+      case 'U': return new Bubble(x + T / 2, y + T / 2);
       case 'e': return new Walker(x, y);
       case 'f': return new Flyer(x, y);
       case 'j': return new Hopper(x, y);
@@ -601,5 +665,5 @@ LP.Things = (function () {
     return null;
   }
 
-  return { spawn, Milk, Golden, Heart, Cage, Checkpoint, Finish, Sign, Spring, Fan, Platform, Walker, Flyer, Hopper, Spitter, Shot, Chaser, Gnome, Whiskers, Bobo, Shockwave };
+  return { spawn, Crumble, Bubble, Milk, Golden, Heart, Cage, Checkpoint, Finish, Sign, Spring, Fan, Platform, Walker, Flyer, Hopper, Spitter, Shot, Chaser, Gnome, Whiskers, Bobo, Shockwave };
 })();

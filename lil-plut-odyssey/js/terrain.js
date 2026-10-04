@@ -46,6 +46,15 @@ LP.Terrain = (function () {
         }
       }
       c.globalCompositeOperation = 'destination-over'; c.fillStyle = '#4a2220'; c.fillRect(0, 0, S, S); c.globalCompositeOperation = 'source-over';
+    } else if (key === 'dream') {
+      // cotton candy with sprinkles
+      for (let i = 0; i < 40; i++) {
+        const x = rnd() * S, y = rnd() * S;
+        c.fillStyle = U.mix(theme.body, '#ffffff', 0.25 + rnd() * 0.2);
+        c.beginPath(); c.arc(x, y, 10 + rnd() * 14, 0, Math.PI * 2); c.fill();
+      }
+      const cols = ['#ffffff', '#9ae8ff', '#fff27a', '#b08aff', '#ff6ab0'];
+      for (let i = 0; i < 50; i++) { c.save(); c.translate(rnd() * S, rnd() * S); c.rotate(rnd() * 6); c.fillStyle = cols[i % 5]; c.fillRect(-4, -1.2, 8, 2.6); c.restore(); }
     } else {
       // dirt (garden) or cobbles (park)
       const n = key === 'park' ? 26 : 40;
@@ -207,6 +216,14 @@ LP.Terrain = (function () {
       }
       if (L === 'open') { c.fillStyle = theme.top; c.beginPath(); c.ellipse(x - 2, y + 6, 7, 11, 0, 0, Math.PI * 2); c.fill(); }
       if (R === 'open') { c.fillStyle = theme.top; c.beginPath(); c.ellipse(x + T + 2, y + 6, 7, 11, 0, 0, Math.PI * 2); c.fill(); }
+    } else if (key === 'dream') {
+      // fluffy cloud on top
+      c.fillStyle = theme.topDark;
+      for (let k = -ol; k <= T + or; k += 12) { c.beginPath(); c.arc(x + k, y + 4 + Math.sin((x + k) * 0.3) * 2, 11, 0, Math.PI * 2); c.fill(); }
+      c.fillStyle = theme.top;
+      for (let k = -ol; k <= T + or; k += 12) { c.beginPath(); c.arc(x + k, y + Math.sin((x + k) * 0.3) * 2, 10, 0, Math.PI * 2); c.fill(); }
+      if (L === 'open') { c.beginPath(); c.arc(x - 4, y + 8, 12, 0, Math.PI * 2); c.fill(); }
+      if (R === 'open') { c.beginPath(); c.arc(x + T + 4, y + 8, 12, 0, Math.PI * 2); c.fill(); }
     } else if (key === 'house') {
       // a soft rug on top of the wooden floor
       c.fillStyle = theme.topDark; c.fillRect(x - ol, y - 2, T + ol + or, 14);
@@ -235,6 +252,13 @@ LP.Terrain = (function () {
     if (key === 'garden') {
       if (h < 0.22) grassTuft(c, x, y, theme.top, theme.top2, 1);
       else if (h < 0.34) flower(c, x, y, U.pick(['#ff5f7a', '#ffd23f', '#c77dff', '#ffffff', '#ff8a3c']), h2);
+      else if (h < 0.42 && h >= 0.38) { // a pumpkin
+        c.fillStyle = '#ff8a1a'; c.beginPath(); c.ellipse(x - 6, y - 10, 9, 10, 0, 0, 7); c.ellipse(x + 6, y - 10, 9, 10, 0, 0, 7); c.ellipse(x, y - 10, 9, 11, 0, 0, 7); c.fill();
+        c.fillStyle = '#3f9a45'; c.fillRect(x - 2, y - 24, 4, 6);
+      } else if (h < 0.46 && h >= 0.42) { // carrot leaves sticking out of the ground
+        c.fillStyle = '#ff8a1a'; c.beginPath(); c.ellipse(x, y + 1, 7, 4, 0, Math.PI, 0); c.fill();
+        c.fillStyle = '#4ac05a'; for (let k = -1; k <= 1; k++) { c.beginPath(); c.ellipse(x + k * 4, y - 10, 3, 10, k * 0.4, 0, 7); c.fill(); }
+      }
       else if (h < 0.38) { c.fillStyle = '#efe1c8'; c.fillRect(x - 3, y - 12, 6, 12); c.fillStyle = '#e2453a'; c.beginPath(); c.ellipse(x, y - 12, 11, 8, 0, Math.PI, 0); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x - 4, y - 15, 2, 0, 7); c.arc(x + 4, y - 16, 2, 0, 7); c.fill(); }
     } else if (key === 'park') {
       if (h < 0.2) grassTuft(c, x, y, theme.top, theme.top2, 1.2);
@@ -252,6 +276,12 @@ LP.Terrain = (function () {
         c.fillStyle = '#fff'; c.beginPath(); c.roundRect(x - 6, y - 18, 10, 18, 4); c.fill(); c.beginPath(); c.roundRect(x - 6, y - 8, 18, 8, 4); c.fill();
         c.fillStyle = '#ff6a8a'; c.fillRect(x - 6, y - 16, 10, 3);
       }
+    } else if (key === 'dream') {
+      if (h < 0.08) {
+        c.strokeStyle = '#ffffff'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, y); c.lineTo(x, y - 22); c.stroke();
+        c.fillStyle = U.pick(['#ff7ac8', '#7ad8ff', '#b88aff']); c.beginPath(); c.arc(x, y - 28, 9, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 2; c.beginPath(); c.arc(x, y - 28, 5, 0, 5); c.stroke();
+      } else if (h < 0.13) { c.fillStyle = '#fff27a'; LP.Art.starShape(c, x, y - 8, 8, 3.5, 5); c.fill(); }
     } else if (key === 'city') {
       if (h < 0.06) { // air vent
         c.fillStyle = '#7a8296'; c.fillRect(x - 10, y - 26, 20, 26); c.fillStyle = '#5a6074'; c.fillRect(x - 14, y - 30, 28, 6);
@@ -280,11 +310,27 @@ LP.Terrain = (function () {
 
   function drawThin(c, tx, ty, leftEnd, rightEnd) {
     const x = tx * T, y = ty * T;
-    if ((key === 'park' || key === 'garden') && level.get(tx, ty + 1) === TL.WATER) {
+    if (key === 'house' && level.get(tx, ty + 1) === TL.WATER) {
+      // a big rubber duck float
+      c.fillStyle = '#ffd23f'; c.beginPath(); c.ellipse(x + T / 2, y + 8, T * 0.55, 11, 0, 0, Math.PI * 2); c.fill();
+      if (level.get(tx - 1, ty) !== TL.ONEWAY) {
+        c.beginPath(); c.arc(x + 14, y - 6, 10, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#ff8a1a'; c.beginPath(); c.moveTo(x + 5, y - 6); c.lineTo(x - 4, y - 4); c.lineTo(x + 5, y - 1); c.fill();
+        c.fillStyle = '#1e1430'; c.beginPath(); c.arc(x + 11, y - 8, 1.8, 0, 7); c.fill();
+      }
+      c.fillStyle = 'rgba(255,255,255,0.5)'; c.fillRect(x + 6, y + 2, T - 12, 2);
+      return;
+    }
+    if ((key === 'park' || key === 'garden' || key === 'dream') && level.get(tx, ty + 1) === TL.WATER) {
       // lily pad
       c.fillStyle = '#3f9a45'; c.beginPath(); c.ellipse(x + T / 2, y + 6, T * 0.62, 10, 0, 0.15, Math.PI * 2 - 0.15); c.lineTo(x + T / 2, y + 6); c.fill();
       c.fillStyle = '#6fd060'; c.beginPath(); c.ellipse(x + T / 2, y + 3, T * 0.55, 7, 0, 0.2, Math.PI * 2 - 0.2); c.lineTo(x + T / 2, y + 3); c.fill();
       if (U.hash(tx, ty) < 0.3) { c.fillStyle = '#ffb0d0'; c.beginPath(); c.arc(x + 14, y - 2, 6, 0, 7); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(x + 14, y - 4, 3, 0, 7); c.fill(); }
+      return;
+    }
+    if (key === 'dream') {
+      c.fillStyle = '#ffd0ef'; c.beginPath(); c.roundRect(x - 2, y + 4, T + 4, 12, 6); c.fill();
+      c.fillStyle = '#ffffff'; for (let k = 6; k < T; k += 12) { c.beginPath(); c.arc(x + k, y + 5, 8, 0, Math.PI * 2); c.fill(); }
       return;
     }
     if (key === 'city') {
@@ -328,6 +374,13 @@ LP.Terrain = (function () {
       for (const k of [30, 42]) {
         c.fillStyle = '#cfd6e0'; c.beginPath(); c.moveTo(k - 2, b - 8); c.lineTo(k, b - 26); c.lineTo(k + 2, b - 8); c.fill();
         c.fillStyle = '#e83a6a'; c.beginPath(); c.ellipse(k, b - 5, 7, 5, 0, 0, Math.PI * 2); c.fill();
+      }
+    } else if (key === 'dream') {
+      // candy spikes
+      for (let k = 0; k < 3; k++) {
+        const sx = x + 8 + k * 16;
+        c.fillStyle = '#ff6ab0'; c.beginPath(); c.moveTo(sx - 7, b); c.lineTo(sx, b - 26); c.lineTo(sx + 7, b); c.fill();
+        c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(sx - 4, b - 8); c.lineTo(sx + 5, b - 12); c.lineTo(sx + 3, b - 17); c.lineTo(sx - 2, b - 14); c.fill();
       }
     } else if (key === 'city') {
       // pigeon spikes

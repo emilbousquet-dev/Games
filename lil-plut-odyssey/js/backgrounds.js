@@ -56,6 +56,18 @@ LP.THEMES = {
     fog: 'rgba(110,90,200,0.12)',
     music: 'city',
   },
+  dream: {
+    name: 'Dreamland',
+    sky: ['#2b1a66', '#8a5ad0', '#ffb0e0'],
+    body: '#ffc2e6', bodyDark: '#b06ac8', edge: '#9a5ab8',
+    top: '#ffffff', top2: '#fff4fb', topDark: '#ffd8f0',
+    thin: '#ffffff', thinDark: '#ffd0ef',
+    water: '#9ae8ff', dust: '#ffffff',
+    far: '#c58ae0', mid: '#a86ad0', near: '#7a48b0', fg: '#3a1a6a',
+    ambient: 'stars', glow: '#ffe8fa',
+    fog: 'rgba(255,200,240,0.14)',
+    music: 'dream',
+  },
 };
 
 LP.BG = (function () {
@@ -480,6 +492,56 @@ LP.BG = (function () {
     },
   };
 
+  BUILD.dream = {
+    far(c, rnd) {
+      // far away candy mountains
+      hills(c, LH - 380, [[2, 70], [5, 30]], 5, '#d8a0f0');
+      hills(c, LH - 300, [[3, 50], [7, 20]], 6, theme.far);
+      for (let i = 0; i < 9; i++) {
+        const x = rnd() * LW, y = LH - 330 + rnd() * 60;
+        wrap(x, 60, (x) => { c.fillStyle = 'rgba(255,255,255,0.75)'; c.beginPath(); c.moveTo(x - 40, y); c.quadraticCurveTo(x, y - 30, x + 40, y); c.fill(); });
+      }
+    },
+    mid(c, rnd) {
+      // giant lollipops and clouds
+      for (let i = 0; i < 7; i++) {
+        const x = rnd() * LW, top = LH - 300 - rnd() * 160, r = 50 + rnd() * 30;
+        wrap(x, r + 10, (x) => {
+          c.fillStyle = '#f4e8ff'; c.fillRect(x - 6, top, 12, LH - top);
+          const cols = ['#ff7ac8', '#7ad8ff', '#fff27a', '#b88aff'];
+          for (let k = 5; k > 0; k--) { c.fillStyle = U.mix(cols[(i + k) % 4], theme.mid, 0.25); c.beginPath(); c.arc(x, top, r * k / 5, 0, Math.PI * 2); c.fill(); }
+        });
+      }
+      for (let i = 0; i < 8; i++) {
+        const x = rnd() * LW, y = LH - 120 - rnd() * 80;
+        wrap(x, 160, (x) => { c.fillStyle = U.mix('#ffffff', theme.mid, 0.25); for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + k * 36, y - Math.sin(k) * 20, 40 + (k % 2) * 14, 0, Math.PI * 2); c.fill(); } c.fillRect(x - 20, y, 190, LH - y); });
+      }
+    },
+    near(c, rnd) {
+      // candy canes and stars on strings
+      for (let i = 0; i < 9; i++) {
+        const x = rnd() * LW, h = 150 + rnd() * 160;
+        wrap(x, 60, (x) => {
+          c.lineCap = 'round'; c.lineWidth = 16; c.strokeStyle = theme.near;
+          c.beginPath(); c.moveTo(x, LH); c.lineTo(x, LH - h); c.arc(x + 24, LH - h, 24, Math.PI, 0); c.stroke();
+          c.lineWidth = 6; c.strokeStyle = U.mix('#ffffff', theme.near, 0.55);
+          for (let k = 0; k < h; k += 26) { c.beginPath(); c.moveTo(x - 7, LH - k); c.lineTo(x + 7, LH - k - 12); c.stroke(); }
+        });
+      }
+      for (let i = 0; i < 6; i++) {
+        const x = rnd() * LW, len = 120 + rnd() * 200;
+        wrap(x, 40, (x) => { c.strokeStyle = U.alpha('#ffffff', 0.4); c.lineWidth = 2; c.beginPath(); c.moveTo(x, TOPPAD - 10); c.lineTo(x, TOPPAD + len); c.stroke(); c.fillStyle = '#ffe680'; LP.Art.starShape(c, x, TOPPAD + len + 20, 24, 10, 5); c.fill(); });
+      }
+    },
+    fg(c, rnd) {
+      c.fillStyle = 'rgba(255,255,255,0.9)';
+      for (let i = 0; i < 3; i++) {
+        const x = 300 + i * 800;
+        for (let k = 0; k < 5; k++) { c.beginPath(); c.arc(x + k * 50, LH + 10 - Math.sin(k * 1.3) * 30, 60, 0, Math.PI * 2); c.fill(); }
+      }
+    },
+  };
+
   function lampGlow(c, x, y, r) {
     const g = c.createRadialGradient(x, y, 0, x, y, r);
     g.addColorStop(0, 'rgba(255,214,140,0.55)'); g.addColorStop(0.4, 'rgba(255,190,110,0.18)'); g.addColorStop(1, 'rgba(255,180,100,0)');
@@ -560,6 +622,21 @@ LP.BG = (function () {
         const cx = ((i * 640 + time * 6 - cam.x * 0.03) % (viewW + 700) + viewW + 700) % (viewW + 700) - 350;
         ctx.globalAlpha = 0.55; cloud(ctx, cx, 120 + (i % 3) * 60 - lift, 1.1, '#ffb0a0'); ctx.globalAlpha = 1;
       }
+    } else if (themeKey === 'dream') {
+      for (let i = 0; i < 90; i++) {
+        const x = (U.hash(i, 1) * 3000 - cam.x * 0.02) % viewW, y = U.hash(i, 2) * 420;
+        ctx.globalAlpha = 0.3 + 0.7 * Math.abs(Math.sin(time * (0.4 + U.hash(i, 3)) + i));
+        ctx.fillStyle = '#fff'; LP.Art.starShape(ctx, (x + viewW) % viewW, y - lift, 3 + U.hash(i, 4) * 3, 1.3, 4); ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      const mx = viewW * 0.7, my = 140 - lift;
+      sunGlow(ctx, mx, my, 300, 'rgba(255,220,250,0.45)');
+      ctx.fillStyle = '#fff6d8'; ctx.beginPath(); ctx.arc(mx, my, 70, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#8a5ad0'; ctx.beginPath(); ctx.arc(mx + 32, my - 16, 62, 0, Math.PI * 2); ctx.fill();   // a crescent moon
+      for (let i = 0; i < 5; i++) {
+        const cx = ((i * 600 + time * 10 - cam.x * 0.04) % (viewW + 700) + viewW + 700) % (viewW + 700) - 350;
+        ctx.globalAlpha = 0.8; cloud(ctx, cx, 220 + (i % 3) * 60 - lift, 1, '#ffd8f2'); ctx.globalAlpha = 1;
+      }
     } else if (themeKey === 'city') {
       // stars and a big moon
       for (let i = 0; i < 120; i++) {
@@ -576,7 +653,7 @@ LP.BG = (function () {
     for (const L of layers) if (!L.front) drawLayer(ctx, L, cam.x, cam.y, baseCamY, viewW);
 
     // light rays coming down
-    if (themeKey === 'garden' || themeKey === 'park' || themeKey === 'house') {
+    if (themeKey === 'garden' || themeKey === 'park' || themeKey === 'house' || themeKey === 'dream') {
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       for (let i = 0; i < 5; i++) {
         const x = ((i * 380 - cam.x * 0.2) % (viewW + 800) + viewW + 800) % (viewW + 800) - 400;
@@ -630,7 +707,7 @@ LP.BG = (function () {
         ctx.fillStyle = `rgba(230,255,120,${0.15 * on})`; ctx.beginPath(); ctx.arc(x, y, 10 * a.z, 0, Math.PI * 2); ctx.fill();
         ctx.fillStyle = `rgba(250,255,190,${0.9 * on})`; ctx.beginPath(); ctx.arc(x, y, 2.4 * a.z, 0, Math.PI * 2); ctx.fill();
       } else {
-        const col = kind === 'pollen' ? '255,240,150' : kind === 'snow' ? '255,255,255' : '230,220,255';
+        const col = kind === 'pollen' ? '255,240,150' : kind === 'snow' ? '255,255,255' : kind === 'stars' ? '255,240,200' : '230,220,255';
         ctx.fillStyle = `rgba(${col},${0.35 + 0.3 * a.z})`;
         ctx.beginPath(); ctx.arc(x, y, (kind === 'snow' ? 2.6 : 1.8) * a.z, 0, Math.PI * 2); ctx.fill();
       }

@@ -14,6 +14,9 @@ LP.STORY = {
     { scene: 'catrun', text: '"Hee hee hee! Bye-bye, stinky baby!" And he jumped out of the window.' },
     { scene: 'plutangry', text: 'Nobody takes BOBO. Plut climbs out of the crib. THE ODYSSEY BEGINS!' },
   ],
+  bath: [
+    { scene: 'bath', text: 'The wet paw prints go through the BATHROOM. The bath is full of water and bubbles... and Plut HATES baths!' },
+  ],
   garden: [
     { scene: 'garden', text: 'Muddy paw prints lead out to THE GARDEN. Plut follows them...' },
   ],
@@ -27,6 +30,9 @@ LP.STORY = {
   park: [
     { scene: 'park', text: 'At the park, the sun is going down. The ducks say the cat ran past the pond... but watch out for the ANGRY SWAN.' },
   ],
+  treehouse: [
+    { scene: 'treehouse', text: 'Mr. Whiskers climbed up the BIG TREE in the park. There is a treehouse at the very top. Climb, Plut, climb!' },
+  ],
   city: [
     { scene: 'city', text: 'Night falls on THE CITY. High above the rooftops, Plut sees a cat... and the big CLOCK TOWER.' },
   ],
@@ -38,6 +44,15 @@ LP.STORY = {
     { scene: 'hug', text: 'Plut got BOBO back! HOORAY!' },
     { scene: 'home', text: 'Plut and Bobo go home, climb into the crib and fall asleep. So sweet. So quiet...' },
     { scene: 'waaah', text: '...WAAAAAAAAH!!! (Plut is still the most annoying baby in the world.) THE END!' },
+  ],
+  dream: [
+    { scene: 'dreamIntro', text: 'That night, Plut has a strange dream. Bobo is floating away into DREAMLAND!' },
+    { scene: 'dreamIntro', text: 'All the rubber ducks Plut saved come to help. "QUACK! Follow us, Plut!"' },
+  ],
+  trueEnding: [
+    { scene: 'kitten', text: 'The giant Shadow Cat was just a bad dream! POOF! It turns into a tiny, fluffy kitten.' },
+    { scene: 'friends', text: 'Plut wakes up. Mr. Whiskers is curled up in the crib next to him and Bobo. Purrrr... Maybe cats are not so bad.' },
+    { scene: 'waaah', text: '...then the cat licks Plut\'s face. WAAAAAAH!!! THE TRUE END!' },
   ],
 };
 
@@ -156,6 +171,61 @@ LP.Scenes = (function () {
       pl(c, w * 0.18, h - 50, 2, 'idle', t);
       c.save(); c.translate(w * 0.72, h * 0.72); c.scale(0.5, 0.5); A.swan(c, 0, 0, t); c.restore();
       A.duck(c, w * 0.38, h * 0.68, 1.2, 0, t); A.duck(c, w * 0.44, h * 0.7, 1, 0, t);
+    },
+    bath(c, w, h, t) {
+      sky(c, w, h, '#bfeaf5', '#8fd0e8');
+      c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 3;
+      for (let x = 0; x < w; x += 50) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x, h); c.stroke(); }
+      for (let y = 0; y < h; y += 50) { c.beginPath(); c.moveTo(0, y); c.lineTo(w, y); c.stroke(); }
+      // the bathtub
+      c.fillStyle = '#ffffff'; c.beginPath(); c.roundRect(w * 0.45, h - 210, w * 0.5, 170, 60); c.fill();
+      c.fillStyle = '#7ad0f0'; c.fillRect(w * 0.47, h - 200, w * 0.46, 30);
+      for (let i = 0; i < 14; i++) { const bx = w * 0.48 + U.hash(i, 1) * w * 0.44, by = h - 205 - Math.abs(Math.sin(t * 2 + i)) * 30; A.bubble(c, bx, by, t, 0.5 + U.hash(i, 2) * 0.8); }
+      A.duck(c, w * 0.7, h - 210, 1.6, Math.sin(t * 2) * 0.2, t);
+      c.fillStyle = '#c8c8d8'; c.fillRect(w * 0.5, h - 40, 14, 40); c.fillRect(w * 0.9, h - 40, 14, 40);
+      c.fillStyle = 'rgba(80,160,200,0.6)';
+      for (let i = 0; i < 4; i++) { A.circle(c, w * 0.12 + i * 60, h - 30 + (i % 2) * 8, 7); c.fill(); }
+      c.fillStyle = '#e8d8c0'; c.fillRect(0, h - 22, w, 22);
+      pl(c, w * 0.2, h - 22, 2.2, 'hurt', t);
+    },
+    treehouse(c, w, h, t) {
+      sky(c, w, h, '#3f347e', '#ffcf73');
+      c.fillStyle = '#6a3f2a'; c.fillRect(w * 0.55, 60, 70, h);
+      c.fillStyle = '#5a3f78';
+      for (let k = 0; k < 7; k++) { A.circle(c, w * 0.55 + 35 + Math.cos(k) * 110, 70 + Math.sin(k * 2) * 40, 70); c.fill(); }
+      c.fillStyle = '#a8744a'; c.fillRect(w * 0.55 - 40, 40, 150, 70);
+      c.fillStyle = '#7a4a2a'; c.beginPath(); c.moveTo(w * 0.55 - 60, 40); c.lineTo(w * 0.55 + 35, -10); c.lineTo(w * 0.55 + 130, 40); c.fill();
+      c.fillStyle = '#ffe9a0'; c.fillRect(w * 0.55 + 10, 60, 40, 30);
+      A.cat(c, w * 0.55 + 90, 40, -1, t, { s: 0.35, bobo: true });
+      c.fillStyle = '#41264f'; c.fillRect(0, h - 40, w, 40);
+      pl(c, w * 0.25, h - 40, 2, 'idle', t);
+    },
+    dreamIntro(c, w, h, t) {
+      sky(c, w, h, '#2b1a66', '#ffb0e0');
+      for (let i = 0; i < 40; i++) { c.fillStyle = '#fff'; c.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t + i)); A.starShape(c, U.hash(i, 5) * w, U.hash(i, 6) * h * 0.6, 4, 1.6, 4); c.fill(); }
+      c.globalAlpha = 1;
+      c.fillStyle = '#ffffff'; for (let k = 0; k < 6; k++) { A.circle(c, w * 0.12 + k * 60, h - 40 - Math.sin(k) * 20, 50); c.fill(); }
+      pl(c, w * 0.25, h - 70, 2, 'sleep', t);
+      const by = 140 + Math.sin(t * 1.5) * 15;
+      const cols = ['#ff7ac8', '#7ad8ff', '#fff27a'];
+      cols.forEach((col, i) => { c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(w * 0.68, by - 20); c.lineTo(w * 0.68 + (i - 1) * 30, by - 90); c.stroke(); c.fillStyle = col; A.ell(c, w * 0.68 + (i - 1) * 30, by - 110, 18, 22); c.fill(); });
+      A.teddy(c, w * 0.68, by + 40, 1.5, t);
+      for (let i = 0; i < 5; i++) A.duck(c, w * 0.45 + i * 50, h * 0.55 + Math.sin(t * 3 + i) * 10, 1.1, 0, t);
+    },
+    kitten(c, w, h, t) {
+      sky(c, w, h, '#8a5ad0', '#ffd0ef');
+      for (let i = 0; i < 8; i++) { const k = (t * 0.3 + i / 8) % 1; A.heart(c, U.hash(i, 9) * w, h - k * h, t, 1); }
+      c.fillStyle = '#ffffff'; c.fillRect(0, h - 40, w, 40);
+      pl(c, w * 0.3, h - 40, 2.4, 'win', t);
+      A.cat(c, w * 0.65, h - 40, -1, t, { s: 0.6 });
+    },
+    friends(c, w, h, t) {
+      room(c, w, h, t); windowMoon(c, w - 220, 50, false);
+      pl(c, w * 0.38, h - 82, 2.2, 'sleep', t);
+      A.teddy(c, w * 0.38 + 60, h - 82, 1.1, t);
+      A.cat(c, w * 0.38 - 70, h - 82, 1, t, { s: 0.45, crouch: 1 });
+      A.crib(c, w * 0.4, h - 30, 1.3);
+      c.font = `800 34px ${LP.FONT}`; c.fillStyle = '#fff'; c.textAlign = 'center'; c.fillText('purrr...', w * 0.38 - 60, 90 + Math.sin(t * 2) * 6);
     },
     city(c, w, h, t) {
       sky(c, w, h, '#050822', '#33246a');

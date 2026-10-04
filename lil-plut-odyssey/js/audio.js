@@ -33,6 +33,11 @@ LP.SONGS = {
     melody: ['4.4.2.4.--7.6.4.', '3---------1.2.3.', '6.6.4.6.--8.7.6.', '4-------2---1---', '7.7.6.4.--2.4.6.', '5---3---------3.', '6.4.6.8.7-6-4-6-', '4---------------'],
     bass: 'x.5.o.5.x.5.o.5.', arpPat: '..0...1...2...1.', drums: { k: 'x.....x...x.....', s: '....x.......x...', h: 'x.xxx.xxx.xxx.xx' },
   },
+  dream: {
+    bpm: 100, root: 63, scale: 'major', chords: [0, 5, 3, 4, 0, 5, 1, 4], lead: 'bell', arp: 'bell', bassInst: 'soft',
+    melody: ['7---9-7-4---2---', '5---4---2-------', '3---5---7---8---', '7-------4-------', '9---a---9-7-4---', '5---7---8---7---', '6---5---3---1---', '4---------------'],
+    bass: 'x.......5.......', arpPat: '0.2.1.3.0.2.1.3.', drums: { h: '....x.......x..x' },
+  },
   chase: {
     bpm: 150, root: 52, scale: 'minor', chords: [0, 5, 6, 4], lead: 'square', arp: 'pluck', bassInst: 'saw',
     melody: ['7.7.7.4.7.9.a.9.', '7.7.7.4.5.4.2.4.', '7.7.7.4.7.9.a.c.', 'b-a-9-8-7-6-5-4-'],
@@ -177,6 +182,9 @@ LP.Audio = (function () {
     menu(t) { tone('triangle', freq(84), t, 0.08, 0.1); },
     select(t) { tone('triangle', freq(79), t, 0.08, 0.12); tone('triangle', freq(86), t + 0.06, 0.15, 0.12); },
     page(t) { noise(t, 0.12, 0.12, 'highpass', 3000, { to: 1500 }); },
+    crack(t) { noise(t, 0.12, 0.25, 'bandpass', 2600, { q: 3 }); noise(t + 0.08, 0.1, 0.2, 'bandpass', 1800, { q: 3 }); },
+    bubblePop(t) { tone('sine', 500, t, 0.25, 0.25, { to: 1400, slide: 0.12 }); noise(t, 0.05, 0.2, 'highpass', 4000); },
+    growl(t) { tone('sawtooth', 70, t, 0.8, 0.18, { lp: 400, q: 6, vib: 12 }); voice(t, 0.6, 140, 90, 'o', 0.2); },
     locked(t) { tone('square', 180, t, 0.2, 0.08, { lp: 800 }); },
   };
 

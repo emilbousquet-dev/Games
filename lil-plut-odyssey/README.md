@@ -6,6 +6,7 @@ You play **PLUT**, the most annoying baby in the whole world.
 > One night, the grumpy cat **MR. WHISKERS** steals Plut's teddy bear **BOBO** and jumps out of the window.
 > Plut climbs out of the crib and goes on an **ODYSSEY** to get him back:
 > through the House, the Garden, the Park & Pond, and over the City Rooftops to the big Clock Tower!
+> And if you save enough rubber ducks... a SECRET world opens. 🌙
 
 ## How to play
 
@@ -35,6 +36,8 @@ You play **PLUT**, the most annoying baby in the whole world.
 - **Jump on heads**: bounce off enemies' heads. Hold jump to bounce higher.
 - **Glide**: hold jump in the air to fall slowly and fly over big gaps.
 - **Fans**: glide over a fan and the wind blows you up high!
+- **Soap bubbles**: land on a bubble and it bounces you up high (then it pops, and comes back).
+- **Crumbly blocks**: cookies, flower pots, old bricks... they shake when you stand on them and fall after half a second. Keep moving!
 - **Ground pound**: press down in the air to smash boxes under you.
 - **WAAAH!**: the annoying-baby super move. A giant scream that knocks out every enemy around you,
   breaks boxes and makes bosses **DIZZY**. It needs milk power: every milk drop fills the meter (one scream = half the meter).
@@ -45,19 +48,29 @@ You play **PLUT**, the most annoying baby in the whole world.
 |---|---|
 | 🥛 **Milk drops** | like Lums in Rayman. Get lots of them for a **bronze, silver or GOLD bottle** at the end. Big bottles are worth 5! |
 | 🌟 **Golden bottle** | CHOCOLATE MILK for 10 seconds: every drop counts **x2** |
-| 🦆 **Rubber ducks in cages** | 3 hidden in every normal level. Slap the cage to free them! You need ducks to open the next worlds |
+| 🦆 **Rubber ducks in cages** | 3 hidden in every normal level (39 in all). Slap the cage to free them! You need ducks to open the next worlds |
 | ❤️ **Hearts** | get a heart back. Checkpoints also give you all your hearts back |
 | 🍼 **Giant pacifiers** | checkpoints. If you pop, you come back here |
 
 If you lose all your hearts (or fall in water or a hole), Plut floats away in a **bubble** and comes back at the last checkpoint.
 
-## The worlds
+## The worlds (18 levels)
 
-1. **The House**: the nursery and the kitchen. Toy soldiers, bouncy balls, toy cannons, LEGO bricks (OUCH!).
-   Then RUN from the **SUCKINATOR 3000**, a giant angry vacuum cleaner!
-2. **The Garden**: sunflowers, snails, bees, sprinklers and the pond. Boss: **the Garden Gnome**.
-3. **The Park & Pond**: sunset, lily pads, crabs, frogs, the playground. Then RUN from the **ANGRY SWAN**!
-4. **The City Rooftops**: night, rats, bats, fire hydrants, laundry lines. Final boss: **MR. WHISKERS** on the Clock Tower!
+| World | Levels |
+|---|---|
+| 1. **The House** 🧸 | Crib Escape · Kitchen Chaos · Bath Time · **The Suckinator!** (run from a giant vacuum cleaner!) |
+| 2. **The Garden** 🌻 | Sunflower Hills · Sprinkler Trouble · Veggie Patch · **The Garden Gnome** (boss) |
+| 3. **The Park & Pond** 🦢 | Duck Pond · Playground at Sunset · Treehouse Climb · **Swan Lake Run** (run from the angry swan!) |
+| 4. **The City Rooftops** 🌃 | Rooftop Hop · Laundry Line Lane · Neon Night · **The Clock Tower** (final boss: MR. WHISKERS) |
+| 5. **???** 🌙 | a SECRET world... |
+
+### The secret world
+
+Beat Mr. Whiskers and free **28 rubber ducks**, and the secret world **DREAMLAND** opens on the map:
+cotton-candy clouds, gummy bears, candy spikes and the hardest jumps in the game.
+At the very end, a giant **Shadow Cat** chases you... and you get to see **THE TRUE END**.
+
+Free every duck and get a GOLD bottle in every level for **100% COMPLETE!**
 
 **Boss tip:** bosses can't be hurt normally. Make them **DIZZY** first (scream at them, or wait until they get stuck or tired),
 then **SLAP** them!
@@ -82,12 +95,12 @@ Tip: add `?level=2-1` to the end of the address to jump straight into a level.
 | File | What's inside |
 |---|---|
 | `index.html` | the page |
-| `js/levels.js` | all 12 levels, drawn with letters (edit me!) |
+| `js/levels.js` | all 18 levels, drawn with letters (edit me!) |
 | `js/story.js` | the story and its comic pictures (edit me!) |
 | `js/player.js` | Plut and all his moves |
 | `js/enemies.js` | enemies, things to pick up, chasers and bosses |
 | `js/art.js` | drawing Plut, the enemies, bosses and items |
-| `js/backgrounds.js` | the 4 worlds: colors, skies and background layers |
+| `js/backgrounds.js` | the 5 worlds: colors, skies and background layers |
 | `js/terrain.js` | painting the ground, platforms, boxes and spikes |
 | `js/fx.js` | sparkles, dust, confetti, the scream waves |
 | `js/hud.js` | hearts, milk counter, scream meter, signs |

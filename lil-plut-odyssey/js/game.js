@@ -15,7 +15,13 @@ LP.Save = {
   write() { LP.store.set('save', this.data); },
   levelDucks(i) { return this.lvl(LP.LEVELS[i].id).ducks; },
   totalDucks() { let n = 0; for (const L of LP.LEVELS) n += this.lvl(L.id).ducks.filter(Boolean).length; return n; },
-  worldOpen(w) { return this.totalDucks() >= LP.WORLDS[w].ducks; },
+  worldOpen(w) {
+    const W = LP.WORLDS[w];
+    if (W.after && !this.lvl(W.after).done) return false;
+    return this.totalDucks() >= W.ducks;
+  },
+  totalCages() { return LP.LEVELS.filter((L) => L.type === 'normal').length * 3; },
+  goldBottles() { return LP.LEVELS.filter((L) => this.lvl(L.id).medal === 3).length; },
   unlocked(i) {
     if (i === 0) return true;
     const L = LP.LEVELS[i], prev = LP.LEVELS[i - 1];
@@ -109,7 +115,7 @@ LP.game = (function () {
     g.mode = 'play';
     acc = 0;
     LP.Input.clearPressed();
-    LP.Audio.music(def.type === 'chase' ? 'chase' : def.type === 'boss' ? 'boss' : key);
+    LP.Audio.music(def.type === 'chase' && key !== 'dream' ? 'chase' : def.type === 'chase' ? 'boss' : def.type === 'boss' ? 'boss' : key);
   }
 
   function snapCamera() {
