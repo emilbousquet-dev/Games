@@ -15,7 +15,7 @@ DL.Models = (function () {
     const key = color + JSON.stringify(opts);
     let m = mats.get(key);
     if (!m) {
-      m = new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.85, metalness: 0, flatShading: true }, opts));
+      m = new THREE.MeshStandardMaterial(Object.assign({ color, roughness: 0.8, metalness: 0, flatShading: false }, opts));
       mats.set(key, m);
     }
     return m;
@@ -28,9 +28,12 @@ DL.Models = (function () {
     return o;
   }
   const box = (w, h, d) => new THREE.BoxGeometry(w, h, d);
-  const ball = (r, w = 8, h = 6) => new THREE.SphereGeometry(r, w, h);
-  const cyl = (rt, rb, h, s = 7) => new THREE.CylinderGeometry(rt, rb, h, s);
-  const cone = (r, h, s = 6) => new THREE.ConeGeometry(r, h, s);
+  const Q = DL.Q;
+  const ball = (r, w = 8, h = 6) => new THREE.SphereGeometry(r, Math.round(w * Q), Math.round(h * Q));
+  const cyl = (rt, rb, h, s = 7) => new THREE.CylinderGeometry(rt, rb, h, Math.max(s, Math.round(s * Q)));
+  const cone = (r, h, s = 6) => new THREE.ConeGeometry(r, h, Math.max(s, Math.round(s * Q)));
+  // a round arm or leg (a capsule: a tube with round ends)
+  const limb = (w, h, d) => { const r = Math.min(w, d) / 2; return new THREE.CapsuleGeometry(r, Math.max(0.01, h - r * 2), 3, Math.round(6 * Q)); };
 
   // ------------------------------------------------------------
   //  PEOPLE (you and the villagers)
@@ -44,10 +47,10 @@ DL.Models = (function () {
     // legs
     for (const s of [-1, 1]) {
       const leg = new THREE.Group(); leg.position.set(s * 0.12, 0.92, 0); body.add(leg);
-      leg.add(mesh(box(0.17, 0.48, 0.19), mPants, 0, -0.24, 0));
+      leg.add(mesh(limb(0.19, 0.52, 0.19), mPants, 0, -0.24, 0));
       const shin = new THREE.Group(); shin.position.set(0, -0.47, 0); leg.add(shin);
-      shin.add(mesh(box(0.15, 0.36, 0.16), mPants, 0, -0.17, 0));
-      shin.add(mesh(box(0.18, 0.13, 0.28), mBoot, 0, -0.39, 0.04));
+      shin.add(mesh(limb(0.16, 0.4, 0.16), mPants, 0, -0.17, 0));
+      shin.add(mesh(limb(0.18, 0.3, 0.18), mBoot, 0, -0.39, 0.05).rotateX(Math.PI / 2));
       P.legs.push(leg); P.shins.push(shin);
     }
     // body
@@ -64,9 +67,9 @@ DL.Models = (function () {
     // arms
     for (const s of [-1, 1]) {
       const arm = new THREE.Group(); arm.position.set(s * 0.29, 0.58, 0); torso.add(arm);
-      arm.add(mesh(box(0.13, 0.32, 0.14), mShirt, 0, -0.14, 0));
+      arm.add(mesh(limb(0.14, 0.36, 0.14), mShirt, 0, -0.14, 0));
       const fore = new THREE.Group(); fore.position.set(0, -0.3, 0); arm.add(fore);
-      fore.add(mesh(box(0.11, 0.28, 0.12), mSkin, 0, -0.13, 0));
+      fore.add(mesh(limb(0.12, 0.32, 0.12), mSkin, 0, -0.13, 0));
       const hand = new THREE.Group(); hand.position.set(0, -0.3, 0.02); fore.add(hand);
       hand.add(mesh(ball(0.07, 6, 5), mSkin));
       P.arms.push(arm); P.forearms.push(fore);
@@ -172,11 +175,11 @@ DL.Models = (function () {
     const root = new THREE.Group(); D.root = root;
     const C = DRAGON_COLORS[colorName] || DRAGON_COLORS.emerald;
     const scaleMap = DL.Tex.T.scales;
-    D.mMain = new THREE.MeshStandardMaterial({ color: C.main, roughness: 0.55, metalness: 0.05, flatShading: true, map: scaleMap });
-    D.mBelly = new THREE.MeshStandardMaterial({ color: C.belly, roughness: 0.7, flatShading: true });
-    D.mWing = new THREE.MeshStandardMaterial({ color: C.wing, roughness: 0.7, flatShading: true, side: THREE.DoubleSide });
-    D.mHorn = new THREE.MeshStandardMaterial({ color: C.horn, roughness: 0.5, flatShading: true });
-    D.mSpike = new THREE.MeshStandardMaterial({ color: C.spike, roughness: 0.6, flatShading: true });
+    D.mMain = new THREE.MeshStandardMaterial({ color: C.main, roughness: 0.45, metalness: 0.08, map: scaleMap, bumpMap: scaleMap, bumpScale: 1.2 });
+    D.mBelly = new THREE.MeshStandardMaterial({ color: C.belly, roughness: 0.6 });
+    D.mWing = new THREE.MeshStandardMaterial({ color: C.wing, roughness: 0.65, side: THREE.DoubleSide, transparent: true, opacity: 0.94 });
+    D.mHorn = new THREE.MeshStandardMaterial({ color: C.horn, roughness: 0.35 });
+    D.mSpike = new THREE.MeshStandardMaterial({ color: C.spike, roughness: 0.45 });
     D.mEye = new THREE.MeshStandardMaterial({ color: C.eye, emissive: C.eye, emissiveIntensity: 0.6, roughness: 0.3 });
     const mPupil = mat(0x101010);
 
@@ -200,6 +203,7 @@ DL.Models = (function () {
       parent.add(seg);
       const r = 0.52 - i * 0.06;
       const m = mesh(cyl(r * 0.9, r, 0.85, 8), D.mMain, 0, 0, 0.3); m.rotation.x = PI / 2; seg.add(m);
+      seg.add(mesh(ball(r * 0.98, 10, 8), D.mMain, 0, 0, 0)); // round joint
       const b = mesh(cyl(r * 0.6, r * 0.7, 0.8, 6), D.mBelly, 0, -r * 0.45, 0.3); b.rotation.x = PI / 2; seg.add(b);
       const sp = mesh(cone(0.12, 0.32, 4), D.mSpike, 0, r + 0.08, 0.3); sp.rotation.x = -0.5; seg.add(sp);
       D.neck.push(seg);
@@ -208,7 +212,7 @@ DL.Models = (function () {
     // head
     const head = new THREE.Group(); head.position.z = 0.75; parent.add(head); D.head = head;
     const skull = mesh(ball(0.5, 10, 8), D.mMain, 0, 0.05, 0); skull.scale.set(1.05, 0.95, 1.1); head.add(skull);
-    const snout = mesh(box(0.6, 0.42, 0.85), D.mMain, 0, -0.02, 0.62); head.add(snout);
+    const snout = mesh(ball(1, 12, 9), D.mMain, 0, -0.02, 0.6); snout.scale.set(0.32, 0.22, 0.6); head.add(snout);
     head.add(mesh(box(0.5, 0.06, 0.8), D.mBelly, 0, -0.22, 0.66));
     for (const s of [-1, 1]) {
       head.add(mesh(box(0.08, 0.06, 0.06), mat(0x1a1a1a), s * 0.16, 0.12, 1.15, false)); // nostrils
@@ -222,8 +226,8 @@ DL.Models = (function () {
       for (let k = 0; k < 3; k++) head.add(mesh(cone(0.03, 0.09, 3), D.mHorn, s * 0.24, -0.27, 0.8 + k * 0.14, false).rotateX(PI));
     }
     const jaw = new THREE.Group(); jaw.position.set(0, -0.2, 0.2); head.add(jaw); D.jaw = jaw;
-    jaw.add(mesh(box(0.54, 0.16, 0.95), D.mMain, 0, -0.04, 0.45));
-    jaw.add(mesh(box(0.42, 0.04, 0.8), mat(0xc04a5a), 0, 0.05, 0.45, false)); // tongue
+    const jawM = mesh(ball(1, 12, 8), D.mMain, 0, -0.04, 0.42); jawM.scale.set(0.27, 0.1, 0.55); jaw.add(jawM);
+    const tongue = mesh(ball(1, 10, 6), mat(0xc04a5a), 0, 0.04, 0.42, false); tongue.scale.set(0.2, 0.04, 0.45); jaw.add(tongue);
     D.mouth = new THREE.Object3D(); D.mouth.position.set(0, -0.1, 1.25); head.add(D.mouth);
     // tail
     parent = new THREE.Group(); parent.position.set(0, 0.1, -2.05); body.add(parent);
@@ -233,6 +237,7 @@ DL.Models = (function () {
       parent.add(seg);
       const r = Math.max(0.07, 0.62 * (1 - i / 9.5));
       const m = mesh(cyl(r, r * 0.85, 0.8, 7), D.mMain, 0, 0, -0.3); m.rotation.x = PI / 2; seg.add(m);
+      seg.add(mesh(ball(r, 10, 8), D.mMain, 0, 0, 0)); // round joint
       if (i % 2 === 0) { const sp = mesh(cone(0.1, 0.28, 4), D.mSpike, 0, r + 0.06, -0.3); sp.rotation.x = 0.5; seg.add(sp); }
       D.tail.push(seg);
       parent = seg;
@@ -248,7 +253,7 @@ DL.Models = (function () {
       const lower = new THREE.Group(); lower.position.y = -0.95; leg.add(lower);
       lower.add(mesh(cyl(0.2, 0.16, 0.8, 7), D.mMain, 0, -0.35, 0));
       const foot = new THREE.Group(); foot.position.y = -0.78; lower.add(foot);
-      foot.add(mesh(box(0.42, 0.18, 0.5), D.mMain, 0, 0, 0.1));
+      const footM = mesh(ball(1, 10, 8), D.mMain, 0, 0, 0.1); footM.scale.set(0.23, 0.12, 0.3); foot.add(footM);
       for (const cx of [-0.13, 0, 0.13]) { const c = mesh(cone(0.06, 0.2, 4), D.mHorn, cx, -0.04, 0.4, false); c.rotation.x = PI / 2; foot.add(c); }
       D.legs.push({ leg, lower, foot, front: i < 2 });
     }
@@ -256,7 +261,7 @@ DL.Models = (function () {
     for (const s of [1, -1]) {
       const shoulder = new THREE.Group(); shoulder.position.set(s * 0.8, 0.75, 0.85); shoulder.scale.x = s; body.add(shoulder);
       const arm = new THREE.Group(); arm.rotation.order = 'YZX'; shoulder.add(arm);
-      const bone = mesh(cyl(0.12, 0.18, 3.05, 6), D.mMain, 1.5, 0.15, -0.1); bone.rotation.z = PI / 2 - 0.13; arm.add(bone);
+      const bone = mesh(cyl(0.08, 0.13, 3.05, 6), D.mMain, 1.5, 0.15, -0.1); bone.rotation.z = PI / 2 - 0.13; arm.add(bone);
       const fore = new THREE.Group(); fore.position.set(3.0, 0.3, -0.2); arm.add(fore);
       const bone2 = mesh(cyl(0.06, 0.12, 3.5, 6), D.mMain, 1.7, -0.05, -0.45); bone2.rotation.set(0, 0.26, PI / 2 + 0.03); fore.add(bone2);
       fore.add(mesh(cone(0.1, 0.4, 4), D.mHorn, 0, 0.12, 0.1)); // claw on the elbow
@@ -404,7 +409,7 @@ DL.Models = (function () {
         c.beginPath(); c.ellipse(Math.random() * w, Math.random() * h, 2 + Math.random() * 6, 2 + Math.random() * 4, 0, 0, 7); c.fill();
       }
     }));
-    const m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, emissive: 0x2a6a30, emissiveIntensity: 0.3, flatShading: true });
+    const m = new THREE.MeshStandardMaterial({ map: tex, roughness: 0.35, emissive: 0x2a6a30, emissiveIntensity: 0.3 });
     const o = new THREE.Mesh(g, m); o.castShadow = true; o.position.y = 0.6;
     const grp = new THREE.Group(); grp.add(o);
     grp.userData.mat = m;
@@ -420,16 +425,16 @@ DL.Models = (function () {
     const trunk = 0x7a5232;
     out.oak = G.merge([
       { geo: cyl(0.22, 0.34, 3.2, 6), color: trunk, pos: [0, 1.6, 0] },
-      { geo: new THREE.IcosahedronGeometry(1.9, 0), color: 0x4f9a3a, pos: [0, 4.2, 0], jitter: 0.25 },
-      { geo: new THREE.IcosahedronGeometry(1.4, 0), color: 0x5aa844, pos: [1.0, 3.6, 0.5], jitter: 0.25 },
-      { geo: new THREE.IcosahedronGeometry(1.5, 0), color: 0x468a34, pos: [-0.9, 3.7, -0.5], jitter: 0.25 },
-      { geo: new THREE.IcosahedronGeometry(1.2, 0), color: 0x62b04a, pos: [0.2, 5.4, -0.2], jitter: 0.25 },
+      { geo: G.blob(1.9, 1), color: 0x4f9a3a, pos: [0, 4.2, 0], jitter: 0.25 },
+      { geo: G.blob(1.4, 2), color: 0x5aa844, pos: [1.0, 3.6, 0.5], jitter: 0.25 },
+      { geo: G.blob(1.5, 3), color: 0x468a34, pos: [-0.9, 3.7, -0.5], jitter: 0.25 },
+      { geo: G.blob(1.2, 4), color: 0x62b04a, pos: [0.2, 5.4, -0.2], jitter: 0.25 },
     ]);
     out.blossom = G.merge([
       { geo: cyl(0.2, 0.3, 2.8, 6), color: 0x6a4a3a, pos: [0, 1.4, 0] },
-      { geo: new THREE.IcosahedronGeometry(1.7, 0), color: 0xf2a8c8, pos: [0, 3.7, 0], jitter: 0.2 },
-      { geo: new THREE.IcosahedronGeometry(1.2, 0), color: 0xf8c0d8, pos: [0.9, 3.2, 0.4], jitter: 0.2 },
-      { geo: new THREE.IcosahedronGeometry(1.3, 0), color: 0xe890b8, pos: [-0.8, 3.3, -0.4], jitter: 0.2 },
+      { geo: G.blob(1.7, 5), color: 0xf2a8c8, pos: [0, 3.7, 0], jitter: 0.2 },
+      { geo: G.blob(1.2, 6), color: 0xf8c0d8, pos: [0.9, 3.2, 0.4], jitter: 0.2 },
+      { geo: G.blob(1.3, 7), color: 0xe890b8, pos: [-0.8, 3.3, -0.4], jitter: 0.2 },
     ]);
     out.pine = G.merge([
       { geo: cyl(0.18, 0.3, 2.4, 6), color: trunk, pos: [0, 1.2, 0] },
@@ -446,10 +451,10 @@ DL.Models = (function () {
     out.giant = G.merge([
       { geo: cyl(0.8, 1.3, 11, 8), color: 0x5a4030, pos: [0, 5.5, 0] },
       { geo: cyl(0.3, 0.5, 4, 5), color: 0x5a4030, pos: [1.6, 8.5, 0], rot: [0, 0, -0.9] },
-      { geo: new THREE.IcosahedronGeometry(4.2, 1), color: 0x2f7a62, pos: [0, 12.5, 0], jitter: 0.25 },
-      { geo: new THREE.IcosahedronGeometry(3.0, 0), color: 0x3a8a6e, pos: [3.2, 10.6, 1], jitter: 0.25 },
-      { geo: new THREE.IcosahedronGeometry(3.2, 0), color: 0x2a6a58, pos: [-2.8, 11.2, -1.2], jitter: 0.25 },
-      { geo: new THREE.IcosahedronGeometry(2.6, 0), color: 0x46a07a, pos: [0.5, 15.2, 0.5], jitter: 0.25 },
+      { geo: G.blob(4.2, 8), color: 0x2f7a62, pos: [0, 12.5, 0], jitter: 0.25 },
+      { geo: G.blob(3.0, 9), color: 0x3a8a6e, pos: [3.2, 10.6, 1], jitter: 0.25 },
+      { geo: G.blob(3.2, 10), color: 0x2a6a58, pos: [-2.8, 11.2, -1.2], jitter: 0.25 },
+      { geo: G.blob(2.6, 11), color: 0x46a07a, pos: [0.5, 15.2, 0.5], jitter: 0.25 },
     ]);
     const palmParts = [];
     let px = 0, py = 0;
@@ -470,12 +475,12 @@ DL.Models = (function () {
       { geo: cyl(0.3, 0.38, 0.5, 7), color: 0x7a5232, pos: [0, 0.25, 0] },
       { geo: cyl(0.28, 0.28, 0.02, 7), color: 0xd8b07a, pos: [0, 0.51, 0] },
     ]);
-    out.rock = G.merge([{ geo: G.rock(1, 1, 7), color: 0x8a8680, jitter: 0.18 }]);
+    out.rock = G.merge([{ geo: G.rock(1, 1, 7), color: 0x8a8680, jitter: 0.25 }]);
     out.darkrock = G.merge([{ geo: G.rock(1, 1, 9), color: 0x3a3434, jitter: 0.2 }]);
     out.bush = G.merge([
-      { geo: new THREE.IcosahedronGeometry(0.75, 0), color: 0x3f8a36, pos: [0, 0.6, 0], jitter: 0.3 },
-      { geo: new THREE.IcosahedronGeometry(0.55, 0), color: 0x4a9a3e, pos: [0.5, 0.45, 0.2], jitter: 0.3 },
-      { geo: new THREE.IcosahedronGeometry(0.55, 0), color: 0x37802f, pos: [-0.45, 0.45, -0.25], jitter: 0.3 },
+      { geo: G.blob(0.75, 12), color: 0x3f8a36, pos: [0, 0.6, 0], jitter: 0.3 },
+      { geo: G.blob(0.55, 13), color: 0x4a9a3e, pos: [0.5, 0.45, 0.2], jitter: 0.3 },
+      { geo: G.blob(0.55, 14), color: 0x37802f, pos: [-0.45, 0.45, -0.25], jitter: 0.3 },
     ]);
     const berryParts = [];
     const br = U.rng(55);
@@ -526,7 +531,7 @@ DL.Models = (function () {
     if (!woodMat) {
       woodMat = new THREE.MeshStandardMaterial({ map: DL.Tex.T.planks, roughness: 0.9 });
       stoneMat = new THREE.MeshStandardMaterial({ map: DL.Tex.T.stone, roughness: 0.95 });
-      thatchMat = new THREE.MeshStandardMaterial({ map: DL.Tex.T.thatch, roughness: 1, flatShading: true });
+      thatchMat = new THREE.MeshStandardMaterial({ map: DL.Tex.T.thatch, bumpMap: DL.Tex.T.thatch, bumpScale: 2, roughness: 1 });
     }
     return { woodMat, stoneMat, thatchMat };
   }

@@ -65,7 +65,7 @@ DL.Input = (function () {
     if (!canvas.requestPointerLock) return;
     try {
       const p = canvas.requestPointerLock({ unadjustedMovement: true });
-      if (p && p.catch) p.catch(() => { try { canvas.requestPointerLock(); } catch (e) { /* no lock */ } });
+      if (p && p.catch) p.catch(() => { try { const p2 = canvas.requestPointerLock(); if (p2 && p2.catch) p2.catch(() => { /* no lock: drag to look */ }); } catch (e) { /* no lock */ } });
     } catch (e) { try { canvas.requestPointerLock(); } catch (e2) { /* no lock */ } }
   }
   function unlock() { if (document.pointerLockElement) document.exitPointerLock(); }

@@ -99,13 +99,31 @@ DL.Tex = (function () {
       g.fillStyle = '#fff';
       g.beginPath(); g.moveTo(32, 2); g.lineTo(36, 28); g.lineTo(62, 32); g.lineTo(36, 36); g.lineTo(32, 62); g.lineTo(28, 36); g.lineTo(2, 32); g.lineTo(28, 28); g.closePath(); g.fill();
     }), 0, false);
-    // small noise used to make the ground less flat
-    T.ground = U.tex(U.canvas(256, 256, (g, w, h) => {
-      g.fillStyle = '#c8c8c8'; g.fillRect(0, 0, w, h);
-      for (let i = 0; i < 5000; i++) {
-        const v = 150 + Math.random() * 105;
-        g.fillStyle = `rgb(${v},${v},${v})`;
-        g.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 3, 1 + Math.random() * 3);
+    // the ground: tiny grass blades, little pebbles and soft patches (it gets its color from the land)
+    T.ground = U.tex(U.canvas(512, 512, (g, w, h) => {
+      g.fillStyle = '#d4d4d4'; g.fillRect(0, 0, w, h);
+      // soft light and dark patches
+      for (let i = 0; i < 60; i++) {
+        const x = Math.random() * w, y = Math.random() * h, r = 20 + Math.random() * 60;
+        const gr = g.createRadialGradient(x, y, 0, x, y, r);
+        const v = Math.random() < 0.5 ? '255,255,255' : '150,150,150';
+        gr.addColorStop(0, `rgba(${v},0.18)`); gr.addColorStop(1, `rgba(${v},0)`);
+        g.fillStyle = gr;
+        for (const ox of [-w, 0, w]) for (const oy of [-h, 0, h]) { g.save(); g.translate(ox, oy); g.fillRect(x - r, y - r, r * 2, r * 2); g.restore(); }
+      }
+      // grass blades
+      for (let i = 0; i < 9000; i++) {
+        const x = Math.random() * w, y = Math.random() * h, len = 3 + Math.random() * 7, a = -Math.PI / 2 + (Math.random() - 0.5) * 0.9;
+        const v = 165 + Math.random() * 90;
+        g.strokeStyle = `rgba(${v},${v},${v},0.55)`;
+        g.lineWidth = 1 + Math.random() * 0.8;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * len, y + Math.sin(a) * len); g.stroke();
+      }
+      // little pebbles
+      for (let i = 0; i < 400; i++) {
+        const v = 120 + Math.random() * 120;
+        g.fillStyle = `rgba(${v},${v},${v},0.7)`;
+        g.beginPath(); g.ellipse(Math.random() * w, Math.random() * h, 0.8 + Math.random() * 1.8, 0.6 + Math.random() * 1.2, Math.random() * 3, 0, 7); g.fill();
       }
     }), 0, true);
     T.ground.repeat.set(1, 1);

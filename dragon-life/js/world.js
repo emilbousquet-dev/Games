@@ -232,7 +232,7 @@ DL.World = (function () {
       const k = j * (NX + 1) + i;
       const x = GX0 + i * CELL, z = GZ0 + j * CELL, h = H[k];
       pos[k * 3] = x; pos[k * 3 + 1] = h; pos[k * 3 + 2] = z;
-      uv[k * 2] = x / 8; uv[k * 2 + 1] = z / 8;
+      uv[k * 2] = x / 5; uv[k * 2 + 1] = z / 5;
       const hx = gridH(Math.min(NX, i + 1), j) - gridH(Math.max(0, i - 1), j), hz = gridH(i, Math.min(NZ, j + 1)) - gridH(i, Math.max(0, j - 1));
       const slope = Math.sqrt(hx * hx + hz * hz) / (2 * CELL);
       const I = isl[k];
@@ -269,7 +269,7 @@ DL.World = (function () {
     g.setIndex(idx);
     g.computeVertexNormals();
     g.computeBoundingSphere();
-    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, flatShading: true, map: DL.Tex.T.ground });
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0, map: DL.Tex.T.ground, bumpMap: DL.Tex.T.ground, bumpScale: 1.5 });
     terrain = new THREE.Mesh(g, m);
     terrain.receiveShadow = true;
     scene.add(terrain);
@@ -393,13 +393,13 @@ DL.World = (function () {
     scene.add(sky);
     scene.fog = new THREE.Fog(0xbfe0f5, 200, DL.settings.gfx === 'low' ? 800 : 1150);
     // clouds
-    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, flatShading: true, transparent: true, opacity: 0.92 });
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1, transparent: true, opacity: 0.9, emissive: 0x8a96a8, emissiveIntensity: 0.35 });
     W.clouds = new THREE.Group();
     const r = U.rng(99);
     for (let i = 0; i < 26; i++) {
       const parts = [];
       const n = 3 + Math.floor(r() * 4);
-      for (let k = 0; k < n; k++) parts.push({ geo: new THREE.IcosahedronGeometry(8 + r() * 10, 1), color: 0xffffff, pos: [k * 12 - n * 6 + r() * 6, r() * 5, r() * 10 - 5], scale: [1, 0.55, 1] });
+      for (let k = 0; k < n; k++) parts.push({ geo: DL.Geo.blob(8 + r() * 10, i * 7 + k, 1), color: 0xffffff, pos: [k * 12 - n * 6 + r() * 6, r() * 5, r() * 10 - 5], scale: [1, 0.55, 1] });
       const c = new THREE.Mesh(DL.Geo.merge(parts), cloudMat);
       c.position.set(-700 + r() * 1700, 150 + r() * 70, -800 + r() * 1700);
       c.userData.speed = 2 + r() * 3;
@@ -413,7 +413,7 @@ DL.World = (function () {
     scene.add(hemi);
     sun = new THREE.DirectionalLight(0xffffff, 2.6);
     sun.castShadow = DL.settings.gfx !== 'low';
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(4096, 4096);
     const sc = sun.shadow.camera;
     sc.left = -45; sc.right = 45; sc.top = 45; sc.bottom = -45; sc.near = 1; sc.far = 400;
     sun.shadow.bias = -0.0006;
@@ -503,7 +503,7 @@ DL.World = (function () {
     for (let i = 0; i < 14; i++) {
       const t = i / 13;
       const px = U.lerp(cx + dir.x * 4.5, dockStart.x, t) + Math.sin(i) * 0.6, pz = U.lerp(cz + dir.z * 4.5, dockStart.z, t) + Math.cos(i * 1.3) * 0.6;
-      const s = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.75, 0.2, 7), pathMat);
+      const s = new THREE.Mesh(DL.Geo.rock(0.75, 1, 40 + i, 0.15, 0.12), pathMat);
       s.position.set(px, terrainH(px, pz) + 0.05, pz); s.receiveShadow = true; scene.add(s);
     }
 
@@ -619,7 +619,7 @@ DL.World = (function () {
     addCollider({ x: R.x, z: R.z, r: 1.6 });
     P.altar = { x: R.x, y: top + 1.5, z: R.z, obj: altar };
     const statue = M().dragon('emerald');
-    const stoneSkin = new THREE.MeshStandardMaterial({ color: 0x9a948a, roughness: 1, flatShading: true });
+    const stoneSkin = new THREE.MeshStandardMaterial({ color: 0x9a948a, roughness: 1, map: DL.Tex.T.ground });
     statue.root.traverse(o => { if (o.isMesh) o.material = stoneSkin; });
     statue.animate(0, { t: 0, sit: 1, headPitch: -0.2 });
     statue.animate(0, { t: 0, sit: 1, headPitch: -0.2 });
@@ -705,7 +705,7 @@ DL.World = (function () {
     const rockMat = M().mat(0x6a6460);
     // the dome, with a gap for the door
     const gap = 1.1;
-    const dome = new THREE.SphereGeometry(7, 14, 8, 0, PI * 2 - gap, 0, PI / 2);
+    const dome = new THREE.SphereGeometry(7, 40, 16, 0, PI * 2 - gap, 0, PI / 2);
     const p = dome.attributes.position;
     for (let i = 0; i < p.count; i++) {
       const vx = p.getX(i), vy = p.getY(i), vz = p.getZ(i);
@@ -713,7 +713,7 @@ DL.World = (function () {
       p.setXYZ(i, vx * k, vy * k * 1.05, vz * k);
     }
     dome.computeVertexNormals();
-    const dm = new THREE.Mesh(dome, new THREE.MeshStandardMaterial({ color: 0x6a6460, roughness: 1, flatShading: true, side: THREE.DoubleSide }));
+    const dm = new THREE.Mesh(dome, new THREE.MeshStandardMaterial({ color: 0x6a6460, roughness: 1, side: THREE.DoubleSide, map: DL.Tex.T.ground }));
     // SphereGeometry starts the gap at angle (2PI - gap) measured from +x toward -z ... turn it to face the island
     dm.rotation.y = face - Math.atan2(-Math.cos(gap / 2), -Math.sin(gap / 2));
     dm.castShadow = true; dm.receiveShadow = true;
@@ -775,7 +775,7 @@ DL.World = (function () {
     for (const I of ISLANDS) {
       for (const [type, count0] of RULES[I.id]) {
         let count = count0;
-        if (low && type === 'grass') count = Math.floor(count0 * 0.3);
+        if (type === 'grass') count = Math.floor(count0 * (low ? 0.3 : 2.5));
         const L = lists[type] = lists[type] || [];
         let made = 0, tries = 0;
         while (made < count && tries < count * 25) {

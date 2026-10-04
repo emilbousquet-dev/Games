@@ -26,6 +26,8 @@ DL.settings = Object.assign({
 if (location.search.includes('low')) DL.settings.gfx = 'low';
 DL.saveSettings = () => DL.store.set('settings', DL.settings);
 DL.debug = location.search.includes('debug');
+// how smooth round things are (more pieces = rounder, but slower)
+DL.Q = DL.settings.gfx === 'low' ? 1.3 : 2.2;
 
 DL.U = {
   clamp: (v, a, b) => Math.max(a, Math.min(b, v)),
@@ -125,14 +127,13 @@ DL.Geo = {
       c.set(part.color === undefined ? 0xffffff : part.color);
       const P = g.attributes.position.array, Nn = g.attributes.normal.array;
       const jitter = part.jitter || 0;
-      for (let i = 0; i < P.length; i += 9) {
-        // every triangle gets a tiny bit different color: looks hand-made
-        const j = jitter ? 1 + (Math.random() - 0.5) * jitter : 1;
-        for (let k = 0; k < 9; k += 3) {
-          pos.push(P[i + k], P[i + k + 1], P[i + k + 2]);
-          nor.push(Nn[i + k], Nn[i + k + 1], Nn[i + k + 2]);
-          col.push(c.r * j, c.g * j, c.b * j);
-        }
+      const seedOff = Math.random() * 100;
+      for (let i = 0; i < P.length; i += 3) {
+        // a soft, smooth change of color over the shape: looks more natural than one flat color
+        const j = jitter ? 1 + (DL.N.noise(P[i] * 1.7 + seedOff, P[i + 2] * 1.7 + P[i + 1] * 0.9, 3) - 0.5) * jitter * 1.6 : 1;
+        pos.push(P[i], P[i + 1], P[i + 2]);
+        nor.push(Nn[i], Nn[i + 1], Nn[i + 2]);
+        col.push(c.r * j, c.g * j, c.b * j);
       }
       g.dispose();
     }
@@ -144,18 +145,16 @@ DL.Geo = {
     return out;
   },
   // bumpy rock shape
-  rock(radius, detail, seed, squash = 0.7) {
-    const g = new THREE.IcosahedronGeometry(radius, detail);
+  rock(radius, detail, seed, squash = 0.7, bumpy = 0.22) {
+    // a smooth sphere, pushed in and out with noise
+    const q = DL.Q * (detail + 1) / 2;
+    const g = new THREE.SphereGeometry(radius, Math.round(12 * q), Math.round(9 * q));
     const p = g.attributes.position;
-    const r = DL.U.rng(seed);
-    const offs = [];
-    for (let i = 0; i < 12; i++) offs.push(new THREE.Vector3(r() - 0.5, r() - 0.5, r() - 0.5).normalize());
     const v = new THREE.Vector3();
     for (let i = 0; i < p.count; i++) {
       v.fromBufferAttribute(p, i);
       const n = v.clone().normalize();
-      let k = 1;
-      for (const o of offs) k += Math.max(0, n.dot(o)) * 0.12;
+      const k = 1 + (DL.N.fbm(n.x * 1.6 + seed * 3.1, n.z * 1.6 + n.y * 1.3 + seed, 3, seed) - 0.5) * bumpy * 2.2;
       v.multiplyScalar(k);
       v.y *= squash;
       p.setXYZ(i, v.x, v.y, v.z);
@@ -163,4 +162,6 @@ DL.Geo = {
     g.computeVertexNormals();
     return g;
   },
+  // a soft lumpy ball (for leaves and clouds)
+  blob(radius, seed, squash = 0.85) { return DL.Geo.rock(radius, 1, seed, squash, 0.3); },
 };
