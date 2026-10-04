@@ -25,7 +25,7 @@ HG.Race = (function () {
     R.karts = [];
     R.finishOrder = [];
     R.phase = cfg.skipIntro ? 'countdown' : 'intro';
-    R.t = 0; R.time = 0; R.go = false; R.acc = 0;
+    R.t = 0; R.time = 0; R.go = false; R.acc = 0; R.ended = false; R.doneT = 0; R.events = []; R.order = null;
     R.countdown = 3.8;
     const tr = R.track;
     cfg.racers.forEach((rc, i) => {

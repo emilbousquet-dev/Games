@@ -197,5 +197,43 @@ HG.M = (function () {
     return t;
   }
 
-  return { mat, paint, glowMat, sphere, cyl, cone, capsule, torus, box, rbox, lathe, extrude, smoothShape, mesh, group, ik, mouth, cached };
+  // ---------- glue pieces that never move into one mesh per material (much faster to draw) ----------
+  function mergeStatic(root, skip) {
+    const nodes = [];
+    root.traverse((o) => nodes.push(o));
+    for (const node of nodes) {
+      const groups = new Map();
+      for (const c of node.children) {
+        if (!c.isMesh || c.children.length || skip.has(c) || c.userData.dyn || c.isInstancedMesh || Array.isArray(c.material)) continue;
+        if (!groups.has(c.material)) groups.set(c.material, []);
+        groups.get(c.material).push(c);
+      }
+      for (const [mat, list] of groups) {
+        if (list.length < 2) continue;
+        const pos = [], nor = [], uv = [];
+        let shadow = false;
+        for (const c of list) {
+          c.updateMatrix();
+          const g = c.geometry.index ? c.geometry.toNonIndexed() : c.geometry.clone();
+          g.applyMatrix4(c.matrix);
+          const p = g.attributes.position.array, n = g.attributes.normal.array, t = g.attributes.uv ? g.attributes.uv.array : null;
+          for (let i = 0; i < p.length; i++) { pos.push(p[i]); nor.push(n[i]); }
+          for (let i = 0; i < p.length / 3; i++) uv.push(t ? t[i * 2] : 0, t ? t[i * 2 + 1] : 0);
+          g.dispose();
+          shadow = shadow || c.castShadow;
+          node.remove(c);
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+        geo.computeBoundingSphere();
+        const m = new THREE.Mesh(geo, mat);
+        m.castShadow = shadow; m.receiveShadow = true;
+        node.add(m);
+      }
+    }
+  }
+
+  return { mergeStatic, mat, paint, glowMat, sphere, cyl, cone, capsule, torus, box, rbox, lathe, extrude, smoothShape, mesh, group, ik, mouth, cached };
 })();

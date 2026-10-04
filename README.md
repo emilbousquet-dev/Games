@@ -1,6 +1,10 @@
 # LAB 13 👽🩸
 
-> 🆕 **NEW: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
+> 🆕 **NEW: [SIGMA HOVER GP](hover-gp/README.md)** Σ🏍️: a 3D hover racing game like Mario Kart!
+> 15 racers (with **KISSE KAT** and **LILLE PLUT**!), build your own hover ride, 16 tracks, 18 power-ups,
+> Grand Prix, Balloon Battle, split screen for 2 players and online for up to 4. Open `hover-gp/index.html` to play.
+>
+> **Also: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
 > Run on walls across the rooftops, escape the FBI helicopter, shoot it down with rockets. Open `sigma-run/index.html` to play.
 >
 > **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!

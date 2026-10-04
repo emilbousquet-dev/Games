@@ -401,6 +401,7 @@ HG.Vehicles = (function () {
     buildEngine(b, find(ENGINES, parts.engine).id, P);
     buildFins(b, find(FINS, parts.fins).id, P);
     b.group.traverse((o) => { if (o.isMesh && o.castShadow !== false && !o.material.transparent) o.castShadow = true; });
+    M.mergeStatic(b.group, new Set());
     return b;
   }
 

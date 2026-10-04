@@ -634,7 +634,7 @@ HG.Menu = (function () {
       const cup = HG.CUPS[flow.cup];
       title(box, best <= 3 ? ['🥇 YOU WON THE ', '🥈 SILVER TROPHY! ', '🥉 BRONZE TROPHY! '][best - 1] + (best === 1 ? cup.name + '!' : '') : 'GOOD TRY!', cup.name + ' • ' + (flow.mirror ? 'MIRROR' : flow.cc + 'cc'));
       const t = el('div', 'results small', box);
-      order.slice(0, 6).forEach((r, i) => { el('div', 'rrow' + (r.ctrl === 'local' ? ' me' : ''), t, '<b class="rp">' + (i + 1) + '</b><img src="' + (portraits[r.charId] || '') + '"><span class="rn">' + r.name + '</span><span class="r2">' + gp.points[r.name] + ' pts</span>'); });
+      order.forEach((r, i) => { if (i < 3 || r.ctrl === 'local') el('div', 'rrow' + (r.ctrl === 'local' ? ' me' : ''), t, '<b class="rp">' + (i + 1) + '</b><img src="' + (portraits[r.charId] || '') + '"><span class="rn">' + r.name + '</span><span class="r2">' + gp.points[r.name] + ' pts</span>'); });
       if (unlockedNow.length) el('div', 'unlock', box, '🔓 UNLOCKED: ' + unlockedNow.join(', ') + '!');
       btn(box, 'CONTINUE ▶', () => mainMenu(), 'big first');
       confetti(box);

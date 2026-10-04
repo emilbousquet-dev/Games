@@ -140,6 +140,10 @@ HG.Chars = (function () {
     buildFace(rig, C);
     if (C.extra) C.extra(rig, C, mats);
     root.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
+    // glue the pieces that never move together (the face parts can change, so they stay separate)
+    const skip = new Set(rig.face.brows.concat(rig.face.mouth ? [rig.face.mouth] : []));
+    for (const e of rig.face.eyes) e.g.traverse((o) => skip.add(o));
+    M.mergeStatic(root, skip);
     setFace(rig, 'normal');
     return rig;
   }
@@ -601,6 +605,7 @@ HG.Chars = (function () {
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), z = p.getZ(i), y = p.getY(i); if (y < -0.05) { const a = Math.atan2(z, x); p.setY(i, y + Math.sin(a * 6) * 0.05); } }
     g.computeVertexNormals();
     const body = M.mesh(g, mats.skin, 0, 0, 0, rig.hips);
+    body.userData.dyn = true;
     rig.skull = M.mesh(M.sphere(R, 28, 20), mats.skin, 0, 0, 0, rig.head);
     const blush = M.mat('#ffa0c0', { opacity: 0.7, rough: 0.9 });
     for (const side of [1, -1]) M.mesh(M.sphere(R * 0.14), blush, side * R * 0.55, -R * 0.2, R * 0.78, rig.head, { s: [1, 0.6, 0.3], shadow: false });
