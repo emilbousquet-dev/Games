@@ -19,7 +19,8 @@ Run as **Ratchet** with **Clank** on your back, across **5 planets**, in a brigh
 | | 📱 Phone | ⌨️ Keyboard |
 |---|---|---|
 | Change lanes | Swipe ⬅ ➡ | `←` `→` or `A` `D` |
-| Heli-Pack hop | Swipe ⬆ (or tap) | `↑`, `W` or `Space` |
+| Heli-Pack hop | Swipe ⬆ | `↑` or `W` |
+| 🔧 Swing the OmniWrench | Tap | `Space`, `E` or `X` |
 | Slide | Swipe ⬇ | `↓` or `S` |
 | Pause | ❚❚ button | `Esc` or `P` |
 
@@ -29,7 +30,7 @@ Swipe down while you're in the air to drop down fast!
 
 - **Swipe up** and Clank's **Heli-Pack** propellers pop out, so Ratchet hops over things.
 - Grab a 🚀 and Clank's **Thruster-Pack** fires up, so you fly high above everything!
-- Ratchet always carries his **OmniWrench**. 🔧
+- **Tap** to swing Ratchet's **OmniWrench** 🔧 and **smash barriers** (+2 bolts each)! It doesn't work on lasers, holes or trains.
 
 ## The planets
 
@@ -48,7 +49,7 @@ After Gaspar you warp back to Veldin, and it keeps getting faster!
 ## What's on the road
 
 - 🔩 **Bolts**: grab them! Spend them in the **Garage**.
-- 🚧 **Barriers**: hop over them.
+- 🚧 **Barriers**: hop over them, or smash them with the OmniWrench.
 - 🔴 **Laser gates**: slide under them.
 - 🕳️ **Holes**: hop over them (if you fall in, Clank pops you out, but it counts as a bump).
 - 🚆 **Parked trains**: go around them, or run up a **ramp** and run on top of them!
@@ -70,6 +71,12 @@ Crash straight into the front of a train and it's over too.
 | 🧲 **Magnet** | Pulls in all the bolts around you for 10 seconds |
 | 🚀 **Thruster-Pack** | Fly high above everything and grab a trail of bolts for 6 seconds |
 
+## Difficulty
+
+Tap the button above **PLAY** to pick **😀 EASY**, **😐 NORMAL** or **😈 HARD**.
+HARD starts faster, speeds up quicker, puts obstacles closer together, gives fewer power-ups,
+and MEGA-BOT stays close for longer. Each difficulty has its own best score.
+
 ## The Garage
 
 Spend your bolts on **Clank paint** (Golden Clank, Red Alert, Stealth Clank, Rainbow Clank...)
@@ -78,7 +85,7 @@ and **Ratchet outfits** (Hoverboard Racer, Space Explorer, Snow Lombax, Holo Arm
 ## Change the game!
 
 Open **`js/map.js`**. You can change:
-- how **fast** the game is, how high you hop, and how long power-ups last,
+- how **fast** each difficulty is (`JC.DIFFICULTY`), how high you hop, and how long power-ups last,
 - the **level pieces**: the road is built from little maps made of letters,
   like `B` for barrier, `L` for laser, `T` for train and `o` for a bolt. **Draw your own!**
 - the **planets**: their names, sky colors, roads and how long each one is,

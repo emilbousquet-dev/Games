@@ -110,6 +110,15 @@ JC.Audio = (function () {
     retreat() { [67, 64, 60].forEach((n, i) => tone('square', hz(n), hz(n), 0.1, 0.04, { delay: i * 0.08, filter: 'lowpass', ff: 1500 })); },
     horn() { tone('sawtooth', 311, 311, 0.9, 0.1, { filter: 'lowpass', ff: 1400 }); tone('sawtooth', 370, 370, 0.9, 0.1, { filter: 'lowpass', ff: 1400 }); },
     click() { tone('sine', 900, 700, 0.05, 0.15); },
+    // the OmniWrench hits a barrier: CLANG!
+    clang() {
+      tone('square', 820, 760, 0.25, 0.12, { filter: 'bandpass', ff: 2400, q: 3, echo: true });
+      tone('triangle', 1640, 1500, 0.4, 0.08, { echo: true });
+      noise(0.15, 'highpass', 3000, 1, 0.25);
+      tone('sine', 140, 60, 0.2, 0.25);
+    },
+    // swinging at nothing: whoosh
+    swish() { noise(0.22, 'bandpass', 900, 2, 0.25, { f1: 2800 }); },
     // going through a warp gate: a big swooping WHOOSH with sparkles
     warp() {
       noise(1.2, 'bandpass', 300, 1.5, 0.4, { f1: 4000, attack: 0.05 });

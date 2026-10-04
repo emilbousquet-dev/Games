@@ -63,6 +63,7 @@
   .menu { display: flex; flex-direction: column; gap: 14px; align-items: center; width: min(360px, 100%); }
   .menu .row { width: 100%; }
   .menu .row .btn { flex: 1; }
+  .menu .btn.diff { width: 100%; font-size: 19px; padding: 9px 16px; }
   .howto { margin-top: 10px; font-size: 13px; color: var(--muted); text-align: center; }
 
   /* ---------- garage ---------- */
@@ -152,6 +153,7 @@
     <div class="chip bolt"><span class="k">BOLTS</span>🔩 <span id="tBank">0</span></div>
   </div>
   <div class="menu">
+    <button class="btn ghost diff" id="diffBtn">😐 NORMAL</button>
     <button class="btn" id="playBtn">PLAY</button>
     <div class="row">
       <button class="btn pink" id="garageBtn">GARAGE</button>
@@ -159,7 +161,7 @@
       <button class="btn ghost" id="gfxBtn">✨ PRETTY</button>
     </div>
   </div>
-  <div class="howto">Swipe ⬅ ➡ lanes · ⬆ hop · ⬇ slide (keyboard: arrows)</div>
+  <div class="howto">Swipe ⬅ ➡ lanes · ⬆ hop · ⬇ slide · TAP to smash 🔧 (keyboard: arrows + Space)</div>
 </div>
 
 <!-- GARAGE -->
@@ -210,6 +212,7 @@
       <span>Distance</span><span id="oDist">0 m</span>
       <span>Bolts</span><span id="oBolts">🔩 0</span>
       <span>Planets visited</span><span id="oPlanets">🪐 1</span>
+      <span>Difficulty</span><span id="oMode">😐 NORMAL</span>
       <span>Best score</span><span id="oBest">0</span>
     </div>
     <button class="btn" id="againBtn">RUN AGAIN</button>

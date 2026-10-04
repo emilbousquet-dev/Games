@@ -287,7 +287,7 @@ JC.Models = (function () {
     }
 
     // move arms, legs, ears, tail and Clank. mode: run, air, slide, jet, idle, grabbed, fall
-    function pose(mode, phase, t, flamePower) {
+    function pose(mode, phase, t, flamePower, swing = 0) {
       const sin = Math.sin, cos = Math.cos;
       body.rotation.set(0, 0, 0);
       body.position.set(0, HIP, 0);
@@ -349,6 +349,15 @@ JC.Models = (function () {
         wrench.rotation.x = 0.4;
         head.rotation.y = sin(t * 0.7) * 0.25;
         earFlop = sin(t * 1.3) * 0.05;
+      }
+      // OmniWrench swing: lift the wrench up high, then WHACK down in front
+      if (swing > 0) {
+        const up = U.smooth(Math.min(1, swing / 0.3));
+        const down = U.smooth(U.clamp((swing - 0.3) / 0.4, 0, 1));
+        arms[1].sh.rotation.set(U.lerp(U.lerp(arms[1].sh.rotation.x, 3.5, up), 0.9, down), 0, 0.25);
+        arms[1].el.rotation.x = U.lerp(0.6, 0.15, down);
+        wrench.rotation.x = U.lerp(-0.5, 0.4, down);
+        body.rotation.y = U.lerp(-0.35, 0.3, down) * (1 - U.smooth(U.clamp((swing - 0.75) / 0.25, 0, 1)));
       }
       for (const e of ears) e.e.rotation.set(0.25 + earFlop, 0, -e.side * (0.45 + earFlop * 0.3));
       tail.rotation.set(tailUp, 0, tailWag);

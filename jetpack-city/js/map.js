@@ -26,6 +26,11 @@ JC.SETTINGS = {
   boltScore: 5,          // points for every bolt
   movingTrainSpeed: 9,   // how fast moving trains drive at you
   powerUpEvery: 180,     // about how many meters between surprise power-ups
+  levelEvery: 350,       // every this many meters, harder level pieces can show up
+  gapScale: 1,           // bigger = more empty road between level pieces
+  hopForgive: 0.55,      // how high your feet must be to clear a barrier (smaller = easier)
+  swingTime: 0.35,       // how long one OmniWrench swing lasts (seconds)
+  smashBolts: 2,         // bolts you get for smashing a barrier
 };
 
 // ------------------------------------------------------------
@@ -275,11 +280,45 @@ JC.PIECES = [
     '...',
     '...',
   ] },
+  { level: 5, rows: [
+    'LLM',
+    '..M',
+    '..M',
+    '..M',
+    '...',
+    'BH.',
+    '...',
+    '...',
+    '...',
+    '...',
+    '...',
+  ] },
+  { level: 5, rows: [
+    'B.B',
+    '.H.',
+    '...',
+    'H.H',
+    '.B.',
+    '...',
+    'LBL',
+    '...',
+  ] },
 ];
+
+// ------------------------------------------------------------
+//  DIFFICULTY: the button on the title screen picks one of these.
+//  Each one changes the settings above when you start running.
+// ------------------------------------------------------------
+JC.DIFFICULTY = {
+  easy: { label: '😀 EASY', startSpeed: 11, maxSpeed: 24, speedUp: 0.10, levelEvery: 500, gapScale: 1.3, powerUpEvery: 140, stumbleTime: 4, movingTrainSpeed: 7, hopForgive: 0.35 },
+  normal: { label: '😐 NORMAL', startSpeed: 14, maxSpeed: 32, speedUp: 0.17, levelEvery: 350, gapScale: 1.0, powerUpEvery: 200, stumbleTime: 6, movingTrainSpeed: 10, hopForgive: 0.55 },
+  hard: { label: '😈 HARD', startSpeed: 17, maxSpeed: 36, speedUp: 0.26, levelEvery: 220, gapScale: 0.75, powerUpEvery: 320, stumbleTime: 8, movingTrainSpeed: 13, hopForgive: 0.8 },
+};
 
 // The very first run teaches you the moves, one piece at a time.
 JC.TUTORIAL = [
   { hint: 'SWIPE ⬅ or ➡ to change lanes', rows: ['oBo', 'o.o', 'o.o', '...'] },
+  { hint: 'TAP to smash barriers with the OmniWrench! 🔧', rows: ['.o.', 'BBB', '...', '...'] },
   { hint: 'SWIPE ⬆ to hop with Clank\'s Heli-Pack', rows: ['.o.', 'BBB', '...', '...'] },
   { hint: 'SWIPE ⬇ to slide under lasers', rows: ['.o.', 'LLL', '...', '...'] },
   { hint: 'Run up RAMPS to get on top of trains', rows: ['TtT', 'TtT', 'TtT', 'TRT', '.R.', '...'] },

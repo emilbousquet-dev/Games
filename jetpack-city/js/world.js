@@ -260,7 +260,7 @@ JC.World = (function () {
   }
 
   // ---------------- building the road ahead ----------------
-  function levelAt(d) { return U.clamp(1 + Math.floor(d / 400), 1, 5); }
+  function levelAt(d) { return U.clamp(1 + Math.floor(d / JC.SETTINGS.levelEvery), 1, 5); }
 
   function choosePiece(d) {
     const lvl = levelAt(d);
@@ -284,7 +284,8 @@ JC.World = (function () {
       genD += piece.rows.length * ROW;
       // an empty gap between pieces, sometimes with a surprise power-up
       // the faster you run, the bigger the gaps, so you always have time to move
-      const gap = Math.max([0, 12, 10, 9, 8, 7][levelAt(genD)], runSpeed * 0.6) + (tutorialLeft.length || piece.hint ? 18 : 0);
+      // (gapScale comes from the difficulty, but there is always at least half a second of empty road)
+      const gap = Math.max(Math.max([0, 12, 10, 9, 8, 7][levelAt(genD)], runSpeed * 0.6) * JC.SETTINGS.gapScale, runSpeed * 0.5) + (tutorialLeft.length || piece.hint ? 18 : 0);
       if (genD - lastPowerD > JC.SETTINGS.powerUpEvery && !piece.hint) {
         addPowerUp(randomPower(), U.randInt(-1, 1), genD + gap / 2, 1.2);
         lastPowerD = genD;

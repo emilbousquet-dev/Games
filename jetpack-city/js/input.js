@@ -1,7 +1,7 @@
 // ============================================================
 //  JETPACK CITY — CONTROLS
-//  On a phone: SWIPE with your thumb (or tap to hop).
-//  On a computer: arrow keys or W A S D (Space hops too).
+//  On a phone: SWIPE with your thumb, TAP to swing the OmniWrench.
+//  On a computer: arrow keys or W A S D, Space / E / X to swing.
 //  You can also drag the mouse like a swipe.
 // ============================================================
 window.JC = window.JC || {};
@@ -15,7 +15,8 @@ JC.Input = (function () {
   const KEYS = {
     ArrowLeft: 'left', KeyA: 'left', KeyQ: 'left',
     ArrowRight: 'right', KeyD: 'right',
-    ArrowUp: 'up', KeyW: 'up', KeyZ: 'up', Space: 'up',
+    ArrowUp: 'up', KeyW: 'up', KeyZ: 'up',
+    Space: 'swing', KeyE: 'swing', KeyX: 'swing',
     ArrowDown: 'down', KeyS: 'down',
     Escape: 'pause', KeyP: 'pause',
   };
@@ -45,8 +46,8 @@ JC.Input = (function () {
     });
     const end = (e) => {
       if (!touch || touch.id !== e.pointerId) return;
-      // a quick tap without moving = hop
-      if (!touch.done && e.type === 'pointerup' && performance.now() - touch.t < 250) push('up');
+      // a quick tap without moving = swing the OmniWrench
+      if (!touch.done && e.type === 'pointerup' && performance.now() - touch.t < 250) push('swing');
       touch = null;
     };
     area.addEventListener('pointerup', end);

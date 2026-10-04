@@ -63,6 +63,7 @@ JC.HUD = (function () {
     $('soundBtn').textContent = on ? '🔊' : '🔇';
     $('pSoundBtn').textContent = on ? '🔊 SOUND ON' : '🔇 SOUND OFF';
   }
+  function setDiff(label) { $('diffBtn').textContent = label; }
   function setGfx(fast) { $('gfxBtn').textContent = fast ? '⚡ FAST' : '✨ PRETTY'; }
 
   function showOver(r) {
@@ -71,6 +72,7 @@ JC.HUD = (function () {
     $('oDist').textContent = r.dist + ' m';
     $('oBolts').textContent = '🔩 ' + r.bolts;
     $('oBest').textContent = r.best;
+    $('oMode').textContent = r.mode;
     $('oRecord').hidden = !r.record;
     $('oPlanets').textContent = '🪐 ' + r.planets;
   }
@@ -106,5 +108,5 @@ JC.HUD = (function () {
   }
   function garageNote(text) { $('gNote').textContent = text; }
 
-  return { planet, flash, show, update, pop, hint, taunt, clearMessages, setTitleStats, setSound, setGfx, showOver, buildShelf, garageNote };
+  return { planet, flash, show, update, pop, hint, taunt, clearMessages, setTitleStats, setSound, setGfx, setDiff, showOver, buildShelf, garageNote };
 })();

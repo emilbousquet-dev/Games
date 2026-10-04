@@ -16,7 +16,8 @@ JC.Game = (function () {
 
   // everything we remember between games
   const save = {
-    best: JC.store.get('best', 0),
+    bests: JC.store.get('bests', { easy: 0, normal: JC.store.get('best', 0), hard: 0 }),   // best score for each difficulty
+    diff: JC.store.get('diff', 'normal'),
     bank: JC.store.get('bank', 0),
     owned: JC.store.get('owned2', { clank: ['classic'], ratchet: ['classic'] }),
     clank: JC.store.get('clank', 'classic'),
@@ -58,6 +59,7 @@ JC.Game = (function () {
     bindButtons();
     H.setSound(!A.isMuted());
     H.setGfx(JC.lowGfx);
+    applyDifficulty();
     toTitle();
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) { if (state === 'run') pause(); A.suspend(true); } else A.suspend(false);
@@ -94,6 +96,7 @@ JC.Game = (function () {
     on('resumeBtn', resume);
     on('pauseBtn', pause);
     on('soundBtn', toggleSound);
+    on('diffBtn', nextDifficulty);
     on('pSoundBtn', toggleSound);
     on('tabJet', () => { garageTab = 'clank'; refreshGarage(); });
     on('tabSuit', () => { garageTab = 'ratchet'; refreshGarage(); });
@@ -101,6 +104,19 @@ JC.Game = (function () {
       JC.store.set('gfxFast', !JC.lowGfx);
       location.reload();  // the new graphics setting needs a fresh start
     });
+  }
+  // EASY / NORMAL / HARD: copy that difficulty's numbers into the settings
+  function applyDifficulty() {
+    if (!JC.DIFFICULTY[save.diff]) save.diff = 'normal';
+    Object.assign(S, JC.DIFFICULTY[save.diff]);
+    H.setDiff(JC.DIFFICULTY[save.diff].label);
+    H.setTitleStats(save.bests[save.diff] || 0, save.bank);
+  }
+  function nextDifficulty() {
+    const modes = Object.keys(JC.DIFFICULTY);
+    save.diff = modes[(modes.indexOf(save.diff) + 1) % modes.length];
+    saveAll();
+    applyDifficulty();
   }
   function toggleSound() { A.setMuted(!A.isMuted()); H.setSound(!A.isMuted()); }
 
@@ -124,7 +140,7 @@ JC.Game = (function () {
     P.reset(); P.state.mode = 'idle';
     W.reset(false);
     C.reset('title');
-    H.setTitleStats(save.best, save.bank);
+    applyDifficulty();
     H.show('title');
     camTo(1.2);
   }
@@ -140,7 +156,7 @@ JC.Game = (function () {
   function refreshGarage() {
     document.getElementById('tabJet').classList.toggle('on', garageTab === 'clank');
     document.getElementById('tabSuit').classList.toggle('on', garageTab === 'ratchet');
-    H.setTitleStats(save.best, save.bank);
+    H.setTitleStats(save.bests[save.diff] || 0, save.bank);
     H.buildShelf(garageTab, JC.GARAGE[garageTab], save, pickItem);
   }
   function pickItem(it) {
@@ -159,6 +175,7 @@ JC.Game = (function () {
   }
 
   function startRun() {
+    applyDifficulty();
     A.init();
     A.startMusic();
     A.setIntensity(0.4);
@@ -204,6 +221,8 @@ JC.Game = (function () {
     slide: () => A.slide(),
     lane: () => A.lane(),
     land: () => A.land(),
+    swing: () => A.swish(),
+    smash: () => { A.clang(); buzz(25); shake = Math.max(shake, 0.15); H.pop('SMASH! +' + S.smashBolts + ' 🔩', '#ffd21a', 0.6); },
     pause: () => pause(),
     stumble: () => {
       A.stumble(); buzz(60); shake = Math.max(shake, 0.35);
@@ -247,14 +266,15 @@ JC.Game = (function () {
   function showOver() {
     const p = P.state;
     const score = Math.floor(p.d) + p.bolts * S.boltScore;
-    const record = score > save.best;
-    if (record) save.best = score;
+    const best = save.bests[save.diff] || 0;
+    const record = score > best;
+    if (record) save.bests[save.diff] = score;
     save.bank += p.bolts;
     if (p.d > 150) save.tutorialDone = true;
     saveAll();
     state = 'over';
     releaseWake();
-    H.showOver({ title: cam.overTitle || 'CAUGHT!', score, dist: Math.floor(p.d), bolts: p.bolts, best: save.best, record, planets });
+    H.showOver({ title: cam.overTitle || 'CAUGHT!', score, dist: Math.floor(p.d), bolts: p.bolts, best: save.bests[save.diff], record, planets, mode: JC.DIFFICULTY[save.diff].label });
     H.show('over');
     if (record && score > 0) A.record(); else A.gameOver();
   }
@@ -270,7 +290,7 @@ JC.Game = (function () {
     const p = P.state;
     const z = -p.d;
     if (state === 'title') {
-      outPos.set(1.0, 1.3, z - 6.2); outLook.set(0.3, 2.9, z + 6);
+      outPos.set(1.0, 1.15, z - 6.6); outLook.set(0.3, 0.1, z + 6);
     } else if (state === 'garage') {
       outPos.set(0.9, 1.45, z - 3.1); outLook.set(0, 1.0, z);
     } else if (state === 'caught' || state === 'over') {

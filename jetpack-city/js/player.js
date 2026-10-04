@@ -14,7 +14,7 @@ JC.Player = (function () {
     lane: 0, laneFrom: 0, x: 0, y: 0, vy: 0, d: 0, speed: 0, slow: 1,
     onGround: true, slideT: 0, slideAfterLand: false, gravity: 30,
     jetT: 0, magnetT: 0, shieldT: 0, invulT: 0, wobbleT: 0,
-    phase: 0, bolts: 0, alive: true, mode: 'idle',
+    phase: 0, bolts: 0, alive: true, mode: 'idle', swingT: 0, swingCd: 0,
   };
   let hero, bubble, magnetRing, ev = {};
 
@@ -36,7 +36,7 @@ JC.Player = (function () {
     Object.assign(p, {
       lane: 0, laneFrom: 0, x: 0, y: 0, vy: 0, d: 0, speed: S.startSpeed, slow: 1,
       onGround: true, slideT: 0, slideAfterLand: false, jetT: 0, magnetT: 0, shieldT: 0, invulT: 0, wobbleT: 0,
-      phase: 0, bolts: 0, alive: true, mode: 'run',
+      phase: 0, bolts: 0, alive: true, mode: 'run', swingT: 0, swingCd: 0,
     });
     rampX = null;
     hero.root.visible = true;
@@ -52,7 +52,8 @@ JC.Player = (function () {
       if (Math.abs(x - o.x) > 1.05) continue;
       if (z > o.z0 || z < o.z0 - o.len) continue;
       const h = o.type === 'ramp' ? o.top * (o.z0 - z) / o.len : o.top;
-      const reach = o.type === 'train' && rampX !== null && Math.abs(rampX - o.x) < 0.1 ? 1.6 : 0.5;
+      // ramps are easy to step onto even when you're super fast; train roofs only from a ramp (or a hop)
+      const reach = o.type === 'ramp' ? 1.6 : rampX !== null && Math.abs(rampX - o.x) < 0.1 ? 1.6 : 0.5;
       if (feet >= h - reach && h > g) { g = h; fromRamp = o.type === 'ramp' ? o.x : null; }
     }
     if (remember) rampX = fromRamp;
@@ -73,6 +74,11 @@ JC.Player = (function () {
         p.onGround = false; p.slideT = 0;
         ev.hop && ev.hop();
       }
+    } else if (m === 'swing') {
+      // swing the OmniWrench!
+      if (p.swingCd > 0 || p.jetT > 0) return;
+      p.swingT = S.swingTime; p.swingCd = S.swingTime + 0.08;
+      if (!smashAhead(-p.d)) ev.swing && ev.swing();
     } else if (m === 'down') {
       if (p.jetT > 0) return;
       if (!p.onGround) { p.vy = Math.min(p.vy, -22); p.slideAfterLand = true; }
@@ -103,6 +109,22 @@ JC.Player = (function () {
     o.mesh.visible = false;
     W.burst(o.x, big ? 1.5 : 0.8, o.z0, big ? 0xffa040 : 0xffe060, big ? 26 : 12, big ? 8 : 5, big ? 1.2 : 0.7);
   }
+  // the OmniWrench smashes small barriers right in front of you
+  function smashAhead(z) {
+    let hit = false;
+    for (const o of W.obstacles) {
+      if (o.hit || o.type !== 'barrier' || Math.abs(p.x - o.x) > 1.2) continue;
+      const ahead = z - (o.z0 - o.len / 2);
+      if (ahead > -0.6 && ahead < 3.2) {
+        smash(o);
+        W.burst(o.x, 0.9, o.z0, 0xc8e0ff, 10, 6, 0.5);
+        p.bolts += S.smashBolts;
+        ev.smash && ev.smash(p.bolts);
+        hit = true;
+      }
+    }
+    return hit;
+  }
   function breakShield() {
     p.shieldT = 0; p.invulT = 1.3;
     W.burst(p.x, p.y + 1, -p.d, 0x3ac8ff, 22, 6, 0.9);
@@ -117,7 +139,8 @@ JC.Player = (function () {
       if (o.type === 'barrier' || o.type === 'laser') {
         const zc = o.z0 - o.len / 2;
         if (side < 1.0 && prevZ >= zc && z < zc) {
-          if (o.type === 'barrier' && p.y < 0.55) stumble(o, 'barrier');   // a little bit forgiving
+          if (o.type === 'barrier' && p.swingT > 0) smashAhead(z + 1);       // the wrench gets it first!
+          else if (o.type === 'barrier' && p.y < S.hopForgive) stumble(o, 'barrier');
           if (o.type === 'laser' && head > 1.0 && p.y < 2.7) stumble(o, 'laser');
         }
       } else if (o.type === 'hole') {
@@ -180,6 +203,8 @@ JC.Player = (function () {
       } else p.y = g;
     }
     if (p.slideT > 0) p.slideT -= dt;
+    if (p.swingCd > 0) p.swingCd -= dt;
+    if (p.swingT > 0) { p.swingT -= dt; smashAhead(z); }
     if (p.invulT > 0) p.invulT -= dt;
     if (p.wobbleT > 0) p.wobbleT -= dt;
     if (p.magnetT > 0) p.magnetT -= dt;
@@ -248,7 +273,7 @@ JC.Player = (function () {
     hero.root.position.set(p.x, p.y, z);
     const lean = (p.lane * W.LANE - p.x) * -0.12;
     const flame = p.mode === 'jet' ? 2.3 : p.mode === 'air' ? (p.vy > 0 ? 1.7 : 1.0) : p.mode === 'slide' ? 0.25 : 0.45;
-    hero.pose(p.mode, p.phase, t, flame);
+    hero.pose(p.mode, p.phase, t, flame, p.swingT > 0 ? 1 - p.swingT / S.swingTime : 0);
     hero.root.rotation.z = lean + (p.wobbleT > 0 ? Math.sin(p.wobbleT * 40) * 0.25 : 0);
     hero.root.rotation.y = 0;
     hero.root.visible = !(p.invulT > 0 && p.shieldT <= 0 && Math.floor(t * 16) % 2 === 0);
