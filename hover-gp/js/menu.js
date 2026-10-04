@@ -108,7 +108,7 @@ HG.Menu = (function () {
     // camera
     if (spec.type === 'podium') { show.cam.position.set(Math.sin(t * 0.2) * 3, 3.2, 8.5); show.cam.lookAt(0, 1.9, 0); }
     else if (spec.type === 'lineup') { show.cam.position.set(Math.sin(t * 0.1) * 11, 4.2, Math.cos(t * 0.1) * 11); show.cam.lookAt(0, 0.8, 0); }
-    else if (spec.type === 'char') { show.cam.position.set(1.6, 1.4, 4.2); show.cam.lookAt(1.6 - 2.2, 0.85, 0); }
+    else if (spec.type === 'char') { show.cam.position.set(-0.9, 1.25, 3.9); show.cam.lookAt(-1.75, 0.95, 0); }
     else { show.cam.position.set(2.4, 2.2, 6.2); show.cam.lookAt(-1.1, 0.7, 0); }
     if (spec.type !== 'lineup' && spec.type !== 'podium') show.turn.rotation.y = spec.type === 'char' ? 0.4 + Math.sin(t * 0.5) * 0.4 : t * 0.45;
     else show.turn.rotation.y = 0;
@@ -268,7 +268,7 @@ HG.Menu = (function () {
     if (m.up) move(0, -1); if (m.down) move(0, 1); if (m.left) move(-1, 0); if (m.right) move(1, 0);
     if (m.ok && focusList[focusIdx]) focusList[focusIdx].click();
     if (m.back) back();
-    if (screen.tick) screen.tick(dt);
+    if (screen && screen.tick) screen.tick(dt);
   }
 
   // stat bars
@@ -317,7 +317,7 @@ HG.Menu = (function () {
   // ---------- a new game setup ----------
   function startFlow(mode) {
     flow = { mode, players: 1, cc: 150, mirror: false, difficulty: 1.4, cpus: 11, items: true, laps: 3, picks: [], online: false };
-    if (mode === 'tt') { flow.players = 1; return pickChar(0); }
+    if (mode === 'tt' || mode === 'online') { flow.players = 1; return pickChar(0); }
     open('players', (box) => {
       title(box, 'HOW MANY PLAYERS?');
       const g = el('div', 'grid2 narrow', box);
@@ -429,7 +429,7 @@ HG.Menu = (function () {
       if (locked.length) el('div', 'hint', panel, '🔒 ' + locked.length + ' parts still locked. Collect coins in races to unlock them! (' + HG.Save.data.totalCoins + ' coins)');
       btn(panel, 'READY! ▶', () => {
         HG.Save.data.picks[p] = pick; HG.Save.save();
-        if (p + 1 < flow.players) pickChar(p + 1); else pickTrack();
+        if (p + 1 < flow.players) pickChar(p + 1); else if (flow.mode === 'online') HG.Net.lobbyMenu(); else pickTrack();
       }, 'big');
       refresh();
     });
@@ -578,6 +578,15 @@ HG.Menu = (function () {
       });
       return;
     }
+    if (flow.mode === 'online') {
+      open('results', (box) => {
+        title(box, 'ONLINE RESULTS', race.def.name);
+        resultsTable(box, order, (k) => (k.finished ? U.time(k.finishTime) : '--'), null);
+        const r = el('div', 'row', box);
+        btn(r, HG.Net.isHost ? '🏁 BACK TO THE ROOM' : '🏠 BACK TO THE ROOM', () => { HG.Game.endRace(); HG.Net.backToLobby(); }, 'big first');
+      });
+      return;
+    }
     if (flow.mode === 'gp') {
       const gp = flow.gp;
       order.forEach((k, i) => { gp.points[k.name] = (gp.points[k.name] || 0) + POINTS[i]; });
@@ -705,7 +714,8 @@ HG.Menu = (function () {
   }
 
   return {
-    init, update, render3D, pauseMenu, mainMenu, titleScreen, raceEnded, tick: ttTick,
+    init, update, render3D, pauseMenu, mainMenu, titleScreen, raceEnded, tick: ttTick, startFlow,
+    ui: { el, btn, title, option },
     get flow() { return flow; }, set flow(f) { flow = f; }, portraits, trackPic, setShow, go, open, back,
     startQuick(cfg) { flow = { mode: cfg.mode || 'vs', players: 1, cc: cfg.cc || 150, picks: [], laps: 3, items: true, difficulty: 1.4, cpus: 11 }; go(cfg); },
   };

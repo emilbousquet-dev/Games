@@ -88,8 +88,8 @@ HG.IntroCam = {
     const s = -260 + U.smooth(k) * 250;
     const fr = track.frame(s, HG.Track.makeFrame());
     const ahead = track.frame(s + 40, HG.Track.makeFrame());
-    const side = Math.sin(k * Math.PI) * 26;
-    cam.position.copy(fr.p).addScaledVector(fr.n, 18 - k * 12).addScaledVector(fr.r, side);
+    const side = Math.sin(k * Math.PI) * 5;
+    cam.position.copy(fr.p).addScaledVector(fr.n, 16 - k * 11).addScaledVector(fr.r, side);
     cam.up.set(0, 1, 0);
     cam.lookAt(ahead.p);
   },

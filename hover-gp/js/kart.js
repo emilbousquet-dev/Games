@@ -17,6 +17,7 @@ HG.Kart = (function () {
   class Kart {
     constructor(o) {
       this.id = o.id !== undefined ? o.id : nextId++;
+      this.netId = o.netId;
       this.name = o.name || 'RACER';
       this.charId = o.charId || 'sigma';
       this.parts = o.parts || { body: 'kart', engine: 'twin', fins: 'standard' };
@@ -76,6 +77,7 @@ HG.Kart = (function () {
 
     // something hit us! kind: 'spin' (slime), 'tumble' (rocket/explosion), 'squash', 'bump'
     hit(kind, by) {
+      if (this.ctrl === 'remote') return false;   // their own computer decides
       if (this.sigmaT > 0 || this.missileT > 0 || this.invT > 0 || this.falling > 0) return false;
       if (this.ghostT > 0 && kind !== 'fbi') return false;
       if (this.shieldT > 0 && kind !== 'fbi') { this.shieldT = 0; this.invT = 0.6; this.events.push({ type: 'shieldpop' }); return false; }

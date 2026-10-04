@@ -301,6 +301,7 @@ HG.Items = (function () {
   }
 
   function useInstant(k, id) {
+    if (HG.Net && race.cfg.online && k.ctrl !== 'remote' && !HG.Items.fromNet) HG.Net.itemEvent(k, 'use', id);
     k.events.push({ type: 'use', id });
     if (id === 'turbo') k.boost(1.15, 'turbo');
     else if (id === 'goldturbo') { k.goldT = 7.5; k.boost(0.9, 'gold'); }
@@ -335,6 +336,7 @@ HG.Items = (function () {
   //  THROWN THINGS (they live in track space, like the racers)
   // ------------------------------------------------------------
   function throwItem(k, id, forward) {
+    if (HG.Net && race.cfg.online && k.ctrl !== 'remote' && !HG.Items.fromNet) HG.Net.itemEvent(k, 'throw', id, forward);
     k.anim.throwT = 0.4; k.anim.throwDir = forward ? 1 : -1;
     k.events.push({ type: 'throw', id });
     const t = { type: id, s: k.s, dist: k.dist, d: k.d, h: 0.6, vh: 0, yaw: forward ? k.yaw : U.wrapAngle(k.yaw + Math.PI), spd: 0, age: 0, owner: k, mesh: null, bounces: 0, target: null, armed: 0 };
@@ -355,7 +357,6 @@ HG.Items = (function () {
     things.push(t);
     t.mesh = model(id === 'rocket' ? 'rocket' : id);
     if (group) group.add(t.mesh);
-    if (HG.Net && race.cfg.online) HG.Net.thingSpawned(t);
     // too many bananas on the track? remove the oldest
     const lying = things.filter((x) => x.type === 'banana');
     if (lying.length > 24) lying[0].dead = true;
@@ -428,7 +429,7 @@ HG.Items = (function () {
       if (t.type === 'mine' && t.armed < 0.6) continue;
       if (!near(k, t.s, t.d, t.h + 0.2, rad)) continue;
       if (k.ghostT > 0) continue;
-      if (k.ctrl === 'remote' && !r.cfg.online) continue;
+      if (k.ctrl === 'remote') { if (r.cfg.online && !k.isGhost) { if (t.type !== 'mine') { t.dead = true; return; } } else continue; }
       // something dragged behind you blocks it
       if (blocks(k, t)) { t.dead = true; return; }
       if (t.type === 'mine') { boom(t, 6.5); t.dead = true; return; }
@@ -601,12 +602,12 @@ HG.Items = (function () {
           extra.balloons = [];
           for (let i = 0; i < k.balloons; i++) {
             const b = new THREE.Group();
-            const ball = new THREE.Mesh(M.sphere(0.55, 16, 12), new THREE.MeshStandardMaterial({ color: k.color, roughness: 0.25, emissive: k.color, emissiveIntensity: 0.15 }));
-            ball.scale.set(1, 1.2, 1); ball.position.y = 1.4; b.add(ball);
-            b.add(new THREE.Mesh(M.cyl(0.01, 0.01, 1.4, 4), M.mat('#ffffff')));
-            b.children[1].position.y = 0.7;
-            b.position.set((i - (k.balloons - 1) / 2) * 0.7, 1.4, -1.0);
-            b.rotation.z = (i - (k.balloons - 1) / 2) * 0.3;
+            const ball = new THREE.Mesh(M.sphere(0.42, 16, 12), new THREE.MeshStandardMaterial({ color: ['#ff3b3b', '#3bb0ff', '#ffd21a'][i % 3], roughness: 0.25, emissiveIntensity: 0.15 }));
+            ball.scale.set(1, 1.2, 1); ball.position.y = 1.9; b.add(ball);
+            b.add(new THREE.Mesh(M.cyl(0.01, 0.01, 1.9, 4), M.mat('#ffffff')));
+            b.children[1].position.y = 0.95;
+            b.position.set(0, 1.2, -1.1);
+            b.rotation.z = (i - (k.balloons - 1) / 2) * 0.45;
             extra.g.add(b); extra.balloons.push(b);
           }
         }

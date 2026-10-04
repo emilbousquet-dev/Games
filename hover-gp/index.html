@@ -178,6 +178,9 @@
   .itemlist { display: flex; flex-wrap: wrap; gap: 0.8vh 1.2vw; }
   .itemlist span { display: flex; align-items: center; gap: 0.4em; }
   .itemlist i { font-style: normal; font-size: 3vh; font-family: 'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif; }
+  .codein { font-family: var(--font); font-size: 4vh; width: 5em; text-align: center; letter-spacing: 0.3em; border-radius: 14px; border: 3px solid #fff; background: #120f22; color: #ffcc1a; padding: 0.2em; text-transform: uppercase; }
+  .netstatus { font-size: 2.4vh; color: #7cff6a; text-align: center; min-height: 1.4em; }
+  .rrow.empty { opacity: 0.4; }
   @media (max-width: 900px) { .grid2, .grid4, .grid4.tracks { grid-template-columns: repeat(2, 1fr); } .grid5 { grid-template-columns: repeat(3, 1fr); } .charwrap { flex-direction: column; } .chargrid { grid-template-columns: repeat(5, 1fr); } }
 </style>
 </head>
@@ -214,6 +217,8 @@
 <script src="js/audio.js"></script>
 <script src="js/hud.js"></script>
 <script src="js/game.js"></script>
+<script src="../lib/peerjs.min.js"></script>
+<script src="js/net.js"></script>
 <script src="js/save.js"></script>
 <script src="js/menu.js"></script>
 <script>
