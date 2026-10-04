@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dragon Life</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --ink: #fffaf0;
+    --dim: #d8ccb4;
+    --panel: rgba(38, 28, 22, 0.88);
+    --panel2: rgba(255, 248, 230, 0.96);
+    --brown: #5a3a22;
+    --gold: #ffd23a;
+    --green: #4ad06a;
+    --bg: #0e2a3a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); overflow: hidden; user-select: none;
+               font-family: "Trebuchet MS", "Segoe UI", "Helvetica Neue", Arial, sans-serif; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  button { font-family: inherit; cursor: pointer; }
+  .hide { display: none !important; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+  #topLeft { position: absolute; left: 14px; top: 14px; width: 220px; }
+  .row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; font-size: 14px; }
+  .bar { flex: 1; height: 12px; background: rgba(0,0,0,0.45); border: 2px solid rgba(255,255,255,0.7); border-radius: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 50%; border-radius: 6px; transition: width 0.3s; }
+  .bar.low { animation: blink 0.8s infinite; }
+  @keyframes blink { 50% { border-color: #ff4a4a; } }
+  #foodBar { background: linear-gradient(90deg, #e8902a, #ffc04a); }
+  #dHunger { background: linear-gradient(90deg, #c8502a, #ff8a4a); }
+  #dHappy { background: linear-gradient(90deg, #e03a7a, #ff7ab0); }
+  #dGrow { background: linear-gradient(90deg, #d8a020, #ffe060); }
+  #dStam { background: linear-gradient(90deg, #3a8ad8, #8ad0ff); }
+  #dragonBox { margin-top: 10px; background: rgba(20, 40, 30, 0.55); border: 2px solid rgba(120, 230, 150, 0.6); border-radius: 12px; padding: 8px 10px 4px; }
+  #dragonBox .nm { font-weight: bold; font-size: 16px; color: #a8ffbf; margin-bottom: 5px; display: flex; justify-content: space-between; }
+  #dragonBox .nm small { color: var(--dim); font-weight: normal; font-size: 12px; }
+  #quest { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); max-width: min(560px, 60vw); text-align: center;
+           background: rgba(30, 22, 14, 0.6); border: 2px solid rgba(255, 210, 58, 0.55); border-radius: 12px; padding: 6px 14px 7px; }
+  #qTitle { font-weight: bold; font-size: 16px; color: var(--gold); }
+  #qHint { display: block; font-size: 13px; color: #f4ead6; margin-top: 2px; }
+  #qArrow { display: inline-flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 13px; font-weight: bold; color: var(--gold); }
+  #qArrow i { display: inline-block; font-style: normal; font-size: 18px; transition: transform 0.1s; }
+  #topRight { position: absolute; right: 14px; top: 14px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  #minimap { width: 170px; height: 170px; border-radius: 50%; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+  #clock, #where { font-size: 14px; font-weight: bold; background: rgba(0,0,0,0.35); padding: 2px 10px; border-radius: 10px; }
+  #prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 17px; font-weight: bold; opacity: 0; transition: opacity 0.15s;
+            background: rgba(0,0,0,0.5); padding: 6px 14px; border-radius: 10px; white-space: nowrap; }
+  #prompt.show { opacity: 1; }
+  #prompt kbd { display: inline-block; background: #fff; color: #222; border-radius: 5px; padding: 0 7px; margin-right: 6px; font-family: inherit; box-shadow: 0 2px 0 #888; text-shadow: none; }
+  #dot { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%; background: rgba(255,255,255,0.7); box-shadow: 0 0 3px #000; }
+  #toast { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%); max-width: min(680px, 90vw); text-align: center; font-size: 17px; font-weight: bold;
+           background: rgba(30, 20, 10, 0.75); border-radius: 12px; padding: 8px 16px; opacity: 0; transition: opacity 0.3s; }
+  #toast.show { opacity: 1; }
+  #big { position: absolute; left: 0; right: 0; top: 24%; text-align: center; opacity: 0; transition: opacity 0.5s, transform 0.5s; transform: scale(0.9); padding: 0 20px; }
+  #big.show { opacity: 1; transform: scale(1); }
+  #big h1 { margin: 0; font-size: clamp(28px, 4.5vw, 52px); color: var(--gold); text-shadow: 0 3px 0 #7a4a10, 0 4px 14px rgba(0,0,0,0.8); letter-spacing: 1px; }
+  #big p { margin: 6px 0 0; font-size: clamp(16px, 2vw, 22px); font-weight: bold; }
+  #pickups { position: absolute; right: 16px; top: 240px; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .pick { background: rgba(0,0,0,0.5); padding: 4px 12px; border-radius: 10px; font-size: 15px; font-weight: bold; animation: pin 0.25s; transition: opacity 0.5s, transform 0.5s; }
+  .pick.out { opacity: 0; transform: translateX(30px); }
+  @keyframes pin { from { transform: translateX(40px); opacity: 0; } }
+  #bottom { position: absolute; left: 0; right: 0; bottom: 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  #toolLabel { text-align: center; font-size: 14px; }
+  #toolName { font-weight: bold; font-size: 15px; }
+  #toolTip { font-size: 12px; color: var(--dim); margin-left: 6px; }
+  #hotbar { display: flex; gap: 6px; pointer-events: auto; }
+  .slot, .bslot { position: relative; width: 58px; height: 58px; border-radius: 12px; background: rgba(30, 22, 14, 0.65); border: 3px solid rgba(255,255,255,0.35);
+                  display: flex; align-items: center; justify-content: center; font-size: 28px; cursor: pointer; }
+  .slot.on, .bslot.on { border-color: var(--gold); background: rgba(90, 60, 20, 0.8); transform: translateY(-4px); box-shadow: 0 0 12px rgba(255, 210, 58, 0.5); }
+  .slot .k, .bslot .k { position: absolute; left: 4px; top: 1px; font-size: 11px; color: var(--dim); }
+  .slot .n { position: absolute; right: 4px; bottom: 1px; font-size: 13px; font-weight: bold; }
+  .bslot.no { opacity: 0.45; }
+  #res { display: flex; gap: 12px; font-size: 15px; font-weight: bold; background: rgba(0,0,0,0.35); padding: 3px 14px; border-radius: 10px; }
+  #buildbar { display: none; gap: 4px; pointer-events: auto; flex-wrap: wrap; justify-content: center; max-width: 96vw; }
+  #buildbar.show { display: flex; }
+  #buildbar .bslot { width: 48px; height: 48px; font-size: 24px; }
+  #buildinfo { display: none; position: absolute; left: 14px; bottom: 120px; width: 300px; background: rgba(30, 22, 14, 0.8); border: 2px solid rgba(255, 210, 58, 0.6); border-radius: 12px; padding: 10px 12px; font-size: 14px; }
+  #buildinfo.show { display: block; }
+  #buildinfo .cost { color: var(--gold); margin-left: 6px; }
+  #buildinfo .why { color: #ff8a7a; font-weight: bold; margin-top: 6px; }
+  #buildinfo .okk { color: #8aff9a; font-weight: bold; margin-top: 6px; }
+  #buildinfo .keys { display: block; margin-top: 6px; color: var(--dim); font-size: 12px; }
+  #keysHelp { position: absolute; left: 14px; bottom: 14px; font-size: 12px; color: var(--dim); line-height: 1.5; }
+  #keysHelp b { color: var(--ink); }
+  #fishgame { position: absolute; left: 50%; top: 66%; transform: translateX(-50%); width: min(420px, 80vw); display: none; text-align: center; }
+  #fishgame.show { display: block; }
+  #fishgame .track { position: relative; height: 30px; background: rgba(0,0,0,0.6); border: 3px solid #fff; border-radius: 15px; overflow: hidden; }
+  #fishgame .zone { position: absolute; top: 0; bottom: 0; background: linear-gradient(#5aff7a, #2ab04a); }
+  #fishgame .needle { position: absolute; top: -2px; bottom: -2px; width: 6px; margin-left: -3px; background: #fff; box-shadow: 0 0 6px #000; border-radius: 3px; }
+  #fishgame p { margin: 6px 0 0; font-weight: bold; font-size: 17px; }
+  #fishgame .fishIcon { font-size: 32px; }
+
+  /* ---------- dialog ---------- */
+  #dialog { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); width: min(720px, 92vw); background: var(--panel2); color: #3a2a1a;
+            border: 4px solid var(--brown); border-radius: 16px; padding: 14px 20px 10px; font-size: 19px; line-height: 1.4; display: none; cursor: pointer; z-index: 20;
+            box-shadow: 0 6px 30px rgba(0,0,0,0.5); }
+  #dialog.show { display: block; animation: pop 0.2s; }
+  #dialog .who { display: block; color: #a0501a; font-size: 17px; margin-bottom: 4px; }
+  #dialog .text { margin: 0; }
+  #dialog small { display: block; text-align: right; color: #8a7a6a; font-size: 13px; margin-top: 6px; }
+  @keyframes pop { from { transform: translateX(-50%) scale(0.9); opacity: 0; } }
+
+  /* ---------- panels (menus) ---------- */
+  #panel { position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; z-index: 30; }
+  #panel.show { display: flex; }
+  #panel .box { position: relative; width: min(640px, 94vw); max-height: 88vh; overflow: auto; background: var(--panel2); color: #3a2a1a;
+                border: 4px solid var(--brown); border-radius: 18px; padding: 16px 22px 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  #panel h2 { margin: 0 0 8px; font-size: 26px; color: #7a3a10; }
+  #panel h3 { margin: 16px 0 4px; color: #2a7a4a; }
+  #panel .x { position: absolute; right: 12px; top: 10px; border: none; background: #e8d8b8; color: #5a3a22; font-size: 20px; width: 36px; height: 36px; border-radius: 50%; }
+  #panel.noclose .x { display: none; }
+  #panel .sub { color: #6a5a4a; margin: 6px 0; }
+  #panel button { border: 2px solid #8a6a4a; background: #fff6e0; color: #3a2a1a; border-radius: 10px; padding: 6px 12px; font-size: 15px; font-weight: bold; }
+  #panel button:hover:not([disabled]) { background: #ffe8a8; }
+  #panel button[disabled] { opacity: 0.45; cursor: default; }
+  #panel button.on { background: #ffd23a; border-color: #a07010; }
+  #panel .recipes { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+  #panel .recipe { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px; text-align: center; }
+  #panel .recipe.no { opacity: 0.5; }
+  #panel .recipe small { font-weight: normal; color: #6a5a4a; }
+  #panel .recipe em { font-style: normal; color: #a0501a; }
+  .big { font-size: 30px; }
+  #panel .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; }
+  #panel .item { display: flex; align-items: center; gap: 6px; background: #fff; border-radius: 10px; padding: 6px 8px; border: 2px solid #e8d8b8; flex-wrap: wrap; }
+  #panel .item .cnt { margin-left: auto; font-weight: bold; color: #a0501a; }
+  #panel .item button { padding: 2px 8px; font-size: 13px; }
+  #panel .coinsBig { font-size: 20px; font-weight: bold; color: #a07010; margin-bottom: 8px; }
+  #panel .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  #panel .swatch { width: 46px; height: 46px; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 0 0 2px #8a6a4a; padding: 0; }
+  #panel .swatch.on { box-shadow: 0 0 0 4px #ffd23a; transform: scale(1.1); }
+  #panel input[type=text], #panel input:not([type]) { font: inherit; font-size: 22px; padding: 8px 12px; border-radius: 10px; border: 3px solid #8a6a4a; width: 100%; background: #fff; color: #3a2a1a; }
+  #panel .names { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  #panel .go { display: block; width: 100%; margin-top: 14px; font-size: 20px; padding: 12px; background: #4ad06a; border-color: #2a8a4a; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.4); }
+  #panel .go:hover { background: #5ae07a !important; }
+  #panel .tabs { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  #panel .tabs .coins { margin-left: auto; font-weight: bold; font-size: 18px; color: #a07010; }
+  #panel .shop .row { background: #fff; border-radius: 10px; padding: 6px 10px; border: 2px solid #e8d8b8; color: #3a2a1a; gap: 10px; }
+  #panel .shop .row b { flex: 1; }
+  #panel .journal .q { padding: 6px 10px; border-radius: 10px; margin-bottom: 4px; }
+  #panel .journal .done { color: #5a8a5a; }
+  #panel .journal .now { background: #fff3c0; border: 2px solid #e8c040; }
+  #panel .journal .later { color: #9a8a7a; }
+  #panel table.keys { border-collapse: collapse; width: 100%; }
+  #panel table.keys td { padding: 5px 8px; border-bottom: 1px solid #e8d8b8; }
+  #panel table.keys td:first-child { font-weight: bold; white-space: nowrap; color: #a0501a; }
+  #panel .opt { display: block; margin-top: 10px; }
+  #panel .slider { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+  #panel .slider span { width: 120px; font-weight: bold; }
+  #panel .slider input { flex: 1; }
+
+  /* ---------- map ---------- */
+  #mapScreen { position: fixed; inset: 0; background: rgba(10, 30, 40, 0.85); display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 25; }
+  #mapScreen.show { display: flex; }
+  #bigmap { border: 5px solid #e8d8b8; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+  #mapScreen p { margin: 8px; font-weight: bold; }
+
+  /* ---------- title and pause ---------- */
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 40; text-align: center; padding: 20px; }
+  .screen.show { display: flex; }
+  #title { background: radial-gradient(ellipse at center, rgba(0,0,0,0) 30%, rgba(0,0,0,0.55) 100%); }
+  #title h1 { margin: 0; font-size: clamp(48px, 9vw, 110px); color: var(--gold); letter-spacing: 3px;
+              text-shadow: 0 4px 0 #8a4a10, 0 8px 0 #5a2a08, 0 10px 30px rgba(0,0,0,0.7); }
+  #title .tag { font-size: clamp(16px, 2.2vw, 24px); font-weight: bold; margin: 10px 0 26px; text-shadow: 0 2px 6px rgba(0,0,0,0.9); }
+  .menu { display: flex; flex-direction: column; gap: 10px; width: min(340px, 90vw); }
+  .menu button { font-size: 22px; font-weight: bold; padding: 13px; border-radius: 14px; border: 3px solid #fff; background: rgba(40, 120, 60, 0.85); color: #fff;
+                 text-shadow: 0 2px 2px rgba(0,0,0,0.4); box-shadow: 0 4px 0 rgba(0,0,0,0.35); transition: transform 0.1s; }
+  .menu button:hover { transform: scale(1.04); background: rgba(60, 160, 80, 0.95); }
+  .menu button.second { background: rgba(60, 40, 20, 0.8); }
+  .menu button.second:hover { background: rgba(100, 70, 30, 0.9); }
+  #title .small { margin-top: 20px; font-size: 13px; color: var(--dim); text-shadow: 0 1px 3px #000; }
+  #pause { background: rgba(0,0,0,0.55); }
+  #pause h2 { font-size: 46px; margin: 0 0 20px; color: var(--gold); text-shadow: 0 3px 0 #7a4a10; }
+  #fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 1.2s; z-index: 50; }
+  #fade.on { opacity: 1; }
+  #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; background: var(--bg); z-index: 60; }
+  #clickToLook { position: absolute; left: 50%; top: 40%; transform: translateX(-50%); font-size: 18px; font-weight: bold; background: rgba(0,0,0,0.55); padding: 8px 18px; border-radius: 12px; display: none; }
+
+  @media (max-width: 700px) {
+    #topLeft { width: 160px; }
+    #minimap { width: 110px; height: 110px; }
+    #keysHelp { display: none; }
+    .slot { width: 46px; height: 46px; font-size: 22px; }
+    #quest { max-width: 44vw; top: 8px; }
+    #qHint { display: none; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div id="topLeft">
+    <div class="row">😋 <div class="bar"><i id="foodBar"></i></div></div>
+    <div id="dragonBox">
+      <div class="nm"><span id="dName">Ember</span><small id="dStage">Baby</small></div>
+      <div class="row">🍖 <div class="bar"><i id="dHunger"></i></div></div>
+      <div class="row">💗 <div class="bar"><i id="dHappy"></i></div></div>
+      <div class="row" id="dGrowRow">⭐ <div class="bar"><i id="dGrow"></i></div></div>
+      <div class="row" id="dStamRow">💨 <div class="bar"><i id="dStam"></i></div></div>
+    </div>
+  </div>
+  <div id="quest"><span id="qTitle"></span><span id="qHint"></span><span id="qArrow"><i>⬆</i><b></b></span></div>
+  <div id="topRight">
+    <canvas id="minimap" width="170" height="170"></canvas>
+    <div id="clock"></div>
+    <div id="where"></div>
+  </div>
+  <div id="pickups"></div>
+  <div id="dot"></div>
+  <div id="prompt"></div>
+  <div id="clickToLook">🖱️ Click to look around with the mouse</div>
+  <div id="big"><h1></h1><p></p></div>
+  <div id="toast"></div>
+  <div id="fishgame"><span class="fishIcon">🐟</span><div class="track"><div class="zone"></div><div class="needle"></div></div><p>CLICK when the needle is in the GREEN!</p></div>
+  <div id="buildinfo"></div>
+  <div id="bottom">
+    <div id="toolLabel"><span id="toolName"></span><span id="toolTip"></span></div>
+    <div id="buildbar"></div>
+    <div id="hotbar"></div>
+    <div id="res"></div>
+  </div>
+  <div id="keysHelp"><b>E</b> use · <b>F</b> dragon · <b>B</b> build · <b>I</b> bag · <b>J</b> journal · <b>M</b> map · <b>H</b> help</div>
+</div>
+
+<div id="dialog"><b class="who"></b><p class="text"></p><small>▶ press E or click</small></div>
+<div id="panel"><div class="box"><button class="x">✕</button><h2></h2><div class="body"></div></div></div>
+<div id="mapScreen"><canvas id="bigmap"></canvas><p>🗺️ The Ember Isles · press M to close</p></div>
+
+<div id="title" class="screen">
+  <h1>DRAGON LIFE</h1>
+  <div class="tag">🐉 Find a dragon egg. Raise your dragon. Live your life on the Ember Isles.</div>
+  <div class="menu">
+    <button id="bContinue">▶ CONTINUE</button>
+    <button id="bNew">🥚 NEW GAME</button>
+    <button id="bSettings" class="second">⚙️ SETTINGS</button>
+    <button id="bHelp" class="second">❓ HOW TO PLAY</button>
+  </div>
+  <div class="small">Put the sound on! 🔊 · WASD to walk · mouse to look · E to use things</div>
+</div>
+<div id="pause" class="screen">
+  <h2>PAUSED</h2>
+  <div class="menu">
+    <button id="pResume">▶ PLAY</button>
+    <button id="pHelp" class="second">❓ HOW TO PLAY</button>
+    <button id="pSettings" class="second">⚙️ SETTINGS</button>
+    <button id="pQuit" class="second">💾 SAVE AND GO TO TITLE</button>
+  </div>
+</div>
+<div id="fade"></div>
+<div id="loading">🐉 Making the islands...</div>
+
+<script src="../lib/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/models.js"></script>
+<script src="js/world.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/items.js"></script>
+<script src="js/build.js"></script>
+<script src="js/player.js"></script>
+<script src="js/dragon.js"></script>
+<script src="js/story.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

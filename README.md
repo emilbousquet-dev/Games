@@ -1,6 +1,9 @@
 # LAB 13 👽🩸
 
-> 🆕 **NEW: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
+> 🆕 **NEW: [DRAGON LIFE](dragon-life/README.md)** 🐉🏝️: find a dragon egg, raise your own dragon, and live your life with it!
+> Fish, cook, build a house, and fly to 6 islands on your dragon's back. Open `dragon-life/index.html` to play.
+>
+> **Also: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
 > Run on walls across the rooftops, escape the FBI helicopter, shoot it down with rockets. Open `sigma-run/index.html` to play.
 >
 > **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!
