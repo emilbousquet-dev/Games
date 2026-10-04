@@ -77,11 +77,17 @@ DL.Game = (function () {
   // ------------------------------------------------------------
   function hookMenus() {
     $('bContinue').onclick = () => { DL.Audio.init(); startGame(DL.store.get('save', null)); };
+    const newGame = () => { DL.Audio.init(); DL.store.del('save'); startGame(null); };
     $('bNew').onclick = () => {
-      if (DL.store.get('save', null) && !confirm('Start a NEW game? Your old island and dragon will be gone!')) return;
-      DL.Audio.init();
-      DL.store.del('save');
-      startGame(null);
+      if (!DL.store.get('save', null)) { newGame(); return; }
+      // ask first (inside the game, because some pages don't allow pop-up boxes)
+      Hud().panel('🥚 Start a new game?', () => `
+        <p class="sub">Your old island, your house and your dragon will be gone forever!</p>
+        <div class="names"><button id="newYes">Yes, start over</button><button id="newNo" class="on">No, keep my dragon</button></div>`,
+      (el) => {
+        el.querySelector('#newYes').onclick = () => { Hud().closePanel(); newGame(); };
+        el.querySelector('#newNo').onclick = () => Hud().closePanel();
+      });
     };
     $('bSettings').onclick = () => settings();
     $('bHelp').onclick = () => Hud().openHelp();
