@@ -13,7 +13,7 @@ const Sound = (() => {
     if (!AC) return;
     try { ac = new AC(); } catch (e) { return; }
     out = ac.createGain(); out.gain.value = muted ? 0 : 0.5; out.connect(ac.destination);
-    musicOut = ac.createGain(); musicOut.gain.value = 0.13; musicOut.connect(out);
+    musicOut = ac.createGain(); musicOut.gain.value = 0.32; musicOut.connect(out);
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -121,8 +121,8 @@ const Sound = (() => {
       const len = 60 / tempo / 4;
       while (nextT < ac.currentTime + 0.3) {
         const d = Math.max(0, nextT - ac.currentTime), i = step % MEL.length;
-        if (MEL[i]) tone(midi(MEL[i]), len * 1.6, 'square', 0.07, null, d, musicOut);
-        if (BASS[i]) tone(midi(BASS[i]), len * 1.4, 'sawtooth', 0.22, null, d, musicOut);
+        if (MEL[i]) { tone(midi(MEL[i]), len * 1.6, 'square', 0.12, null, d, musicOut); tone(midi(MEL[i] + 12), len * 1.2, 'triangle', 0.1, null, d, musicOut); }
+        if (BASS[i]) { tone(midi(BASS[i]), len * 1.4, 'sawtooth', 0.22, null, d, musicOut); tone(midi(BASS[i] + 12), len * 1.2, 'square', 0.08, null, d, musicOut); }
         if (i % 8 === 0) { tone(150, 0.12, 'sine', 0.7, 45, d, musicOut); }
         if (i % 8 === 4) noise(0.12, 0.3, 'bandpass', 1800, d, 0.8, null, musicOut);
         if (i % 2 === 0) noise(0.03, 0.12, 'highpass', 7000, d, 1, null, musicOut);

@@ -87,7 +87,8 @@ function hintMet(o, hint) {
   return PIECES.some(cat => o[cat].id !== 'none' && o[cat].color === hint.key);
 }
 
-function judge(o, theme, hint) {
+function judge(o, theme, hint, model) {
+  model = model || (G && G.model);
   const TH = THEMES[theme];
   const matched = [];
   for (const cat of PIECES) {
@@ -108,8 +109,8 @@ function judge(o, theme, hint) {
   if (o.hat.id !== 'none') style += 1;
   if (o.face.id !== 'none') style += 1;
   if (o.extra.id !== 'none') style += 1;
-  if (G && G.model) {
-    const d = defaultOutfit(G.model);
+  if (MODELS[model]) {
+    const d = defaultOutfit(model);
     if (CATEGORIES.filter(C => JSON.stringify(d[C.key]) !== JSON.stringify(o[C.key])).length >= 3) style += 2;
   }
   style = clamp(style, 0, 10);
@@ -128,8 +129,9 @@ function judge(o, theme, hint) {
   return { theme: themeScore, style, bill, total, stars, matched, hintMet: met, greens, distinct };
 }
 
-function billSays(res) {
-  const th = THEMES[G.theme];
+function billSays(res, theme, hint) {
+  theme = theme || G.theme; hint = hint || G.hint;
+  const th = THEMES[theme];
   const first = {
     5: ['AAAAAH! THAT IS AMAZING!', 'BEST. OUTFIT. EVER!', 'AAAH! I am SO impressed!'],
     4: ['Wow, really cool!', 'Ooh, I like it a lot!', 'Very nice! Almost perfect!'],
@@ -143,7 +145,7 @@ function billSays(res) {
   else if (res.matched.length === 1) lines.push('Nice ' + res.matched[0].toLowerCase() + ', but I wanted MORE ' + th.name.toLowerCase() + '!');
   else lines.push('Where is the ' + th.name.toLowerCase() + ' stuff?!');
   if (res.hintMet) lines.push('And you remembered my wish!');
-  else lines.push('You forgot my wish: ' + G.hint.text + '...');
+  else lines.push('You forgot my wish: ' + hint.text + '...');
   if (res.greens > 0 && res.stars >= 3) lines.push('GREEN! My favorite color!');
   return lines;
 }
@@ -618,10 +620,13 @@ function drawDress() {
 
 // ---------------------------------------------------------------- RUNWAY
 const CARD_NAMES = [['THEME', 'theme'], ['STYLE', 'style'], ['BILL', 'bill']];
-function drawRunway() {
-  const R = G.rw, res = G.res;
+const WALK_SLOT = 10;   // seconds for each player on the online runway
+function drawRunway(S) {
+  const R = S.rw, res = S.res;
   const walkEnd = 3, stop = 790;
-  const mx = R.t < walkEnd ? 1420 - (1420 - stop) * Math.min(1, R.t / walkEnd) : stop;
+  let mx = R.t < walkEnd ? 1420 - (1420 - stop) * Math.min(1, R.t / walkEnd) : stop;
+  const leaving = S.online && R.t > WALK_SLOT - 1.3;   // online: walk away so the next player can come
+  if (leaving) mx = stop + (R.t - (WALK_SLOT - 1.3)) * 520;
   stageBackground([mx, 280]);
   // sign
   ctx.save(); ctx.translate(800, 92);
@@ -629,13 +634,19 @@ function drawRunway() {
   ctx.strokeStyle = '#ff4a8a'; ctx.lineWidth = 4; ctx.shadowColor = '#ff4a8a'; ctx.shadowBlur = 16; ctx.stroke(); ctx.shadowBlur = 0;
   text(ctx, "BILL'S FASHION SHOW", 0, 2, 38, '#ffd1ea', { fam: FONT_TITLE, weight: '400', lw: 6, stroke: '#8a1240' });
   ctx.restore();
-  const th = THEMES[G.theme];
+  const th = THEMES[S.theme];
   text(ctx, th.name + ' ' + th.emoji, 800, 160, 30, '#ffe66b', { fam: FONT_TITLE, weight: '400', lw: 6 });
+  if (S.name) { // online: who is walking now
+    ctx.fillStyle = 'rgba(26,10,42,0.8)'; rr(ctx, 960, 380, 290, 96, 20); ctx.fill();
+    text(ctx, S.me ? 'YOUR TURN!' : 'NOW WALKING:', 1105, 408, 20, '#ffd1ea', { stroke: false, weight: '700' });
+    text(ctx, S.name, 1105, 446, 34, S.me ? '#7dff9a' : '#fff', { fam: FONT_TITLE, weight: '400', lw: 6 });
+    text(ctx, S.order, 1105, 498, 18, '#c9b6e6', { lw: 4 });
+  }
 
   // the model walks in
-  const walking = R.t < walkEnd;
+  const walking = R.t < walkEnd || leaving;
   const pose = walking ? 'rest' : R.t < 6.6 ? 'hips' : res.stars >= 3 ? 'wave' : 'rest';
-  drawPerson(ctx, lookOf(G.model, G.outfit), mx, 650, 3.4, T, { walk: walking ? R.t * 9 : null, pose, mood: !walking && R.t > 6.6 && res.stars <= 1 ? 'meh' : '', zoom: view.px });
+  drawPerson(ctx, lookOf(S.model, S.outfit), mx, 650, 3.4, T, { walk: walking ? R.t * 9 : null, pose, mood: !walking && R.t > 6.6 && res.stars <= 1 ? 'meh' : '', zoom: view.px });
 
   // Bill at the judge's desk
   const reveal = Math.floor((R.t - 3.4) / 1) + 1;   // how many cards are showing
@@ -683,20 +694,22 @@ function drawRunway() {
     drawStarsRow(1105, 275, 5, res.stars, 23, R.t - 6.6);
     text(ctx, res.stars + (res.stars === 1 ? ' STAR' : ' STARS') + '!', 1105, 325, 30, '#ffe66b', { fam: FONT_TITLE, weight: '400', lw: 6 });
     bubble(40, 190, 520, 150, 250, 350);
-    text(ctx, G.lines[0], 300, 226, G.lines[0].length > 24 ? 26 : 32, '#ff4a8a', { fam: FONT_TITLE, weight: '400', stroke: false });
-    G.lines.slice(1, 3).forEach((l, i) => text(ctx, l, 300, 270 + i * 32, l.length > 40 ? 17 : 20, '#2a1840', { stroke: false }));
-    if (R.t > 7) button(G.round + 1 >= ROUNDS ? 'SEE RESULTS ▶' : 'NEXT ROUND ▶', 920, 600, 320, 76, nextRound, '#ff4a8a', 32);
+    text(ctx, S.lines[0], 300, 226, S.lines[0].length > 24 ? 26 : 32, '#ff4a8a', { fam: FONT_TITLE, weight: '400', stroke: false });
+    S.lines.slice(1, 3).forEach((l, i) => text(ctx, l, 300, 270 + i * 32, l.length > 40 ? 17 : 20, '#2a1840', { stroke: false }));
+    if (R.t > 7 && !S.online) button(S.round + 1 >= ROUNDS ? 'SEE RESULTS ▶' : 'NEXT ROUND ▶', 920, 600, 320, 76, nextRound, '#ff4a8a', 32);
   }
   drawFx();
 }
 
 function updateRunway(dt) {
-  const R = G.rw;
-  const before = R.t;
-  R.t += dt;
-  for (let i = 0; i < 3; i++) if (before < 3.4 + i && R.t >= 3.4 + i) Sound.sfx('card');
-  if (before < 6.6 && R.t >= 6.6) {
-    const s = G.res.stars;
+  const before = G.rw.t;
+  G.rw.t += dt;
+  runwaySounds(G.res, before, G.rw.t);
+}
+function runwaySounds(res, before, now) {
+  for (let i = 0; i < 3; i++) if (before < 3.4 + i && now >= 3.4 + i) Sound.sfx('card');
+  if (before < 6.6 && now >= 6.6) {
+    const s = res.stars;
     if (s >= 5) { Sound.sfx('scream'); Sound.sfx('cheer'); confetti(160); }
     else if (s === 4) { Sound.sfx('clap'); Sound.sfx('cheer'); confetti(70); }
     else if (s === 3) Sound.sfx('clap');
@@ -850,7 +863,7 @@ function hostRound(r) {
   hostSet({ phase: 'dress', round: r, theme, hint: h.type === 'color' ? { type: 'color', key: h.key } : { type: 'item', cat: h.cat, id: h.id } });
 }
 function hostResults() {
-  hostSet({ phase: 'results', round: Net.game.round, theme: Net.game.theme, dressSeq: Net.game.seq });
+  hostSet({ phase: 'results', round: Net.game.round, theme: Net.game.theme, hint: Net.game.hint, dressSeq: Net.game.seq });
 }
 function hostNext() {
   const r = Net.game.round + 1;
@@ -878,9 +891,19 @@ function updateOnline(dt) {
     const allDone = ps.length > 0 && ps.every(p => p.presence.done === Net.game.seq);
     if (allDone || Net.phaseT > ROUND_TIME + 30) hostResults();
   }
+  if (screen === 'oshow') {
+    const before = Net.showT;
+    Net.showT += dt;
+    if (Net.showT < 2) Net.showList = buildShow(Net.showList);   // wait a moment for everyone's outfit to arrive
+    const list = Net.showList;
+    const i0 = Math.floor(before / WALK_SLOT), i1 = Math.floor(Net.showT / WALK_SLOT);
+    for (const i of new Set([i0, i1])) if (list[i]) runwaySounds(list[i].res, before - i * WALK_SLOT, Net.showT - i * WALK_SLOT);
+    if (Net.showT > Math.max(2, list.length * WALK_SLOT)) { screen = 'oresults'; Net.resT = 0; }
+  }
   if (screen === 'oresults') {
+    Net.resT += dt;
     const list = roundList();
-    if (!Net.cheered && list.length && Net.phaseT > revealTime(list.length)) {
+    if (!Net.cheered && list.length && Net.resT > revealTime(list.length)) {
       Net.cheered = true;
       Sound.sfx('scream'); Sound.sfx('cheer'); confetti(120);
     }
@@ -898,9 +921,9 @@ function followPhase(g) {
     G = { model: Net.model, online: true, round, cat: 'top', results: [], dressSeq: g.seq };
     beginRound(g.theme, cleanHint(g.hint, g.theme));
   } else if (g.phase === 'results') {
-    if (screen === 'dress' || screen === 'intro') { if (G) G.online = false; }
     Net.cheered = false;
-    screen = 'oresults';
+    Net.showT = 0; Net.resT = 0; Net.showList = buildShow([]);
+    screen = 'oshow';
     Sound.sfx('whistle');
   } else if (g.phase === 'final') {
     screen = 'ofinal';
@@ -919,12 +942,41 @@ function onlineDone() {
 
 // The players who finished this round, worst first (the winner is revealed last)
 function roundList() {
-  const seq = Net.game.dressSeq;
-  return players().filter(p => p.presence.done === seq && p.presence.res)
-    .map(p => ({ p, name: peerName(p), model: peerModel(p), outfit: cleanOutfit(p.presence.outfit, peerModel(p)), total: num(p.presence.res.total, 30), stars: num(p.presence.res.stars, 5), pts: num(p.presence.pts, 30 * ROUNDS) }))
-    .sort((a, b) => a.total - b.total);
+  return (Net.showList || []).slice().sort((a, b) => a.total - b.total);
 }
-const revealTime = n => 1 + n * 1.3;
+const revealTime = n => 0.6 + n * 0.6;
+
+// Everyone who finished, in the same order on every screen. Bill judges each outfit right here.
+function buildShow(old) {
+  const theme = Net.game.theme;
+  if (!THEMES[theme]) return [];
+  const hint = Net.showHint && Net.showHint.seq === Net.game.seq ? Net.showHint.h : (Net.showHint = { seq: Net.game.seq, h: cleanHint(Net.game.hint, theme) }).h;
+  const seq = Net.game.dressSeq;
+  return players().filter(p => p.presence.done === seq && p.presence.outfit)
+    .sort((a, b) => (a.peer < b.peer ? -1 : 1))
+    .map(p => {
+      const prev = old.find(o => o.peer === p.peer);
+      if (prev) return prev;
+      const model = peerModel(p), outfit = cleanOutfit(p.presence.outfit, model);
+      const res = judge(outfit, theme, hint, model);
+      return { p, peer: p.peer, name: peerName(p), me: p.sameTab, model, outfit, res, total: res.total, stars: res.stars,
+        lines: billSays(res, theme, hint), theme, online: true, rw: { t: 0 }, pts: num(p.presence.pts, 30 * ROUNDS) };
+    });
+}
+
+function drawShow() {
+  const list = Net.showList || [];
+  const i = Math.floor(Net.showT / WALK_SLOT);
+  const S = list[Math.min(i, list.length - 1)];
+  if (!S) {
+    stageBackground([640]);
+    text(ctx, 'Getting the runway ready...', 640, 340, 36, '#fff', { fam: FONT_TITLE, weight: '400', lw: 8 });
+    return;
+  }
+  S.rw.t = Net.showT - list.indexOf(S) * WALK_SLOT;
+  S.order = 'model ' + (list.indexOf(S) + 1) + ' of ' + list.length;
+  drawRunway(S);
+}
 
 // ---- screens
 function drawOnline() {
@@ -1007,13 +1059,13 @@ function drawRoundResults() {
   text(ctx, th.name + ' ' + th.emoji, 640, 112, 28, '#ffe66b', { fam: FONT_TITLE, weight: '400', lw: 6 });
   const list = roundList();
   const n = list.length;
-  const done = Net.phaseT > revealTime(n);
+  const done = Net.resT > revealTime(n);
   const top = n ? list[n - 1].total : 0;
   const shown = list.map((it, i) => {
-    const visible = Net.phaseT > 1 + i * 1.3;
+    const visible = Net.resT > 0.6 + i * 0.6;
     const win = done && it.total === top;
     return Object.assign({}, it, {
-      me: it.p.sameTab, pose: win ? 'wave' : 'hips',
+      pose: win ? 'wave' : 'hips',
       outfit: visible ? it.outfit : defaultOutfit(it.model),
       tag: visible ? it.total + ' points' : '?', tagColor: win ? '#ffe66b' : '#fff', visible, win,
     });
@@ -1079,11 +1131,12 @@ function draw() {
   else if (screen === 'pick') drawPick();
   else if (screen === 'intro') drawIntro();
   else if (screen === 'dress') drawDress();
-  else if (screen === 'runway') drawRunway();
+  else if (screen === 'runway') drawRunway(G);
   else if (screen === 'end') drawEnd();
   else if (screen === 'online') drawOnline();
   else if (screen === 'lobby') drawLobby();
   else if (screen === 'owait') drawWait();
+  else if (screen === 'oshow') drawShow();
   else if (screen === 'oresults') drawRoundResults();
   else if (screen === 'ofinal') drawFinal();
 }

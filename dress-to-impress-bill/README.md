@@ -26,7 +26,8 @@ and your friends need to be able to open that page too (use its **Share** button
 1. Press **ONLINE** and pick your model.
 2. One player presses **MAKE A GAME**. Everyone else presses **JOIN** on that game.
 3. The host presses **START THE SHOW**. Everyone gets the **same theme and the same Bill's wish**.
-4. Everyone gets dressed in 60 seconds, then the results show up: the **WINNER** of the round gets a trophy 🏆
+4. Everyone gets dressed in 60 seconds. Then **everyone walks the runway one by one** while the others watch,
+   and Bill holds up his score cards for each player. Then the **WINNER** of the round gets a trophy 🏆
 5. After 5 rounds, the player with the most points wins the show! 👑
 
 ## How Bill gives points
