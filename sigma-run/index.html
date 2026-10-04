@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0f">
+<title>Sigma Run</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Chakra+Petch:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0a0f;
+    --panel: rgba(12, 12, 18, 0.82);
+    --gold: #ffd21a;
+    --gold2: #ffb800;
+    --red: #ff2a3a;
+    --blue: #2a7aff;
+    --cyan: #3af0ff;
+    --pink: #ff3aa8;
+    --text: #f4f2ea;
+    --muted: #a9a59a;
+    --display: 'Anton', Impact, 'Arial Black', sans-serif;
+    --body: 'Chakra Petch', 'Trebuchet MS', system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); overflow: hidden; font-family: var(--body);
+    user-select: none; -webkit-user-select: none; touch-action: none; overscroll-behavior: none; }
+  canvas#game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  button { font-family: var(--display); cursor: pointer; border: none; letter-spacing: 1.5px; touch-action: manipulation; }
+  button:focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; }
+
+  /* ---------------- HUD ---------------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 10; display: none; }
+  #hud.show { display: block; }
+  .tl { position: absolute; left: 22px; top: 18px; }
+  .aura { font-family: var(--display); font-size: 46px; line-height: 1; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,0.5), 0 0 18px rgba(160,90,255,0.6); font-variant-numeric: tabular-nums; }
+  .aura small { font-family: var(--body); font-size: 15px; font-weight: 700; color: #c9a8ff; letter-spacing: 3px; display: block; margin-bottom: 2px; text-shadow: 0 2px 4px #000; }
+  .mult { display: inline-block; margin-left: 10px; font-size: 28px; color: var(--gold); vertical-align: top; transform-origin: left center; transition: transform 0.12s; }
+  .dist { font-weight: 700; font-size: 18px; color: #e8e4d8; margin-top: 4px; text-shadow: 0 2px 4px #000; font-variant-numeric: tabular-nums; }
+  .tr { position: absolute; right: 22px; top: 18px; text-align: right; }
+  .coins { font-family: var(--display); font-size: 38px; color: var(--gold); text-shadow: 0 3px 0 #7a5200, 0 0 16px rgba(255,200,0,0.5); font-variant-numeric: tabular-nums; }
+  .coins i { display: inline-block; width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff4b0, #ffcf3a 50%, #b07800); vertical-align: -3px; margin-right: 8px; box-shadow: 0 0 10px rgba(255,200,0,0.7); }
+  .hearts { font-size: 30px; letter-spacing: 3px; margin-top: 2px; filter: drop-shadow(0 2px 2px #000); }
+  .hearts .lost { opacity: 0.22; filter: grayscale(1); }
+  .tc { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); text-align: center; }
+  .stars { font-size: 34px; letter-spacing: 4px; color: rgba(255,255,255,0.18); text-shadow: 0 2px 3px #000; white-space: nowrap; }
+  .stars .on { color: #fff; text-shadow: 0 0 10px #fff, 0 0 20px var(--red); }
+  .stars.flash .on { animation: starflash 0.35s 6; }
+  @keyframes starflash { 50% { color: var(--red); text-shadow: 0 0 18px var(--red); } }
+  .wantedLbl { font-weight: 700; font-size: 13px; letter-spacing: 5px; color: #ffb3b3; text-shadow: 0 2px 3px #000; margin-top: -2px; }
+  .heli { margin-top: 8px; display: none; font-size: 13px; font-weight: 700; letter-spacing: 2px; color: #ffd0d0; text-shadow: 0 2px 3px #000; }
+  .heli.show { display: block; }
+  .heli b { display: inline-block; width: 26px; height: 8px; margin: 0 2px; background: var(--red); box-shadow: 0 0 8px var(--red); vertical-align: middle; }
+  .heli b.gone { background: #333; box-shadow: none; }
+
+  .sigmaBar { position: absolute; left: 22px; top: 50%; transform: translateY(-50%); width: 18px; height: 220px; border-radius: 10px; background: rgba(0,0,0,0.45); border: 2px solid rgba(255,255,255,0.25); overflow: hidden; }
+  .sigmaBar .fill { position: absolute; left: 0; right: 0; bottom: 0; height: 0%; background: linear-gradient(to top, #8a5a00, var(--gold), #fff7c0); box-shadow: 0 0 14px var(--gold); transition: height 0.15s; }
+  .sigmaLbl { position: absolute; left: 12px; top: calc(50% + 122px); font-family: var(--display); font-size: 22px; color: var(--gold); text-shadow: 0 2px 3px #000; letter-spacing: 1px; }
+  .sigmaReady { position: absolute; left: 50px; top: calc(50% + 70px); font-family: var(--display); font-size: 22px; color: #111; background: var(--gold); padding: 6px 12px; border-radius: 8px; display: none; animation: pulse 0.6s infinite alternate; box-shadow: 0 0 20px var(--gold); }
+  .sigmaReady.show { display: block; }
+  @keyframes pulse { to { transform: scale(1.08); } }
+
+  .feed { position: absolute; right: 26px; top: 34%; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .feed div { font-family: var(--display); font-size: 26px; color: #fff; text-shadow: 0 3px 0 rgba(0,0,0,0.6), 0 0 14px rgba(160,90,255,0.8); animation: feedIn 1.6s forwards; white-space: nowrap; }
+  .feed div em { font-style: normal; color: var(--gold); margin-left: 8px; }
+  @keyframes feedIn { 0% { transform: translateX(40px) scale(1.4); opacity: 0; } 10% { transform: none; opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; transform: translateY(-14px); } }
+
+  .big { position: absolute; left: 0; right: 0; top: 24%; text-align: center; font-family: var(--display); font-size: min(11vw, 84px); line-height: 1; color: #fff; letter-spacing: 3px;
+    text-shadow: 0 5px 0 rgba(0,0,0,0.5), 0 0 30px rgba(255,200,0,0.7); opacity: 0; }
+  .big.go { animation: bigIn 1.8s forwards; }
+  .big small { display: block; font-family: var(--body); font-weight: 700; font-size: 22px; letter-spacing: 3px; margin-top: 8px; color: #ffe9a8; }
+  @keyframes bigIn { 0% { transform: scale(2.4); opacity: 0; } 12% { transform: scale(1); opacity: 1; } 80% { opacity: 1; } 100% { opacity: 0; transform: scale(0.96); } }
+
+  .hint { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%); background: rgba(0,0,0,0.65); border: 2px solid var(--gold); color: #fff; font-weight: 700; font-size: 22px;
+    padding: 10px 22px; border-radius: 12px; text-align: center; max-width: min(90vw, 760px); opacity: 0; transition: opacity 0.3s; box-shadow: 0 0 24px rgba(255,210,26,0.3); }
+  .hint.show { opacity: 1; }
+  .warn { position: absolute; left: 50%; top: 128px; transform: translateX(-50%); font-family: var(--display); font-size: 22px; white-space: nowrap; color: #fff; background: rgba(200,10,20,0.75); padding: 4px 18px; border-radius: 8px; display: none; letter-spacing: 2px; }
+  .warn.show { display: block; animation: blinkW 0.3s infinite alternate; }
+  @keyframes blinkW { to { background: rgba(255,60,60,0.95); } }
+
+  .powers { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; gap: 12px; }
+  .pw { width: 64px; height: 64px; position: relative; }
+  .pw img { width: 64px; height: 64px; }
+  .pw svg { position: absolute; inset: -5px; width: 74px; height: 74px; transform: rotate(-90deg); }
+  .pw .n { position: absolute; right: -4px; bottom: -4px; font-family: var(--display); font-size: 22px; color: #fff; text-shadow: 0 2px 2px #000; }
+  .cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: rgba(255,255,255,0.75); box-shadow: 0 0 4px #000; }
+  .lock { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border: 3px solid var(--red); border-radius: 6px; display: none; box-shadow: 0 0 12px var(--red);
+    animation: lockspin 1s linear infinite; }
+  .lock.show { display: block; }
+  .lock::after { content: 'LOCK'; position: absolute; left: 50%; top: -24px; transform: translateX(-50%); font-family: var(--display); color: var(--red); font-size: 16px; letter-spacing: 2px; }
+  @keyframes lockspin { 50% { transform: scale(0.85); } }
+  .hurt { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 45%, rgba(255,0,0,0.65)); opacity: 0; }
+  .sigmaFrame { position: absolute; inset: 0; border: 6px solid var(--gold); box-shadow: inset 0 0 60px rgba(255,210,26,0.5); opacity: 0; transition: opacity 0.3s; }
+  .sigmaFrame.show { opacity: 1; }
+  .fade { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 40; transition: opacity 0.35s; }
+  .clickResume { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); font-weight: 700; font-size: 18px; color: #fff; background: rgba(0,0,0,0.6); padding: 8px 16px; border-radius: 8px; display: none; }
+
+  /* ---------------- SCREENS ---------------- */
+  .screen { position: fixed; inset: 0; z-index: 30; display: none; flex-direction: column; align-items: center; justify-content: center; justify-content: safe center; padding: 20px 16px; overflow-y: auto; }
+  .screen.show { display: flex; }
+  .screen.dim { background: radial-gradient(ellipse at center, rgba(5,5,10,0.55), rgba(5,5,10,0.9)); }
+  .logo { font-family: var(--display); text-align: center; line-height: 0.85; transform: rotate(-3deg); margin-bottom: 8px; }
+  .logo .a { display: block; font-size: min(22vw, 25vh, 170px); color: var(--gold); letter-spacing: 6px;
+    text-shadow: 0 0 2px #fff, 0 0 24px rgba(255,200,0,0.75), 6px 8px 0 #000; }
+  .logo .b { display: block; font-size: min(15vw, 16vh, 112px); color: #fff; letter-spacing: 18px; margin-top: 4px;
+    text-shadow: 0 0 20px rgba(255,255,255,0.4), 6px 7px 0 #000; }
+  .logo .sig { font-size: 0.6em; vertical-align: 0.3em; }
+  .tag { font-weight: 700; font-size: min(20px, 3.4vh); letter-spacing: 2px; text-align: center; color: #f4f2ea; text-shadow: 0 2px 6px #000; margin: 10px 0 22px; }
+  .tag b { color: var(--red); }
+  .btn { font-size: 30px; padding: 14px 40px; border-radius: 14px; background: var(--gold); color: #111; min-width: 280px; margin: 6px; box-shadow: 0 6px 0 #8a6500, 0 0 30px rgba(255,210,26,0.35); transition: transform 0.08s, filter 0.1s; }
+  .btn:hover { filter: brightness(1.12); transform: translateY(-2px); }
+  .btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #8a6500; }
+  .btn.alt { background: rgba(20,20,28,0.9); color: #fff; border: 2px solid rgba(255,255,255,0.35); box-shadow: 0 5px 0 #000; font-size: 22px; padding: 10px 24px; min-width: 0; }
+  .btn.red { background: var(--red); color: #fff; box-shadow: 0 6px 0 #7a0010, 0 0 30px rgba(255,40,60,0.4); }
+  .row { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+  .chips { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 18px; }
+  .chip { background: rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.25); border-radius: 999px; padding: 6px 16px; font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .chip b { color: var(--gold); }
+  .panel { background: var(--panel); border: 2px solid rgba(255,255,255,0.15); border-radius: 18px; padding: 22px 26px; width: min(720px, 100%); box-shadow: 0 20px 60px rgba(0,0,0,0.6); }
+  .panel h2 { font-family: var(--display); font-size: 44px; margin: 0 0 12px; letter-spacing: 3px; color: var(--gold); text-align: center; }
+  .controls { width: 100%; border-collapse: collapse; font-size: 17px; }
+  .controls td { padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .controls td:first-child { color: var(--gold); font-weight: 700; white-space: nowrap; }
+  kbd { font-family: var(--body); font-weight: 700; background: #23232c; border: 1px solid #555; border-bottom-width: 3px; border-radius: 6px; padding: 1px 8px; font-size: 15px; }
+  .setRow { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid rgba(255,255,255,0.08); font-weight: 700; font-size: 18px; }
+  .setRow input[type=range] { width: 200px; accent-color: var(--gold); }
+  .seg { display: flex; gap: 4px; flex-wrap: wrap; }
+  .seg button { font-family: var(--body); font-weight: 700; font-size: 15px; background: #23232c; color: #ddd; padding: 6px 12px; border-radius: 8px; letter-spacing: 0.5px; }
+  .seg button.on { background: var(--gold); color: #111; }
+  .note { color: var(--muted); font-size: 14px; margin-top: 8px; text-align: center; }
+
+  .shopGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; margin: 10px 0 4px; }
+  .item { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 10px; text-align: center; }
+  .item .ic { font-size: 28px; line-height: 1.1; }
+  .item .nm { font-family: var(--display); font-size: 20px; letter-spacing: 1px; white-space: nowrap; }
+  .item .ds { font-size: 13px; color: var(--muted); min-height: 32px; }
+  .item .lv { margin: 6px 0; letter-spacing: 3px; color: var(--gold); }
+  .item button { font-family: var(--display); font-size: 18px; padding: 7px 14px; border-radius: 10px; background: var(--gold); color: #111; letter-spacing: 1px; }
+  .item button:disabled { background: #444; color: #999; cursor: default; }
+  .item.owned { border-color: var(--gold); }
+  .shopTabs { display: flex; gap: 8px; justify-content: center; }
+  .shopTabs button { font-family: var(--display); font-size: 20px; padding: 6px 18px; border-radius: 10px; background: #23232c; color: #ccc; }
+  .shopTabs button.on { background: var(--gold); color: #111; }
+  .swatch { width: 54px; height: 54px; border-radius: 12px; margin: 4px auto; border: 3px solid rgba(255,255,255,0.3); }
+
+  .busted { font-family: var(--display); font-size: min(24vw, 20vh, 170px); color: var(--red); letter-spacing: 8px; line-height: 0.9; transform: rotate(-6deg);
+    text-shadow: 0 0 30px rgba(255,40,60,0.6), 8px 10px 0 #000; border: 12px solid var(--red); padding: 0 30px; border-radius: 16px; animation: stamp 0.45s cubic-bezier(.2,1.6,.4,1); background: rgba(0,0,0,0.35); }
+  @keyframes stamp { from { transform: rotate(-6deg) scale(3); opacity: 0; } }
+  .reason { font-weight: 700; font-size: 20px; margin: 14px 0 4px; letter-spacing: 2px; color: #ffd0d0; text-align: center; }
+  .stats { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 10px; margin: 12px 0 16px; width: min(640px, 100%); }
+  @media (max-width: 560px) { .stats { grid-template-columns: repeat(2, minmax(120px, 1fr)); } }
+  .stat { background: rgba(0,0,0,0.55); border-radius: 12px; padding: 10px 14px; text-align: center; border: 1px solid rgba(255,255,255,0.12); }
+  .stat .v { font-family: var(--display); font-size: 30px; color: #fff; }
+  .stat .k { font-size: 13px; letter-spacing: 3px; color: var(--muted); font-weight: 700; }
+  .record { font-family: var(--display); font-size: 30px; color: var(--gold); letter-spacing: 3px; animation: pulse 0.5s infinite alternate; text-shadow: 0 0 20px var(--gold); display: none; }
+  .record.show { display: block; }
+
+  /* touch controls */
+  #touch { position: fixed; inset: 0; z-index: 12; display: none; pointer-events: none; }
+  body.touchmode #touch.on, body.automode #touch.on { display: block; }
+  /* AUTO PARKOUR: no jump/slide buttons, just two big ones (they work with the mouse too) */
+  body.automode #tJump, body.automode #tSlide, body.automode #stick { display: none !important; }
+  body.automode .tbtn { cursor: pointer; }
+  body.automode #tFire { right: 24px; bottom: 24px; width: 112px; height: 112px; font-size: 40px; flex-direction: column; background: rgba(255,122,26,0.28); border-color: #ff9a4a; }
+  body.automode #tSigma { left: 24px; right: auto; bottom: 24px; width: 112px; height: 112px; font-size: 40px; flex-direction: column; background: rgba(255,210,26,0.22); border-color: var(--gold); color: var(--gold); }
+  body.automode .tbtn small { font-family: var(--display); font-size: 15px; letter-spacing: 2px; }
+  body.automode #tFire small { color: #fff; }
+  body.automode .sigmaReady { display: none !important; }
+  body.automode #tSigma:not(.dim) { animation: pulse 0.5s infinite alternate; box-shadow: 0 0 26px var(--gold); background: rgba(255,210,26,0.5); color: #fff; }
+  body.automode #tFire:not(.dim) { box-shadow: 0 0 20px rgba(255,140,40,0.7); }
+  body.automode #touchArea { cursor: crosshair; }
+  @media (max-width: 700px) { body.automode #tFire, body.automode #tSigma { width: 88px; height: 88px; font-size: 30px; } }
+  #touchArea { position: absolute; inset: 0; pointer-events: auto; }
+  .tbtn { position: absolute; pointer-events: auto; border-radius: 50%; background: rgba(255,255,255,0.14); border: 3px solid rgba(255,255,255,0.45); color: #fff; font-family: var(--display); font-size: 18px;
+    display: flex; align-items: center; justify-content: center; letter-spacing: 1px; }
+  .tbtn.down { background: rgba(255,210,26,0.5); }
+  #tJump { right: 26px; bottom: 40px; width: 104px; height: 104px; font-size: 22px; }
+  #tSlide { right: 146px; bottom: 26px; width: 80px; height: 80px; }
+  #tFire { right: 40px; bottom: 160px; width: 74px; height: 74px; }
+  #tSigma { right: 140px; bottom: 130px; width: 66px; height: 66px; font-size: 14px; }
+  #tPause { right: 22px; top: 112px; width: 46px; height: 46px; font-size: 16px; }
+  .tbtn.dim { opacity: 0.35; }
+  #stick { position: absolute; width: 110px; height: 110px; margin: -55px 0 0 -55px; border-radius: 50%; border: 3px solid rgba(255,255,255,0.4); display: none; }
+  #stick.show { display: block; }
+  #knob { position: absolute; left: 30px; top: 30px; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.5); }
+
+  @media (max-width: 700px) {
+    .aura { font-size: 34px; } .coins { font-size: 28px; } .stars { font-size: 24px; } .hearts { font-size: 22px; }
+    .sigmaBar { height: 150px; width: 14px; left: 12px; } .sigmaLbl { top: calc(50% + 86px); font-size: 16px; left: 6px; }
+    .feed div { font-size: 19px; } .hint { font-size: 16px; bottom: 150px; }
+    .btn { font-size: 24px; min-width: 220px; padding: 12px 26px; }
+    .panel { padding: 16px; } .panel h2 { font-size: 32px; }
+    .setRow input[type=range] { width: 130px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="tl">
+    <div class="aura"><small>AURA</small><span id="hAura">0</span><span class="mult" id="hMult"></span></div>
+    <div class="dist" id="hDist">0 m</div>
+  </div>
+  <div class="tc">
+    <div class="stars" id="hStars"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div>
+    <div class="wantedLbl">WANTED</div>
+    <div class="heli" id="hHeli">FBI CHOPPER <b></b><b></b><b></b></div>
+  </div>
+  <div class="tr">
+    <div class="coins"><i></i><span id="hCoins">0</span></div>
+    <div class="hearts" id="hHearts"></div>
+  </div>
+  <div class="sigmaBar"><div class="fill" id="hSigma"></div></div>
+  <div class="sigmaLbl">Σ</div>
+  <div class="sigmaReady" id="hSigmaReady">PRESS E: SIGMA MODE</div>
+  <div class="feed" id="hFeed"></div>
+  <div class="big" id="hBig"></div>
+  <div class="hint" id="hHint"></div>
+  <div class="warn" id="hWarn">⚠ MISSILE INCOMING ⚠</div>
+  <div class="powers" id="hPowers"></div>
+  <div class="cross"></div>
+  <div class="lock" id="hLock"></div>
+  <div class="hurt" id="hHurt"></div>
+  <div class="sigmaFrame" id="hSigmaFrame"></div>
+  <div class="clickResume" id="hClick">Click to steer with the mouse</div>
+</div>
+
+<div id="touch" class="on">
+  <div id="touchArea"></div>
+  <div id="stick"><div id="knob"></div></div>
+  <div class="tbtn" id="tJump">JUMP</div>
+  <div class="tbtn" id="tSlide">SLIDE</div>
+  <div class="tbtn" id="tFire">🚀<small>ROCKET</small></div>
+  <div class="tbtn" id="tSigma">Σ<small>SIGMA</small></div>
+  <div class="tbtn" id="tPause">❚❚</div>
+</div>
+
+<!-- TITLE -->
+<div class="screen" id="sTitle">
+  <div class="logo"><span class="a"><span class="sig">Σ</span>SIGMA</span><span class="b">RUN</span></div>
+  <div class="tag">Run the rooftops. Run on walls. <b>Escape the FBI.</b></div>
+  <button class="btn" id="bPlay">▶ PLAY</button>
+  <div class="row">
+    <button class="btn alt" id="bShop">🛒 SHOP</button>
+    <button class="btn alt" id="bHow">🎮 HOW TO PLAY</button>
+    <button class="btn alt" id="bSettings">⚙ SETTINGS</button>
+  </div>
+  <div class="chips">
+    <div class="chip">BEST AURA <b id="cBest">0</b></div>
+    <div class="chip">BEST RUN <b id="cBestDist">0 m</b></div>
+    <div class="chip">COINS <b id="cCoins">0</b></div>
+  </div>
+</div>
+
+<!-- HOW TO PLAY -->
+<div class="screen dim" id="sHow">
+  <div class="panel">
+    <h2>HOW TO PLAY</h2>
+    <table class="controls" id="howAuto">
+      <tr><td>AUTO PARKOUR</td><td>Your runner runs, jumps, climbs, wall runs, slides and grabs ziplines <b>by himself</b>!</td></tr>
+      <tr><td>Steer</td><td>Move the <b>mouse</b> left and right (or slide your finger anywhere on the screen, or <kbd>A</kbd> <kbd>D</kbd>). Grab coins and dodge missiles!</td></tr>
+      <tr><td>🚀 Rocket</td><td>Press the <b>ROCKET</b> button (or click, or <kbd>F</kbd>). Rockets fly to the helicopter by themselves!</td></tr>
+      <tr><td>Σ Sigma mode</td><td>Do tricks to fill the Σ bar, then press the <b>SIGMA</b> button (or <kbd>E</kbd>)</td></tr>
+      <tr><td>Pause</td><td><kbd>Esc</kbd> or <kbd>P</kbd> · <kbd>M</kbd> mutes the sound</td></tr>
+      <tr><td>Want to do every move yourself?</td><td>Pick <b>MANUAL</b> controls in SETTINGS</td></tr>
+    </table>
+    <table class="controls" id="howManual" hidden>
+      <tr><td>Run</td><td>You run by yourself! (hold <kbd>S</kbd> to stop)</td></tr>
+      <tr><td>Steer</td><td>Move the <b>mouse</b>, or <kbd>A</kbd> <kbd>D</kbd> to step sideways, or <kbd>←</kbd> <kbd>→</kbd> to turn</td></tr>
+      <tr><td>Jump</td><td><kbd>Space</kbd>. Jump near a wall to <b>WALL RUN</b>, press <kbd>Space</kbd> again to jump off it!</td></tr>
+      <tr><td>Slide</td><td><kbd>Shift</kbd> or <kbd>C</kbd>: slide under things, and slide into FBI agents to knock them over</td></tr>
+      <tr><td>Vault</td><td>Just run at small things: you hop over them by yourself</td></tr>
+      <tr><td>Grab ledges</td><td>Jump at a high edge and you climb up by yourself</td></tr>
+      <tr><td>Rockets 🚀</td><td><kbd>Left click</kbd> or <kbd>F</kbd>: they fly to the helicopter by themselves!</td></tr>
+      <tr><td>SIGMA MODE</td><td>Do tricks to fill the Σ bar, then press <kbd>E</kbd> (or right click)</td></tr>
+      <tr><td>Pause</td><td><kbd>Esc</kbd> or <kbd>P</kbd> · <kbd>M</kbd> mutes the sound</td></tr>
+      <tr><td>Controller</td><td>Sticks to move and look, <b>A</b> jump, <b>B</b> slide, <b>RT</b> fire, <b>Y</b> sigma</td></tr>
+      <tr><td>Phone</td><td>Left thumb: move · Right thumb: look · Buttons: jump, slide, fire</td></tr>
+    </table>
+    <p class="note">Missiles: get away from the <b style="color:#ff4a4a">red rings</b>! Jump on an agent's head to STOMP them. Falling off costs a ❤.</p>
+    <div class="row" style="margin-top:12px"><button class="btn" data-back>OK!</button></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="screen dim" id="sSettings">
+  <div class="panel">
+    <h2>SETTINGS</h2>
+    <div class="setRow">Controls <div class="seg" id="setCtrl"><button data-v="auto">AUTO PARKOUR</button><button data-v="manual">MANUAL</button></div></div>
+    <div class="setRow">Music <div class="seg" id="setTrack"><button data-v="edm">SKYLINE</button><button data-v="phonk">SIGMA PHONK</button><button data-v="off">OFF</button></div></div>
+    <div class="setRow">Graphics <div class="seg" id="setGfx"><button data-v="low">LOW</button><button data-v="medium">MEDIUM</button><button data-v="high">HIGH</button><button data-v="ultra">ULTRA</button></div></div>
+    <div class="setRow">Mouse speed <input type="range" id="setSens" min="0.2" max="3" step="0.05"></div>
+    <div class="setRow">Field of view <input type="range" id="setFov" min="65" max="105" step="1"></div>
+    <div class="setRow">Music <input type="range" id="setMusic" min="0" max="1" step="0.05"></div>
+    <div class="setRow">Sound effects <input type="range" id="setSfx" min="0" max="1" step="0.05"></div>
+    <div class="setRow">Auto-run <div class="seg" id="setAuto"><button data-v="1">ON</button><button data-v="0">OFF (hold W)</button></div></div>
+    <div class="setRow">Invert mouse up/down <div class="seg" id="setInv"><button data-v="0">NO</button><button data-v="1">YES</button></div></div>
+    <p class="note">Changing graphics reloads the page. If the game is slow, pick LOW or MEDIUM.</p>
+    <div class="row" style="margin-top:12px"><button class="btn" data-back>DONE</button></div>
+  </div>
+</div>
+
+<!-- SHOP -->
+<div class="screen dim" id="sShop">
+  <div class="panel" style="width:min(900px,100%)">
+    <h2>SHOP</h2>
+    <div class="chips" style="margin:0 0 10px"><div class="chip">YOUR COINS <b id="shopCoins">0</b></div></div>
+    <div class="shopTabs"><button data-tab="up" class="on">UPGRADES</button><button data-tab="gloves">GLOVES</button></div>
+    <div class="shopGrid" id="shopGrid"></div>
+    <div class="row" style="margin-top:10px"><button class="btn" data-back>BACK</button></div>
+  </div>
+</div>
+
+<!-- PAUSE -->
+<div class="screen dim" id="sPause">
+  <div class="logo" style="transform:none"><span class="b" style="letter-spacing:10px">PAUSED</span></div>
+  <button class="btn" id="bResume">▶ RESUME</button>
+  <div class="row">
+    <button class="btn alt" id="bRestart">↻ RESTART</button>
+    <button class="btn alt" id="bPSettings">⚙ SETTINGS</button>
+    <button class="btn alt" id="bMusic">♪ MUSIC: SKYLINE</button>
+    <button class="btn alt" id="bQuit">⌂ MENU</button>
+  </div>
+</div>
+
+<!-- GAME OVER -->
+<div class="screen dim" id="sOver">
+  <div class="busted">BUSTED!</div>
+  <div class="reason" id="oReason">The FBI got you!</div>
+  <div class="record" id="oRecord">★ NEW RECORD! ★</div>
+  <div class="stats">
+    <div class="stat"><div class="v" id="oAura">0</div><div class="k">AURA</div></div>
+    <div class="stat"><div class="v" id="oDist">0 m</div><div class="k">DISTANCE</div></div>
+    <div class="stat"><div class="v" id="oCoins">0</div><div class="k">COINS</div></div>
+    <div class="stat"><div class="v" id="oStars">★</div><div class="k">MOST WANTED</div></div>
+    <div class="stat"><div class="v" id="oTricks">0</div><div class="k">TRICKS</div></div>
+    <div class="stat"><div class="v" id="oTakedowns">0</div><div class="k">TAKEDOWNS</div></div>
+  </div>
+  <button class="btn" id="bAgain">↻ RUN AGAIN</button>
+  <div class="row">
+    <button class="btn alt" id="bOShop">🛒 SHOP</button>
+    <button class="btn alt" id="bOMenu">⌂ MENU</button>
+  </div>
+</div>
+
+<div class="fade" id="fade"></div>
+
+<script src="../lib/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/mats.js"></script>
+<script src="js/env.js"></script>
+<script src="js/post.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/input.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/pickups.js"></script>
+<script src="js/city.js"></script>
+<script src="js/level.js"></script>
+<script src="js/player.js"></script>
+<script src="js/fbi.js"></script>
+<script src="js/auto.js"></script>
+<script src="js/hud.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

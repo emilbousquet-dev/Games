@@ -16,8 +16,8 @@ MH.Game = (function () {
     timers: {}, frozenT: 0, stats: null, lastHour: 0, hadLock: false, cleanT: 0, target: null,
     tips: {}, chatCd: {}, over: false, bestNight: 0,
   };
-  const COLORS = { vampire: '#ff8a9a', werewolf: '#e0b080', mummy: '#f0e0b0', ghost: '#a0fff0', frankie: '#a8e890', blob: '#9aff6a', human: '#ffb080' };
-  const KIND_NAME = { vampire: 'Vampire', werewolf: 'Werewolf', mummy: 'Mummy', ghost: 'Ghost', frankie: 'Monster', blob: 'Blob' };
+  const COLORS = { vampire: '#ff8a9a', werewolf: '#e0b080', mummy: '#f0e0b0', ghost: '#a0fff0', frankie: '#a8e890', blob: '#9aff6a', human: '#ffb080', skeleton: '#f0ecdc', witch: '#d8a0ff', zombie: '#c8e070' };
+  const KIND_NAME = { vampire: 'Vampire', werewolf: 'Werewolf', mummy: 'Mummy', ghost: 'Ghost', frankie: 'Monster', blob: 'Blob', skeleton: 'Skeleton', witch: 'Witch', zombie: 'Zombie' };
 
   // ============================================================
   //  SETUP
@@ -47,6 +47,7 @@ MH.Game = (function () {
     try { S.bestNight = +localStorage.getItem('mh.bestNight') || 0; } catch (e) { S.bestNight = 0; }
     showBest();
     buildTitleActors();
+    buildGuide();
     $('loading').style.display = 'none';
     if (AUTO) autoStart(); else showScreen('title');
     loop();
@@ -89,7 +90,7 @@ MH.Game = (function () {
   }
   function showBest() { $('best').textContent = S.bestNight > 0 ? `Your best: survived ${S.bestNight} night${S.bestNight > 1 ? 's' : ''}!` : ''; }
   function wireUI() {
-    const click = (id, f) => $(id).addEventListener('click', () => { A.init(); A.click(); f(); });
+    const click = (id, f) => $(id).addEventListener('click', (e) => { A.init(); A.click(); if (e.currentTarget.blur) e.currentTarget.blur(); f(); });
     document.querySelectorAll('.btn, .arrow').forEach((b) => b.addEventListener('mouseenter', () => A.hover()));
     click('btn-play', () => { showScreen('select'); selIndex = 0; updateSelect(); A.startMusic(); });
     click('btn-how', () => showScreen('how'));
@@ -127,6 +128,17 @@ MH.Game = (function () {
     });
   }
 
+  // ---------- "who wants what" on the How to Play screen ----------
+  function buildGuide() {
+    const kinds = Object.keys(MH.MONSTERS).sort((a, b) => MH.MONSTERS[a].firstNight - MH.MONSTERS[b].firstNight);
+    $('guide').innerHTML = kinds.map((k) => {
+      const m = MH.MONSTERS[k];
+      const wants = [...new Set(m.wants)];
+      const plural = { Mummy: 'Mummies', Witch: 'Witches', Monster: 'Big Monsters' }[m.title] || m.title + 's';
+      return `<div class="g-row"><b>${plural}</b><span>${wants.map((w) => `<img src="${T.iconURL(w)}" title="${MH.ITEMS[w].name}">${MH.ITEMS[w].name}`).join(' ')}${k === 'werewolf' ? ` <img src="${T.iconURL('pet')}">Belly rubs` : ''}</span><i>Night ${m.firstNight}</i></div>`;
+    }).join('');
+  }
+
   // ---------- title screen: a few monsters hanging out in the lobby ----------
   let titleActors = [];
   function buildTitleActors() {
@@ -134,6 +146,7 @@ MH.Game = (function () {
     const spots = [
       ['vampire', 0, L.cx + 1.2, L.cz + 2.5, 0.4], ['werewolf', 1, W.fireplace.x + 1.8, W.fireplace.z - 1.5, -2.3], ['ghost', 0, L.cx - 2.5, L.cz + 3.5, 0.9],
       ['mummy', 1, L.cx + 4.5, L.cz + 4, -0.6], ['blob', 1, L.cx - 0.8, L.cz + 5.2, 0.2], ['frankie', 0, L.cx + 6.5, L.cz - 1, -1.2],
+      ['skeleton', 1, L.cx + 3, L.cz - 2.5, 0.3], ['witch', 0, L.cx - 4.5, L.cz + 0.5, 1.2], ['zombie', 0, L.cx + 7.5, L.cz + 3.5, -1.0],
     ];
     for (const [k, st, x, z, yaw] of spots) {
       const m = Mo.monster(k, st);
@@ -146,7 +159,7 @@ MH.Game = (function () {
 
   // ---------- choose your boss ----------
   let selIndex = 0, selModels = [];
-  function selectSpot(i) { const L = W.lobby; return { x: L.cx - 3.3 + i * 2.2, z: L.cz + 1.5 }; }
+  function selectSpot(i) { const L = W.lobby; return { x: L.cx - (MH.BOSSES.length - 1) * 1.1 + i * 2.2, z: L.cz + 1.5 }; }
   function updateSelect() {
     if (!selModels.length) {
       clearTitleActors();
@@ -217,8 +230,10 @@ MH.Game = (function () {
     H.setPower(P.info.power, 0, 1, false);
   }
   function beginNight() {
+    if (state !== 'intro') return;
     showScreen(null);
     state = 'play';
+    In.read();  // forget keys pressed on the menu (so SPACE doesn't fire your power)
     A.init(); A.startMusic(); A.nightStart();
     H.center('NIGHT ' + S.night + '<small>The doors are open!</small>', 2.5);
     if (!AUTO) In.lock($('game'));
@@ -232,8 +247,10 @@ MH.Game = (function () {
     A.setWind(0);
   }
   function resume() {
+    if (state !== 'pause') return;
     showScreen(null);
     state = 'play';
+    In.read();  // forget the key that un-paused the game
     if (!AUTO) In.lock($('game'));
     clock.getDelta();
   }
@@ -330,7 +347,7 @@ MH.Game = (function () {
       tip('dirty', `Room ${R.num} is <b>dirty</b> now (orange lamp).<br>Go there, look at the mess and <b>HOLD E</b> to clean it for the next guest.`);
     };
     Gs.on.scared = (g, h) => { if (Math.random() < 0.5) A.scream(); };
-    Gs.on.flash = () => { if (U.dist(P.x, P.z, Gs.humans[0] ? Gs.humans[0].x : 0, Gs.humans[0] ? Gs.humans[0].z : 0) < 8) H.flash('white', 0.4); };
+    Gs.on.flash = (h) => { if (U.dist(P.x, P.z, h.x, h.z) < 8 && W.canSee(P.x, P.z, h.x, h.z)) H.flash('white', 0.4); };
     W.onDoor = (d) => { if (U.dist(d.x, d.z, P.x, P.z) < 9) A.creak(); };
     W.onFrontDoor = () => { if (state === 'play') A.bigDoor(); };
   }
@@ -477,6 +494,18 @@ MH.Game = (function () {
     } else if (S.boss === 'mummy') {
       S.frozenT = 8; P.powerCd += 8;
       A.freeze(); H.center('SAND OF TIME!<small>Nobody gets grumpy for 8 seconds!</small>', 1.6, 'green');
+    } else if (S.boss === 'witch') {
+      // magic: the thing the grumpiest guest wants appears in your hands
+      const wanting = Gs.list.filter((g) => g.request && g.request.type === 'item' && !P.carry.includes(g.request.item)).sort((a, b) => a.happy - b.happy);
+      if (!wanting.length || P.carry.length >= P.cap) {
+        P.powerCd = 1;
+        H.say('You', wanting.length ? 'My hands are full! (G to drop)' : 'Nobody needs anything right now!', '#ffe14a');
+        return;
+      }
+      const g = wanting[0];
+      P.pickUp(g.request.item);
+      A.magic(); H.flash('#d8a0ff', 0.5);
+      H.center('ABRACADABRA!<small>' + MH.ITEMS[g.request.item].name + ' for ' + g.name + '!</small>', 1.8, 'green');
     } else if (S.boss === 'frankie') {
       A.zap(); W.lightning(); H.flash('#c8f0ff', 0.5); P.shake = 0.8;
       let cleaned = 0;

@@ -1,4 +1,4 @@
-# MONSTER HOTEL 🧛🏨
+# MONSTER HOTEL 🧛🏨  (version 1.0)
 
 A **3D first-person hotel game** that runs in your web browser.
 You are the **boss** of Hotel Monstrania, the spookiest hotel in the world.
@@ -27,13 +27,13 @@ Keep every monster happy... or the hotel gets **closed down**!
 ## Your job
 
 - 🛎️ **Check in** guests at the front desk: look at them and press `E`.
-- 🍹 Guests ask for things. Food is in the **Kitchen**, and towels, bandages and lightning jars are in the **Supplies** room (both at the end of the hallway).
+- 🍹 Guests ask for things. Food and potions are in the **Kitchen**, and towels, bandages, lightning jars and bone polish are in the **Supplies** room (both at the end of the hallway). The **How to Play** screen shows who wants what.
 - 🧹 When a guest leaves, their room gets **dirty** (orange lamp above the door). Hold `E` on the mess to clean it.
 - 🌧️ **Storms** blow windows open. Close them before the guest freezes!
 - 😱 **Humans** sneak in and scare the guests. Walk up to them and press `E` to go **BOO!**
 - ⭐ Happy guests leave **5-star reviews** when they leave. Grumpy ones leave 1 star.
   If your **Hotel Rating** drops below **1.5 stars**, the hotel is closed!
-- 🌙 Survive until **6 AM** (sunrise). Storms start on Night 2, humans on Night 4, and new monsters keep arriving, but slowly. Take your time!
+- 🌙 Survive until **6 AM** (sunrise). A new kind of monster checks in each night until Night 8. Storms start on Night 2 and humans on Night 4. Take your time!
 
 Room lamps: 🟢 free and clean · 🔴 a guest is staying · 🟠 dirty, clean it!
 
@@ -45,6 +45,7 @@ Room lamps: 🟢 free and clean · 🔴 a guest is staying · 🟠 dirty, clean 
 | 🐺 **Wolfina Moonhowl** (Werewolf) | Runs faster. **SCARY HOWL** scares every human out |
 | 🧻 **King Tuttlewrap** (Mummy) | **SAND OF TIME**: nobody gets grumpy for 8 seconds |
 | ⚡ **Dr. Bolts** (Monster) | Carries **2 things** at once. **THUNDER ZAP** cleans a whole room |
+| 🧙 **Winnie Wartsworth** (Witch) | **MAGIC FETCH**: the thing a guest wants appears in your hands! |
 
 ## The guests
 
@@ -52,10 +53,13 @@ Room lamps: 🟢 free and clean · 🔴 a guest is staying · 🟠 dirty, clean 
 |---|---|---|
 | Vampires | Blood Smoothies, towels | 1 |
 | Werewolves | Giant Bones, towels, **belly rubs** | 1 |
+| Skeletons | Bone Polish, towels | 2 |
 | Mummies | Fresh Bandages, Bug Soup | 3 |
 | Ghosts | Ecto-Jelly, towels | 4 |
 | Big Monsters | Lightning Jars, Bug Soup | 5 |
 | Blobs | Bug Soup, Ecto-Jelly | 6 |
+| Witches | Bubbling Potions, Bug Soup | 7 |
+| Zombies | Brain Freeze ice cream, Fresh Bandages | 8 |
 
 ## Change the game!
 

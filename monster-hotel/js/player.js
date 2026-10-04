@@ -6,7 +6,7 @@ window.MH = window.MH || {};
 MH.Player = (function () {
   const U = MH.U, Mo = MH.Models, A = MH.Audio;
   const P = {};
-  const EYE = { vampire: 1.72, werewolf: 1.68, mummy: 1.6, frankie: 1.95 };
+  const EYE = { vampire: 1.72, werewolf: 1.68, mummy: 1.6, frankie: 1.95, witch: 1.66 };
 
   P.create = function (boss, scene, aspect) {
     P.boss = boss;

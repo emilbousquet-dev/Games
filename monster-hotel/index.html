@@ -129,6 +129,13 @@
   #sand-tint { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(255,200,90,0.12), rgba(160,110,30,0.45)); opacity: 0; transition: opacity 0.5s; mix-blend-mode: multiply; }
   #lockmsg { position: fixed; left: 50%; bottom: 30%; transform: translateX(-50%); z-index: 15; font-size: 22px; padding: 12px 24px; display: none; }
 
+  #guide { display: grid; gap: 4px; margin: 10px auto; max-width: 600px; text-align: left; font-size: 15px; }
+  .g-row { display: grid; grid-template-columns: 110px 1fr 64px; align-items: center; gap: 8px; padding: 3px 10px; border-radius: 10px; background: rgba(255,255,255,0.06); }
+  .g-row b { color: var(--gold); }
+  .g-row span { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+  .g-row img { width: 24px; height: 24px; vertical-align: middle; margin-right: 2px; }
+  .g-row i { color: #bfa8e0; font-style: normal; font-size: 13px; text-align: right; }
+  #how .panel { max-height: 92vh; overflow-y: auto; }
   /* summary */
   .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 26px; margin: 14px auto; text-align: left; font-size: 19px; width: fit-content; }
   .stats b { color: var(--gold); }
@@ -153,6 +160,7 @@
     <button class="btn alt" id="btn-gfx">GRAPHICS: HIGH</button>
   </div>
   <div class="best" id="best"></div>
+  <div class="best" style="opacity:0.6;font-size:13px">version 1.0</div>
 </div>
 
 <!-- ======= HOW TO PLAY ======= -->
@@ -166,8 +174,9 @@
       <div><b>Hold E</b> clean a mess</div><div><b>Space</b> your boss power</div>
       <div><b>G</b> drop what you carry</div><div><b>Esc</b> pause</div>
     </div>
-    <p style="font-size:16px;color:#c8b0e8">🍹 Food is in the <b>Kitchen</b> · 🧻 Towels, bandages &amp; lightning jars are in the <b>Supplies</b> room<br>
+    <p style="font-size:16px;color:#c8b0e8">🍹 Food &amp; potions are in the <b>Kitchen</b> · 🧻 Towels, bandages, lightning jars &amp; bone polish are in the <b>Supplies</b> room<br>
     🟢 green lamp = room is free · 🔴 red = someone is staying · 🟠 orange = room is dirty, clean it!</p>
+    <div id="guide"></div>
     <p style="font-size:16px;color:#c8b0e8">🎮 Controllers work too!</p>
     <button class="btn" id="btn-how-back">GOT IT!</button>
   </div>

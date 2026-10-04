@@ -139,6 +139,7 @@ MH.Audio = (function () {
       [[62, 0.35], [61, 0.35], [60, 0.35], [59, 1.2]].reduce((d, [n, l]) => { tone('sawtooth', noteHz(n), noteHz(n) * (l > 1 ? 0.97 : 1), l, 0.14, 0, { delay: d, filter: 'lowpass', ff: 1100, vib: l > 1 ? 6 : 0, vibAmt: 5, attack: 0.04 }); return d + l * 0.95; }, 0);
     },
     nightStart() { [57, 60, 64, 69].forEach((n, i) => tone('sawtooth', noteHz(n), noteHz(n), 2.2, 0.06, 0, { delay: i * 0.12, filter: 'lowpass', ff: 1200, attack: 0.3 })); S.chime(1); },
+    magic() { for (let i = 0; i < 10; i++) tone('sine', noteHz(72 + i * 2), noteHz(72 + i * 2), 0.3, 0.07, (i % 2 ? -0.4 : 0.4), { delay: i * 0.05 }); tone('sawtooth', 300, 900, 0.5, 0.06, 0, { filter: 'bandpass', ff: 1200, vib: 11, vibAmt: 60 }); },
     click() { tone('sine', 900, 700, 0.05, 0.15, 0, { echo: false }); },
     hover() { tone('sine', 1300, 1300, 0.03, 0.05, 0, { echo: false }); },
     humanAlert() { [0, 0.18, 0.36].forEach((d) => tone('square', 880, 880, 0.12, 0.08, 0, { delay: d, filter: 'lowpass', ff: 2500 })); },
@@ -156,6 +157,9 @@ MH.Audio = (function () {
     frankie: { f: 72, type: 'sawtooth', formant: 500, q: 3 },
     blob: { f: 240, type: 'triangle', formant: 1400, q: 2, bubble: true },
     human: { f: 230, type: 'sawtooth', formant: 1600, q: 3 },
+    skeleton: { f: 190, type: 'square', formant: 1800, q: 4, rattle: true },
+    witch: { f: 280, type: 'sawtooth', formant: 2000, q: 5, cackle: true },
+    zombie: { f: 85, type: 'sawtooth', formant: 380, q: 2, growl: true },
   };
   function babble(kind, mood = 0, pan = 0, vol = 0.14) {
     if (!ok()) return;
@@ -176,6 +180,8 @@ MH.Audio = (function () {
       o.connect(f); f.connect(g); g.connect(out(1, pan));
       o.start(t); o.stop(t + len + 0.05);
       if (v.growl) noise(len, 'lowpass', 400, 1, vol * 0.5, pan, { delay: t - now() });
+      if (v.rattle) for (let k = 0; k < 3; k++) noise(0.03, 'highpass', 3000, 2, vol * 0.6, pan, { delay: t - now() + k * 0.04 });
+      if (v.cackle) { const l = ctx.createOscillator(); l.frequency.value = 11; const lg = ctx.createGain(); lg.gain.value = base * 0.25; l.connect(lg); lg.connect(o.frequency); l.start(t); l.stop(t + len + 0.05); }
       t += len + 0.03 + Math.random() * 0.05;
     }
   }

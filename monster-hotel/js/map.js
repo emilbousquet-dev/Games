@@ -50,11 +50,14 @@ MH.ITEMS = {
   towel:   { name: 'Fluffy Towel',   color: '#9a5cd6', where: 'Supplies' },
   bandage: { name: 'Fresh Bandages', color: '#efe6cf', where: 'Supplies' },
   jar:     { name: 'Lightning Jar',  color: '#ffd23a', where: 'Supplies' },
+  potion:  { name: 'Bubbling Potion', color: '#b040ff', where: 'Kitchen' },
+  icecream:{ name: 'Brain Freeze',   color: '#ff8ab0', where: 'Kitchen' },
+  polish:  { name: 'Bone Polish',    color: '#3a8ad8', where: 'Supplies' },
 };
 // the kitchen stations (the letters k in the map, from left to right)
-MH.KITCHEN = ['blood', 'bone', 'soup', 'jelly', 'cauldron', 'sink'];
+MH.KITCHEN = ['blood', 'bone', 'soup', 'jelly', 'potion', 'icecream'];
 // the supply shelves (the letters s in the map)
-MH.SUPPLIES = ['towel', 'bandage', 'jar', 'shelf', 'shelf'];
+MH.SUPPLIES = ['towel', 'bandage', 'jar', 'polish', 'shelf'];
 
 // ---------- the monsters that stay at the hotel ----------
 MH.MONSTERS = {
@@ -82,6 +85,18 @@ MH.MONSTERS = {
     title: 'Blob', wants: ['soup', 'jelly', 'soup'], firstNight: 6,
     names: ['Globby', 'Gloop', 'Jiggles', 'Squishy Pete', 'Oozie', 'Wobbles'],
   },
+  skeleton: {
+    title: 'Skeleton', wants: ['polish', 'polish', 'towel'], firstNight: 2,
+    names: ['Mr. Bones', 'Rattles', 'Sir Clanksalot', 'Boney Tony', 'Lady Femur', 'Skully'],
+  },
+  witch: {
+    title: 'Witch', wants: ['potion', 'potion', 'soup'], firstNight: 7,
+    names: ['Winnie Wartnose', 'Hazel Hex', 'Granny Cackle', 'Morgana Moon', 'Broomhilda', 'Agatha Toad'],
+  },
+  zombie: {
+    title: 'Zombie', wants: ['icecream', 'icecream', 'bandage'], firstNight: 8,
+    names: ['Shamble Sam', 'Moanica', 'Groany Greg', 'Rotten Ronnie', 'Zed', 'Brainy Betty'],
+  },
 };
 
 // ---------- the bosses you can choose ----------
@@ -94,6 +109,8 @@ MH.BOSSES = [
     about: 'Freeze time! Guests stop getting grumpy for a while.', cooldown: 24 },
   { id: 'frankie', name: 'DR. BOLTS', short: 'Monster', power: 'THUNDER ZAP',
     about: 'Carries TWO things at once. ZAP to clean a whole room in one go!', cooldown: 16 },
+  { id: 'witch', name: 'WINNIE WARTSWORTH', short: 'Witch', power: 'MAGIC FETCH',
+    about: 'Abracadabra! The thing a guest wants magically appears in your hands!', cooldown: 25 },
 ];
 
 // ---------- how hard each night is ----------
@@ -113,11 +130,13 @@ MH.night = function (n) {
 // what's new each night (shown at the start of the night)
 MH.NEWS = {
   1: ['Welcome to your hotel, Boss!', 'Check guests in at the front desk and bring them what they ask for. Take your time!'],
-  2: ['NEW: Stormy weather!', 'Storms can blow a window open. Close it by looking at it and pressing E.'],
+  2: ['NEW: Skeletons and stormy weather!', 'Skeletons want Bone Polish from the Supplies room. Storms can blow a window open: look at it and press E to close it.'],
   3: ['NEW: Mummies are checking in!', 'They need Fresh Bandages from the Supplies room.'],
   4: ['NEW: Ghosts and... HUMANS?!', 'Humans sneak in and scare the guests. Walk up to them and press E to scare them away!'],
   5: ['NEW: Big Monsters!', 'They need Lightning Jars to recharge their bolts.'],
-  6: ['NEW: Blobs!', 'They love Bug Soup and Ecto-Jelly. Everyone is checking in tonight!'],
+  6: ['NEW: Blobs!', 'They love Bug Soup and Ecto-Jelly.'],
+  7: ['NEW: Witches!', 'They want a Bubbling Potion from the cauldron in the Kitchen.'],
+  8: ['NEW: Zombies!', 'They love Brain Freeze ice cream from the Kitchen. Everyone is checking in now!'],
 }
 
 // ---------- reviews ----------
