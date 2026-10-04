@@ -158,6 +158,15 @@ window.NC = window.NC || {};
       G.state = 'dying';
       G.endT = 2;
       NC.Audio.play('lose');
+      return;
+    }
+    // lost a boss fight? (with 2 players: only when BOTH cats are down) The boss starts all over again.
+    if (G.boss && G.boss.alive && G.players.every((o) => o.dead)) {
+      NC.Enemies.resetBosses();
+      NC.Shots.clear();
+      G.boss = null;
+      NC.Audio.music(G.levelData.theme);
+      NC.HUD.announce('TRY AGAIN!', 'The boss is back to full health. You can do it! 💪', 3);
     }
   };
   // come back after losing a life: next to your friend, or at the last lantern
@@ -176,6 +185,9 @@ window.NC = window.NC || {};
   };
   G.startBoss = (e) => {
     G.boss = e;
+    // automatic checkpoint: if you lose, you come back right here
+    const p = e.target && e.target.alive && e.target.onGround ? e.target : G.players.find((o) => o.alive && o.onGround);
+    if (p) { G.setCheckpoint({ x: p.pos.x, y: p.pos.y, z: p.pos.z }); G.message(null, 'CHECKPOINT!'); }
     NC.Audio.music('boss');
     NC.HUD.announce(e.name, e.type === 'K' ? 'Make him charge into a wall, then attack!' : 'Watch out for his tricks!', 3);
   };

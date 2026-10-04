@@ -663,7 +663,7 @@ NC.Enemies = (function () {
       for (const s of [-1, 1]) {
         const f = this.floorSpot();
         const r = spawnOne('R', f.x, f.y, f.z + s * 2);
-        if (r) { r.state = 'alert'; r.stateT = 0.6; r.target = this.nearestAlive(); }
+        if (r) { r.summoned = true; r.state = 'alert'; r.stateT = 0.6; r.target = this.nearestAlive(); }
       }
     }
     toPhase3() {
@@ -953,11 +953,24 @@ NC.Enemies = (function () {
     for (const e of list) if (e !== except && e.alive && !e.boss && U.dist(e.pos.x, e.pos.z, x, z) < r && (e.type === 'D' || e.type === 'R')) e.alert(p, true);
   }
   function loseTarget(p) { for (const e of list) if (e.alive && e.target === p) e.lose(); }
+  // you lost a boss fight: put every boss back where it started, asleep and at full health
+  function resetBosses() {
+    const back = [];
+    for (const e of list) {
+      if (!e.alive || !(e.boss || e.summoned)) continue;
+      if (e.boss) back.push({ type: e.type, x: e.home.x, y: e.home.y, z: e.home.z });
+      e.alive = false;
+      e.remove();
+    }
+    waves.length = 0;
+    for (const b of back) spawnOne(b.type, b.x, b.y, b.z);
+    return back.length > 0;
+  }
   function clear() {
     for (const e of list) e.remove();
     list.length = 0;
     waves.length = 0;
   }
 
-  return { init, spawn, spawnOne, update, hitArea, at, findTarget, alertNear, loseTarget, clear, list, wave };
+  return { init, spawn, spawnOne, update, hitArea, at, findTarget, alertNear, loseTarget, resetBosses, clear, list, wave };
 })();
