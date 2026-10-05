@@ -31,7 +31,7 @@ FP.Touch = (function () {
     // the joystick: drag your thumb anywhere inside the circle
     const move = (t) => {
       const dx = t.clientX - stickCenter.x, dy = t.clientY - stickCenter.y;
-      const max = 50, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / max);
+      const max = stickMax, d = Math.hypot(dx, dy) || 1, k = Math.min(1, d / max);
       state.x = (dx / d) * k; state.z = (dy / d) * k;
       knob.style.transform = `translate(${(dx / d) * Math.min(d, max)}px, ${(dy / d) * Math.min(d, max)}px)`;
     };
@@ -71,6 +71,54 @@ FP.Touch = (function () {
   }
   if (available) build();
 
+  // ---------------- phones: the game is played sideways ----------------
+  // (like most phone games). Held upright, a big "turn your phone" screen covers everything.
+  const phone = available && Math.min(screen.width, screen.height) < 600;
+  // the menus are made for a big screen, so on small touch screens they shrink to fit (--uiz),
+  // and the joystick and buttons get a size that fits the screen too (--ts)
+  function fit() {
+    const w = innerWidth, h = innerHeight;
+    const uiz = available ? Math.max(0.6, Math.min(1, h / 520, w / 1000)) : 1;
+    const ts = Math.max(0.7, Math.min(1, Math.min(w, h) / 430));
+    document.documentElement.style.setProperty('--uiz', uiz.toFixed(3));
+    document.documentElement.style.setProperty('--ts', ts.toFixed(3));
+    stickMax = 50 * ts;
+  }
+  let stickMax = 50;
+  if (available) {
+    document.body.classList.add('touchy');
+    if (phone) document.body.classList.add('phone');
+    fit();
+    window.addEventListener('resize', fit);
+  }
+  if (phone) {
+    const turn = document.createElement('div');
+    turn.className = 'rotate';
+    turn.innerHTML = `
+      <svg viewBox="0 0 120 120" aria-hidden="true"><g class="rot-phone"><rect x="38" y="18" width="44" height="84" rx="9" fill="#fffaf3" stroke="#2a2140" stroke-width="5"/><rect x="45" y="28" width="30" height="58" rx="3" fill="#8fd3ff"/><circle cx="60" cy="94" r="3.5" fill="#2a2140"/><circle cx="60" cy="57" r="9" fill="#ff5a8a" stroke="#2a2140" stroke-width="3"/></g><path class="rot-arrow" d="M96 30a44 44 0 0 1 6 40" fill="none" stroke="#ffcf33" stroke-width="7" stroke-linecap="round"/><path class="rot-arrow" d="M94 62l8 10 7-11" fill="none" stroke="#ffcf33" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h2>Turn your phone sideways</h2>
+      <p>Floppy Party is played sideways, like most phone games.</p>`;
+    document.body.append(turn);
+    // turning the phone upright in the middle of a game pauses it
+    const upright = matchMedia('(orientation: portrait)');
+    const onTurn = () => {
+      if (upright.matches && FP.Game && FP.Game.state === 'play' && FP.UI && !FP.UI.open()) window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Escape' }));
+    };
+    if (upright.addEventListener) upright.addEventListener('change', onTurn);
+    // on the first tap, go full screen and stay sideways (works on Android; iPhones ignore it)
+    const goBig = () => {
+      window.removeEventListener('touchend', goBig);
+      const el = document.documentElement;
+      if (document.fullscreenElement || !el.requestFullscreen) return;
+      try {
+        el.requestFullscreen({ navigationUI: 'hide' }).then(() => {
+          if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+        }).catch(() => {});
+      } catch (e) { /* not allowed here (for example inside another page) */ }
+    };
+    window.addEventListener('touchend', goBig);
+  }
+
   // read the buttons like a controller (presses are counted, so quick taps are never lost)
   const seen = {};
   function read(id) {
@@ -87,5 +135,8 @@ FP.Touch = (function () {
   // show the buttons only while playing (not on menus)
   function update(show) { if (box) box.hidden = !show; }
 
-  return { available, read, update };
+  // a pretend button press (for example the "I'm ready" button online)
+  function tap(name) { if (taps[name] !== undefined) taps[name]++; }
+
+  return { available, phone, read, update, tap };
 })();

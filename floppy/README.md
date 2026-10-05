@@ -35,7 +35,7 @@ Play on **one computer** (2 players on the keyboard, plus controllers and bots) 
 **Player 1 with a controller:** press **A** on the controller to pick *Play on this computer*, and Player 1 uses the controller.
 Or, in the lobby, press **A** on the controller before touching the keyboard.
 
-**Phones and tablets:** a joystick appears on the left, and Jump, Punch, Grab, Emote and Play dead buttons on the right. The pause button is at the top right.
+**Phones and tablets:** a joystick appears on the left, and Jump, Punch, Grab, Emote and Play dead buttons on the right. The pause button is at the top right. On a phone the game is played **sideways** (like most phone games): hold it upright and it asks you to turn it, and on Android it goes full screen after your first tap. The menus shrink to fit the screen, and the joystick and buttons hide whenever a menu is open, so they never cover a button. Online friends on a phone tap **I'm ready!** before each mini-game.
 In the lobby you can also click the arrows on your player card to change your color, hat and outfit.
 
 - **Punch** someone 3 times quickly to **knock them out**. They go completely floppy!

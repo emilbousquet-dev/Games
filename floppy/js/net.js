@@ -473,7 +473,12 @@ FP.Net = (function () {
     } else if (msg.t === 'ev') { if (typeof msg.e === 'string') FP.bus.emit('net:' + msg.e, msg.d); }
     else if (msg.t === 'banner') FP.UI.big(String(msg.text), msg.text === 'GO!' ? 0.8 : 2.6, String(msg.sub || ''));
     else if (msg.t === 'podium') { if (g.clientPodium) { g.players = msg.players.map(fromList); clientState = 'results'; g.clientPodium(msg.places); } }
-    else if (msg.t === 'intro') FP.UI.screen({ cls: 'intro', title: clientMode ? clientMode.name : 'Get ready', html: String(msg.html || '') });
+    else if (msg.t === 'intro') {
+      // on a phone the joystick and buttons are hidden here, so there's a button to say "ready" (it presses jump)
+      const card = FP.UI.screen({ cls: 'intro', title: clientMode ? clientMode.name : 'Get ready', html: String(msg.html || '') + (FP.Touch && FP.Touch.available ? '<button class="btn go" data-ready>I\'m ready!</button>' : '') });
+      const rb = card && card.querySelector('[data-ready]');
+      if (rb) rb.addEventListener('click', () => { FP.Touch.tap('jump'); rb.disabled = true; rb.textContent = 'Ready!'; });
+    }
     else if (msg.t === 'introEnd') FP.UI.closeScreen();
     else if (msg.t === 'results') {
       if (msg.n !== undefined && msg.n === clientResultsNo) return;

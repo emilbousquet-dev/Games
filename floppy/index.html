@@ -17,6 +17,7 @@
     :root {
       --ink: #2a2140; --paper: #fffaf3; --paper2: #f2e8da; --yellow: #ffcf33; --blue: #4aa8ff; --green: #5cc44a;
       --shadow: 0 6px 0 rgba(42, 33, 64, .18);
+      --uiz: 1; --ts: 1;
       --font: 'Baloo 2', 'Trebuchet MS', 'Arial Rounded MT Bold', Arial, sans-serif;
     }
     html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; font-family: var(--font); color: var(--ink); }
@@ -323,7 +324,7 @@
     .kh-name { background: var(--ink); color: #fff; border-radius: 999px; padding: 0 10px; font-weight: 800; font-size: 14px; }
     .kart-mini { position: fixed; right: 14px; bottom: 14px; width: 150px; background: rgba(255,255,255,.75); border-radius: 16px; padding: 4px; z-index: 3; pointer-events: none; box-shadow: var(--shadow); }
     .kart-mini svg { display: block; width: 100%; }
-    @media (pointer: coarse) { .kart-mini { top: 70px; bottom: auto; width: 110px; } }
+    @media (pointer: coarse) { .kart-mini { top: 100px; bottom: auto; width: 110px; } }
     .swatch { display: inline-block; padding: 0 10px; border-radius: 8px; color: #fff; border: 2px solid #fff; text-shadow: 0 1px 2px rgba(0,0,0,.6); }
     .parties { display: flex; flex-direction: column; gap: 6px; align-items: center; margin: 6px 0; }
     .tour-table { display: flex; flex-direction: column; gap: 5px; align-items: center; margin: 8px 0; }
@@ -419,6 +420,8 @@
     .slot-join { font-weight: 800; font-size: 16px; display: flex; flex-direction: column; gap: 2px; }
     .slot-join small { font-weight: 600; font-size: 12px; line-height: 1.6; }
     .lobby-actions { display: flex; gap: 10px; }
+    /* a menu on top of the lobby hides the lobby (so its buttons and the coins don't poke out around the menu) */
+    .screen:not([hidden]) ~ .lobby { visibility: hidden; }
 
     .field { font: 800 34px var(--font); letter-spacing: 8px; text-transform: uppercase; width: 5.5em; text-align: center; border: 4px solid var(--ink); border-radius: 14px; padding: 2px 8px; }
     .field.name { letter-spacing: 1px; text-transform: none; width: 8em; font-size: 26px; }
@@ -446,31 +449,90 @@
     .card { touch-action: pan-y; }
     input { -webkit-user-select: text; user-select: text; }
     .touch { position: fixed; inset: 0; z-index: 5; pointer-events: none; }
-    .touch .stick { position: absolute; left: 22px; bottom: 22px; width: 150px; height: 150px; border-radius: 50%; background: rgba(255,255,255,.28); border: 4px solid rgba(42,33,64,.35); pointer-events: auto; touch-action: none; }
-    .touch .knob { position: absolute; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(255,255,255,.9); border: 4px solid var(--ink); }
-    .touch .tbtns { position: absolute; right: 16px; bottom: 16px; width: 210px; height: 190px; pointer-events: none; }
-    .tbtn { position: absolute; border-radius: 50%; border: 4px solid var(--ink); font: 800 15px var(--font); color: var(--ink); pointer-events: auto; touch-action: none; box-shadow: 0 4px 0 rgba(42,33,64,.3); }
-    .tbtn.down { transform: scale(.92); filter: brightness(.9); }
-    .tbtn.jump { right: 0; bottom: 0; width: 92px; height: 92px; background: #6fd35a; font-size: 18px; }
-    .tbtn.punch { right: 100px; bottom: 10px; width: 76px; height: 76px; background: #ff7a7f; }
-    .tbtn.grab { right: 20px; bottom: 100px; width: 76px; height: 76px; background: #4aa8ff; }
-    .tbtn.emote { right: 115px; bottom: 105px; width: 58px; height: 58px; background: #ffcf33; font-size: 12px; }
-    .tbtn.flop { right: 180px; bottom: 60px; width: 52px; height: 52px; background: #d9c7ff; font-size: 12px; }
-    .tpause { position: absolute; right: 14px; top: 14px; width: 46px; height: 46px; border-radius: 14px; border: 3px solid var(--ink); background: rgba(255,255,255,.9); font: 800 16px var(--font); pointer-events: auto; }
-    @media (pointer: coarse) { .corner { display: none; } .lobby-coins { right: 72px; } }
-    /* short screens (phones sideways): a smaller lobby */
+    .touch .stick { position: absolute; left: calc(20px + env(safe-area-inset-left)); bottom: calc(18px * var(--ts)); width: calc(150px * var(--ts)); height: calc(150px * var(--ts)); border-radius: 50%; background: rgba(255,255,255,.22); border: 4px solid rgba(42,33,64,.3); pointer-events: auto; touch-action: none; }
+    .touch .knob { position: absolute; left: 50%; top: 50%; width: calc(64px * var(--ts)); height: calc(64px * var(--ts)); transform-origin: center; margin: calc(-32px * var(--ts)) 0 0 calc(-32px * var(--ts)); border-radius: 50%; background: rgba(255,255,255,.85); border: 4px solid var(--ink); }
+    .touch .tbtns { position: absolute; right: calc(14px + env(safe-area-inset-right)); bottom: calc(14px * var(--ts)); width: calc(210px * var(--ts)); height: calc(190px * var(--ts)); pointer-events: none; }
+    .tbtn { position: absolute; border-radius: 50%; border: 4px solid var(--ink); font: 800 calc(15px * var(--ts)) var(--font); color: var(--ink); pointer-events: auto; touch-action: none; box-shadow: 0 4px 0 rgba(42,33,64,.3); opacity: .88; padding: 0; }
+    .tbtn.down { transform: scale(.92); filter: brightness(.9); opacity: 1; }
+    .tbtn.jump { right: 0; bottom: 0; width: calc(92px * var(--ts)); height: calc(92px * var(--ts)); background: #6fd35a; font-size: calc(18px * var(--ts)); }
+    .tbtn.punch { right: calc(100px * var(--ts)); bottom: calc(10px * var(--ts)); width: calc(76px * var(--ts)); height: calc(76px * var(--ts)); background: #ff7a7f; }
+    .tbtn.grab { right: calc(20px * var(--ts)); bottom: calc(100px * var(--ts)); width: calc(76px * var(--ts)); height: calc(76px * var(--ts)); background: #4aa8ff; }
+    .tbtn.emote { right: calc(115px * var(--ts)); bottom: calc(105px * var(--ts)); width: calc(58px * var(--ts)); height: calc(58px * var(--ts)); background: #ffcf33; font-size: calc(12px * var(--ts)); }
+    .tbtn.flop { right: calc(180px * var(--ts)); bottom: calc(60px * var(--ts)); width: calc(52px * var(--ts)); height: calc(52px * var(--ts)); background: #d9c7ff; font-size: calc(12px * var(--ts)); }
+    .tpause { position: absolute; right: calc(12px + env(safe-area-inset-right)); top: 10px; width: 44px; height: 44px; border-radius: 14px; border: 3px solid var(--ink); background: rgba(255,255,255,.9); font: 800 16px var(--font); pointer-events: auto; padding: 0; }
+    @media (pointer: coarse) { .corner { display: none; } }
+    body.touchy .corner { display: none; }
+    body.touchy .lobby-coins { right: 72px; }
+    /* short screens (small windows): a smaller lobby. The room code always stays on screen. */
     @media (max-height: 520px) {
-      .lobby-top { display: none; }
-      .slot.empty ~ .slot.empty { display: none; }
-      .slot-foot { display: none; }
-      .slot { width: 178px; font-size: 13px; }
-      .slot-row { padding-top: 1px; }
-      .lobby-actions .btn { font-size: 15px; padding: 4px 10px; }
-      .lobby-actions kbd { display: none; }
-      .slot.empty { min-height: 70px; }
-      .slot-join small { display: none; }
+      body:not(.touchy) .lobby-top h2, body:not(.touchy) .lobby-top p { display: none; }
+      body:not(.touchy) .slot.empty ~ .slot.empty { display: none; }
+      body:not(.touchy) .slot-foot { display: none; }
+      body:not(.touchy) .slot { width: 178px; font-size: 13px; }
+      body:not(.touchy) .slot-row { padding-top: 1px; }
+      body:not(.touchy) .lobby-actions .btn { font-size: 15px; padding: 4px 10px; }
+      body:not(.touchy) .lobby-actions kbd { display: none; }
+      body:not(.touchy) .slot.empty { min-height: 70px; }
+      body:not(.touchy) .slot-join small { display: none; }
     }
-    @media (max-height: 520px) and (pointer: coarse) { .lobby { padding-left: 190px; padding-right: 240px; } .slots { flex-wrap: wrap; justify-content: center; } }
+
+    /* ---------- touch screens (phones and tablets) ----------
+       The menus are made for a big screen. Here they shrink (zoom) so they fit,
+       and the name tags above the characters stay the right size. */
+    body.touchy .ui, body.touchy .replay-bars, body.touchy .photo-ui, body.touchy .kart-hud, body.touchy .kart-mini { zoom: var(--uiz, 1); }
+    body.touchy .ui .tags { zoom: calc(1 / var(--uiz, 1)); }
+    body.touchy .btn kbd { display: none; }
+    /* sideways phones: the title menu is wider, with its buttons side by side */
+    @media (max-height: 600px) {
+      body.touchy .screen.title { justify-content: flex-start; align-items: center; padding: 0 0 0 calc(24px + env(safe-area-inset-left)); }
+      body.touchy .screen.title .card { width: 620px; max-width: 62%; padding: 10px 18px 12px; }
+      body.touchy .screen.title .logo { font-size: 50px; }
+      body.touchy .screen.title .btn:not(.small) { flex-basis: calc(50% - 4px); font-size: 17px; padding-block: 5px; }
+      body.touchy .screen.title .buttons { gap: 7px; margin-top: 8px; }
+      body.touchy .screen.title .card .body { font-size: 16px; }
+      /* the lobby: the room code and your player card at the top, the buttons at the bottom, nothing under your thumbs */
+      body.touchy .lobby { top: 0; padding: 8px 12px 10px; justify-content: space-between; pointer-events: none; }
+      body.touchy .lobby > * { pointer-events: auto; }
+      body.touchy .lobby { align-items: flex-start; }
+      body.touchy .lobby-actions { align-self: center; }
+      body.touchy .lobby-top { position: static; transform: none; width: auto; max-width: calc(100% - 340px); align-items: flex-start; text-align: left; }
+      body.touchy .lobby-top h2, body.touchy .lobby-top p { display: none; }
+      body.touchy .lobby-top:not(:has(.online)) { display: none; }
+      body.touchy .slots { flex: none; margin-bottom: auto; gap: 8px; max-width: calc(100% - 340px); justify-content: flex-start; align-items: flex-start; }
+      body.touchy .card { padding: 12px 20px 14px; max-height: calc(100% - 20px); }
+      body.touchy .card h1 { font-size: 32px; }
+      body.touchy .card .body { font-size: 16px; }
+      body.touchy .modes .buttons { grid-template-columns: repeat(4, 1fr); }
+      /* the Level Editor: the drawing board on the right, the 3D arena on the left */
+      body.touchy .editor { left: auto; right: calc(8px + env(safe-area-inset-right)); top: 8px; bottom: 8px; justify-content: flex-end; }
+      body.touchy .ed-card { width: 500px; max-height: 100%; }
+      body.touchy .ed-card canvas { max-width: 300px; }
+      /* the mini-game pictures are smaller, so the menus fit without scrolling */
+      body.touchy .setup-art svg { width: 170px; }
+      body.touchy .roulette .setup-art svg { width: 210px; }
+      body.touchy .slot.empty { display: none; }
+      body.touchy .slot { width: 520px; max-width: 100%; }
+      body.touchy .slot-body { display: grid; grid-template-columns: 1fr 1fr; column-gap: 10px; padding-bottom: 6px; }
+      body.touchy .slot-foot { display: none; }
+      body.touchy .lobby-actions { margin-bottom: 4px; }
+      /* friends' cards (online or bots) are just their name; two players on this phone get narrower cards */
+      body.touchy .slot:not(.slot-mine) { width: auto; min-width: 120px; }
+      body.touchy .slot:not(.slot-mine) .slot-body { display: none; }
+      body.touchy .slots:has(.slot-mine ~ .slot-mine) .slot-mine { width: 300px; }
+      body.touchy .slots:has(.slot-mine ~ .slot-mine) .slot-body { grid-template-columns: 1fr; }
+    }
+    /* phones held upright: please turn the phone */
+    .rotate { display: none; }
+    @media (orientation: portrait) {
+      body.phone .rotate { position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 24px; text-align: center; background: radial-gradient(circle at 50% 40%, #bfe6ff, #6fc3ff); }
+      body.phone .rotate svg { width: 150px; height: 150px; }
+      body.phone .rotate h2 { margin: 0; font-size: 30px; line-height: 1.1; color: #fff; -webkit-text-stroke: 5px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); }
+      body.phone .rotate p { margin: 0; max-width: 300px; background: rgba(255,250,243,.92); padding: 6px 16px; border-radius: 16px; font-weight: 700; }
+      body.phone .rot-phone { transform-origin: 60px 60px; animation: rot-turn 2.4s ease-in-out infinite; }
+      body.phone .rot-arrow { animation: rot-fade 2.4s ease-in-out infinite; }
+    }
+    @keyframes rot-turn { 0%, 25% { transform: rotate(0); } 55%, 85% { transform: rotate(-90deg); } 100% { transform: rotate(0); } }
+    @keyframes rot-fade { 0%, 20% { opacity: 1; } 45%, 90% { opacity: 0; } 100% { opacity: 1; } }
 
     /* loading screen */
     #splash { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; background: radial-gradient(circle at 50% 40%, #bfe6ff, #6fc3ff); transition: opacity .5s; }

@@ -432,9 +432,10 @@ FP.Game = (function () {
       const arrows = (act) => (mine ? [`<button class="arrow" data-act="${act}" data-dir="-1" data-i="${i}" title="Previous">${ICON.left}</button>`, `<button class="arrow" data-act="${act}" data-dir="1" data-i="${i}" title="Next">${ICON.right}</button>`] : ['', '']);
       const [cl, cr] = arrows('color'), [hl, hr] = arrows('hat'), [ol, or] = arrows('outfit');
       const [fl, fr] = arrows('face'), [dl, dr] = arrows('dance'), [tl, tr] = arrows('trail'), [pl, pr] = arrows('pet'), [gl, gr] = arrows('tag');
-      slots.push(`<div class="slot" style="--c:${hex(col.body)};--l:${hex(col.light)}">
+      const local = client ? p.source.kind === 'me' : isLocalSource(p.source);
+      slots.push(`<div class="slot${local ? ' slot-mine' : ''}" style="--c:${hex(col.body)};--l:${hex(col.light)}">
         <div class="slot-head"><span class="slot-num">P${i + 1}</span>${!client && isLocalSource(p.source) ? `<span class="slot-lv" title="Your level">Lv ${FP.Profile.levelInfo().level}</span>` : ''}${!client && isLocalSource(p.source) ? `<button class="name-btn" data-act="rename" data-i="${i}" title="Change your name">${esc(p.name)}${ICON.pencil}</button>` : `<b>${esc(p.name)}</b>`}${i > 0 && !client ? `<button class="leave" data-act="remove" data-i="${i}" title="Remove this player">Leave</button>` : ''}</div>
-        <div class="slot-row"><span class="lbl">Color</span>${cl}<span class="val"><i class="dot"></i>${col.name}</span>${cr}</div>
+        <div class="slot-body"><div class="slot-row"><span class="lbl">Color</span>${cl}<span class="val"><i class="dot"></i>${col.name}</span>${cr}</div>
         <div class="slot-row"><span class="lbl">Hat</span>${hl}<span class="val">${FP.UI.HAT_NAMES[p.hat]}</span>${hr}</div>
         <div class="slot-row"><span class="lbl">Outfit</span>${ol}<span class="val">${FP.Look.OUTFIT_NAMES[p.outfit || 'none']}</span>${or}</div>
         <div class="slot-row"><span class="lbl">Face</span>${fl}<span class="val">${FP.Style.FACE_NAMES[p.face || 'none']}</span>${fr}</div>
@@ -442,7 +443,7 @@ FP.Game = (function () {
         <div class="slot-row"><span class="lbl">Trail</span>${tl}<span class="val">${FP.Style.TRAIL_NAMES[p.trail || 'none']}</span>${tr}</div>
         <div class="slot-row"><span class="lbl">Pet</span>${pl}<span class="val">${FP.Style.PET_NAMES[p.pet || 'none']}</span>${pr}</div>
         <div class="slot-row"><span class="lbl">Tag</span>${gl}<span class="val">${FP.Style.TAG_NAMES[p.tag || 'none']}</span>${gr}</div>
-        ${mine && !client ? `<div class="slot-row"><span class="lbl">Emotes</span><button class="emo-btn" data-act="emotes" data-i="${i}">Change</button></div>` : ''}
+        ${mine && !client ? `<div class="slot-row"><span class="lbl">Emotes</span><button class="emo-btn" data-act="emotes" data-i="${i}">Change</button></div>` : ''}</div>
         <div class="slot-foot">${controlsText(p)}<br><span class="keys">${colorKeys(p)}</span></div>
       </div>`);
     }
@@ -865,11 +866,12 @@ FP.Game = (function () {
   function introHtml(withButton) {
     const tips = TIPS[mode.id] || [];
     const left = Math.max(0, Math.ceil(INTRO_TIME - introT));
-    const who = humans().map((p) => `<span class="ready-pill${ready.has(p.id) ? ' ok' : ''}">${FP.UI.playerPill(p)}${ready.has(p.id) ? ICON.check : '<small>press jump</small>'}</span>`).join('');
+    const who = humans().map((p) => `<span class="ready-pill${ready.has(p.id) ? ' ok' : ''}">${FP.UI.playerPill(p)}${ready.has(p.id) ? ICON.check : `<small>${p.source.kind === 'touch' ? 'tap Start' : 'press jump'}</small>`}</span>`).join('');
+    const allTouch = humans().length && humans().every((p) => p.source.kind === 'touch');
     return `<div class="intro-grid"><div class="setup-art">${mode.art || ''}</div><div class="intro-text"><p class="goal">${mode.desc}</p><ul class="tips">${tips.map((t) => `<li>${t}</li>`).join('')}</ul></div></div>
       ${keysRow()}
       <div class="ready-row">${who}</div>
-      <p class="small">Press <b>JUMP</b> when you're ready! Starting in <b class="intro-timer">${left}</b>...</p>
+      <p class="small">${allTouch ? 'Tap <b>Start now</b>' : 'Press <b>JUMP</b>'} when you're ready! Starting in <b class="intro-timer">${left}</b>...</p>
       ${withButton ? `<button class="btn go" data-start>${ICON.play} Start now</button>` : ''}`;
   }
   // the controls, for whatever everyone is playing with (keyboard, controller or touch screen)
@@ -2164,8 +2166,8 @@ FP.Game = (function () {
     updateKingCrown();
     FP.Caster.update(dt);
     if (!paused && state !== 'replay') FP.Style.update(dt, chars); // sparkly trails
-    const introOpen = !!document.querySelector('.screen.intro:not([hidden])');
-    FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || introOpen || (state === 'replay' && replay && replay.director)));
+    // (never while a menu or the "how to play" screen is open, so they can't cover its buttons)
+    FP.Touch.update(FP.Touch.available && ((['lobby', 'countdown', 'play', 'roundOver', 'client'].includes(state) && !FP.UI.open()) || (state === 'replay' && replay && replay.director)));
     if (FP.Net && FP.Net.isClient()) {
       FP.Audio.duck(false);
       FP.Net.clientFrame(dt);
