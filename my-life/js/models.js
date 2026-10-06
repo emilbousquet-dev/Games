@@ -228,544 +228,69 @@ ML.Models = (function () {
   }
 
   // ============================================================
-  //  PEOPLE
+  //  LOFT — a smooth shape made of rings stacked on top of each
+  //  other (like a pottery tower). Used for bodies, heads, cars...
+  //  rings: [[y, width, depth, zShift, xShift], ...] (y going up)
   // ============================================================
-  // body sizes for each age
-  const BODY = {
-    baby: { leg: 0.17, legR: 0.05, torso: 0.21, tw: 0.25, td: 0.2, arm: 0.17, armR: 0.038, head: 0.155, neck: 0.0, foot: 0.6 },
-    kid: { leg: 0.44, legR: 0.052, torso: 0.33, tw: 0.27, td: 0.17, arm: 0.34, armR: 0.04, head: 0.165, neck: 0.04, foot: 0.75 },
-    teen: { leg: 0.68, legR: 0.06, torso: 0.44, tw: 0.32, td: 0.19, arm: 0.47, armR: 0.045, head: 0.172, neck: 0.06, foot: 0.92 },
-    adult: { leg: 0.78, legR: 0.065, torso: 0.5, tw: 0.37, td: 0.22, arm: 0.53, armR: 0.05, head: 0.178, neck: 0.07, foot: 1 },
-    old: { leg: 0.74, legR: 0.062, torso: 0.48, tw: 0.37, td: 0.23, arm: 0.5, armR: 0.048, head: 0.176, neck: 0.06, foot: 1 },
-  };
-  const LONG_SLEEVES = { hoodie: 1, suit: 1, coat: 1, uniform: 1, chef: 1, sweater: 1 };
-
-  function hand(parent, pos, s, mat) {
-    const h = grp(parent, pos);
-    P(h, G.sphere(), mat, [0, 0, 0], [s, s * 1.1, s * 0.75]);
-    P(h, G.cap(s * 0.3, s * 0.45), mat, [s * 0.7, s * 0.1, s * 0.3], 1, [0, 0, 0.9]);
-    return h;
+  function cr(a, b, c, d, t) { // smooth curve through the rings
+    const t2 = t * t, t3 = t2 * t;
+    return a.map((_, i) => {
+      const p0 = a[i] || 0, p1 = b[i] || 0, p2 = c[i] || 0, p3 = d[i] || 0;
+      return 0.5 * ((2 * p1) + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+    });
   }
-
-  // look = { skin, hair, hairStyle, eyes, top, shirt, pants, shoes, extra, bag }
-  function person(look, stage = 'adult') {
-    const L = Object.assign({ skin: 0xf0c09a, hair: 0x3a2414, hairStyle: 'short', eyes: 0x4a7ac8, top: 'tshirt', shirt: 0x3a8ae8, pants: 0x2a3a5a, shoes: 0xf4f4f4, extra: 'none' }, look);
-    const b = BODY[stage] || BODY.adult;
-    const baby = stage === 'baby', old = stage === 'old';
-    const skin = C(L.skin, 0.6);
-    const hairColor = old ? (L.hairStyle === 'bald' ? L.hair : 0xdcdcdc) : L.hair;
-    const hairM = C(hairColor, 0.7);
-    const shirtM = C(L.shirt, 0.75);
-    const pantsM = C(L.pants, 0.8);
-    const shoeM = C(L.shoes, 0.55);
-    const top = baby ? 'onesie' : L.top;
-    const footH = 0.06 * b.foot;
-    const hipY = b.leg + footH;
-
-    const root = new THREE.Group();
-    const hips = grp(root, [0, hipY, 0]);
-    const torso = grp(hips);
-    const head = grp(torso, [0, b.torso + b.neck, 0]);
-    const armL = grp(torso, [b.tw / 2 + b.armR * 0.9, b.torso * 0.88, 0]);
-    const armR = grp(torso, [-(b.tw / 2 + b.armR * 0.9), b.torso * 0.88, 0]);
-    const legL = grp(hips, [b.tw * 0.26, 0, 0]);
-    const legR = grp(hips, [-b.tw * 0.26, 0, 0]);
-    const R = { hips, torso, head, armL, armR, legL, legR, hipY, b };
-    root.userData = { rig: R, face: { eyes: [], brows: [], mouth: null }, blinkOff: Math.random() * 5, kind: 'person', stage, look: L };
-
-    // ---- legs (thigh + knee + shin + shoe) ----
-    const legMat = (top === 'dress') ? skin : (top === 'onesie' ? shirtM : pantsM);
-    const half = b.leg / 2;
-    for (const [leg, side] of [[legL, 'L'], [legR, 'R']]) {
-      P(leg, G.cap(b.legR * 1.05, half - b.legR), legMat, [0, -half / 2, 0]);
-      const knee = grp(leg, [0, -half, 0]);
-      P(knee, G.cap(b.legR, half - b.legR), legMat, [0, -half / 2, 0]);
-      if (baby) P(knee, G.sphere(), shirtM, [0, -half - footH * 0.2, 0.03], [b.legR * 1.2, footH * 0.9, b.legR * 1.7]);
-      else P(knee, G.rbox(b.legR * 2.3, footH * 1.4, b.legR * 4.2, footH * 0.6), shoeM, [0, -half - footH * 0.25, b.legR * 0.9]);
-      R['knee' + side] = knee;
+  function loft(rings, opt = {}) {
+    const seg = opt.seg || 18, sub = opt.sub || 3, pw = opt.pow || 2;
+    rings = rings.map((r) => [r[0], r[1], r[2], r[3] || 0, r[4] || 0]).sort((x, y) => x[0] - y[0]);
+    const R = [];
+    for (let i = 0; i < rings.length - 1; i++) {
+      const p0 = rings[Math.max(0, i - 1)], p1 = rings[i], p2 = rings[i + 1], p3 = rings[Math.min(rings.length - 1, i + 2)];
+      for (let s = 0; s < sub; s++) R.push(cr(p0, p1, p2, p3, s / sub));
     }
-    // ---- body ----
-    const tr = Math.min(b.tw, b.td) * 0.35;
-    if (top === 'onesie') {
-      P(torso, G.rbox(b.tw, b.torso * 1.15, b.td, tr * 1.3), shirtM, [0, b.torso * 0.48, 0]);
-      P(hips, G.sphere(), M.white(), [0, 0.0, 0], [b.tw * 0.55, b.torso * 0.32, b.td * 0.58]); // diaper
-      P(torso, G.sphere(), C(0xffe070, 0.6), [0, b.torso * 0.62, b.td * 0.5], [0.025, 0.025, 0.01]); // button
-    } else {
-      const bodyM = (top === 'coat' || top === 'chef') ? M.white() : shirtM;
-      P(torso, G.rbox(b.tw, b.torso * 1.08, b.td, tr), bodyM, [0, b.torso * 0.5, 0]);
-      // belt / waist
-      if (top !== 'dress') P(hips, G.rbox(b.tw * 0.98, b.torso * 0.22, b.td * 0.98, tr * 0.8), pantsM, [0, 0, 0]);
-      if (top === 'dress') P(hips, G.skirt(), shirtM, [0, -b.leg * 0.2, 0], [b.tw * 0.62, b.leg * 0.5, b.td * 0.75]);
-      if (top === 'hoodie') {
-        P(torso, G.torus(), shirtM, [0, b.torso * 1.0, -b.td * 0.2], [b.tw * 0.32, b.tw * 0.32, b.tw * 0.5], [Math.PI / 2 - 0.3, 0, 0]);
-        P(torso, G.rbox(b.tw * 0.6, b.torso * 0.25, 0.03, 0.012), C(T.shade(L.shirt, -0.2), 0.8), [0, b.torso * 0.25, b.td * 0.5]);
+    R.push(rings[rings.length - 1]);
+    const pos = [], uv = [], idx = [];
+    for (let i = 0; i < R.length; i++) {
+      const [y, w, d, z, x] = R[i];
+      for (let j = 0; j <= seg; j++) {
+        const a = j / seg * Math.PI * 2, sa = Math.sin(a), ca = Math.cos(a);
+        const sx = Math.sign(sa) * Math.pow(Math.abs(sa), 2 / pw), sz = Math.sign(ca) * Math.pow(Math.abs(ca), 2 / pw);
+        pos.push(x + sx * Math.max(0.0005, w) / 2, y, z + sz * Math.max(0.0005, d) / 2);
+        uv.push(j / seg, i / (R.length - 1));
       }
-      if (top === 'suit') {
-        P(torso, G.box(), M.white(), [0, b.torso * 0.68, b.td * 0.5], [b.tw * 0.3, b.torso * 0.62, 0.01]);
-        P(torso, G.box(), C(0xc8202a, 0.6), [0, b.torso * 0.62, b.td * 0.52], [b.tw * 0.1, b.torso * 0.5, 0.012]);
-      }
-      if (top === 'coat') {
-        P(torso, G.box(), shirtM, [0, b.torso * 0.7, b.td * 0.5], [b.tw * 0.28, b.torso * 0.55, 0.01]);
-        P(hips, G.skirt(), M.white(), [0, -b.leg * 0.22, 0], [b.tw * 0.62, b.leg * 0.45, b.td * 0.72]);
-        P(torso, G.cap(0.008, 0.12), M.metal(), [-b.tw * 0.22, b.torso * 0.75, b.td * 0.5], 1, [0, 0, 0.3]); // pen
-      }
-      if (top === 'uniform') {
-        P(torso, G.cylLo(), M.gold(), [b.tw * 0.22, b.torso * 0.75, b.td * 0.5], [0.03, 0.01, 0.03], [Math.PI / 2, 0, 0]); // badge
-        P(hips, G.rbox(b.tw * 1.02, 0.05, b.td * 1.02, 0.02), M.black(), [0, 0.03, 0]);
-      }
-      if (top === 'chef') for (let i = 0; i < 3; i++) P(torso, G.sphereLo(), M.black(), [b.tw * 0.15, b.torso * (0.4 + i * 0.2), b.td * 0.5], 0.014);
-      if (top === 'sweater') P(torso, G.box(), C(T.shade(L.shirt, 0.3), 0.8), [0, b.torso * 0.5, b.td * 0.5], [b.tw * 0.9, 0.04, 0.01]);
-      if (top === 'tshirt' && stage !== 'old') P(torso, G.sphereLo(), C(T.shade(L.shirt, 0.45), 0.7), [0, b.torso * 0.62, b.td * 0.5], [b.tw * 0.16, b.tw * 0.16, 0.01]); // logo
     }
-    // ---- arms ----
-    const longSl = LONG_SLEEVES[top];
-    const sleeveM = (top === 'coat' || top === 'chef') ? M.white() : shirtM;
-    for (const [arm, side] of [[armL, 'L'], [armR, 'R']]) {
-      P(arm, G.cap(b.armR * 1.15, b.arm * (longSl ? 0.82 : 0.32)), sleeveM, [0, -b.arm * (longSl ? 0.44 : 0.18), 0]);
-      if (!longSl) P(arm, G.cap(b.armR, b.arm * 0.72), skin, [0, -b.arm * 0.52, 0]);
-      const h = hand(arm, [0, -b.arm - b.armR * 0.4, 0], b.armR * 1.15, skin);
-      R['hand' + side] = h;
+    const W = seg + 1;
+    for (let i = 0; i < R.length - 1; i++) for (let j = 0; j < seg; j++) {
+      const a = i * W + j, b = a + W;
+      idx.push(a, a + 1, b, a + 1, b + 1, b);
     }
-    // ---- head ----
-    const hr = b.head;
-    P(head, G.cylLo(), skin, [0, b.neck * 0.3, 0], [b.armR * 1.3, b.neck + 0.04, b.armR * 1.3]);
-    const H = grp(head, [0, hr * 0.95, 0]);
-    R.H = H; R.hr = hr;
-    P(H, G.sphere(), skin, [0, 0, 0], [hr, hr * (baby ? 0.98 : 1.05), hr * 0.98]);
-    for (const sx of [-1, 1]) P(H, G.sphere(), skin, [sx * hr * 0.98, -hr * 0.05, 0], [hr * 0.17, hr * 0.26, hr * 0.14]);
-    P(H, G.sphere(), C(T.shade(L.skin, -0.06), 0.6), [0, -hr * 0.1, hr * 0.96], [hr * 0.14, hr * 0.13, hr * 0.13]);
-    if (baby || stage === 'kid') for (const sx of [-1, 1]) P(H, G.sphereLo(), C(0xff8a8a, 0.8, 0, { transparent: true, opacity: 0.45 }), [sx * hr * 0.55, -hr * 0.22, hr * 0.78], [hr * 0.16, hr * 0.1, 0.01]);
-    const f = root.userData.face;
-    const er = hr * (baby ? 0.27 : stage === 'kid' ? 0.25 : 0.22);
-    f.eyes.push(makeEye(H, [hr * 0.37, hr * 0.12, hr * 0.8], er, L.eyes, skin));
-    f.eyes.push(makeEye(H, [-hr * 0.37, hr * 0.12, hr * 0.8], er, L.eyes, skin));
-    for (const sx of [1, -1]) f.brows.push(makeBrow(H, [sx * hr * 0.37, hr * 0.42, hr * 0.88], hr * 0.24, hr * 0.055, C(old ? 0xe8e8e8 : T.shade(hairColor, -0.1), 0.7), sx));
-    f.mouth = makeMouth(H, [0, -hr * 0.4, hr * 0.88], hr * 0.27);
-    if (old) for (const sx of [-1, 1]) P(H, G.cap(0.004, hr * 0.12), C(T.shade(L.skin, -0.18), 0.7), [sx * hr * 0.62, hr * 0.12, hr * 0.74], 1, [0, 0, 0.4 * sx]); // wrinkles
-
-    // ---- hair ----
-    if (baby) {
-      P(H, G.sphereLo(), hairM, [0, hr * 0.98, hr * 0.15], [hr * 0.12, hr * 0.1, hr * 0.12]);
-      P(H, G.torus(), hairM, [0, hr * 1.05, hr * 0.22], hr * 0.1, [0, Math.PI / 2, 0]);
-    } else hair(H, hr, L.hairStyle, hairM, old);
-    // ---- extras ----
-    const ex = L.extra;
-    if (ex === 'glasses' || ex === 'sunglasses' || (old && ex === 'none' && L.hairStyle !== 'long')) {
-      const frame = ex === 'sunglasses' ? M.black() : C(0x2a2a30, 0.4);
-      for (const sx of [-1, 1]) {
-        P(H, G.ring(), frame, [sx * hr * 0.37, hr * 0.12, hr * 0.98], [er * 1.35, er * 1.35, er * 1.35]);
-        if (ex === 'sunglasses') P(H, G.cylLo(), C(0x101018, 0.1, 0.5), [sx * hr * 0.37, hr * 0.12, hr * 0.98], [er * 1.3, 0.005, er * 1.3], [Math.PI / 2, 0, 0]);
-      }
-      P(H, G.box(), frame, [0, hr * 0.14, hr * 1.0], [hr * 0.22, 0.008, 0.008]);
+    // close the bottom and the top
+    if (opt.caps !== false) {
+      const bi = pos.length / 3; const r0 = R[0];
+      pos.push(r0[4], r0[0], r0[3]); uv.push(0.5, 0);
+      for (let j = 0; j < seg; j++) idx.push(bi, j + 1, j);
+      const ti = pos.length / 3; const rl = R[R.length - 1], o = (R.length - 1) * W;
+      pos.push(rl[4], rl[0], rl[3]); uv.push(0.5, 1);
+      for (let j = 0; j < seg; j++) idx.push(ti, o + j, o + j + 1);
     }
-    if (ex === 'cap') {
-      P(H, G.hemi(), shirtM, [0, hr * 0.15, 0], [hr * 1.06, hr * 0.8, hr * 1.06], [-0.1, 0, 0]);
-      P(H, G.cylLo(), shirtM, [0, hr * 0.2, hr * 0.9], [hr * 0.7, 0.012, hr * 0.55]);
-    }
-    if (ex === 'bow') {
-      for (const sx of [-1, 1]) P(H, G.cone(), C(0xff4a8a, 0.6), [sx * hr * 0.2 + hr * 0.5, hr * 0.85, 0], [hr * 0.18, hr * 0.32, hr * 0.12], [0, 0, sx * Math.PI / 2]);
-      P(H, G.sphereLo(), C(0xff4a8a, 0.6), [hr * 0.5, hr * 0.85, 0], hr * 0.08);
-    }
-    if (ex === 'headband') P(H, G.torus(), C(0xff3a3a, 0.6), [0, hr * 0.45, 0], [hr * 0.92, hr * 0.92, hr * 0.6], [Math.PI / 2 + 0.2, 0, 0]);
-    if (ex === 'mustache' || ex === 'beard') {
-      for (const sx of [-1, 1]) P(H, G.cap(hr * 0.06, hr * 0.2), C(hairColor, 0.8), [sx * hr * 0.14, -hr * 0.26, hr * 0.96], 1, [0, 0, sx * 1.2]);
-      if (ex === 'beard') P(H, G.sphere(), C(hairColor, 0.8), [0, -hr * 0.62, hr * 0.55], [hr * 0.55, hr * 0.42, hr * 0.42]);
-    }
-    if (ex === 'copHat') {
-      P(H, G.cyl(), C(0x1a2a5a, 0.6), [0, hr * 0.85, 0], [hr * 1.02, hr * 0.35, hr * 1.02]);
-      P(H, G.cylLo(), M.black(), [0, hr * 0.68, hr * 0.5], [hr * 0.7, 0.012, hr * 0.6]);
-      P(H, G.cylLo(), M.gold(), [0, hr * 0.85, hr * 1.0], [hr * 0.14, 0.01, hr * 0.14], [Math.PI / 2, 0, 0]);
-    }
-    if (ex === 'chefHat') {
-      P(H, G.cyl(), M.white(), [0, hr * 1.1, 0], [hr * 0.85, hr * 0.6, hr * 0.85]);
-      P(H, G.sphere(), M.white(), [0, hr * 1.55, 0], [hr * 1.05, hr * 0.5, hr * 1.05]);
-    }
-    if (ex === 'crown') {
-      P(H, G.cyl(), M.gold(), [0, hr * 1.0, 0], [hr * 0.75, hr * 0.25, hr * 0.75]);
-      for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; P(H, G.cone(), M.gold(), [Math.cos(a) * hr * 0.7, hr * 1.25, Math.sin(a) * hr * 0.7], [hr * 0.12, hr * 0.25, hr * 0.12]); }
-    }
-    if (L.bag) {
-      P(armL, G.rbox(0.2, 0.16, 0.08, 0.03), C(L.bag, 0.6), [0.04, -b.arm * 0.95, 0]);
-      P(armL, G.torus(), C(L.bag, 0.6), [0.04, -b.arm * 0.82, 0], [0.06, 0.06, 0.06]);
-    }
-    if (old && L.cane) {
-      R.cane = P(armR, G.cap(0.012, b.leg * 1.05), M.darkWood(), [0, -b.arm - b.leg * 0.5, 0.05]);
-    }
-    const height = hipY + b.torso + b.neck + hr * 2;
-    bake(root);
-    blobShadow(root, b.tw * 0.85);
-    root.userData.height = height;
-    return root;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx);
+    g.computeVertexNormals();
+    return g;
   }
-
-  function hair(H, hr, style, m, old) {
-    const cover = () => P(H, G.hemi(), m, [0, hr * 0.02, -hr * 0.03], [hr * 1.07, hr * 1.02, hr * 1.08], [-0.32, 0, 0]);
-    if (style === 'bald') {
-      if (old) for (const sx of [-1, 1]) P(H, G.sphere(), m, [sx * hr * 0.85, hr * 0.05, -hr * 0.25], [hr * 0.25, hr * 0.35, hr * 0.55]);
-      return;
-    }
-    if (style === 'short') {
-      cover();
-      P(H, G.rbox(hr * 1.2, hr * 0.28, hr * 0.4, hr * 0.12), m, [0, hr * 0.7, hr * 0.55], 1, [0.45, 0, 0]);
-    } else if (style === 'spiky') {
-      cover();
-      for (let i = 0; i < 9; i++) {
-        const a = (i / 9) * Math.PI * 2;
-        P(H, G.cone(), m, [Math.cos(a) * hr * 0.45, hr * 0.85, Math.sin(a) * hr * 0.45 - hr * 0.05], [hr * 0.22, hr * 0.5, hr * 0.22], [Math.sin(a) * 0.6, 0, -Math.cos(a) * 0.6]);
-      }
-      P(H, G.cone(), m, [0, hr * 1.1, 0], [hr * 0.22, hr * 0.5, hr * 0.22]);
-    } else if (style === 'long') {
-      cover();
-      P(H, G.rbox(hr * 2.0, hr * 2.0, hr * 0.5, hr * 0.24), m, [0, -hr * 0.55, -hr * 0.62]);
-      for (const sx of [-1, 1]) P(H, G.cap(hr * 0.24, hr * 1.1), m, [sx * hr * 0.9, -hr * 0.5, -hr * 0.05]);
-      P(H, G.rbox(hr * 1.3, hr * 0.3, hr * 0.4, hr * 0.14), m, [0, hr * 0.72, hr * 0.5], 1, [0.5, 0, 0]);
-    } else if (style === 'ponytail') {
-      cover();
-      P(H, G.sphere(), m, [0, hr * 0.35, -hr * 1.05], hr * 0.25);
-      P(H, G.cap(hr * 0.2, hr * 0.8), m, [0, -hr * 0.2, -hr * 1.15], 1, [0.2, 0, 0]);
-    } else if (style === 'curly') {
-      for (let i = 0; i < 18; i++) {
-        const a = (i / 18) * Math.PI * 2, ring = i % 2;
-        P(H, G.sphereLo(), m, [Math.cos(a) * hr * (0.85 - ring * 0.25), hr * (0.35 + ring * 0.45), Math.sin(a) * hr * (0.85 - ring * 0.25) - hr * 0.1], hr * 0.34);
-      }
-      P(H, G.sphere(), m, [0, hr * 0.85, -hr * 0.1], hr * 0.5);
-    } else if (style === 'bun') {
-      cover();
-      P(H, G.sphere(), m, [0, hr * 1.1, -hr * 0.2], hr * 0.38);
-    } else if (style === 'mohawk') {
-      for (let i = 0; i < 6; i++) P(H, G.cone(), m, [0, hr * (0.95 - Math.abs(i - 2.5) * 0.05), hr * (0.6 - i * 0.28)], [hr * 0.1, hr * 0.5, hr * 0.26]);
-    } else if (style === 'afro') {
-      P(H, G.sphere(), m, [0, hr * 0.45, -hr * 0.15], [hr * 1.45, hr * 1.25, hr * 1.35]);
-    } else cover();
+  // a cached loft (same shape = same geometry, so the game stays fast)
+  const L0 = (key, rings, opt) => geo('loft' + key, () => loft(rings, opt));
+  // a tube from point a to point b (for bike frames, poles...)
+  function tube(parent, a, b, r, mat) {
+    const va = new THREE.Vector3(...a), vb = new THREE.Vector3(...b);
+    const len = va.distanceTo(vb);
+    const m = P(parent, G.cylLo(), mat, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], [r, len, r]);
+    m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), vb.sub(va).normalize());
+    return m;
   }
-
-  // ---------- personality decorations: halo + sparkles, storm cloud, propeller hat ----------
-  function setPersona(ch, persona) {
-    const R = ch.userData.rig;
-    if (!R) return;
-    if (R.personaFx) { R.H.remove(R.personaFx); R.personaFx = null; }
-    const f = ch.userData.face;
-    f.browBias = 0; f.moodBias = 0;
-    ch.userData.persona = persona;
-    if (!persona) return;
-    const hr = R.hr;
-    const fx = grp(R.H, [0, hr * 1.55, 0]);
-    R.personaFx = fx;
-    if (persona === 'good') {
-      f.moodBias = 0.25;
-      const halo = P(fx, G.ring(), E(0xffd84a, 1.2), [0, 0.03, 0], [hr * 0.7, hr * 0.7, hr * 1.4], [Math.PI / 2, 0, 0]);
-      halo.castShadow = false;
-      fx.userData.sparkles = [0, 1, 2].map(() => sprite(fx, 0xfff0a0, hr * 0.5, [0, 0, 0]));
-    } else if (persona === 'evil') {
-      f.browBias = 1;
-      const cloud = grp(fx, [0, hr * 0.6, 0]);
-      for (let i = 0; i < 6; i++) { const m = P(cloud, G.sphereLo(), C(0x3a3448, 0.9), [(i - 2.5) * hr * 0.28, Math.sin(i * 2) * hr * 0.12, Math.cos(i * 3) * hr * 0.15], hr * (0.3 + (i % 2) * 0.1)); m.castShadow = false; }
-      fx.userData.cloud = cloud;
-      fx.userData.bolt = P(cloud, G.cone(), B(0xc89aff), [0, -hr * 0.4, 0], [hr * 0.08, hr * 0.45, hr * 0.08], [Math.PI, 0, 0.3]);
-      fx.userData.bolt.visible = false;
-    } else if (persona === 'funny') {
-      f.moodBias = 0.45;
-      P(fx, G.hemi(), C(0xff4a4a, 0.6), [0, -hr * 0.5, 0], [hr * 0.55, hr * 0.4, hr * 0.55]);
-      P(fx, G.cylLo(), M.metal(), [0, -hr * 0.1, 0], [0.008, hr * 0.25, 0.008]);
-      const prop = grp(fx, [0, 0.02, 0]);
-      P(prop, G.rbox(hr * 1.1, 0.008, hr * 0.18, 0.004), C(0x3ac8ff, 0.5), [0, 0, 0]);
-      P(prop, G.rbox(hr * 0.18, 0.008, hr * 1.1, 0.004), C(0xffd84a, 0.5), [0, 0.002, 0]);
-      fx.userData.prop = prop;
-    }
-  }
-  function animatePersona(ch, t) {
-    const R = ch.userData.rig;
-    const fx = R && R.personaFx;
-    if (!fx) return;
-    const u = fx.userData;
-    if (u.sparkles) u.sparkles.forEach((s, i) => { const a = t * 1.6 + i * 2.1; s.position.set(Math.cos(a) * R.hr * 1.1, Math.sin(t * 3 + i) * R.hr * 0.3 - R.hr * 0.4, Math.sin(a) * R.hr * 1.1); s.scale.setScalar(R.hr * (0.35 + Math.sin(t * 5 + i) * 0.15)); });
-    if (u.cloud) { u.cloud.position.x = Math.sin(t * 0.8) * R.hr * 0.2; u.bolt.visible = (t % 2.7) < 0.12; }
-    if (u.prop) u.prop.rotation.y = t * 14;
-  }
-
-  // ============================================================
-  //  PERSON ANIMATION
-  //  s = { speed, pose, pt (time in pose), mood, talk, sleepy }
-  // ============================================================
-  const tmp = {};
-  function approach(obj, prop, target, k) { obj[prop] += (target - obj[prop]) * k; }
-  function animatePerson(ch, dt, s) {
-    const R = ch.userData.rig, b = R.b;
-    const ud = ch.userData;
-    ud.t = (ud.t || 0) + dt;
-    const t = ud.t;
-    const moving = s.speed > 0.05;
-    ud.phase = (ud.phase || 0) + dt * (moving ? 3 + s.speed * 5 / Math.max(0.5, b.leg * 1.6) : 0);
-    const ph = ud.phase;
-    const pose = s.pose || 'stand', pt = s.pt || 0;
-    const old = ud.stage === 'old';
-    // targets
-    const o = tmp;
-    o.hipY = R.hipY; o.hipRX = 0; o.hipRZ = 0; o.torRX = old ? 0.16 : 0; o.torRZ = 0; o.headRX = old ? -0.12 : 0; o.headRZ = Math.sin(t * 1.3) * 0.04; o.headRY = 0;
-    o.aLX = 0; o.aLZ = 0.1; o.aRX = 0; o.aRZ = -0.1; o.lLX = 0; o.lRX = 0; o.kL = 0; o.kR = 0; o.lLZ = 0; o.lRZ = 0;
-    let mood = s.mood || 0, open = s.talk ? 0.35 + Math.sin(t * 18) * 0.35 : 0, sleepy = s.sleepy || 0;
-    const breathe = Math.sin(t * 2) * 0.006;
-    const sitHip = b.leg * 0.52 + 0.02;
-
-    switch (pose) {
-      case 'sit': case 'type': case 'drive': case 'swing': case 'read': case 'eat': case 'babysit': case 'phone': case 'sitTalk': {
-        if (pose === 'babysit' || (ud.stage === 'baby' && pose !== 'drive')) {
-          o.hipY = b.legR * 1.6; o.lLX = o.lRX = -1.45; o.lLZ = 0.25; o.lRZ = -0.25;
-          o.aLX = -0.6 + Math.sin(t * 4) * 0.25; o.aRX = -0.6 - Math.sin(t * 4) * 0.25;
-        } else { o.hipY = sitHip; o.lLX = o.lRX = -1.5; o.kL = o.kR = 1.5; o.aLX = o.aRX = -0.5; }
-        if (pose === 'type') { o.aLX = -1.25 + Math.sin(t * 20) * 0.05; o.aRX = -1.25 + Math.cos(t * 19) * 0.05; o.aLZ = -0.2; o.aRZ = 0.2; o.headRX = 0.1; }
-        if (pose === 'drive') { o.aLX = o.aRX = -1.3; o.aLZ = -0.25; o.aRZ = 0.25; o.headRZ = Math.sin(t * 2) * 0.06; }
-        if (pose === 'swing') { o.torRX = Math.sin(t * 3) * 0.25; o.aLX = o.aRX = -2.6; }
-        if (pose === 'read') { o.aLX = o.aRX = -1.15; o.aLZ = -0.35; o.aRZ = 0.35; o.headRX = 0.35; }
-        if (pose === 'eat') { o.aRX = -2.05 + Math.sin(t * 9) * 0.25; o.aRZ = 0.45; open = 0.2 + Math.max(0, Math.sin(t * 9)) * 0.6; mood = Math.max(mood, 0.6); }
-        if (pose === 'phone') { o.aRX = -1.5; o.aRZ = 0.35; o.headRX = 0.35; }
-        if (pose === 'sitTalk') { o.aRX = -0.9 + Math.sin(t * 3) * 0.3; open = 0.35 + Math.sin(t * 18) * 0.35; }
-        break;
-      }
-      case 'eatStand': o.aRX = -2.05 + Math.sin(t * 9) * 0.25; o.aRZ = 0.45; open = 0.2 + Math.max(0, Math.sin(t * 9)) * 0.6; mood = Math.max(mood, 0.6); break;
-      case 'crawl': {
-        o.hipY = b.leg * 0.55; o.hipRX = 1.35; o.headRX = -1.1;
-        const c = moving ? Math.sin(ph) * 0.35 : 0;
-        o.aLX = -1.35 + c; o.aRX = -1.35 - c; o.lLX = -1.4 - c; o.lRX = -1.4 + c; o.kL = o.kR = 1.55;
-        break;
-      }
-      case 'lie': case 'sleep': case 'fall': case 'dead':
-        o.hipY = b.td * 0.55; o.hipRX = -1.5; o.headRX = 0.1; o.aLZ = 0.25; o.aRZ = -0.25;
-        if (pose === 'sleep' || pose === 'dead') sleepy = 1;
-        if (pose === 'fall') { mood = -0.5; open = 0.6; o.aLZ = 1.0; o.aRZ = -1.0; o.lLZ = 0.3; o.lRZ = -0.3; }
-        break;
-      case 'dance': {
-        const k = Math.sin(t * 7);
-        o.hipY = R.hipY - Math.abs(k) * b.leg * 0.08; o.hipRZ = k * 0.12; o.torRZ = -k * 0.15;
-        o.aLX = -2.6 + Math.sin(t * 7) * 0.4; o.aRX = -2.6 - Math.sin(t * 7) * 0.4; o.aLZ = 0.4; o.aRZ = -0.4;
-        o.lLX = Math.max(0, k) * -0.5; o.lRX = Math.max(0, -k) * -0.5; o.kL = Math.max(0, k) * 0.8; o.kR = Math.max(0, -k) * 0.8;
-        o.headRZ = k * 0.2; mood = 1; open = 0.4;
-        break;
-      }
-      case 'silly': { // funny wiggle dance
-        const k = Math.sin(t * 12);
-        o.hipRZ = k * 0.2; o.torRZ = -k * 0.3; o.headRZ = k * 0.35; o.aLZ = 1.4 + k * 0.4; o.aRZ = -1.4 + k * 0.4; o.lLZ = 0.2; o.lRZ = -0.2;
-        mood = 1; open = 0.7;
-        break;
-      }
-      case 'wave': o.aRX = -2.8; o.aRZ = -0.35 + Math.sin(t * 10) * 0.45; mood = Math.max(mood, 0.7); break;
-      case 'cry': o.aLX = o.aRX = -2.35; o.aLZ = -0.5; o.aRZ = 0.5; o.headRX = 0.4; o.torRX += Math.abs(Math.sin(t * 8)) * 0.05; mood = -1; open = 0.4 + Math.sin(t * 9) * 0.2; break;
-      case 'sad': o.headRX = 0.45; o.torRX += 0.12; o.aLZ = 0.03; o.aRZ = -0.03; mood = -0.8; break;
-      case 'cheer': {
-        const j = Math.abs(Math.sin(t * 7));
-        o.hipY = R.hipY + j * b.leg * 0.18; o.aLX = o.aRX = -2.9; o.aLZ = 0.45 + j * 0.2; o.aRZ = -0.45 - j * 0.2; mood = 1; open = 0.8;
-        break;
-      }
-      case 'hug': o.aLX = o.aRX = -1.5; o.aLZ = -0.55; o.aRZ = 0.55; o.torRX += 0.12; mood = 1; break;
-      case 'laugh': o.torRX = -0.25 + Math.sin(t * 16) * 0.06; o.headRX = -0.3; o.aLX = o.aRX = -0.7; o.aLZ = -0.45; o.aRZ = 0.45; mood = 1; open = 0.6 + Math.sin(t * 16) * 0.3; break;
-      case 'angry': o.aLX = -2.3 + Math.sin(t * 16) * 0.2; o.aRX = -2.3 + Math.cos(t * 16) * 0.2; o.aLZ = 0.3; o.aRZ = -0.3; mood = -1; open = 0.35; break;
-      case 'evilLaugh': o.torRX = -0.2; o.headRX = -0.35; o.aLX = o.aRX = -1.2; o.aLZ = -0.25; o.aRZ = 0.25; o.aLX += Math.sin(t * 20) * 0.08; mood = 0.8; open = 0.6 + Math.sin(t * 14) * 0.3; break;
-      case 'scared': o.aLX = -2.6 + Math.sin(t * 22) * 0.2; o.aRX = -2.6 + Math.cos(t * 24) * 0.2; o.aLZ = 0.5; o.aRZ = -0.5; o.torRX = -0.15; mood = -0.6; open = 0.9; break;
-      case 'point': o.aRX = -1.6; o.aRZ = 0.1; break;
-      case 'think': o.aRX = -2.25; o.aRZ = 0.55; o.headRZ = 0.15; o.headRX = -0.1; break;
-      case 'flex': { const k = Math.sin(t * 5) * 0.15; o.aLZ = 1.5 + k; o.aRZ = -1.5 - k; o.aLX = o.aRX = -0.2; mood = 1; break; }
-      case 'facepalm': o.aRX = -2.55; o.aRZ = 0.5; o.headRX = 0.3; mood = -0.4; break;
-      case 'clap': o.aLX = o.aRX = -1.35; o.aLZ = -0.3 - Math.max(0, Math.sin(t * 16)) * 0.2; o.aRZ = 0.3 + Math.max(0, Math.sin(t * 16)) * 0.2; mood = 1; open = 0.3; break;
-      case 'sneak': o.hipY = R.hipY * 0.85; o.lLX = o.lRX = -0.4; o.kL = o.kR = 0.8; o.torRX = 0.45; o.aLX = o.aRX = -0.7; o.headRX = -0.3; break;
-      case 'shrug': o.aLZ = 0.55; o.aRZ = -0.55; o.aLX = o.aRX = -0.5; o.headRZ = 0.2; mood = 0; break;
-      case 'kneel': o.hipY = b.leg * 0.55 + 0.04; o.lLX = -1.5; o.kL = 1.5; o.lRX = 0; o.kR = 1.57; o.aLX = o.aRX = -0.6; break;
-      case 'bow': o.torRX = 0.7; o.headRX = 0.2; break;
-      case 'kick': o.lRX = pt < 0.25 ? 0.6 : pt < 0.55 ? -1.4 : -0.2; o.aLZ = 0.6; o.aRZ = -0.6; break;
-      case 'throw': o.aRX = pt < 0.3 ? 1.1 : pt < 0.6 ? -2.0 : -0.6; o.torRX = pt < 0.3 ? -0.15 : 0.15; break;
-      case 'give': o.aRX = -1.4; o.aRZ = 0.1; mood = Math.max(mood, 0.6); break;
-      case 'hold': o.aRX = -0.9; o.aLX = -0.9; o.aLZ = -0.3; o.aRZ = 0.3; break;
-      case 'sing': o.aLX = o.aRX = -1.0; o.aLZ = 0.7; o.aRZ = -0.7; o.headRX = -0.2; mood = 1; open = 0.4 + Math.abs(Math.sin(t * 5)) * 0.5; break;
-      case 'yell': o.aLX = o.aRX = -0.4; o.aLZ = 0.4; o.aRZ = -0.4; o.torRX = -0.1; mood = -0.7; open = 1; break;
-      case 'cook': o.aRX = -1.2 + Math.sin(t * 8) * 0.12; o.aRZ = 0.3 + Math.cos(t * 8) * 0.15; o.aLX = -1.0; o.headRX = 0.25; break;
-      case 'sweep': o.aLX = o.aRX = -0.9 + Math.sin(t * 6) * 0.3; o.aLZ = -0.4; o.aRZ = 0.4; o.torRX = 0.2; break;
-      case 'stretch': o.aLX = o.aRX = -3.0; o.aLZ = 0.2; o.aRZ = -0.2; o.torRX = -0.1; open = 0.7; sleepy = 0.5; break;
-      case 'surprised': o.aLX = o.aRX = -0.6; o.aLZ = 0.7; o.aRZ = -0.7; o.torRX = -0.1; mood = 0.3; open = 0.95; break;
-      case 'smug': o.aLX = o.aRX = 0.2; o.aLZ = -0.3; o.aRZ = 0.3; o.headRX = -0.15; mood = 0.5; break;
-      case 'film': o.aRX = -1.6; o.aRZ = 0.15; o.aLX = -1.0; open = 0.35 + Math.sin(t * 18) * 0.3; mood = 1; break;
-      case 'shake': o.aRX = -1.3; o.aRZ = 0.25 + Math.sin(t * 14) * 0.06; mood = Math.max(mood, 0.5); break;
-      default: break; // stand
-    }
-    // walking overrides the legs & arms
-    if (moving && pose !== 'crawl' && pose !== 'drive') {
-      const k = U.clamp(s.speed / 1.3, 0, 1.6);
-      const sw = Math.sin(ph) * 0.65 * Math.min(1.1, k);
-      o.lLX = sw; o.lRX = -sw; o.kL = Math.max(0, -Math.sin(ph)) * 0.8 * k; o.kR = Math.max(0, Math.sin(ph)) * 0.8 * k;
-      if (pose === 'stand' || pose === 'sad' || pose === 'sneak') { o.aLX = -sw * 0.9; o.aRX = sw * 0.9; }
-      o.hipY = (pose === 'sneak' ? R.hipY * 0.85 : R.hipY) + Math.abs(Math.cos(ph)) * 0.035 * k;
-      o.torRX += 0.04 * k;
-      o.hipRX = 0;
-    }
-    const k = Math.min(1, dt * 12);
-    approach(R.hips.position, 'y', o.hipY + breathe, k);
-    approach(R.hips.rotation, 'x', o.hipRX, k); approach(R.hips.rotation, 'z', o.hipRZ, k);
-    approach(R.torso.rotation, 'x', o.torRX, k); approach(R.torso.rotation, 'z', o.torRZ, k);
-    approach(R.head.rotation, 'x', o.headRX, k); approach(R.head.rotation, 'z', o.headRZ, k); approach(R.head.rotation, 'y', o.headRY, k);
-    approach(R.armL.rotation, 'x', o.aLX, k); approach(R.armL.rotation, 'z', o.aLZ, k);
-    approach(R.armR.rotation, 'x', o.aRX, k); approach(R.armR.rotation, 'z', o.aRZ, k);
-    approach(R.legL.rotation, 'x', o.lLX, k); approach(R.legR.rotation, 'x', o.lRX, k);
-    approach(R.legL.rotation, 'z', o.lLZ, k); approach(R.legR.rotation, 'z', o.lRZ, k);
-    approach(R.kneeL.rotation, 'x', o.kL, k); approach(R.kneeR.rotation, 'x', o.kR, k);
-    setMood(ch, mood, open);
-    animateFace(ch, t, dt, sleepy);
-    animatePersona(ch, t);
-  }
-
-  // ============================================================
-  //  PETS 🐶 🐱 🦜
-  // ============================================================
-  function pet(kind, color = 0xc8904a) {
-    const root = new THREE.Group();
-    const fur = C(color, 0.85);
-    const fur2 = C(T.shade(color, 0.35), 0.85);
-    const R = { legs: [], kind };
-    root.userData = { rig: R, kind: 'pet', petKind: kind, face: { eyes: [], brows: [], mouth: null }, blinkOff: Math.random() * 4 };
-    if (kind === 'parrot') {
-      const body = grp(root, [0, 0.22, 0]);
-      R.body = body;
-      P(body, G.sphere(), fur, [0, 0, 0], [0.09, 0.13, 0.09], [0.3, 0, 0]);
-      P(body, G.sphere(), fur2, [0, -0.02, 0.05], [0.06, 0.09, 0.05]);
-      const head = grp(body, [0, 0.13, 0.03]); R.head = head;
-      P(head, G.sphere(), fur, [0, 0, 0], 0.075);
-      P(head, G.cone(), C(0xf2c84a, 0.4), [0, -0.01, 0.08], [0.025, 0.06, 0.025], [Math.PI / 2 + 0.4, 0, 0]);
-      for (const sx of [-1, 1]) {
-        P(head, G.sphereLo(), M.white(), [sx * 0.045, 0.02, 0.04], 0.02);
-        P(head, G.sphereLo(), M.pupil(), [sx * 0.05, 0.02, 0.055], 0.01);
-      }
-      R.wings = [-1, 1].map((sx) => { const w = grp(body, [sx * 0.08, 0.04, -0.01]); P(w, G.sphere(), C(T.shade(color, -0.25), 0.8), [sx * 0.01, -0.05, 0], [0.025, 0.1, 0.07]); return w; });
-      P(body, G.box(), C(0x3a6ae8, 0.8), [0, -0.14, -0.08], [0.05, 0.18, 0.015], [0.5, 0, 0]);
-      for (const sx of [-1, 1]) P(root, G.cap(0.008, 0.08), C(0x8a6a4a, 0.6), [sx * 0.03, 0.05, 0]);
-      root.userData.height = 0.4;
-      blobShadow(root, 0.1);
-      return root;
-    }
-    const cat = kind === 'cat';
-    const s = cat ? 0.75 : 1;
-    const legH = 0.25 * s;
-    const body = grp(root, [0, legH + 0.07 * s, 0]);
-    R.body = body;
-    P(body, G.cap(0.12 * s, 0.3 * s), fur, [0, 0, 0], 1, [Math.PI / 2, 0, 0]);
-    P(body, G.sphere(), fur2, [0, -0.04 * s, 0.1 * s], [0.09 * s, 0.08 * s, 0.12 * s]);
-    const head = grp(body, [0, 0.13 * s, 0.25 * s]); R.head = head;
-    P(head, G.sphere(), fur, [0, 0, 0], [0.13 * s, 0.12 * s, 0.12 * s]);
-    if (cat) {
-      P(head, G.sphere(), fur2, [0, -0.04 * s, 0.09 * s], [0.06 * s, 0.045 * s, 0.04 * s]);
-      P(head, G.sphereLo(), C(0xff8aa0, 0.5), [0, -0.015 * s, 0.125 * s], 0.014);
-      for (const sx of [-1, 1]) {
-        P(head, G.cone(), fur, [sx * 0.07 * s, 0.11 * s, 0], [0.04 * s, 0.08 * s, 0.03 * s], [0, 0, -sx * 0.25]);
-        for (const dy of [-0.01, 0.01]) P(head, G.box(), M.white(), [sx * 0.1 * s, -0.035 * s + dy, 0.1 * s], [0.08 * s, 0.002, 0.002], [0, sx * 0.3, 0]);
-      }
-    } else {
-      P(head, G.rbox(0.1 * s, 0.08 * s, 0.12 * s, 0.035), fur2, [0, -0.04 * s, 0.11 * s]);
-      P(head, G.sphere(), M.black(), [0, -0.01 * s, 0.17 * s], [0.03, 0.025, 0.025]);
-      R.ears = [-1, 1].map((sx) => { const e = grp(head, [sx * 0.11 * s, 0.06 * s, -0.01]); P(e, G.sphere(), C(T.shade(color, -0.25), 0.85), [sx * 0.01, -0.06, 0], [0.035, 0.08, 0.06]); return e; });
-      R.tongue = P(head, G.sphere(), M.tongue(), [0, -0.09 * s, 0.13 * s], [0.03, 0.01, 0.04]);
-      R.tongue.userData.anim = true;
-    }
-    const f = root.userData.face;
-    for (const sx of [-1, 1]) f.eyes.push(makeEye(head, [sx * 0.055 * s, 0.03 * s, 0.1 * s], 0.026 * s, cat ? 0x8ad04a : 0x4a2a1a, fur));
-    for (const [x, z] of [[0.07, 0.13], [-0.07, 0.13], [0.07, -0.13], [-0.07, -0.13]]) {
-      const l = grp(body, [x * s, -0.03 * s, z * s]);
-      P(l, G.cap(0.035 * s, legH * 0.8), fur, [0, -legH / 2, 0]);
-      P(l, G.sphere(), fur2, [0, -legH + 0.02, 0.015], [0.04 * s, 0.025 * s, 0.05 * s]);
-      R.legs.push(l);
-    }
-    const tail = grp(body, [0, 0.04 * s, -0.2 * s], [cat ? -0.3 : -0.9, 0, 0]);
-    P(tail, G.cap(cat ? 0.022 : 0.03, cat ? 0.32 : 0.18), fur, [0, cat ? 0.18 : 0.1, 0]);
-    R.tail = tail;
-    root.userData.height = legH + 0.35 * s;
-    blobShadow(root, 0.22 * s, 0.32 * s);
-    return root;
-  }
-  function animatePet(p, dt, s) {
-    const R = p.userData.rig;
-    const ud = p.userData;
-    ud.t = (ud.t || 0) + dt;
-    const t = ud.t;
-    const moving = s.speed > 0.05;
-    ud.phase = (ud.phase || 0) + dt * (moving ? 6 + s.speed * 6 : 0);
-    if (R.kind === 'parrot') {
-      const flap = s.pose === 'fly' || moving;
-      R.wings.forEach((w, i) => { w.rotation.z = (i ? -1 : 1) * (flap ? 0.4 + Math.sin(t * 30) * 0.6 : 0.05); });
-      R.body.position.y = (flap ? 0.3 + Math.sin(t * 8) * 0.03 : 0.22) + (s.pose === 'happy' ? Math.abs(Math.sin(t * 8)) * 0.05 : 0);
-      R.head.rotation.z = Math.sin(t * 2.3) * 0.25;
-      R.head.rotation.x = s.talk ? Math.sin(t * 20) * 0.2 : 0;
-      return;
-    }
-    const sw = moving ? Math.sin(ud.phase) * 0.6 : 0;
-    R.legs[0].rotation.x = sw; R.legs[3].rotation.x = sw; R.legs[1].rotation.x = -sw; R.legs[2].rotation.x = -sw;
-    const happy = s.pose === 'happy' || s.mood > 0.5;
-    R.tail.rotation.z = Math.sin(t * (happy ? 18 : 3)) * (happy ? 0.6 : 0.2);
-    if (s.pose === 'sit') { R.body.rotation.x = -0.45; R.legs[2].rotation.x = R.legs[3].rotation.x = -1.2; }
-    else if (s.pose === 'lie' || s.pose === 'sleep') { R.body.rotation.x = 0; R.body.position.y = 0.12; R.legs.forEach((l) => { l.rotation.x = -1.4; }); }
-    else { R.body.rotation.x = 0; R.body.position.y = (R.kind === 'cat' ? 0.25 * 0.75 + 0.07 * 0.75 : 0.32) + (happy ? Math.abs(Math.sin(t * 9)) * 0.04 : 0); }
-    R.head.rotation.x = s.talk ? -0.25 + Math.sin(t * 22) * 0.12 : Math.sin(t * 1.4) * 0.06;
-    if (R.tongue) R.tongue.visible = happy || moving;
-    if (R.ears) R.ears.forEach((e, i) => { e.rotation.z = (i ? -1 : 1) * (0.1 + Math.sin(t * 3 + i) * 0.08); });
-    animateFace(p, t, dt, s.pose === 'sleep' ? 1 : 0);
-  }
-
-  // ============================================================
-  //  VEHICLES 🚲 🚗 🏎️
-  // ============================================================
-  function vehicle(kind, color = 0xe83a3a) {
-    const root = new THREE.Group();
-    const paint = C(color, 0.3, 0.4);
-    const wheels = [];
-    const wheel = (x, y, z, r, w) => {
-      const wg = grp(root, [x, y, z]);
-      P(wg, G.cyl(), M.tire(), [0, 0, 0], [r, w, r], [0, 0, Math.PI / 2]);
-      P(wg, G.cyl(), M.metal(), [0, 0, 0], [r * 0.55, w * 1.05, r * 0.55], [0, 0, Math.PI / 2]);
-      wheels.push(wg);
-    };
-    if (kind === 'bike') {
-      for (const z of [-0.5, 0.5]) {
-        const wg = grp(root, [0, 0.33, z]);
-        P(wg, G.torus(), M.tire(), [0, 0, 0], [0.31, 0.31, 0.31], [0, Math.PI / 2, 0]);
-        for (let i = 0; i < 4; i++) P(wg, G.box(), M.metal(), [0, 0, 0], [0.008, 0.6, 0.008], [i * Math.PI / 4, 0, 0]);
-        wheels.push(wg);
-      }
-      P(root, G.cap(0.025, 0.85), paint, [0, 0.62, 0], 1, [Math.PI / 2 - 0.15, 0, 0]);
-      P(root, G.cap(0.025, 0.4), paint, [0, 0.5, -0.32], 1, [-0.5, 0, 0]);
-      P(root, G.cap(0.025, 0.42), paint, [0, 0.55, 0.45], 1, [0.3, 0, 0]);
-      P(root, G.cap(0.02, 0.45), M.black(), [0, 0.8, 0.5], 1, [0, 0, Math.PI / 2]);
-      P(root, G.rbox(0.14, 0.05, 0.25, 0.02), M.black(), [0, 0.78, -0.35]);
-      root.userData = { kind: 'vehicle', vkind: kind, wheels, seat: [0, 0.35, -0.3], height: 1, wheelR: 0.33 };
-      blobShadow(root, 0.3, 0.8);
-      return root;
-    }
-    const sports = kind === 'sports', taxi = kind === 'taxi', bus = kind === 'bus';
-    const L = bus ? 8 : 3.9, W = bus ? 2.3 : 1.75, bodyH = sports ? 0.45 : 0.55;
-    const y0 = 0.3;
-    P(root, G.rbox(W, bodyH, L, 0.18), paint, [0, y0 + bodyH / 2, 0]);
-    if (bus) {
-      P(root, G.rbox(W, 1.5, L, 0.2), paint, [0, y0 + bodyH + 0.7, 0]);
-      for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) P(root, G.box(), M.glass(), [sx * W * 0.501, y0 + bodyH + 0.85, -L / 2 + 1 + i * 1.15], [0.01, 0.6, 0.95]);
-    } else {
-      const cabW = W * 0.86, cabL = sports ? 1.6 : 2.0, cabH = sports ? 0.38 : 0.5;
-      P(root, G.rbox(cabW, cabH, cabL, 0.14), M.glass(), [0, y0 + bodyH + cabH / 2 - 0.03, sports ? -0.2 : -0.15]);
-      P(root, G.rbox(cabW * 0.98, 0.06, cabL * 0.9, 0.03), paint, [0, y0 + bodyH + cabH - 0.04, sports ? -0.2 : -0.15]);
-      for (const sx of [-1, 1]) P(root, G.box(), paint, [sx * cabW * 0.47, y0 + bodyH + cabH * 0.45, sports ? -0.2 : -0.15], [0.05, cabH * 0.9, 0.06]);
-    }
-    for (const sx of [-1, 1]) {
-      P(root, G.sphereLo(), E(0xfff4c0, 0.8), [sx * W * 0.34, y0 + bodyH * 0.6, L / 2 - 0.02], [0.13, 0.08, 0.05]);
-      P(root, G.sphereLo(), E(0xff2a2a, 0.7), [sx * W * 0.36, y0 + bodyH * 0.6, -L / 2 + 0.02], [0.13, 0.06, 0.04]);
-    }
-    P(root, G.box(), M.black(), [0, y0 + 0.15, L / 2 - 0.02], [W * 0.5, 0.12, 0.04]);
-    if (sports) {
-      P(root, G.box(), M.black(), [0, y0 + bodyH + 0.25, -L / 2 + 0.2], [W * 0.9, 0.04, 0.3]);
-      for (const sx of [-1, 1]) P(root, G.box(), M.black(), [sx * W * 0.35, y0 + bodyH + 0.12, -L / 2 + 0.2], [0.04, 0.22, 0.12]);
-      P(root, G.box(), C(0xffffff, 0.4), [0, y0 + bodyH + 0.002, 0.9], [0.18, 0.005, 1.6]);
-    }
-    if (taxi) {
-      P(root, G.rbox(0.6, 0.2, 0.3, 0.05), E(0xffe070, 0.5), [0, y0 + bodyH + 0.6, -0.15]);
-      for (let i = 0; i < 6; i++) for (const sx of [-1, 1]) P(root, G.box(), M.black(), [sx * W * 0.502, y0 + bodyH * 0.55, -1 + i * 0.35], [0.01, 0.1, 0.17]);
-    }
-    const r = sports ? 0.34 : 0.36;
-    for (const sx of [-1, 1]) for (const z of (bus ? [-L / 2 + 1.3, L / 2 - 1.5] : [-L / 2 + 0.75, L / 2 - 0.8])) wheel(sx * (W / 2 - 0.08), r, z, r, 0.24);
-    root.userData = { kind: 'vehicle', vkind: kind, wheels, seat: [W * 0.22, y0 + 0.15, -0.2], height: 1.4, wheelR: r };
-    blobShadow(root, W * 0.62, L * 0.55);
-    return root;
-  }
+  // car paint: shiny like a real car
+  const paint = (color) => mats['paint' + color] || (mats['paint' + color] = new THREE.MeshPhysicalMaterial({ color, metalness: 0.45, roughness: 0.32, clearcoat: 1, clearcoatRoughness: 0.08 }));
 
   // ============================================================
   //  THINGS & FURNITURE (everything that isn't alive)
@@ -1081,10 +606,30 @@ ML.Models = (function () {
       // ---- outdoor stuff ----
       case 'tree': {
         const s = opt.s || 1;
-        P(g, G.cyl(), C(0x7a5232, 0.9), [0, 0.9 * s, 0], [0.13 * s, 1.8 * s, 0.13 * s]);
-        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; P(g, G.sphere(), i % 2 ? M.leaf() : M.leaf2(), [Math.cos(a) * 0.6 * s, (2.2 + (i % 3) * 0.25) * s, Math.sin(a) * 0.6 * s], 0.65 * s); }
-        P(g, G.sphere(), M.leaf(), [0, 2.9 * s, 0], 0.75 * s);
-        shadow(1.2 * s);
+        const bark = std('bark', { color: 0x6a5040, map: T.hairTex(), roughness: 0.95 });
+        P(g, L0('trunk', [[0, 0.32, 0.32], [0.5, 0.24, 0.24], [2.2, 0.17, 0.17], [2.8, 0.1, 0.1]], { seg: 10 }), bark, [0, 0, 0], s);
+        const lf = [std('leafA', { color: 0x4a7a32, map: T.grass(), roughness: 0.9 }), std('leafB', { color: 0x3a6a2a, map: T.grass(), roughness: 0.9 })];
+        const rr = U.seeded(Math.round(s * 100) + 3);
+        for (let i = 0; i < 16; i++) {
+          const a = rr() * Math.PI * 2, rad = 0.3 + rr() * 0.75, y = 2.4 + rr() * 1.4;
+          P(g, G.sphereLo(), lf[i % 2], [Math.cos(a) * rad * s, y * s, Math.sin(a) * rad * s], (0.45 + rr() * 0.3) * s, [rr(), rr(), rr()]);
+        }
+        shadow(1.3 * s);
+        break;
+      }
+      case 'palm': {
+        const s = opt.s || 1;
+        const bark = std('palmbark', { color: 0x8a7458, map: T.hairTex(), roughness: 0.95 });
+        const top = Mo_curve(g, bark, s);
+        const frond = std('frond', { color: 0x4a8a3a, roughness: 0.85, side: THREE.DoubleSide });
+        for (let i = 0; i < 9; i++) {
+          const a = i / 9 * Math.PI * 2;
+          const f = grp(g, top, [0, a, 0]);
+          const leaf = P(f, G.cone(), frond, [0, 0, 1.1 * s], [0.35 * s, 2.4 * s, 0.03 * s], [Math.PI / 2 + 0.35, 0, 0]);
+          leaf.rotation.order = 'YXZ';
+        }
+        P(g, G.sphereLo(), C(0x5a4a2a, 0.8), top, 0.25 * s);
+        shadow(1.6 * s);
         break;
       }
       case 'bush': for (let i = 0; i < 4; i++) P(g, G.sphere(), i % 2 ? M.leaf() : M.leaf2(), [(i - 1.5) * 0.3, 0.3, (i % 2) * 0.15], 0.35); shadow(0.7, 0.4); break;
@@ -1180,6 +725,17 @@ ML.Models = (function () {
     return g;
   }
   // a little animation for things that move on their own
+  // a palm tree trunk that bends a little; returns the top position
+  function Mo_curve(g, mat, s) {
+    let x = 0, y = 0;
+    for (let i = 0; i < 9; i++) {
+      const nx = x + 0.06 * s * i * 0.25, ny = y + 0.85 * s;
+      tube(g, [x, y, 0], [nx, ny, 0], (0.2 - i * 0.012) * s, mat);
+      P(g, G.torus(), mat, [nx, ny, 0], [(0.19 - i * 0.012) * s, (0.19 - i * 0.012) * s, 0.3 * s], [Math.PI / 2, 0, 0]);
+      x = nx; y = ny;
+    }
+    return [x, y, 0];
+  }
   function animateItem(o, t) {
     const u = o.userData;
     if (u.spin) u.spin.rotation.y = t * 0.6;
@@ -1193,14 +749,24 @@ ML.Models = (function () {
   // ---------- city buildings ----------
   function building(w, h, d, color, style = 0) {
     const g = new THREE.Group();
-    const t = T.facade(color, style);
-    const tt = t.clone(); tt.needsUpdate = true; tt.repeat.set(Math.max(1, Math.round(w / 6)), Math.max(1, Math.round(h / 12)));
-    const m = new THREE.MeshStandardMaterial({ map: tt, roughness: 0.7 });
+    const kind = ['office', 'brick', 'glass'][style % 3];
+    const seed = (color % 997) + Math.round(w * 13 + h * 7);
+    const t = T.cityFacade(seed, kind);
+    const tt = t.clone(); tt.needsUpdate = true;
+    tt.repeat.set(Math.max(1, Math.round(w / (kind === 'glass' ? 10 : 8))), Math.max(1, Math.round(h / (kind === 'glass' ? 22 : 16))));
+    const m = new THREE.MeshStandardMaterial({ map: tt, roughness: kind === 'glass' ? 0.25 : 0.8, metalness: kind === 'glass' ? 0.4 : 0 });
     P(g, G.box(), m, [0, h / 2, 0], [w, h, d]);
-    P(g, G.box(), C(T.shade(color, -0.3), 0.7), [0, h + 0.15, 0], [w + 0.2, 0.3, d + 0.2]);
-    if (style === 2) P(g, G.cyl(), C(0x8a8a94, 0.4, 0.6), [w * 0.2, h + 1.2, 0], [0.05, 2, 0.05]);
+    const trim = C(kind === 'brick' ? 0xd8d0c0 : 0x8a8a90, 0.7);
+    P(g, G.box(), trim, [0, h + 0.2, 0], [w + 0.3, 0.4, d + 0.3]);          // roof edge
+    P(g, G.box(), C(0x3a3a3e, 0.8), [0, 2.0, 0], [w + 0.08, 4.0, d + 0.08]); // dark ground floor
+    for (let x = -w / 2 + 2; x < w / 2 - 1; x += 3.4) P(g, G.box(), C(0x6a8aa0, 0.15, 0.5), [x + 0.9, 1.7, d / 2 + 0.05], [2.6, 2.6, 0.05]); // shop windows
+    // stuff on the roof
+    const r2 = U.seeded(seed);
+    if (r2() < 0.6) { P(g, G.cyl(), C(0x6a5a4a, 0.8), [w * 0.25, h + 1.6, -d * 0.2], [1.1, 2.2, 1.1]); P(g, G.cone(), C(0x5a4a3a, 0.8), [w * 0.25, h + 3.0, -d * 0.2], [1.2, 0.6, 1.2]); }
+    for (let i = 0; i < 3; i++) if (r2() < 0.7) P(g, G.box(), C(0xa8a8ac, 0.6, 0.3), [(r2() - 0.5) * w * 0.7, h + 0.8, (r2() - 0.5) * d * 0.6], [1.2, 1.0, 1.0]);
+    if (kind === 'glass') P(g, G.cylLo(), C(0x8a8a94, 0.4, 0.6), [w * 0.2, h + 3, 0], [0.06, 6, 0.06]);
     return g;
   }
 
-  return { person, setPersona, animatePerson, pet, animatePet, vehicle, item, animateItem, building, dispose, P, G, C, E, M, grp, std, sprite, blobShadow, BODY };
+  return { item, animateItem, building, dispose, P, G, C, E, M, B, grp, std, sprite, blobShadow, loft, L0, tube, paint, makeEye, makeBrow, makeMouth, setMood, animateFace, bake, roundedBox, mats, geo };
 })();

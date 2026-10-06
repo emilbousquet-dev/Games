@@ -1,4 +1,4 @@
-# MY LIFE 👶➡️🧓  (version 0.1)
+# MY LIFE 👶➡️🧓  (version 0.2)
 
 A **3D life simulator** that runs in your web browser.
 Live a whole life, from a **baby** all the way to an **old-timer**, by choosing what to do.
@@ -15,13 +15,20 @@ You don't walk around yourself: **every move is a choice**, and you watch your c
 
 The game **saves by itself**, so you can close it and press **CONTINUE** later.
 
+### 📱 On a phone or tablet
+
+Open the same `my-life/index.html` page in your phone's browser. Everything works with your finger:
+tap the choices, tap **🎂 AGE UP** and **📱 LIFE** (the big buttons at the bottom when a year is done).
+Hold the phone **upright** (story at the bottom) or **sideways** (story on the right). Both work!
+
 ## Controls
 
 | | |
 |---|---|
 | Pick a choice | Click it, or press `1` `2` `3` `4` ... |
 | Next | `Space` or `Enter` |
-| Age up | `A` (or the 🎂 button) |
+| Age up | `A` (or the 🎂 AGE UP button) |
+| Life menu | `L` (or the 📱 LIFE button) |
 | Close a window | `Esc` |
 | Sound on/off | `M` (or the 🔊 button) |
 
@@ -90,6 +97,9 @@ The top of the file explains everything.
 | `js/creator.js` | the character creator |
 | `js/stage.js` | puts people in the 3D places and makes them act |
 | `js/scenes.js` | all the 3D places (nursery, school, city street...) |
-| `js/models.js` | all the 3D models (people of every age, pets, cars, furniture) |
+| `js/people.js` | realistic people of every age (bodies, faces, hair, clothes, moves) |
+| `js/animals.js` | realistic dogs, cats and parrots |
+| `js/vehicles.js` | realistic cars, sports cars, taxis, buses and bikes |
+| `js/models.js` | furniture, buildings, trees and other things |
 | `js/textures.js` | walls, floors, windows, signs, all painted with code |
 | `js/audio.js` | music and sounds (made with math, no sound files!) |

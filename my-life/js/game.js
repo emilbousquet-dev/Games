@@ -369,6 +369,12 @@ ML.Game = (function () {
       `Year ${L.age} is done! Open the 📱 <b>LIFE</b> menu to do more things, or <b>AGE UP</b>.`,
     ];
     setStory(L.age >= 4 ? U.pick(lines) : `Year ${L.age} is done! Press <b>AGE UP</b> to grow a little bit. 👶`, null, true);
+    // the two big buttons: AGE UP and LIFE
+    const box = $('s-choices');
+    box.className = 'idlewrap';
+    box.innerHTML = `<div class="idle-row"><button class="idle-btn age" id="btnAge">🎂 AGE UP</button><button class="idle-btn life" id="btnLife" ${L.age < 1 ? 'disabled' : ''}>📱 LIFE</button></div>`;
+    $('btnAge').onclick = () => ageUp();
+    $('btnLife').onclick = () => { if (state === 'idle') ML.Menu.open(); };
     setSide();
     Life.save();
     updateHud();
@@ -485,8 +491,10 @@ ML.Game = (function () {
     $('s-text').classList.remove('dim');
     $('s-text').classList.remove('pop'); void $('s-text').offsetWidth; $('s-text').classList.add('pop');
     $('s-choices').innerHTML = '';
+    $('s-choices').className = '';
     $('s-next').style.display = 'none';
     $('story').classList.add('show');
+    $('s-scroll').scrollTop = 0;
   }
   function escapeKeepTags(s) { return s; }
   function askChoice(list) {
@@ -551,6 +559,7 @@ ML.Game = (function () {
       bar.style.width = v + '%';
       bar.className = v < 25 ? 'low' : v > 70 ? 'high' : '';
       $('v-' + k).textContent = v;
+      $('m-' + k).textContent = v;
     }
     $('h-money').textContent = U.money(L.money);
     $('h-money').className = L.money < 0 ? 'neg' : '';
@@ -560,15 +569,34 @@ ML.Game = (function () {
   }
   function setSide() {
     const idle = state === 'idle';
-    $('btnAge').disabled = !idle;
-    $('btnLife').disabled = !idle || Life.L.age < 1;
-    $('btnAge').classList.toggle('ready', idle);
+    if ($('btnAge')) $('btnAge').disabled = !idle;
+    if ($('btnLife')) $('btnLife').disabled = !idle || Life.L.age < 1;
+  }
+  // which kind of screen? wide (computer), tall (phone upright) or short (phone sideways)
+  function layout() {
+    const w = window.innerWidth, h = window.innerHeight;
+    if (h <= 520 && w > h) return 'short';
+    if (w <= 760) return 'tall';
+    return 'wide';
+  }
+  let screenNow = 'title';
+  // move the 3D picture so the people are never hidden behind the boxes
+  function applyLayout() {
+    const m = layout();
+    const F = {
+      game: { wide: [0.3, 0], tall: [0.34, 0], short: [0.06, 0.46] },
+      creator: { wide: [0, -0.34], tall: [0.5, 0], short: [0, 0.52] },
+      title: { wide: [0, 0], tall: [0, 0], short: [0, 0] },
+    };
+    const f = (F[screenNow] || F.title)[m];
+    Stage.setFrame(f[0], f[1]);
   }
   function show(id) {
     for (const s of document.querySelectorAll('.screen')) s.classList.remove('show');
     if (id) $(id).classList.add('show');
     const inGame = !id || id === 'none';
-    Stage.setFrame(inGame ? 0.3 : 0);
+    screenNow = inGame ? 'game' : id;
+    applyLayout();
     $('hud').style.display = inGame ? '' : 'none';
     $('side').style.display = inGame ? '' : 'none';
     $('story').style.display = inGame ? '' : 'none';
@@ -612,18 +640,19 @@ ML.Game = (function () {
     $('btnNew').onclick = () => { ML.Audio.init(); ML.Creator.open(); };
     $('btnContinue').onclick = () => { ML.Audio.init(); continueLife(); };
     $('s-next').onclick = () => nextResolve && nextResolve();
-    $('btnAge').onclick = () => ageUp();
-    $('btnLife').onclick = () => { if (state === 'idle') ML.Menu.open(); };
     $('btnDiary').onclick = () => ML.Menu.diary();
     $('btnSound').onclick = () => { const on = ML.Audio.toggle(); $('btnSound').textContent = on ? '🔊' : '🔇'; };
     $('ls-again').onclick = () => { Life.clearSave(); ML.Creator.open(); };
     $('ls-title').onclick = () => { Life.clearSave(); titleScreen(); };
     for (const b of document.querySelectorAll('.modal .close')) b.onclick = () => closeModals();
+    window.addEventListener('resize', () => applyLayout());
+    window.addEventListener('orientationchange', () => setTimeout(applyLayout, 300));
     window.addEventListener('keydown', (e) => {
       if (e.target && e.target.tagName === 'INPUT') return;
       if (choiceResolve && e.key >= '1' && e.key <= '9') { const btns = $('s-choices').querySelectorAll('button'); const b = btns[+e.key - 1]; if (b) b.click(); }
       if ((e.key === ' ' || e.key === 'Enter') && nextResolve) { e.preventDefault(); nextResolve(); }
       if ((e.key === 'a' || e.key === 'A') && state === 'idle' && !document.querySelector('.modal.show')) ageUp();
+      if ((e.key === 'l' || e.key === 'L') && state === 'idle' && !document.querySelector('.modal.show') && Life.L.age >= 1) ML.Menu.open();
       if (e.key === 'Escape') closeModals();
       if (e.key === 'm' || e.key === 'M') $('btnSound').click();
     });
@@ -644,5 +673,5 @@ ML.Game = (function () {
     get state() { return state; },
   };
 
-  return { init, fill, api, updateHud, playMenuMoment, show, titleScreen, beginLife, get state() { return state; } };
+  return { init, layout, fill, api, updateHud, playMenuMoment, show, titleScreen, beginLife, get state() { return state; } };
 })();

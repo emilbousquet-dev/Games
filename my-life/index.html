@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2a2140">
 <title>My Life</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -79,7 +82,6 @@
   .cr-vals .tx.on { background: var(--pink); color: #fff; }
   .cr-bottom { position: absolute; right: 24px; bottom: 24px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
   .cr-labels { position: absolute; right: 24px; top: 20px; background: rgba(255,255,255,0.85); padding: 8px 16px; border-radius: 16px; font-weight: 600; box-shadow: var(--shadow); }
-  @media (max-width: 760px) { .cr-panel { top: auto; height: 46vh; } .cr-bottom { bottom: auto; top: 16px; } .cr-labels { display: none; } }
 
   /* ---------- HUD ---------- */
   #hud { position: fixed; left: 14px; top: 14px; z-index: 10; width: 250px; background: rgba(255,250,242,0.94); border-radius: 22px; padding: 12px 14px; box-shadow: var(--shadow); }
@@ -104,10 +106,7 @@
   .sbtn { border: none; border-radius: 22px; font-weight: 700; font-size: 18px; padding: 10px 18px; background: #fff; color: var(--ink); box-shadow: 0 5px 0 rgba(0,0,0,0.15), 0 8px 18px rgba(0,0,0,0.15); transition: transform 0.1s; }
   .sbtn:hover:not(:disabled) { transform: translateY(-2px); }
   .sbtn:disabled { opacity: 0.45; }
-  #btnAge { font-size: 24px; padding: 14px 24px; background: linear-gradient(180deg, #ff9ac4, var(--pink)); color: #fff; box-shadow: 0 6px 0 #b02a6a, 0 10px 20px rgba(0,0,0,0.2); }
-  #btnAge.ready { animation: wiggle 1.4s ease-in-out infinite; }
   @keyframes wiggle { 0%, 70%, 100% { transform: rotate(0); } 75% { transform: rotate(-4deg) scale(1.05); } 85% { transform: rotate(4deg) scale(1.05); } }
-  #btnLife { background: linear-gradient(180deg, #8ad0ff, var(--blue)); color: #fff; box-shadow: 0 5px 0 #1a6ab0, 0 8px 18px rgba(0,0,0,0.15); }
 
   /* story box */
   #story { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(820px, calc(100vw - 28px)); z-index: 10; background: rgba(255,250,242,0.97);
@@ -191,16 +190,120 @@
   .ls-hl { text-align: left; background: #fff; border-radius: 16px; padding: 10px 16px; }
   .ls-hl ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.6; }
 
-  @media (max-width: 760px) {
-    #hud { width: 190px; padding: 8px 10px; transform-origin: top left; }
-    #h-name { font-size: 17px; }
-    .stat { font-size: 12px; }
-    #pops { left: 14px; top: auto; bottom: 46vh; }
+  /* ============ TOUCH & PHONES ============ */
+  html, body { touch-action: none; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+  button, .choice, .mbtn { touch-action: manipulation; }
+  .cr-panel, .mbox, .ls-box, #s-scroll, #m-body { touch-action: pan-y; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  input { font-size: 18px !important; user-select: text; touch-action: manipulation; }
+  @media (hover: none) {
+    .choice .key { display: none; }
+    .choice:hover, .big-btn:hover, .mbtn:hover:not(:disabled), .sbtn:hover:not(:disabled), #s-next:hover { transform: none; }
+  }
+  .sbtn.icon { width: 48px; height: 48px; padding: 0; font-size: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .mini { display: none; }
+  .htop { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  #s-scroll { overflow-y: auto; max-height: calc(48vh - 60px); }
+  #s-choices.idlewrap { display: block; }
+  .idle-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  .idle-btn { border: none; border-radius: 20px; min-height: 58px; font-size: 22px; font-weight: 700; color: #fff; box-shadow: 0 5px 0 rgba(0,0,0,0.22); }
+  .idle-btn.age { background: linear-gradient(180deg, #ff9ac4, var(--pink)); box-shadow: 0 5px 0 #b02a6a; animation: wiggle 1.6s ease-in-out infinite; }
+  .idle-btn.life { background: linear-gradient(180deg, #8ad0ff, var(--blue)); box-shadow: 0 5px 0 #1a6ab0; }
+  .idle-btn:active { transform: translateY(3px); }
+  .idle-btn:disabled { opacity: 0.5; animation: none; }
+  .choice { min-height: 50px; }
+  #s-next { min-height: 46px; min-width: 120px; }
+
+  /* phone held upright (or any narrow screen) */
+  @media (max-width: 760px) and (min-height: 521px) {
+    #hud { left: max(8px, env(safe-area-inset-left)); right: calc(max(8px, env(safe-area-inset-right)) + 58px); top: max(8px, env(safe-area-inset-top)); width: auto; padding: 8px 12px; border-radius: 18px; }
+    #h-name { font-size: 17px; } #h-age { font-size: 13px; }
+    .title-badge { margin: 3px 0 4px; font-size: 13px; padding: 2px 10px; }
+    .stat, .plegend { display: none; }
+    .mini { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; margin: 2px 0; }
+    .mini b { margin-left: 2px; }
+    .hrow { margin-top: 2px; font-size: 14px; }
+    .pmeter { height: 8px; margin-top: 4px; }
+    #side { top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); gap: 8px; }
+    #story { left: max(8px, env(safe-area-inset-left)); right: max(8px, env(safe-area-inset-right)); width: auto; transform: none; bottom: max(8px, env(safe-area-inset-bottom)); padding: 12px 12px 12px; border-radius: 22px; }
     #s-text { font-size: 17px; }
+    #s-text small { font-size: 13px; }
+    #s-choices, #s-choices.many { grid-template-columns: 1fr; gap: 8px; }
+    #s-choices.many { grid-template-columns: 1fr 1fr; }
+    #s-choices.many .choice { font-size: 14px; }
+    .choice { font-size: 16px; padding: 8px 12px; }
+    .choice .tag { font-size: 22px; }
+    #s-scroll { max-height: calc(50vh - 40px); }
+    #pops { left: 50%; transform: translateX(-50%); top: 132px; align-items: center; }
+    .pop { font-size: 15px; padding: 4px 12px; }
+    #toasts { top: 132px; width: 92vw; }
+    .toast { font-size: 16px; text-align: center; }
+    #banner { top: 30%; font-size: 11vw; }
+    .bubble { font-size: 14px; max-width: 200px; padding: 6px 10px; }
+    .emote { font-size: 28px; } .emote.big { font-size: 38px; }
+    .mbox { width: 100vw; max-height: 100%; height: 100%; border-radius: 0; padding: max(14px, env(safe-area-inset-top)) 14px 24px; }
+    .mgrid { grid-template-columns: 1fr 1fr; }
+    .mbtn { min-height: 60px; }
+    .mbtn .mi { font-size: 26px; }
+    .mbtn .ml { font-size: 14px; }
+    .close { width: 48px; height: 48px; top: max(10px, env(safe-area-inset-top)); }
+    .ls-grid { grid-template-columns: 1fr; }
+    .ls-title { font-size: 34px; }
+    .big-btn { min-width: min(280px, 80vw); font-size: 22px; }
+    /* creator: picture on top, choices at the bottom */
+    .cr-panel { left: 8px; right: 8px; width: auto; top: auto; bottom: max(8px, env(safe-area-inset-bottom)); height: 50vh; padding: 12px 14px; border-radius: 22px; }
+    .cr-panel h2 { display: none; }
+    .cr-bottom { top: max(8px, env(safe-area-inset-top)); bottom: auto; right: 8px; left: 8px; justify-content: space-between; flex-wrap: nowrap; gap: 6px; }
+    .cr-bottom .big-btn { min-width: 0; margin: 0; padding: 10px 14px; font-size: 16px; }
+    .cr-vals .sw { width: 38px; height: 38px; }
+    .cr-vals .tx { padding: 8px 12px; min-height: 42px; }
+    .cr-labels { display: none; }
+  }
+  /* phone held sideways (short and wide): story on the right side */
+  @media (max-height: 520px) and (orientation: landscape) {
+    #hud { left: max(8px, env(safe-area-inset-left)); top: 8px; width: 200px; padding: 6px 10px; border-radius: 16px; }
+    #h-name { font-size: 15px; } #h-age { font-size: 12px; }
+    .title-badge { margin: 2px 0; font-size: 12px; padding: 2px 8px; }
+    .stat, .plegend { display: none; }
+    .mini { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; }
+    .hrow { margin-top: 0; font-size: 13px; }
+    .pmeter { height: 7px; margin-top: 3px; }
+    #side { top: auto; bottom: max(8px, env(safe-area-inset-bottom)); left: max(8px, env(safe-area-inset-left)); right: auto; flex-direction: row; gap: 8px; }
+    .sbtn.icon { width: 44px; height: 44px; font-size: 20px; }
+    #story { left: auto; right: max(8px, env(safe-area-inset-right)); top: 8px; bottom: 8px; width: min(46vw, 420px); transform: none; padding: 22px 12px 10px; border-radius: 20px; display: none; flex-direction: column; }
+    #story.show { display: flex; }
+    #s-head { top: 6px; left: 12px; font-size: 12px; padding: 2px 10px; }
+    #s-scroll { max-height: none; flex: 1; }
+    #s-text { font-size: 15px; margin-top: 4px; }
     #s-choices, #s-choices.many { grid-template-columns: 1fr; gap: 7px; }
-    .choice { font-size: 15px; padding: 8px 12px; }
-    .sbtn { font-size: 15px; padding: 8px 12px; }
-    #btnAge { font-size: 18px; padding: 10px 16px; }
+    .choice { font-size: 14px; padding: 6px 10px; min-height: 44px; }
+    .choice .tag { font-size: 20px; }
+    .idle-btn { min-height: 50px; font-size: 18px; }
+    #pops { left: 220px; top: 8px; }
+    .pop { font-size: 13px; padding: 3px 10px; }
+    #toasts { left: 30%; top: 8px; }
+    .toast { font-size: 14px; }
+    #banner { left: 28%; top: 45%; font-size: 7vw; }
+    .bubble { font-size: 13px; max-width: 180px; padding: 5px 9px; }
+    .emote { font-size: 24px; }
+    .mbox { width: 100vw; height: 100%; max-height: 100%; border-radius: 0; padding: 10px 16px; }
+    .mgrid { grid-template-columns: repeat(3, 1fr); }
+    .close { width: 46px; height: 46px; }
+    .logo { font-size: 18vh; }
+    .tag { font-size: 16px; margin: 8px 0; }
+    #title { flex-direction: column; justify-content: center; overflow-y: auto; }
+    .big-btn { font-size: 18px; padding: 10px 30px; min-width: 220px; margin: 4px; }
+    #pastLives { display: none; }
+    .cr-panel { left: auto; right: 8px; top: 8px; bottom: 8px; width: 52vw; padding: 10px 12px; }
+    .cr-panel h2 { display: none; }
+    .cr-bottom { left: 8px; right: auto; bottom: 8px; top: auto; flex-wrap: nowrap; }
+    .cr-bottom .big-btn { min-width: 0; padding: 8px 12px; font-size: 15px; margin: 0 4px 0 0; }
+    .cr-labels { display: none; }
+    .cr-vals .tx { min-height: 40px; }
+    .cr-vals .sw { width: 40px; height: 40px; }
+    .cr-bottom .big-btn { min-height: 44px; }
+    .ls-box { padding: 14px 18px; }
+    .ls-title { font-size: 28px; }
+    .ls-stars { font-size: 24px; }
   }
 </style>
 </head>
@@ -241,13 +344,13 @@
 
 <!-- HUD -->
 <div id="hud" style="display:none">
-  <div id="h-name">Name</div>
-  <div id="h-age">Age 0</div>
+  <div class="htop"><div id="h-name">Name</div><div id="h-age">Age 0</div></div>
   <div id="h-title" class="title-badge">Brand New Baby</div>
   <div class="stat"><span>❤️</span><div class="bar"><i id="b-health"></i></div><span id="v-health">0</span></div>
   <div class="stat"><span>😊</span><div class="bar"><i id="b-happy"></i></div><span id="v-happy">0</span></div>
   <div class="stat"><span>🧠</span><div class="bar"><i id="b-smarts"></i></div><span id="v-smarts">0</span></div>
   <div class="stat"><span>✨</span><div class="bar"><i id="b-looks"></i></div><span id="v-looks">0</span></div>
+  <div class="mini"><span>❤️<b id="m-health">0</b></span><span>😊<b id="m-happy">0</b></span><span>🧠<b id="m-smarts">0</b></span><span>✨<b id="m-looks">0</b></span></div>
   <div class="hrow"><span id="h-money">$0</span><span id="h-job">Baby</span></div>
   <div class="pmeter"><i id="p-good" class="good"></i><i id="p-evil" class="evil"></i><i id="p-funny" class="funny"></i></div>
   <div class="plegend"><span>😇 Good</span><span>😈 Evil</span><span>🤡 Funny</span></div>
@@ -255,17 +358,17 @@
 
 <!-- SIDE BUTTONS -->
 <div id="side" style="display:none">
-  <button class="sbtn" id="btnAge" disabled>🎂 AGE UP</button>
-  <button class="sbtn" id="btnLife" disabled>📱 LIFE</button>
-  <button class="sbtn" id="btnDiary">📖 Diary</button>
-  <button class="sbtn" id="btnSound">🔊</button>
+  <button class="sbtn icon" id="btnDiary" aria-label="Diary">📖</button>
+  <button class="sbtn icon" id="btnSound" aria-label="Sound">🔊</button>
 </div>
 
 <!-- STORY BOX -->
 <div id="story">
   <div id="s-head">Age 0</div>
-  <div id="s-text"></div>
-  <div id="s-choices"></div>
+  <div id="s-scroll">
+    <div id="s-text"></div>
+    <div id="s-choices"></div>
+  </div>
   <button id="s-next" style="display:none">Next ▶</button>
 </div>
 
@@ -294,6 +397,9 @@
 <script src="js/util.js"></script>
 <script src="js/textures.js"></script>
 <script src="js/models.js"></script>
+<script src="js/people.js"></script>
+<script src="js/animals.js"></script>
+<script src="js/vehicles.js"></script>
 <script src="js/scenes.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/stage.js"></script>

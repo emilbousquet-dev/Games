@@ -94,7 +94,7 @@ ML.Scenes = (function () {
     plane(g, texMat(groundTex, size / 4, size / 4, 1), 0, 0, 0, size, size);
   }
   const sky = (top, bottom) => T.sky(top, bottom);
-  const OUT_LIGHT = { hemi: 1.2, sky: 0xcfe8ff, ground: 0x7aa060, sun: 2.3, sunPos: [6, 12, 8], ambient: 0.2 };
+  const OUT_LIGHT = { hemi: 0.9, sky: 0xcfe0ff, ground: 0x8a7a60, sun: 2.8, sunColor: 0xffe6c4, sunPos: [6, 11, 8], ambient: 0.12 };
   const IN_LIGHT = { hemi: 1.0, sky: 0xfff4e8, ground: 0xb09078, sun: 1.6, sunPos: [3, 9, 8], ambient: 0.35 };
 
   // ============================================================
@@ -233,33 +233,49 @@ ML.Scenes = (function () {
   // ============================================================
   function street(g, opt = {}) {
     const W = 70;
-    plane(g, texMat(T.sidewalk(), W / 2, 3), 0, 0, 1, W, 6);
-    plane(g, texMat(T.road(), W / 8, 1, 0.9), 0, 0.002, -5.5, W, 7);
-    plane(g, texMat(T.sidewalk(), W / 2, 1.5), 0, 0, -10.5, W, 3);
+    plane(g, texMat(T.concrete(), W / 3, 3, 0.95), 0, 0, 1, W, 6);
+    plane(g, texMat(T.cityRoad(), W / 14, 1, 0.9), 0, 0.002, -5.5, W, 7);
+    plane(g, texMat(T.concrete(), W / 3, 1.5, 0.95), 0, 0, -10.5, W, 3);
     plane(g, texMat(T.asphalt(), 20, 20), 0, -0.01, -40, 200, 60);
-    plane(g, texMat(T.sidewalk(), W / 2, 2), 0, -0.01, 8, W, 8);
-    P(g, G.box(), C(0xa8a49c, 0.8), [0, 0.07, -2.0], [W, 0.14, 0.2]);
+    plane(g, texMat(T.concrete(), W / 3, 4, 0.95), 0, -0.01, 8, W, 8);
+    const curb = C(0xa8a49c, 0.85);
+    P(g, G.box(), curb, [0, 0.07, -2.0], [W, 0.15, 0.22]);
+    P(g, G.box(), curb, [0, 0.07, -9.0], [W, 0.15, 0.22]);
     // crosswalk
-    for (let i = 0; i < 7; i++) P(g, G.box(), M.white(), [7 + i * 0.7 - 2.1, 0.005, -5.5], [0.45, 0.01, 6.5]);
-    // the skyscrapers
+    for (let i = 0; i < 7; i++) P(g, G.box(), C(0xeeeeea, 0.7), [7 + i * 0.7 - 2.1, 0.004, -5.5], [0.45, 0.008, 6.5]);
+    // the skyscrapers, with shops at the bottom
     const rnd = U.seeded(77);
-    let x = -40;
+    const shops = [['PIZZA', 0xc8302a], ['COFFEE', 0x3a2a1e], ['BANK', 0x1a4a8a], ['GYM', 0x2a2a2a], ['24/7', 0x2a8a3a], ['TACOS', 0xe8902a], ['PHONES', 0x6a2ab0]];
+    let x = -40, n = 0;
     while (x < 40) {
-      const w = 6 + rnd() * 6, h = 14 + rnd() * 40, dd = 8 + rnd() * 6;
+      const w = 7 + rnd() * 6, h = 16 + rnd() * 46, dd = 10 + rnd() * 6;
       const b = Mo.building(w, h, dd, [0x8aa0c0, 0xc8b8a0, 0x9a6a5a, 0x6a7a8a, 0xd8d0c0, 0x5a8aa8][Math.floor(rnd() * 6)], Math.floor(rnd() * 3));
-      b.position.set(x + w / 2, 0, -12.2 - dd / 2 - rnd() * 3);
+      const front = -12.2 - rnd() * 2;
+      b.position.set(x + w / 2, 0, front - dd / 2);
       g.add(b);
-      x += w + 0.4 + rnd() * 1.5;
+      const sh = shops[n++ % shops.length];
+      const sf = new THREE.Mesh(G.plane(), new THREE.MeshStandardMaterial({ map: T.storefront(sh[0], sh[1]), roughness: 0.4 }));
+      sf.scale.set(Math.min(6, w - 1), 3, 1); sf.position.set(x + w / 2, 1.6, front + 0.12); g.add(sf);
+      P(g, G.box(), C(sh[1], 0.7), [x + w / 2, 3.25, front + 0.6], [Math.min(6, w - 1), 0.06, 1.2], [0.25, 0, 0]); // awning
+      x += w + 0.3 + rnd() * 1.2;
     }
-    // shops behind you (so the street feels full when the camera turns)
+    // buildings behind you (so the street feels full when the camera turns)
     for (let i = 0; i < 8; i++) { const b = Mo.building(8, 20 + i * 3, 6, [0xc8b8a0, 0x8aa0c0][i % 2], 1); b.position.set(-32 + i * 8.4, 0, 12); g.add(b); }
     for (const sx of [-12, -4, 4, 12]) put(g, 'streetlight', sx, -1.6, PI);
+    for (const sx of [-16, -7, 2, 11, 20]) put(g, 'palm', sx, -10.6, 0, { s: 1.1 });
+    for (const sx of [-8.2, 8.0]) put(g, 'palm', sx, -1.2, 0, { s: 0.95 });
     for (const sx of [-15, 15]) put(g, 'trafficlight', sx > 0 ? 9.8 : -9.8, -1.7, PI);
     put(g, 'hydrant', -6.2, -1.2);
-    put(g, 'tree', -8.2, -0.8, 0, { s: 0.8 });
-    put(g, 'tree', 8.0, -0.8, 0, { s: 0.8 });
     put(g, 'bench', 4.6, 2.6, PI);
     put(g, 'trashcan', 6.0, 2.8);
+    // a bus stop across the street
+    const bs = Mo.grp(g, [-4, 0, -10.6]);
+    for (const sx of [-1.4, 1.4]) P(bs, G.box(), M.metal(), [sx, 1.2, -0.5], [0.06, 2.4, 0.06]);
+    P(bs, G.box(), C(0x2a6ac8, 0.5), [0, 2.45, -0.2], [3.2, 0.1, 1.2]);
+    P(bs, G.box(), M.glass(), [0, 1.3, -0.55], [2.8, 2.0, 0.03]);
+    P(bs, G.box(), M.wood(), [0, 0.5, -0.3], [2.4, 0.06, 0.4]);
+    // cars parked on the other side of the street
+    for (const [px, col] of [[-17, 0x8a8a92], [5, 0x2a2a30], [22, 0xf2f2f0]]) { const pc = Mo.vehicle('car', col); pc.rotation.y = -H; pc.position.set(px, 0, -8.2); g.add(pc); }
     if (opt.shop) signOn(g, opt.shop, 0, 4.2, -11.3, 5, 0xffd84a, 0x2a1406);
     // traffic 🚗
     const cars = [];
@@ -274,7 +290,7 @@ ML.Scenes = (function () {
     }
     return {
       spots: { me: [-1.4, 1.2, 0], a: [1.4, 1.2, 0], b: [-3.4, 1.6, 0.5], c: [3.2, 1.8, -0.3], d: [0, 2.6, 0], curb: [0, -1.3, PI], car: [-4, -3.0, H], carEnd: [16, -3.0, H], far: [-12, 1.2, H], farR: [12, 1.2, -H], door: [12, 1.4, -H], bench: [4.6, 2.6, PI, 0.08], benchSit: [4.6, 2.75, 0, 0.0], center: [0, 1.2, 0], shopDoor: [0, -1.4, PI] },
-      cam: [0, 2.7, 10], look: [0, 1.7, -2], bg: sky(0x6ab8f0, 0xe0f0ff), fog: [0xd8ecff, 40, 140], light: OUT_LIGHT,
+      cam: [0, 2.7, 10], look: [0, 1.7, -2], bg: sky(0x4a86d0, 0xf6e2c8), fog: [0xead8c4, 45, 150], light: Object.assign({}, OUT_LIGHT, { sunPos: [9, 10, 7] }),
       anim(t, dt) { for (const c of cars) { const v = c.userData.v * (c.userData.lane ? -1 : 1); c.position.x += v * dt; if (c.position.x > 36) c.position.x = -36; if (c.position.x < -36) c.position.x = 36; c.userData.wheels.forEach((wh) => { wh.rotation.x += Math.abs(v) * dt / 0.36; }); } },
     };
   }
@@ -427,6 +443,7 @@ ML.Scenes = (function () {
     put(g, 'tree', 8.5, -4, 0, { s: 1.1 });
     put(g, 'tree', -2, -8, 0, { s: 1.3 });
     put(g, 'tree', 6, -9, 0);
+    put(g, 'palm', -9, -6, 0, { s: 1.1 });
     put(g, 'bush', 0.6, -5.5);
     for (let i = 0; i < 14; i++) put(g, 'flower', -6 + (i % 7) * 0.4 + (i > 6 ? 9 : 0), -1.4 - (i % 3) * 0.25, 0, { color: [0xff6aa0, 0xffd84a, 0xc87aff, 0xff8a4a][i % 4] });
     // ducks on the pond

@@ -75,6 +75,8 @@ ML.Creator = (function () {
     randomize();
     await Stage.setScene('studio');
     refresh();
+    // on a phone held upright, step back so both of you fit on the screen
+    if (ML.Game.layout() === 'tall') Stage.camAt([-0.1, 1.45, 6.4], [-0.1, 0.9, 0]);
     clearInterval(spinTimer);
     spinTimer = setInterval(() => {
       for (const id of ['grown', 'baby']) { const a = Stage.get(id); if (a) { a.rot += 0.012; a.faceAngle = null; } }

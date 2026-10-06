@@ -18,12 +18,29 @@ ML.Stage = (function () {
   let camPos = new THREE.Vector3(0, 2.5, 7), camLook = new THREE.Vector3(0, 1, 0);
   let camGoalPos = camPos.clone(), camGoalLook = camLook.clone();
   let shake = 0, time = 0, last = 0;
-  let overlay, fadeEl;
+  let overlay, fadeEl, pmrem;
+  const envCache = {};
+  // a soft "sky dome" so shiny things (cars, glass) reflect the world
+  function envMap(kind) {
+    if (envCache[kind]) return envCache[kind];
+    const es = new THREE.Scene();
+    const c = ML.U.canvas(16, 256, (g, w, h) => {
+      const grd = g.createLinearGradient(0, 0, 0, h);
+      if (kind === 'out') { grd.addColorStop(0, '#5a8ad0'); grd.addColorStop(0.48, '#f0e4d4'); grd.addColorStop(0.52, '#8a8278'); grd.addColorStop(1, '#3a3632'); }
+      else { grd.addColorStop(0, '#f4ece0'); grd.addColorStop(0.5, '#c8b8a4'); grd.addColorStop(1, '#5a4a3a'); }
+      g.fillStyle = grd; g.fillRect(0, 0, w, h);
+    });
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+    es.add(new THREE.Mesh(new THREE.SphereGeometry(10, 32, 16), new THREE.MeshBasicMaterial({ map: t, side: THREE.BackSide })));
+    envCache[kind] = pmrem.fromScene(es, 0.02).texture;
+    return envCache[kind];
+  }
   const tmpV = new THREE.Vector3();
 
   function init(canvas) {
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    const phone = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    renderer.setPixelRatio(Math.min(phone ? 1.6 : 2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -38,12 +55,13 @@ ML.Stage = (function () {
     sun = new THREE.DirectionalLight(0xfff4e0, 1.9);
     sun.position.set(5, 10, 7);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.mapSize.set(phone ? 1024 : 2048, phone ? 1024 : 2048);
     const sc = sun.shadow.camera;
     sc.left = -14; sc.right = 14; sc.top = 14; sc.bottom = -14; sc.near = 1; sc.far = 50;
     sun.shadow.bias = -0.0004;
     sun.shadow.normalBias = 0.02;
     scene.add(sun); scene.add(sun.target);
+    pmrem = new THREE.PMREMGenerator(renderer);
     overlay = document.getElementById('bubbles');
     fadeEl = document.getElementById('fade');
     window.addEventListener('resize', resize);
@@ -51,18 +69,19 @@ ML.Stage = (function () {
     requestAnimationFrame(loop);
   }
   // the story box covers the bottom of the screen, so we show the 3D a bit higher up
-  let frameShift = 0;
-  function setFrame(shift) { frameShift = shift; resize(); }
+  let frameShift = 0, frameX = 0;
+  function setFrame(shift, sx = 0) { frameShift = shift; frameX = sx; resize(); }
   function resize() {
     const w = window.innerWidth, h = window.innerHeight;
     renderer.setSize(w, h, false);
     // on tall/narrow screens move the camera back so everything fits
-    const baseFov = w / h < 1.2 ? 55 : 42;
-    if (frameShift > 0) {
-      const fullH = h * (1 + frameShift);
+    const baseFov = w / h < 0.75 ? 60 : w / h < 1.2 ? 54 : 42;
+    if (frameShift > 0 || frameX !== 0) {
+      // draw a bigger picture and only show part of it, so the middle of the action moves
+      const fullH = h * (1 + frameShift), fullW = w * (1 + Math.abs(frameX));
       camera.fov = 2 * Math.atan(Math.tan(baseFov * Math.PI / 360) * (1 + frameShift)) * 180 / Math.PI;
-      camera.aspect = w / fullH;
-      camera.setViewOffset(w, fullH, 0, h * frameShift, w, h);
+      camera.aspect = fullW / fullH;
+      camera.setViewOffset(fullW, fullH, frameX > 0 ? w * frameX : 0, h * frameShift, w, h);
     } else {
       camera.fov = baseFov;
       camera.aspect = w / h;
@@ -92,6 +111,7 @@ ML.Stage = (function () {
     ambient.intensity = li.ambient !== undefined ? li.ambient : 0.25;
     scene.background = set.bg !== undefined ? (typeof set.bg === 'number' ? new THREE.Color(set.bg) : set.bg) : new THREE.Color(0xf4e8d8);
     scene.fog = set.fog ? new THREE.Fog(set.fog[0], set.fog[1], set.fog[2]) : null;
+    scene.environment = envMap(set.fog ? 'out' : 'in');
     dim(false);
     resetCam(true);
     if (!opt.instant) { fadeEl.classList.remove('on'); }
@@ -283,9 +303,11 @@ ML.Stage = (function () {
     const dir = new THREE.Vector3(base[0] - h.x, 0, base[2] - h.z).normalize();
     const d = dist || U.clamp(a.size * 2.1, 1.7, 4.0);
     camGoalLook.copy(h);
-    camGoalLook.y -= a.size * 0.2;
+    camGoalLook.y -= a.size * 0.08;
     camGoalPos.set(h.x + dir.x * d, h.y + d * 0.32, h.z + dir.z * d);
   }
+  // put the camera exactly somewhere (used for testing)
+  function camAt(pos, look) { camGoalPos.set(...pos); camGoalLook.set(...look); camPos.copy(camGoalPos); camLook.copy(camGoalLook); }
   function camBoth(id1, id2) {
     const a = actors[id1], b = actors[id2];
     if (!a || !b) return;
@@ -527,7 +549,7 @@ ML.Stage = (function () {
 
   return {
     init, setScene, setMarkers, setFrame, addActor, removeActor, addProp, removeProp, get, where, hasSpot, run, A, emote, bubble, floatText, burst,
-    camClose, resetCam, headPos, actors, props,
+    camClose, camAt, resetCam, headPos, actors, props,
     get set() { return set; }, get scene() { return scene; }, get camera() { return camera; }, get sceneName() { return sceneName; }, get renderer() { return renderer; },
   };
 })();
