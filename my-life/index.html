@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Life</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lilita+One&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #2a2140; --paper: #fffaf2; --pink: #ff5a9a; --yellow: #ffcf3a; --blue: #3aa8ff; --green: #3ccf7a;
+    --good: #ffc93a; --evil: #8a4ae8; --funny: #ff7a2a; --say: #4a9ae8; --shadow: 0 6px 0 rgba(0,0,0,0.18), 0 12px 28px rgba(40,20,60,0.25);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #f4e8f8; font-family: Fredoka, 'Trebuchet MS', sans-serif; color: var(--ink); user-select: none; }
+  canvas#game { display: block; position: fixed; inset: 0; width: 100%; height: 100%; }
+  button { font-family: inherit; cursor: pointer; }
+  button:disabled { cursor: default; }
+  #bubbles { position: fixed; inset: 0; pointer-events: none; z-index: 5; overflow: hidden; }
+  #fade { position: fixed; inset: 0; background: #fff6fb; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 40; }
+  #fade.on { opacity: 1; transition: opacity 0.3s; }
+  #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 41; transition: opacity 0.25s; }
+  #flash.on { opacity: 0.85; transition: none; }
+
+  /* speech bubbles & floating emojis */
+  .bubble { position: absolute; transform: translate(-50%, -100%); background: #fff; color: var(--ink); padding: 8px 14px; border-radius: 18px; font-size: 17px; font-weight: 600;
+    max-width: 280px; text-align: center; box-shadow: 0 4px 0 rgba(0,0,0,0.12), 0 8px 18px rgba(0,0,0,0.15); animation: bin 0.25s ease-out; line-height: 1.25; }
+  .bubble::after { content: ''; position: absolute; left: 50%; bottom: -9px; margin-left: -9px; border: 9px solid transparent; border-bottom: 0; border-top-color: #fff; }
+  .bubble.me { background: #fff4c8; }
+  .bubble.me::after { border-top-color: #fff4c8; }
+  .bubble.out { opacity: 0; transition: opacity 0.3s; }
+  @keyframes bin { from { transform: translate(-50%, -80%) scale(0.6); opacity: 0; } }
+  .emote { position: absolute; transform: translate(-50%, -100%); font-size: 34px; animation: up 1.8s ease-out forwards; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.2)); }
+  .emote.big { font-size: 48px; }
+  @keyframes up { 0% { opacity: 0; transform: translate(-50%, -60%) scale(0.4); } 15% { opacity: 1; transform: translate(-50%, -110%) scale(1.15); } 100% { opacity: 0; transform: translate(-50%, -260%) scale(1); } }
+  .marker { position: absolute; transform: translate(-50%, -50%); width: 44px; height: 44px; border-radius: 50%; background: var(--pink); color: #fff; font-size: 24px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; border: 3px solid #fff; box-shadow: var(--shadow); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { transform: translate(-50%, -50%) scale(1.15); } }
+
+  /* ---------- screens ---------- */
+  .screen { position: fixed; inset: 0; display: none; z-index: 20; }
+  .screen.show { display: flex; }
+  #title { align-items: center; justify-content: center; flex-direction: column; background: radial-gradient(ellipse at center, rgba(255,240,250,0.55) 0%, rgba(255,220,240,0.85) 100%); }
+  .logo { font-family: 'Lilita One', Fredoka, sans-serif; font-size: min(22vw, 170px); line-height: 0.9; letter-spacing: 4px; color: #fff; text-align: center;
+    -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; text-shadow: 0 10px 0 var(--ink); animation: bob 3s ease-in-out infinite; }
+  .logo span:nth-child(1) { color: var(--pink); } .logo span:nth-child(2) { color: var(--yellow); }
+  @keyframes bob { 50% { transform: translateY(-8px) rotate(-1.5deg); } }
+  .tag { font-size: 22px; font-weight: 600; margin: 22px 0 26px; text-align: center; padding: 0 16px; }
+  .tag b { color: var(--pink); }
+  .big-btn { font-size: 26px; font-weight: 700; padding: 14px 48px; border: none; border-radius: 40px; margin: 8px; min-width: 280px; color: var(--ink);
+    background: linear-gradient(180deg, #fff27a, var(--yellow)); box-shadow: 0 6px 0 #c8902a, 0 12px 24px rgba(0,0,0,0.2); transition: transform 0.1s; }
+  .big-btn:hover { transform: translateY(-3px) scale(1.03); }
+  .big-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #c8902a; }
+  .big-btn.pink { background: linear-gradient(180deg, #ff9ac4, var(--pink)); color: #fff; box-shadow: 0 6px 0 #b02a6a, 0 12px 24px rgba(0,0,0,0.2); }
+  .big-btn.small { font-size: 18px; min-width: 0; padding: 10px 26px; }
+  #pastLives { margin-top: 20px; background: rgba(255,255,255,0.8); border-radius: 18px; padding: 12px 18px; font-size: 15px; max-width: min(560px, 92vw); line-height: 1.6; }
+  #pastLives:empty { display: none; }
+  .persona-legend { display: flex; gap: 12px; margin-top: 4px; flex-wrap: wrap; justify-content: center; font-weight: 700; font-size: 17px; }
+  .persona-legend span { background: #fff; padding: 6px 14px; border-radius: 20px; box-shadow: 0 3px 0 rgba(0,0,0,0.12); }
+
+  /* creator */
+  #creator { pointer-events: none; }
+  #creator > * { pointer-events: auto; }
+  .cr-panel { position: absolute; left: 16px; top: 16px; bottom: 16px; width: min(440px, calc(100vw - 32px)); background: rgba(255,250,242,0.96); border-radius: 26px; box-shadow: var(--shadow);
+    padding: 18px 20px; overflow-y: auto; }
+  .cr-panel h2 { font-family: 'Lilita One', Fredoka; font-size: 34px; margin: 0 0 8px; color: var(--pink); letter-spacing: 1px; }
+  .cr-names { display: flex; gap: 8px; margin-bottom: 10px; }
+  .cr-names div { flex: 1; display: flex; gap: 4px; }
+  .cr-names input { width: 100%; font: 600 18px Fredoka; padding: 8px 12px; border-radius: 14px; border: 3px solid #e8d8f0; outline: none; color: var(--ink); background: #fff; }
+  .cr-names input:focus { border-color: var(--pink); }
+  .dice { border: none; background: #f0e4f8; border-radius: 12px; font-size: 20px; padding: 0 8px; }
+  .cr-row { margin: 8px 0; }
+  .cr-row label { display: block; font-weight: 700; font-size: 15px; margin-bottom: 4px; color: #7a6a8a; }
+  .cr-vals { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cr-vals .sw { width: 32px; height: 32px; border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #e0d0e8; }
+  .cr-vals .sw.on { box-shadow: 0 0 0 3px var(--pink); transform: scale(1.12); }
+  .cr-vals .tx { border: none; background: #f0e4f8; border-radius: 12px; padding: 6px 12px; font-size: 15px; font-weight: 600; color: var(--ink); }
+  .cr-vals .tx.on { background: var(--pink); color: #fff; }
+  .cr-bottom { position: absolute; right: 24px; bottom: 24px; display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .cr-labels { position: absolute; right: 24px; top: 20px; background: rgba(255,255,255,0.85); padding: 8px 16px; border-radius: 16px; font-weight: 600; box-shadow: var(--shadow); }
+  @media (max-width: 760px) { .cr-panel { top: auto; height: 46vh; } .cr-bottom { bottom: auto; top: 16px; } .cr-labels { display: none; } }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; left: 14px; top: 14px; z-index: 10; width: 250px; background: rgba(255,250,242,0.94); border-radius: 22px; padding: 12px 14px; box-shadow: var(--shadow); }
+  #h-name { font-family: 'Lilita One', Fredoka; font-size: 22px; letter-spacing: 0.5px; line-height: 1.1; }
+  #h-age { font-weight: 700; color: #8a7a9a; font-size: 15px; }
+  .title-badge { display: inline-block; margin: 6px 0 8px; padding: 4px 12px; border-radius: 16px; font-weight: 700; font-size: 15px; background: #e8e0f0; }
+  .title-badge.good { background: #fff0b8; color: #8a5a00; } .title-badge.evil { background: #e4d4ff; color: #5a2aa8; } .title-badge.funny { background: #ffe0c8; color: #b04a00; }
+  .stat { display: grid; grid-template-columns: 24px 1fr 28px; align-items: center; gap: 6px; margin: 4px 0; font-size: 14px; font-weight: 700; }
+  .bar { height: 12px; background: #ece4f0; border-radius: 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; width: 50%; background: linear-gradient(90deg, #ffd84a, #ffb02a); border-radius: 8px; transition: width 0.6s; }
+  .bar i.high { background: linear-gradient(90deg, #7ae86a, #3ccf7a); } .bar i.low { background: linear-gradient(90deg, #ff8a6a, #ff4a4a); }
+  .hrow { display: flex; justify-content: space-between; font-weight: 700; margin-top: 6px; font-size: 15px; }
+  #h-money { color: #1a9a4a; } #h-money.neg { color: #e83a3a; }
+  #h-job { color: #6a5a7a; font-size: 13px; text-align: right; }
+  .pmeter { display: flex; height: 16px; border-radius: 10px; overflow: hidden; margin-top: 8px; background: #ece4f0; }
+  .pmeter i { display: block; height: 100%; transition: width 0.6s; width: 0; }
+  .pmeter .good { background: var(--good); } .pmeter .evil { background: var(--evil); } .pmeter .funny { background: var(--funny); }
+  .plegend { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #8a7a9a; margin-top: 2px; }
+
+  /* side buttons */
+  #side { position: fixed; right: 14px; top: 14px; z-index: 10; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+  .sbtn { border: none; border-radius: 22px; font-weight: 700; font-size: 18px; padding: 10px 18px; background: #fff; color: var(--ink); box-shadow: 0 5px 0 rgba(0,0,0,0.15), 0 8px 18px rgba(0,0,0,0.15); transition: transform 0.1s; }
+  .sbtn:hover:not(:disabled) { transform: translateY(-2px); }
+  .sbtn:disabled { opacity: 0.45; }
+  #btnAge { font-size: 24px; padding: 14px 24px; background: linear-gradient(180deg, #ff9ac4, var(--pink)); color: #fff; box-shadow: 0 6px 0 #b02a6a, 0 10px 20px rgba(0,0,0,0.2); }
+  #btnAge.ready { animation: wiggle 1.4s ease-in-out infinite; }
+  @keyframes wiggle { 0%, 70%, 100% { transform: rotate(0); } 75% { transform: rotate(-4deg) scale(1.05); } 85% { transform: rotate(4deg) scale(1.05); } }
+  #btnLife { background: linear-gradient(180deg, #8ad0ff, var(--blue)); color: #fff; box-shadow: 0 5px 0 #1a6ab0, 0 8px 18px rgba(0,0,0,0.15); }
+
+  /* story box */
+  #story { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); width: min(820px, calc(100vw - 28px)); z-index: 10; background: rgba(255,250,242,0.97);
+    border-radius: 26px; padding: 14px 18px 16px; box-shadow: var(--shadow); display: none; }
+  #story.show { display: block; }
+  #s-head { position: absolute; top: -16px; left: 22px; background: var(--ink); color: #fff; font-weight: 700; padding: 4px 14px; border-radius: 14px; font-size: 15px; }
+  #s-text { font-size: 20px; line-height: 1.4; font-weight: 500; margin: 6px 2px 4px; min-height: 28px; }
+  #s-text.pop { animation: tin 0.35s ease-out; }
+  #s-text.dim { opacity: 0.55; }
+  #s-text small { color: #8a7a9a; font-size: 15px; }
+  #s-text .news { display: block; font-size: 16px; line-height: 1.55; margin-top: 6px; color: #4a3a5a; }
+  @keyframes tin { from { opacity: 0; transform: translateY(6px); } }
+  #s-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+  #s-choices:empty { display: none; }
+  #s-choices.many { grid-template-columns: 1fr 1fr 1fr; }
+  #s-choices.many .choice { font-size: 15px; padding: 8px 10px; }
+  .choice { position: relative; display: flex; align-items: center; gap: 10px; text-align: left; border: none; border-radius: 18px; padding: 11px 14px; font-size: 17px; font-weight: 600;
+    color: var(--ink); background: #fff; box-shadow: 0 4px 0 rgba(0,0,0,0.14); border: 3px solid transparent; transition: transform 0.1s; animation: cin 0.3s ease-out backwards; }
+  .choice:nth-child(2) { animation-delay: 0.06s; } .choice:nth-child(3) { animation-delay: 0.12s; } .choice:nth-child(4) { animation-delay: 0.18s; }
+  @keyframes cin { from { opacity: 0; transform: translateY(10px) scale(0.95); } }
+  .choice:hover { transform: translateY(-2px) scale(1.02); }
+  .choice:active { transform: translateY(2px); }
+  .choice .tag { font-size: 26px; margin: 0; line-height: 1; }
+  .choice .key { position: absolute; top: -8px; left: -6px; background: var(--ink); color: #fff; font-size: 11px; width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+  .choice .lbl em { font-style: normal; color: #1a9a4a; font-weight: 700; margin-left: 4px; }
+  .choice.good { border-color: var(--good); background: #fffaf0; }
+  .choice.evil { border-color: var(--evil); background: #f8f2ff; }
+  .choice.funny { border-color: var(--funny); background: #fff6f0; }
+  .choice.say { border-color: var(--say); background: #f2f8ff; }
+  .choice.special { box-shadow: 0 4px 0 rgba(0,0,0,0.14), 0 0 0 3px #fff, 0 0 18px 4px rgba(255,200,60,0.7); }
+  .choice .star { position: absolute; top: -11px; right: 10px; background: var(--yellow); color: var(--ink); font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; }
+  #s-next { display: block; margin: 10px 0 0 auto; border: none; background: var(--ink); color: #fff; font-size: 18px; font-weight: 700; padding: 9px 26px; border-radius: 20px; box-shadow: 0 4px 0 rgba(0,0,0,0.25); }
+  #s-next:hover { transform: translateY(-2px); }
+
+  /* popups */
+  #pops { position: fixed; left: 278px; top: 18px; z-index: 12; display: flex; flex-direction: column; gap: 6px; pointer-events: none; align-items: flex-start; }
+  .pop { background: #fff; padding: 6px 14px; border-radius: 16px; font-weight: 700; font-size: 17px; box-shadow: 0 4px 0 rgba(0,0,0,0.12); animation: pin 3.2s ease-out backwards; }
+  .pop.good { color: #1a9a4a; } .pop.bad { color: #e83a3a; } .pop.evil { color: var(--evil); } .pop.funny { color: var(--funny); }
+  @keyframes pin { 0% { opacity: 0; transform: translateX(-20px); } 8% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+  #toasts { position: fixed; left: 50%; top: 18px; transform: translateX(-50%); z-index: 30; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+  .toast { background: var(--ink); color: #fff; padding: 10px 22px; border-radius: 22px; font-weight: 700; font-size: 20px; box-shadow: var(--shadow); animation: tst 3.6s ease-out forwards; }
+  @keyframes tst { 0% { opacity: 0; transform: translateY(-20px) scale(0.8); } 10% { opacity: 1; transform: none; } 85% { opacity: 1; } 100% { opacity: 0; } }
+  #banner { position: fixed; left: 50%; top: 36%; transform: translate(-50%, -50%); z-index: 30; font-family: 'Lilita One', Fredoka; font-size: min(9vw, 72px); color: #fff; -webkit-text-stroke: 4px var(--ink);
+    paint-order: stroke fill; text-shadow: 0 6px 0 var(--ink); white-space: nowrap; opacity: 0; pointer-events: none; }
+  #banner.show { animation: ban 3s ease-out; }
+  @keyframes ban { 0% { opacity: 0; transform: translate(-50%, -50%) scale(0.3); } 12% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } 20% { transform: translate(-50%, -50%) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* modals */
+  .modal { position: fixed; inset: 0; z-index: 25; display: none; align-items: center; justify-content: center; background: rgba(40,20,60,0.45); }
+  .modal.show { display: flex; }
+  .mbox { position: relative; background: var(--paper); border-radius: 28px; padding: 20px 22px; width: min(760px, calc(100vw - 28px)); max-height: calc(100vh - 40px); overflow-y: auto; box-shadow: var(--shadow); }
+  .mbox h2 { font-family: 'Lilita One', Fredoka; margin: 0 0 6px; font-size: 32px; color: var(--blue); letter-spacing: 1px; }
+  .close { position: absolute; top: 14px; right: 14px; border: none; background: #f0e4f8; width: 40px; height: 40px; border-radius: 50%; font-size: 20px; font-weight: 700; }
+  .msec h3 { margin: 14px 0 8px; font-size: 19px; }
+  .mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  .mbtn { position: relative; display: flex; align-items: center; gap: 10px; text-align: left; border: none; background: #fff; border-radius: 18px; padding: 10px 12px; box-shadow: 0 4px 0 rgba(0,0,0,0.12); color: var(--ink); }
+  .mbtn:hover:not(:disabled) { transform: translateY(-2px); }
+  .mbtn:disabled { opacity: 0.55; }
+  .mbtn .mi { font-size: 30px; }
+  .mbtn .ml { font-weight: 700; font-size: 16px; display: flex; flex-direction: column; }
+  .mbtn small { font-weight: 500; font-size: 13px; color: #8a7a9a; }
+  .mbtn .why { position: absolute; right: 10px; bottom: 4px; font-size: 11px; color: #c84a6a; }
+  .empty { color: #8a7a9a; margin: 4px; }
+  #d-body .dage { background: #fff; border-radius: 14px; padding: 8px 12px; margin: 8px 0; font-size: 16px; line-height: 1.5; }
+  #d-body .dage b { color: var(--pink); display: block; }
+  #ask .mbox { width: min(420px, calc(100vw - 28px)); text-align: center; }
+  #ask input { width: 100%; font: 700 24px Fredoka; text-align: center; padding: 10px; border-radius: 16px; border: 3px solid var(--pink); outline: none; margin: 10px 0 14px; }
+
+  /* life story */
+  #lifestory { align-items: center; justify-content: center; background: rgba(40,20,60,0.55); }
+  .ls-box { background: var(--paper); border-radius: 30px; padding: 26px 30px; width: min(640px, calc(100vw - 28px)); max-height: calc(100vh - 32px); overflow-y: auto; box-shadow: var(--shadow); text-align: center; }
+  .ls-head { font-weight: 700; color: #8a7a9a; letter-spacing: 3px; }
+  .ls-title { font-family: 'Lilita One', Fredoka; font-size: 44px; color: var(--pink); line-height: 1.1; margin: 6px 0; }
+  .ls-name { font-size: 20px; }
+  .ls-stars { font-size: 34px; margin: 6px 0 10px; }
+  .ls-stars small { font-size: 16px; color: #8a7a9a; vertical-align: middle; }
+  .ls-bars div { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 8px; margin: 5px 0; font-weight: 700; text-align: left; }
+  .ls-bars i { display: block; height: 16px; border-radius: 10px; min-width: 4px; }
+  .ls-bars i.good { background: var(--good); } .ls-bars i.evil { background: var(--evil); } .ls-bars i.funny { background: var(--funny); }
+  .ls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; text-align: left; margin: 14px 0; font-size: 16px; }
+  .ls-hl { text-align: left; background: #fff; border-radius: 16px; padding: 10px 16px; }
+  .ls-hl ul { margin: 6px 0 0; padding-left: 20px; line-height: 1.6; }
+
+  @media (max-width: 760px) {
+    #hud { width: 190px; padding: 8px 10px; transform-origin: top left; }
+    #h-name { font-size: 17px; }
+    .stat { font-size: 12px; }
+    #pops { left: 14px; top: auto; bottom: 46vh; }
+    #s-text { font-size: 17px; }
+    #s-choices, #s-choices.many { grid-template-columns: 1fr; gap: 7px; }
+    .choice { font-size: 15px; padding: 8px 12px; }
+    .sbtn { font-size: 15px; padding: 8px 12px; }
+    #btnAge { font-size: 18px; padding: 10px 16px; }
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="bubbles"></div>
+<div id="fade"></div>
+<div id="flash"></div>
+
+<!-- TITLE -->
+<div id="title" class="screen">
+  <div class="logo"><span>MY</span> <span>LIFE</span></div>
+  <div class="tag">Live a whole life, from a <b>baby</b> 👶 to an <b>old-timer</b> 🧓.<br>Every choice is yours!</div>
+  <div class="persona-legend"><span>😇 Good</span><span>😈 Evil</span><span>🤡 Funny</span></div>
+  <div style="height:18px"></div>
+  <button class="big-btn pink" id="btnNew">✨ NEW LIFE</button>
+  <button class="big-btn" id="btnContinue">▶ CONTINUE</button>
+  <div id="pastLives"></div>
+</div>
+
+<!-- CHARACTER CREATOR -->
+<div id="creator" class="screen">
+  <div class="cr-panel">
+    <h2>MAKE YOU!</h2>
+    <div class="cr-names">
+      <div><input id="cr-first" placeholder="First name" maxlength="14"><button class="dice" id="cr-dice1" title="Random name">🎲</button></div>
+      <div><input id="cr-last" placeholder="Last name" maxlength="14"><button class="dice" id="cr-dice2" title="Random name">🎲</button></div>
+    </div>
+    <div id="cr-opts"></div>
+  </div>
+  <div class="cr-labels">👶 You as a baby &nbsp;·&nbsp; 🧑 You when you grow up</div>
+  <div class="cr-bottom">
+    <button class="big-btn small" id="cr-back">◀ Back</button>
+    <button class="big-btn small" id="cr-random">🎲 Random</button>
+    <button class="big-btn pink" id="cr-go">👶 BE BORN!</button>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" style="display:none">
+  <div id="h-name">Name</div>
+  <div id="h-age">Age 0</div>
+  <div id="h-title" class="title-badge">Brand New Baby</div>
+  <div class="stat"><span>❤️</span><div class="bar"><i id="b-health"></i></div><span id="v-health">0</span></div>
+  <div class="stat"><span>😊</span><div class="bar"><i id="b-happy"></i></div><span id="v-happy">0</span></div>
+  <div class="stat"><span>🧠</span><div class="bar"><i id="b-smarts"></i></div><span id="v-smarts">0</span></div>
+  <div class="stat"><span>✨</span><div class="bar"><i id="b-looks"></i></div><span id="v-looks">0</span></div>
+  <div class="hrow"><span id="h-money">$0</span><span id="h-job">Baby</span></div>
+  <div class="pmeter"><i id="p-good" class="good"></i><i id="p-evil" class="evil"></i><i id="p-funny" class="funny"></i></div>
+  <div class="plegend"><span>😇 Good</span><span>😈 Evil</span><span>🤡 Funny</span></div>
+</div>
+
+<!-- SIDE BUTTONS -->
+<div id="side" style="display:none">
+  <button class="sbtn" id="btnAge" disabled>🎂 AGE UP</button>
+  <button class="sbtn" id="btnLife" disabled>📱 LIFE</button>
+  <button class="sbtn" id="btnDiary">📖 Diary</button>
+  <button class="sbtn" id="btnSound">🔊</button>
+</div>
+
+<!-- STORY BOX -->
+<div id="story">
+  <div id="s-head">Age 0</div>
+  <div id="s-text"></div>
+  <div id="s-choices"></div>
+  <button id="s-next" style="display:none">Next ▶</button>
+</div>
+
+<div id="pops"></div>
+<div id="toasts"></div>
+<div id="banner"></div>
+
+<!-- LIFE MENU -->
+<div id="menu" class="modal"><div class="mbox"><button class="close">✕</button><h2>📱 LIFE</h2><div id="m-body"></div></div></div>
+<div id="diary" class="modal"><div class="mbox"><button class="close">✕</button><h2>📖 MY DIARY</h2><div id="d-body"></div></div></div>
+<div id="ask" class="modal"><div class="mbox"><h2 id="ask-title">Name?</h2><input id="ask-input" maxlength="16"><button class="big-btn pink small" id="ask-ok">OK!</button></div></div>
+
+<!-- LIFE STORY (the end) -->
+<div id="lifestory" class="screen">
+  <div class="ls-box">
+    <div class="ls-head">🕊️ YOUR LIFE STORY</div>
+    <div id="ls-body"></div>
+    <div style="margin-top:14px">
+      <button class="big-btn pink small" id="ls-again">✨ LIVE AGAIN</button>
+      <button class="big-btn small" id="ls-title">🏠 Title screen</button>
+    </div>
+  </div>
+</div>
+
+<script src="../lib/three.min.js"></script>
+<script src="js/util.js"></script>
+<script src="js/textures.js"></script>
+<script src="js/models.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/life.js"></script>
+<script src="js/events.js"></script>
+<script src="js/menu.js"></script>
+<script src="js/creator.js"></script>
+<script src="js/game.js"></script>
+<script>ML.Game.init();</script>
+</body>
+</html>

@@ -1,6 +1,9 @@
 # LAB 13 👽🩸
 
-> 🆕 **NEW: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
+> 🆕 **NEW: [MY LIFE](my-life/README.md)** 👶➡️🧓: a 3D life simulator!
+> Live a whole life from baby to old-timer by making choices. Be 😇 good, 😈 evil or 🤡 funny. Open `my-life/index.html` to play.
+>
+> **Also in this folder: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
 > Run on walls across the rooftops, escape the FBI helicopter, shoot it down with rockets. Open `sigma-run/index.html` to play.
 >
 > **Also in this folder: [JETPACK CITY](jetpack-city/README.md)** 🦊🤖: a 3D endless runner for your phone!
