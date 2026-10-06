@@ -660,11 +660,11 @@ ML.Events = (function () {
   moment({
     id: 'retire', ages: [65, 80], always: true, scene: 'job', need: (l) => !!l.job, cast: { boss: 'boss', a: 'new:coworker' },
     at: { boss: [1.2, 0.8, -1.4], a: [-1.4, 0.8, 1.4] },
-    start: [['spawn', 'cake', [0, 0.0], 'rc']],
+    start: [['spawn', 'table', [0, -0.4], 'rt'], ['spawn', 'cake', [0, -0.4, 0, 0.77], 'rc']],
     text: '👴 After many years, it\'s time to RETIRE! Everyone at work has a party for you. 🎉',
     choices: [
       { good: 'Give a speech thanking everyone', do: [['say', 'me', 'Thank you all. It was an honor to work with you!'], ['pose', 'boss', 'clap', 1.4], ['pose', 'a', 'cry', 1.4]], result: 'There isn\'t a dry eye in the room. You retire as a legend. 😇', stats: { happy: 10 }, run: (l) => { l.highlights.push('Retired as ' + ML.Life.jobTitle()); l.job = null; l.retired = true; } },
-      { evil: 'Take the whole cake home', do: [['walk', 'me', [0, 0.4]], ['remove', 'rc'], ['hold', 'me', 'cake'], ['walk', 'me', 'door']], result: 'You leave with the cake. Nobody gets any. Bye, losers! 😈', stats: { happy: 8 }, run: (l) => { l.job = null; l.retired = true; } },
+      { evil: 'Take the whole cake home', do: [['walk', 'me', [0, 0.25]], ['remove', 'rc'], ['hold', 'me', 'cake'], ['walk', 'me', 'door']], result: 'You leave with the cake. Nobody gets any. Bye, losers! 😈', stats: { happy: 8 }, run: (l) => { l.job = null; l.retired = true; } },
       { funny: 'Do a retirement dance on your desk', do: [['pose', 'me', 'dance', 2.4], ['pose', 'boss', 'laugh', 1.6], ['pose', 'a', 'cheer', 1.6]], result: 'You dance into retirement! 🕺👴🤡', stats: { happy: 10 }, run: (l) => { l.highlights.push('Retired with a dance'); l.job = null; l.retired = true; } },
     ],
   });
