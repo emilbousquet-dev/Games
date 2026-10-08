@@ -651,6 +651,49 @@
   </style>
 </head>
 <body>
+  <!-- if something breaks, show what broke (instead of a plain blue screen) -->
+  <script id="oops">
+  (function () {
+    var shown = false;
+    function show(msg, where) {
+      // (only while the game is starting up: that's when a broken game shows just a blue screen)
+      if (shown || performance.now() > 20000) return; shown = true;
+      var webgl = /webgl/i.test(msg);
+      var box = document.createElement('div');
+      box.style.cssText = 'position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(42,33,64,.55);font-family:Arial,sans-serif;color:#2a2140';
+      var card = document.createElement('div');
+      card.style.cssText = 'background:#fffaf3;border:5px solid #fff;border-radius:24px;padding:18px 22px;max-width:520px;width:100%;box-sizing:border-box;text-align:center;box-shadow:0 8px 0 rgba(42,33,64,.25)';
+      var h = document.createElement('h2'); h.style.margin = '0 0 8px'; h.textContent = 'Oops! Something broke.';
+      var p = document.createElement('p'); p.style.margin = '0 0 10px';
+      p.textContent = webgl
+        ? 'Your browser can\'t show 3D graphics right now. In Chrome, open Settings, then System, turn on "Use graphics acceleration when available", and restart Chrome.'
+        : 'Take a picture of this box and show it to Claude, so it can be fixed.';
+      var code = document.createElement('pre');
+      code.style.cssText = 'white-space:pre-wrap;word-break:break-word;text-align:left;background:#2a2140;color:#ffcf33;border-radius:12px;padding:8px 10px;font-size:13px;margin:0 0 12px';
+      code.textContent = msg + (where ? '\n' + where : '') + '\n' + navigator.userAgent;
+      var again = document.createElement('button'); again.textContent = 'Try again';
+      var reset = document.createElement('button'); reset.textContent = 'Reset saved data and try again';
+      [again, reset].forEach(function (b) { b.style.cssText = 'font:700 16px Arial,sans-serif;margin:4px;padding:8px 14px;border-radius:12px;border:3px solid #2a2140;background:#ffcf33;cursor:pointer'; });
+      reset.style.background = '#f2e8da';
+      again.onclick = function () { location.reload(); };
+      reset.onclick = function () { try { Object.keys(localStorage).forEach(function (k) { if (k.indexOf('floppy') === 0) localStorage.removeItem(k); }); } catch (e) { /* no saving */ } location.reload(); };
+      card.append(h, p, code, again, reset); box.append(card);
+      (document.body || document.documentElement).append(box);
+    }
+    // a part of the game that didn't download, or a mistake in the game's code
+    window.addEventListener('error', function (e) {
+      var t = e.target;
+      if (t && t !== window && t.tagName) { if (t.tagName === 'SCRIPT') show('A part of the game didn\'t download: ' + (t.getAttribute('src') || 'a script') + '. Check the internet and try again.'); return; } // (a font or picture that didn't load is fine)
+      var file = String(e.filename || '');
+      if (file && location.protocol !== 'file:' && file.indexOf(location.origin) !== 0 && file.indexOf('cdn.jsdelivr.net') < 0) return; // (a browser add-on, not the game)
+      show(String(e.message || e.error || 'Unknown problem'), file ? file.split('/').slice(-2).join('/') + ':' + e.lineno : '');
+    }, true);
+    window.addEventListener('unhandledrejection', function (e) { var r = e.reason; if (r && /webgl/i.test(String(r.message || r))) show(String(r.message || r)); });
+    window.FP_OOPS = show;
+    // can this browser draw 3D at all? (the whole game needs it)
+    try { var c = document.createElement('canvas'); if (!(c.getContext('webgl2') || c.getContext('webgl'))) show('No WebGL: this browser can\'t draw 3D graphics right now.'); } catch (e) { /* checked again when the game starts */ }
+  })();
+  </script>
   <div id="splash"><div class="splash-logo"><b>F</b><b>L</b><b>O</b><b>P</b><b>P</b><b>Y</b> <b>P</b><b>A</b><b>R</b><b>T</b><b>Y</b></div><svg class="splash-art" viewBox="0 0 300 140" aria-hidden="true">
       <ellipse cx="150" cy="128" rx="130" ry="10" fill="#7ad35e" stroke="#2a2140" stroke-width="3"/>
       <g class="thrower"><ellipse cx="90" cy="96" rx="22" ry="26" fill="#ff5a5f" stroke="#2a2140" stroke-width="3"/><circle cx="90" cy="62" r="17" fill="#ff5a5f" stroke="#2a2140" stroke-width="3"/><circle cx="84" cy="60" r="3" fill="#2a2140"/><circle cx="96" cy="60" r="3" fill="#2a2140"/><path d="M83 68q7 6 14 0" fill="none" stroke="#2a2140" stroke-width="2.5" stroke-linecap="round"/><path d="M70 90l-12-22M110 90l14-24" stroke="#2a2140" stroke-width="9" stroke-linecap="round"/><path d="M70 90l-12-22M110 90l14-24" stroke="#ff5a5f" stroke-width="5" stroke-linecap="round"/><path d="M78 44l12-18 12 18z" fill="#ffcf33" stroke="#2a2140" stroke-width="3" stroke-linejoin="round"/></g>
