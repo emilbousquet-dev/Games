@@ -58,8 +58,8 @@ FP.Modes.water = (function () {
   }
 
   function spawn(i, n, p) {
-    const team = p && p.team !== undefined ? p.team : i % 2, row = Math.floor(i / 2);
-    return { x: sideOf(team) * 6, y: 0.2, z: row ? 2.5 : -2.5, yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
+    const team = p && p.team !== undefined ? p.team : i % 2, row = p && p.teamRank !== undefined ? p.teamRank : Math.floor(i / 2); // (place in the team)
+    return { x: sideOf(team) * 6, y: 0.2, z: [-2.5, 2.5, 0, 5][row] || 0, yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 
   function lob(c) {

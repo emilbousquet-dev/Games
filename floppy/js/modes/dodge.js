@@ -64,8 +64,8 @@ FP.Modes.dodge = (function () {
 
   function spawn(i, n, p) {
     const team = p && p.team !== undefined ? p.team : i % 2;
-    const row = Math.floor(i / 2);
-    return { x: sideOf(team) * 6.5, y: 0.2, z: row ? 2.2 : -2.2, yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
+    const row = p && p.teamRank !== undefined ? p.teamRank : Math.floor(i / 2); // (place in the team)
+    return { x: sideOf(team) * 6.5, y: 0.2, z: [-2.2, 2.2, 0, 4.4][row] || 0, yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 
   const heldBy = (c) => balls.find((b) => b.holder === c);

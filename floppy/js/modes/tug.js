@@ -48,7 +48,7 @@ FP.Modes.tug = (function () {
 
   const sideOf = (team) => (team === 0 ? -1 : 1);
   function spawn(i, n, p) {
-    const team = p && p.team !== undefined ? p.team : i % 2, rank = Math.floor(i / 2);
+    const team = p && p.team !== undefined ? p.team : i % 2, rank = p && p.teamRank !== undefined ? p.teamRank : Math.floor(i / 2); // (place in the team)
     return { x: sideOf(team) * (PIT + 1 + rank * 1.3), y: 0.2, z: 0, yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 

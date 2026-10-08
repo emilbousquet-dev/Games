@@ -59,8 +59,9 @@ FP.Modes.volley = (function () {
   }
 
   function spawn(i, n, p) {
-    const team = p && p.team !== undefined ? p.team : i % 2, row = Math.floor(i / 2);
-    return { x: sideOf(team) * (row ? 5.5 : 2.5), y: 0.2, z: row ? 1.5 : -1.5, yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
+    const team = p && p.team !== undefined ? p.team : i % 2, row = p && p.teamRank !== undefined ? p.teamRank : Math.floor(i / 2); // (place in the team)
+    const spot = [[2.5, -1.5], [5.5, 1.5], [4, 0], [5.5, -1.5]][row] || [4, 0];
+    return { x: sideOf(team) * spot[0], y: 0.2, z: spot[1], yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 
   // send the ball to a spot, going up to a certain height on the way (floaty gravity)

@@ -377,6 +377,15 @@
     .chip:hover { background: var(--paper2); }
     .chip.on { background: var(--yellow); box-shadow: 0 3px 0 var(--ink); }
     .who { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 8px 0; }
+    /* picking teams: a Red box and a Blue box, tap someone to move them across */
+    .teams-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin: 4px 0 2px; }
+    .tp { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px 10px; border-radius: 16px; border: 3px solid; min-height: 64px; }
+    .tp > b { font-size: 15px; letter-spacing: .3px; }
+    .tp-red { background: #ffe1e3; border-color: #ff5a5f; } .tp-red > b { color: #d93a40; }
+    .tp-blue { background: #dcefff; border-color: #4aa8ff; } .tp-blue > b { color: #2a7fd0; }
+    .team-pick { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; border-radius: 999px; transition: transform .12s; }
+    .team-pick:hover { transform: scale(1.06); }
+    .team-pick:active { transform: scale(.94); }
 
     /* results */
     .podium { display: flex; flex-direction: column; gap: 6px; align-items: center; margin-top: 10px; }

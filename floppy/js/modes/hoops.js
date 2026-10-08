@@ -75,7 +75,7 @@ FP.Modes.hoops = (function () {
   }
 
   function spawn(i, n, p) {
-    const team = p.team, k = Math.floor(i / 2);
+    const team = p.team, k = p && p.teamRank !== undefined ? p.teamRank : Math.floor(i / 2); // (k = place in the team)
     return { x: (team === 0 ? -1 : 1) * (3.5 + k * 2.5), y: 0, z: (k % 2 ? -2 : 2) * (k ? 1 : 0.4), yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
 

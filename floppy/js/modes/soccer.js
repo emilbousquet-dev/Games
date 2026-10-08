@@ -100,7 +100,7 @@ FP.Modes.soccer = (function () {
   function kickoff() { owner = null; ball.body.position.set(0, R + 0.5, 0); ball.body.velocity.set(0, 0, 0); ball.body.angularVelocity.set(0, 0, 0); }
 
   function spawn(i, n, p) {
-    const team = p.team, k = Math.floor(i / 2);
+    const team = p.team, k = p && p.teamRank !== undefined ? p.teamRank : Math.floor(i / 2); // (k = place in the team)
     const x = (team === 0 ? -1 : 1) * (4 + k * 3.5);
     const z = (k % 2 ? -1 : 1) * 2.5 * (k ? 1 : 0.2);
     return { x, y: 0, z, yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };

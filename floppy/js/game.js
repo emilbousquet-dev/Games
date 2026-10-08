@@ -23,6 +23,9 @@ FP.Game = (function () {
   // team mode: games where the last one standing wins can also be played in 2 teams (Red and Blue)
   const TEAMABLE = ['arena', 'tiles', 'color', 'sweeper', 'sumo', 'meteor', 'conveyor', 'wall', 'bumpers', 'boulder', 'custom', 'balloons', 'boxing'];
   const teamPlay = {};
+  // who is on which team in team games (picked in the setup screen):
+  // 'p' + player id for players, 'b0', 'b1'... for the bots. 0 = Red, 1 = Blue
+  const teamPick = {};
   let botSkill = 'normal'; // how good the bots are: easy, normal or hard
   const VERSION = '1.3';
   let tour = null;          // Party Tour: { games: [mode ids], index, points: { playerId: n }, bots, awarded }
@@ -673,6 +676,23 @@ FP.Game = (function () {
     return `<span class="stars">${Array.from({ length: 3 }, (_, i) => (i < k ? ICON.star : ICON.starEmpty)).join('')}</span>`;
   }
 
+  // everyone who will play, with their team (new people get Red, Blue, Red, Blue...)
+  function teamsFor(m, n) {
+    const slots = players.map((p) => ({ key: 'p' + p.id, p })).concat(Array.from({ length: n }, (_, i) => ({ key: 'b' + i, bot: i })));
+    const pick = teamPick[m.id] || (teamPick[m.id] = {});
+    slots.forEach((sl, i) => { if (pick[sl.key] !== 0 && pick[sl.key] !== 1) pick[sl.key] = i % 2; });
+    // each team needs at least one player
+    for (const t of [0, 1]) {
+      if (slots.length >= 2 && !slots.some((sl) => pick[sl.key] === t)) { const from = slots.filter((sl) => pick[sl.key] !== t).pop(); pick[from.key] = t; }
+    }
+    return slots.map((sl) => ({ ...sl, team: pick[sl.key] }));
+  }
+  // quick team buttons: "Mixed" (Red, Blue, Red, Blue) or "Players vs Bots"
+  function quickTeams(m, n, how) {
+    const pick = teamPick[m.id] = {};
+    players.map((p) => 'p' + p.id).concat(Array.from({ length: n }, (_, i) => 'b' + i)).forEach((key, i) => { pick[key] = how === 'pvb' ? (key[0] === 'p' ? 0 : 1) : i % 2; });
+  }
+
   function setupMatch(m) {
     const { min, max } = botLimits(m);
     if (botCount[m.id] === undefined) botCount[m.id] = Math.min(max, Math.max(min, m.defaultBots !== undefined ? m.defaultBots : MAX_PLAYERS - humans().length));
@@ -695,9 +715,18 @@ FP.Game = (function () {
       const n = botCount[m.id];
       const total = humans().length + n;
       let who = humans().map((p) => FP.UI.playerPill(p)).join('') + Array.from({ length: n }, (_, i) => `<span class="pill bot">Bot ${i + 1}</span>`).join('');
-      if (m.teams) who += `<p class="small">Teams are split up automatically: Red and Blue.</p>`;
       const why = min > 0 ? `<p class="small">This game needs at least ${m.minTotal || 2} players, so you need at least ${min} bot${min > 1 ? 's' : ''}.</p>` : '<p class="small">You can play with no bots at all.</p>';
       const teamRow = TEAMABLE.includes(m.id) && (!m.teamOk || m.teamOk()) && total >= 3 ? `<div class="skill"><span class="lbl">Teams</span><button class="chip${!teamPlay[m.id] ? ' on' : ''}" data-team="0">Everyone for themselves</button><button class="chip${teamPlay[m.id] ? ' on' : ''}" data-team="1">Red vs Blue</button></div>` : '';
+      // team games: pick who is on which team (tap someone to move them to the other team)
+      if ((m.teams || (teamRow && teamPlay[m.id])) && total >= 2) {
+        const t = teamsFor(m, n);
+        const pill = (sl) => `<button type="button" class="team-pick" data-pick="${sl.key}" title="Move to the other team">${sl.p ? FP.UI.playerPill(sl.p) : `<span class="pill bot">Bot ${sl.bot + 1}</span>`}</button>`;
+        const box = (k, name) => `<div class="tp tp-${k ? 'blue' : 'red'}"><b>${name}</b>${t.filter((sl) => sl.team === k).map(pill).join('')}</div>`;
+        const pvb = humans().length && n ? `<button type="button" class="chip" data-quick="pvb">Players vs Bots</button>` : '';
+        who = `<div class="teams-pick">${box(0, 'Red team')}${box(1, 'Blue team')}</div>
+          <div class="skill"><span class="lbl">Teams</span><button type="button" class="chip" data-quick="mix">Mixed</button>${pvb}</div>
+          <p class="small">Tap a player or a bot to move them to the other team.</p>`;
+      }
       const html = `<div class="setup-art">${m.art || ''}</div><p>${m.desc}</p>${m.setupHtml ? m.setupHtml() : ''}${teamRow}
         <div class="counter"><span class="lbl">Bots</span>
           <button class="round" data-bots="-1" ${n <= min ? 'disabled' : ''} title="Fewer bots">${ICON.minus}</button>
@@ -725,6 +754,20 @@ FP.Game = (function () {
         },
       });
       card.querySelectorAll('[data-bots]').forEach((b) => b.addEventListener('click', () => change(+b.dataset.bots)));
+      card.querySelectorAll('[data-pick]').forEach((b) => {
+        b.addEventListener('mousedown', (e) => e.preventDefault());
+        b.addEventListener('click', () => {
+          const pick = teamPick[m.id], key = b.dataset.pick, from = pick[key];
+          const left = teamsFor(m, botCount[m.id]).filter((sl) => sl.team === from).length;
+          if (left <= 1) { FP.UI.toast('Each team needs at least 1 player!'); FP.Audio.play('tick'); return; }
+          pick[key] = 1 - from;
+          FP.Audio.play('menu'); draw();
+        });
+      });
+      card.querySelectorAll('[data-quick]').forEach((b) => {
+        b.addEventListener('mousedown', (e) => e.preventDefault());
+        b.addEventListener('click', () => { quickTeams(m, botCount[m.id], b.dataset.quick); FP.Audio.play('menu'); draw(); });
+      });
       card.querySelectorAll('[data-team]').forEach((b) => { b.addEventListener('mousedown', (e) => e.preventDefault()); b.addEventListener('click', () => { teamPlay[m.id] = b.dataset.team === '1'; FP.Audio.play('menu'); draw(); }); });
       if (m.setupWire) m.setupWire(card, draw);
       card.querySelectorAll('[data-skill]').forEach((b) => {
@@ -755,7 +798,18 @@ FP.Game = (function () {
     if (tourney && tourney.current) matchBots = [tourney.current.a, tourney.current.b].filter((p) => p.source.kind === 'bot');
     else if (tour) { if (!tour.bots) { makeBots(tour.botCount); tour.bots = matchBots; } matchBots = tour.bots; tour.awarded = false; } else makeBots(n);
     const list = everyone();
-    list.forEach((p, i) => { p.team = mode.teams ? i % 2 : undefined; });
+    // the teams picked in the setup screen (tours, Story Mode and challenges just take turns: Red, Blue, Red...)
+    const picked = mode.teams && !tour && !story && !daily && !tourney ? teamsFor(m, matchBots.length) : null;
+    list.forEach((p, i) => {
+      if (!mode.teams) { p.team = undefined; return; }
+      const key = matchBots.includes(p) ? 'b' + matchBots.indexOf(p) : 'p' + p.id;
+      const sl = picked && picked.find((x) => x.key === key);
+      p.team = sl ? sl.team : i % 2;
+    });
+    if (mode.teams && !(list.some((p) => p.team === 0) && list.some((p) => p.team === 1))) list.forEach((p, i) => { p.team = i % 2; }); // (never a team of nobody)
+    // each player's place in their team, so teammates don't start on top of each other
+    const ranks = [0, 0];
+    list.forEach((p) => { p.teamRank = p.team === undefined ? undefined : ranks[p.team]++; });
     scores = {};
     list.forEach((p) => { scores[p.id] = 0; });
     if (mode.teams) scores = { team0: 0, team1: 0 };

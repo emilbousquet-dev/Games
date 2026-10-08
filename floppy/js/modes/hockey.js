@@ -80,7 +80,7 @@ FP.Modes.hockey = (function () {
   }
 
   function spawn(i, n, p) {
-    const team = p.team, k = Math.floor(i / 2);
+    const team = p.team, k = p && p.teamRank !== undefined ? p.teamRank : Math.floor(i / 2); // (k = place in the team)
     return { x: (team === 0 ? -1 : 1) * (3 + k * 3), y: 0, z: (k % 2 ? -1 : 1) * 2 * (k ? 1 : 0.2), yaw: team === 0 ? Math.PI / 2 : -Math.PI / 2 };
   }
   function resetPlayers(chars) { chars.forEach((c, i) => { const s = spawn(i, chars.length, c.player); FP.Ragdoll.teleport(c, s.x, 0, s.z, s.yaw); }); }
