@@ -22,6 +22,7 @@ FP.Net = (function () {
   let peer = null, role = null, code = '', conns = new Map(), hostConn = null, myId = null, myName = '';
   const inputs = {}, prevCount = {};
   let sendTimer = 0, keyTimer = 0, beatTimer = 0, inTimer = 0, lastHud = '', lastState = '', events = [], lastMovers = [];
+  let fastDc = null, snaps = [], timeGap = null, inSeq = 0, bumpy = 30, gapMs = 33, newestTs = null;
   let chatKind = 0, snap = null, clientState = 'lobby', clientMode = null, pressCount = { jump: 0, punch: 0, flop: 0 }, actCount = { color: 0, hat: 0, outfit: 0, face: 0, dance: 0, trail: 0, pet: 0, tag: 0, chat: 0 };
   let roundNo = 0, clientRoundNo = -1, resultsHtml = '', resultsNo = 0, clientResultsNo = -1;
   // rematch vote after a game: friends vote "play again" or "new game", the host sees the votes
@@ -221,7 +222,9 @@ FP.Net = (function () {
         if (g.players.length >= 4 || (g.state !== 'lobby' && g.everyone.length >= 4)) { conn.send({ t: 'full' }); setTimeout(() => conn.close(), 300); return; }
         const p = g.addPlayer({ kind: 'remote', peer: conn.peer }, { name: (msg.name || 'Friend').slice(0, 12) });
         if (!p) return;
-        conns.set(conn.peer, { conn, pid: p.id });
+        const c0 = { conn, pid: p.id };
+        c0.fast = openFast(conn, (m) => { if (m && m.t === 'in') gotInput(c0, m); });
+        conns.set(conn.peer, c0);
         conn.send({ t: 'welcome', id: p.id, code });
         FP.UI.toast(`${p.name} joined the party!`);
         playersChanged();
@@ -229,7 +232,7 @@ FP.Net = (function () {
         if (g.state !== 'lobby' && g.state !== 'title') conn.send({ t: 'round', n: roundNo, r: g.round, mode: g.mode && g.mode.id, cfg: modeCfg(), players: playerList(), state: g.state });
       } else if (msg.t === 'in') {
         const c = conns.get(conn.peer);
-        if (c) inputs[c.pid] = msg;
+        if (c) gotInput(c, msg);
       } else if (msg.t === 'vote') {
         const c = conns.get(conn.peer);
         if (c) setVote(c.pid, msg.v, msg.n);
@@ -244,6 +247,38 @@ FP.Net = (function () {
       }
     });
     conn.on('close', () => dropClient(conn.peer));
+  }
+
+  // ---------------- the fast connection (website version) ----------------
+  // Next to the normal "safe" connection, each friend gets a fast one. On the safe one, one lost
+  // message makes all the others wait in line until it's sent again (that's what made the game
+  // freeze and then jump). On the fast one, a lost message is just skipped: the next one is
+  // only 1/30 of a second later anyway.
+  function openFast(conn, onMsg) {
+    const pc = conn.peerConnection;
+    if (!pc || !pc.createDataChannel) return null;
+    try {
+      const dc = pc.createDataChannel('fp-fast', { negotiated: true, id: 42, ordered: false, maxRetransmits: 0 });
+      dc.onmessage = (e) => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } onMsg(m); };
+      return dc;
+    } catch (e) { return null; }
+  }
+  const fastOpen = (dc) => !!dc && dc.readyState === 'open';
+  const allFast = () => { for (const c of conns.values()) if (!fastOpen(c.fast)) return false; return conns.size > 0; };
+  function broadcastFast(msg) {
+    let text = null;
+    for (const c of conns.values()) {
+      if (fastOpen(c.fast) && c.fast.bufferedAmount < 64000) { if (text === null) text = JSON.stringify(msg); try { c.fast.send(text); } catch (e) { /* skip this one */ } }
+      else if (c.conn && c.conn.open) c.conn.send(msg);
+    }
+  }
+
+  // a friend's buttons (numbered, so an old message that arrives late is ignored)
+  function gotInput(c, m) {
+    const n = +m.n || 0;
+    if (n && n <= (c.inN || 0)) return;
+    c.inN = n;
+    inputs[c.pid] = m;
   }
 
   // send a message to every friend. Room messages are split into pieces if they're too big
@@ -318,6 +353,39 @@ FP.Net = (function () {
   const r2 = (v) => Math.round(v * 100) / 100;
   const pose = (b) => [r2(b.position.x), r2(b.position.y), r2(b.position.z), r2(b.quaternion.x), r2(b.quaternion.y), r2(b.quaternion.z), r2(b.quaternion.w)];
 
+  // ---------------- small messages ----------------
+  // Where every body part is gets packed into a short code instead of long lists of numbers:
+  // each part is 20 bytes (3 numbers for where it is, 4 small ones for which way it faces).
+  // Smaller messages = they arrive faster and get lost less on a slow internet connection.
+  const PART = 20;
+  function packBodies(list) {
+    const v = new DataView(new ArrayBuffer(list.length * PART));
+    list.forEach((b, i) => {
+      const o = i * PART, q = b.quaternion;
+      v.setFloat32(o, b.position.x, true); v.setFloat32(o + 4, b.position.y, true); v.setFloat32(o + 8, b.position.z, true);
+      v.setInt16(o + 12, Math.round(q.x * 32767), true); v.setInt16(o + 14, Math.round(q.y * 32767), true);
+      v.setInt16(o + 16, Math.round(q.z * 32767), true); v.setInt16(o + 18, Math.round(q.w * 32767), true);
+    });
+    const bytes = new Uint8Array(v.buffer);
+    let str = '';
+    for (let i = 0; i < bytes.length; i += 8192) str += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+    return btoa(str);
+  }
+  // back into a list of [x, y, z, qx, qy, qz, qw]
+  function unpackBodies(code) {
+    let str;
+    try { str = atob(String(code || '')); } catch (e) { return []; }
+    const n = Math.floor(str.length / PART), out = new Array(n);
+    const bytes = new Uint8Array(str.length);
+    for (let i = 0; i < str.length; i++) bytes[i] = str.charCodeAt(i);
+    const v = new DataView(bytes.buffer);
+    for (let i = 0; i < n; i++) {
+      const o = i * PART;
+      out[i] = [v.getFloat32(o, true), v.getFloat32(o + 4, true), v.getFloat32(o + 8, true), v.getInt16(o + 12, true) / 32767, v.getInt16(o + 14, true) / 32767, v.getInt16(o + 16, true) / 32767, v.getInt16(o + 18, true) / 32767];
+    }
+    return out;
+  }
+
   function sendState(force) {
     const g = FP.Game;
     if (g.state !== lastState || force) {
@@ -341,29 +409,38 @@ FP.Net = (function () {
     }
     sendTimer -= dt;
     if (sendTimer > 0) return;
-    sendTimer = kind === 'room' ? 1 / 12 : 1 / 20;
-    const chars = FP.Ragdoll.all.map((c) => ({
-      k: charKey(c), ko: c.ko > 0 ? 1 : 0, e: c.faceExpr && c.faceExpr !== 'smile' && c.faceExpr !== 'ko' ? c.faceExpr : '', a: c.alive ? 1 : 0,
-      b: c.bodies.map(pose),
-    }));
-    const msg = { t: 's', chars, ev: events };
-    // moving things: only the ones that moved (and everything every 2 seconds)
-    keyTimer -= 1 / 12;
-    const all = FP.Stage.movers.map(([, b]) => pose(b));
-    if (keyTimer <= 0 || all.length !== lastMovers.length) { keyTimer = 2; msg.mv = all; }
+    // how often: 30 times a second on the fast connection, a bit less on the others
+    const rate = kind === 'room' ? 12 : allFast() ? 30 : 20;
+    sendTimer = Math.max(0, sendTimer + 1 / rate);
+    const all = FP.Ragdoll.all;
+    const msg = {
+      t: 's', ts: Math.round(performance.now()),
+      // each character: its name tag, knocked out?, face, still in?, how many body parts
+      c: all.map((c) => [charKey(c), c.ko > 0 ? 1 : 0, c.faceExpr && c.faceExpr !== 'smile' && c.faceExpr !== 'ko' ? c.faceExpr : '', c.alive ? 1 : 0, c.bodies.length]),
+      p: packBodies([].concat(...all.map((c) => c.bodies))),
+    };
+    // moving things (platforms, balls...): all of them when there aren't many, else only the ones that moved
+    const movers = FP.Stage.movers.map(([, b]) => b);
+    const now = movers.map(pose);
+    keyTimer -= 1 / rate;
+    if (movers.length <= 40 || keyTimer <= 0 || now.length !== lastMovers.length) { keyTimer = 1; msg.mv = packBodies(movers); }
     else {
-      const md = [];
-      all.forEach((m, i) => { const o = lastMovers[i]; if (!o || m.some((v, k) => v !== o[k])) md.push([i, ...m]); });
-      if (md.length) msg.md = md;
+      const idx = [];
+      now.forEach((m, i) => { const o = lastMovers[i]; if (!o || m.some((v, k) => v !== o[k])) idx.push(i); });
+      if (idx.length) msg.md = { i: idx, p: packBodies(idx.map((i) => movers[i])) };
     }
-    lastMovers = all;
-    const hud = g_hud();
-    if (hud !== lastHud) { msg.hud = hud; lastHud = hud; }
+    lastMovers = now;
     const mode = FP.Game.mode;
     if (mode && mode.netState && FP.Game.state !== 'lobby') msg.x = mode.netState();
     if (FP.Fun) msg.f = FP.Fun.netState();
+    // the scoreboard and the punches/jumps (for sounds) must never get lost, so they go the safe way
+    const hud = g_hud(), extra = {};
+    if (hud !== lastHud) { extra.hud = hud; lastHud = hud; }
+    if (events.length) extra.ev = events;
     events = [];
-    broadcast(msg);
+    if (kind === 'room') { broadcast(Object.assign(msg, extra)); return; }
+    broadcastFast(msg);
+    if (extra.hud !== undefined || extra.ev) broadcast(Object.assign({ t: 's2' }, extra));
   }
   const g_hud = () => (['countdown', 'play', 'roundOver'].includes(FP.Game.state) ? FP.Game.hudHtml() : '');
 
@@ -381,7 +458,7 @@ FP.Net = (function () {
     peer = new Peer(peerOptions());
     peer.on('open', () => {
       hostConn = peer.connect(PREFIX + code, { reliable: true });
-      hostConn.on('open', () => { role = 'client'; hostConn.send({ t: 'hello', name: myName }); });
+      hostConn.on('open', () => { role = 'client'; fastDc = openFast(hostConn, onClientData); hostConn.send({ t: 'hello', name: myName }); });
       hostConn.on('data', onClientData);
       hostConn.on('close', () => { if (role === 'client') { FP.UI.toast('The host left the party'); leave(); FP.Game.titleScreen(); } });
     });
@@ -449,6 +526,7 @@ FP.Net = (function () {
       }
       g.refreshLobby();
     } else if (msg.t === 'round') {
+      snaps = []; snap = null;
       clientRoundNo = msg.n;
       clientState = msg.state || 'countdown';
       clientMode = FP.Modes[msg.mode];
@@ -463,13 +541,15 @@ FP.Net = (function () {
       if (playing && msg.mode && msg.n !== clientRoundNo) onClientData({ t: 'round', n: msg.n, r: msg.r, mode: msg.mode, cfg: msg.cfg, players: msg.players, state: msg.state });
       else if (msg.state === 'lobby' && clientState !== 'lobby') onClientData({ t: 'players', players: msg.players, state: 'lobby' });
     } else if (msg.t === 's') {
-      snap = msg;
-      if (msg.mv) lastMovers = msg.mv.slice();
-      if (msg.md) for (const d of msg.md) lastMovers[d[0]] = d.slice(1);
+      // (on the fast connection an old message can arrive after a newer one: it only helps the smooth movement)
+      if (!gotSnapshot(msg)) return;
       if (msg.f !== undefined && FP.Fun) FP.Fun.applyNet(msg.f);
       if (msg.hud !== undefined) FP.UI.setHud(msg.hud);
       applyEvents(msg.ev || []);
       if (msg.x && clientMode && clientMode.applyNetState) clientMode.applyNetState(msg.x);
+    } else if (msg.t === 's2') {
+      if (msg.hud !== undefined) FP.UI.setHud(msg.hud);
+      applyEvents(msg.ev || []);
     } else if (msg.t === 'ev') { if (typeof msg.e === 'string') FP.bus.emit('net:' + msg.e, msg.d); }
     else if (msg.t === 'banner') FP.UI.big(String(msg.text), msg.text === 'GO!' ? 0.8 : 2.6, String(msg.sub || ''));
     else if (msg.t === 'podium') { if (g.clientPodium) { g.players = msg.players.map(fromList); clientState = 'results'; g.clientPodium(msg.places); } }
@@ -517,6 +597,82 @@ FP.Net = (function () {
     return m;
   }
 
+  // ---------------- smooth movement on a friend's screen ----------------
+  // The last few messages are kept, and everything is shown a tiny moment in the past
+  // (1/10 of a second), sliding smoothly from one message to the next. So even when messages
+  // arrive bumpy or a few get lost, the movement stays smooth. Your own character uses the
+  // newest message, so it reacts as fast as possible.
+  const qA = new THREE.Quaternion(), qB = new THREE.Quaternion();
+  function gotSnapshot(msg) {
+    if (!Array.isArray(msg.c)) return false;
+    const ts = +msg.ts || 0, now = performance.now();
+    // the host's clock compared to ours (the smallest gap = a message that came the fastest)
+    const gap = now - ts;
+    if (timeGap === null || gap < timeGap) timeGap = gap; else timeGap += (gap - timeGap) * 0.002;
+    // how bumpy the connection is (how late messages come, on average) and how often they come
+    bumpy += (gap - timeGap - bumpy) * 0.05;
+    if (newestTs !== null && ts > newestTs) gapMs += (Math.min(500, ts - newestTs) - gapMs) * 0.05;
+    if (newestTs === null || ts > newestTs) newestTs = ts;
+    if (snaps.length && ts <= snaps[0].ts) return false; // older than everything we have
+    const poses = unpackBodies(msg.p), chars = new Map();
+    let at = 0;
+    for (const e of msg.c) { const n = e[4] | 0; chars.set(e[0], { ko: e[1], e: e[2], a: e[3], b: poses.slice(at, at + n) }); at += n; }
+    let i = snaps.length;
+    while (i > 0 && snaps[i - 1].ts > ts) i--;
+    let movers;
+    if (msg.mv !== undefined) movers = unpackBodies(msg.mv);
+    else {
+      movers = (i > 0 ? snaps[i - 1].movers : []).slice();
+      if (msg.md && Array.isArray(msg.md.i)) { const p = unpackBodies(msg.md.p); msg.md.i.forEach((k, j) => { if (p[j]) movers[k] = p[j]; }); }
+    }
+    snaps.splice(i, 0, { ts, chars, movers });
+    while (snaps.length > 2 && snaps[snaps.length - 1].ts - snaps[0].ts > 1000) snaps.shift();
+    return i === snaps.length - 1; // the newest one?
+  }
+  function setPose(body, pa, pb, f) {
+    const x = pa[0] + (pb[0] - pa[0]) * f, y = pa[1] + (pb[1] - pa[1]) * f, z = pa[2] + (pb[2] - pa[2]) * f;
+    body.position.set(x, y, z);
+    qA.set(pa[3], pa[4], pa[5], pa[6]).normalize(); qB.set(pb[3], pb[4], pb[5], pb[6]).normalize();
+    qA.slerp(qB, f);
+    body.quaternion.set(qA.x, qA.y, qA.z, qA.w);
+  }
+  function showSnapshots(dt) {
+    if (!snaps.length) return;
+    // show things a little in the past: just long enough that the next message is usually already here
+    const wait = Math.min(300, Math.max(70, gapMs * 1.2 + bumpy * 2));
+    const rt = performance.now() - timeGap - wait;
+    let a = snaps[0], b = snaps[0];
+    for (const sn of snaps) { b = sn; if (sn.ts >= rt) break; a = sn; }
+    if (b.ts < rt) a = b; // past the newest message: wait there
+    const f = b.ts > a.ts ? Math.min(1, Math.max(0, (rt - a.ts) / (b.ts - a.ts))) : 1;
+    const newest = snaps[snaps.length - 1];
+    const mine = myId !== null ? 'p' + myId : null;
+    const k = Math.min(1, dt * 25);
+    for (const [key, c] of keyMap()) {
+      const own = key === mine;
+      const B = (own ? newest : b).chars.get(key);
+      if (!B) continue;
+      const A = (own ? newest : a).chars.get(key) || B;
+      B.b.forEach((pb, i) => {
+        const body = c.bodies[i];
+        if (!body) return;
+        const pa = A.b[i] || pb;
+        if (own) {
+          // my character: slide quickly to the newest place
+          if (Math.abs(pb[1] - body.position.y) > 6) body.position.set(pb[0], pb[1], pb[2]);
+          setPose(body, [body.position.x, body.position.y, body.position.z, body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w], pb, k);
+        } else setPose(body, pa, pb, f);
+      });
+      c.ko = B.ko ? 1 : 0; c.alive = !!B.a;
+      c.expression = B.e || 'smile'; c.exprTimer = B.e ? 0.2 : 0; c.airTime = 0;
+    }
+    FP.Stage.movers.forEach((m, i) => {
+      const pb = b.movers[i];
+      if (!pb) return;
+      setPose(m[1], a.movers[i] || pb, pb, f);
+    });
+  }
+
   // every frame on a client: send my buttons, move everything to where the host says
   function clientFrame(dt) {
     if (!isClient()) return;
@@ -542,39 +698,18 @@ FP.Net = (function () {
         if (joinWait <= 0) { FP.UI.toast(hostPeer ? 'That party is full (4 players)' : 'Nobody is hosting that party right now', 3); leave(); menu(); return; }
       }
     } else {
+      // my buttons go to the host on the fast connection up to 60 times a second (else 30 on the safe one)
       inTimer -= dt;
+      const fast = fastOpen(fastDc);
       if (inTimer <= 0 && hostConn && hostConn.open) {
-        inTimer = 1 / 30;
-        hostConn.send({ t: 'in', x, z, jump, grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, fl: pressCount.flop, em: pressCount.em || 0, ek: pressCount.ek || 0 });
+        inTimer = fast ? 1 / 60 : 1 / 30;
+        inSeq++;
+        const m = { t: 'in', n: inSeq, x: r2(x), z: r2(z), jump, grab, gl, gr, jc: pressCount.jump, pc: pressCount.punch, fl: pressCount.flop, em: pressCount.em || 0, ek: pressCount.ek || 0 };
+        if (fast) { try { fastDc.send(JSON.stringify(m)); } catch (e) { hostConn.send(m); } } else hostConn.send(m);
       }
     }
     // move everything to where the host says (smoothly)
-    if (snap) {
-      const k = Math.min(1, dt * (kind === 'room' ? 14 : 18));
-      const byKey = keyMap();
-      for (const s of snap.chars) {
-        const c = byKey.get(s.k);
-        if (!c) continue;
-        s.b.forEach((p, i) => {
-          const body = c.bodies[i];
-          if (!body) return;
-          if (Math.abs(p[1] - body.position.y) > 6) body.position.set(p[0], p[1], p[2]);
-          body.position.x += (p[0] - body.position.x) * k; body.position.y += (p[1] - body.position.y) * k; body.position.z += (p[2] - body.position.z) * k;
-          const q = new THREE.Quaternion(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w).slerp(new THREE.Quaternion(p[3], p[4], p[5], p[6]).normalize(), k);
-          body.quaternion.set(q.x, q.y, q.z, q.w);
-        });
-        c.ko = s.ko ? 1 : 0; c.alive = !!s.a;
-        c.expression = s.e || 'smile'; c.exprTimer = s.e ? 0.2 : 0; c.airTime = 0;
-      }
-      lastMovers.forEach((p, i) => {
-        const m = FP.Stage.movers[i];
-        if (!m || !p) return;
-        const body = m[1];
-        body.position.set(body.position.x + (p[0] - body.position.x) * k, body.position.y + (p[1] - body.position.y) * k, body.position.z + (p[2] - body.position.z) * k);
-        if (Math.abs(p[1] - body.position.y) > 5) body.position.set(p[0], p[1], p[2]);
-        body.quaternion.set(p[3], p[4], p[5], p[6]); body.quaternion.normalize();
-      });
-    }
+    showSnapshots(dt);
     const chars = FP.Ragdoll.all;
     for (const c of chars) FP.Ragdoll.sync(c, dt);
     if (clientMode && clientMode.visual && clientState !== 'lobby' && clientState !== 'results') clientMode.visual(dt, FP.Game.chars);
@@ -591,7 +726,7 @@ FP.Net = (function () {
     unsub = [];
     if (party) { try { party.leave(); } catch (e) { /* already gone */ } }
     if (roomNs && role === 'host') roomNs.presence({ fpHost: null }).catch(() => {});
-    peer = null; party = null; role = null; kind = null; hostConn = null; conns.clear(); myId = null; snap = null; clientState = 'lobby'; clientMode = null;
+    peer = null; party = null; role = null; kind = null; hostConn = null; conns.clear(); myId = null; snap = null; snaps = []; timeGap = null; bumpy = 30; gapMs = 33; newestTs = null; if (fastDc) { try { fastDc.close(); } catch (e) { /* already closed */ } } fastDc = null; clientState = 'lobby'; clientMode = null;
     hostPeer = ''; chunks.clear(); lastMovers = []; clientRoundNo = -1; clientResultsNo = -1; resultsHtml = '';
     if (FP.Fun) FP.Fun.clearNet();
   }
