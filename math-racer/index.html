@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Math Racer: Math Practice Game</title>
+<meta name="description" content="A free math practice game for kids: drive a little car through the right answer. Practice adding, taking away and times tables.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&display=swap">
+<style>
+  :root { --ink: #2a2140; --paper: #fffaf3; --yellow: #ffcf33; --red: #ff5a5f; --blue: #4aa8ff; --green: #5cc44a; --font: 'Baloo 2', 'Trebuchet MS', Arial, sans-serif; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; font-family: var(--font); color: var(--ink); -webkit-user-select: none; user-select: none; }
+  [hidden] { display: none !important; }
+  #road { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  button { font-family: var(--font); }
+  .btn { font: 800 20px var(--font); color: var(--ink); background: var(--paper); border: 4px solid var(--ink); border-radius: 16px; padding: 6px 18px; cursor: pointer; box-shadow: 0 5px 0 rgba(42,33,64,.35); transition: transform .1s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(42,33,64,.35); }
+  .btn.go { background: var(--green); color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,.25); }
+  .btn.small { font-size: 15px; padding: 3px 12px; border-width: 3px; }
+  .btn.danger { background: #ffd9da; }
+  .btn.on { background: var(--yellow); }
+
+  /* top bar while racing */
+  .hud { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; width: min(560px, calc(100% - 20px)); }
+  .question { background: var(--paper); border: 4px solid var(--ink); border-radius: 18px; padding: 2px 26px; font-size: clamp(28px, 6vw, 46px); font-weight: 800; box-shadow: 0 5px 0 rgba(42,33,64,.3); white-space: nowrap; }
+  .question.pop { animation: pop .3s cubic-bezier(.2, 1.6, .4, 1); }
+  @keyframes pop { from { transform: scale(.6); } to { transform: scale(1); } }
+  .bar { display: flex; align-items: center; gap: 10px; background: rgba(255,250,243,.9); border-radius: 999px; padding: 2px 14px; font-weight: 800; font-size: 17px; }
+  .progress { width: 140px; height: 12px; border-radius: 999px; background: #e3d9cc; overflow: hidden; border: 2px solid var(--ink); }
+  .progress i { display: block; height: 100%; width: 0; background: var(--green); transition: width .3s; }
+  .mute { position: fixed; right: 10px; top: 10px; width: 42px; height: 42px; border-radius: 12px; border: 3px solid var(--ink); background: var(--paper); cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .mute svg { width: 24px; height: 24px; }
+  .help-line { position: fixed; bottom: 8px; left: 50%; transform: translateX(-50%); background: rgba(42,33,64,.75); color: #fff; border-radius: 999px; padding: 2px 14px; font-size: 14px; font-weight: 600; pointer-events: none; white-space: nowrap; }
+
+  /* menus */
+  .panel { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px; box-sizing: border-box; pointer-events: none; }
+  .card { pointer-events: auto; background: var(--paper); border: 5px solid #fff; border-radius: 28px; box-shadow: 0 10px 0 rgba(42,33,64,.22); padding: 16px 26px 20px; text-align: center; width: min(460px, 100%); max-height: calc(100% - 20px); overflow: auto; box-sizing: border-box; }
+  .card h1 { margin: 0; font-size: clamp(38px, 8vw, 56px); line-height: 1.05; color: #fff; -webkit-text-stroke: 6px var(--ink); paint-order: stroke fill; text-shadow: 0 6px 0 var(--ink); letter-spacing: 1px; }
+  .card h1 span:nth-child(1) { color: var(--yellow); } .card h1 span:nth-child(2) { color: var(--red); }
+  .card h2 { margin: 0 0 6px; font-size: 30px; }
+  .card p { margin: 8px 0; font-size: 17px; font-weight: 600; }
+  .levels { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 10px 0 14px; }
+  .levels .btn { font-size: 16px; padding: 4px 12px; }
+  .levels small { display: block; font-size: 12px; font-weight: 600; opacity: .75; line-height: 1.1; }
+  .stars { display: flex; justify-content: center; gap: 6px; margin: 6px 0; }
+  .stars svg { width: 46px; height: 46px; }
+  .best { font-size: 15px !important; opacity: .8; }
+
+  /* the secret code box */
+  .modal { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(20,14,40,.72); }
+  .modal .card { background: #241b3d; color: #fff; border-color: #6b5bd6; }
+  .modal h2 { color: var(--yellow); font-size: 28px; margin: 0 0 4px; }
+  .codebox { font: 800 30px var(--font); letter-spacing: 6px; text-align: center; width: 100%; max-width: 280px; box-sizing: border-box; border: 4px solid #6b5bd6; border-radius: 14px; padding: 4px 10px; background: #fff; color: var(--ink); outline: none; margin: 6px 0 12px; }
+  .codebox.wide { letter-spacing: 1px; font-size: 24px; }
+  .codebox.shake { animation: shake .35s; border-color: var(--red); }
+  @keyframes shake { 20%, 60% { transform: translateX(-8px); } 40%, 80% { transform: translateX(8px); } }
+  .modal .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  /* the Game Center */
+  .center { position: fixed; inset: 0; z-index: 10; overflow: auto; background: radial-gradient(circle at 50% 0%, #4b3a9a, #1c1433 70%); color: #fff; padding: 18px 16px 30px; box-sizing: border-box; }
+  .center-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; max-width: 960px; margin: 0 auto 14px; }
+  .center h1 { margin: 0; font-size: clamp(30px, 6vw, 46px); color: #fff; -webkit-text-stroke: 5px #120c24; paint-order: stroke fill; text-shadow: 0 5px 0 #120c24; }
+  .center h1 b { color: var(--yellow); }
+  .center .sub { margin: -4px 0 0; opacity: .8; font-weight: 600; }
+  .games { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 16px; max-width: 960px; margin: 0 auto; }
+  .game { position: relative; border: 0; border-radius: 22px; padding: 0; cursor: pointer; overflow: hidden; color: #fff; text-align: left; background: var(--c, #6b5bd6); box-shadow: 0 6px 0 rgba(0,0,0,.35); transition: transform .15s; min-height: 170px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .game:hover { transform: translateY(-4px) rotate(-.6deg); }
+  .game:active { transform: translateY(1px); }
+  .game .art { position: absolute; inset: 0; display: grid; place-items: center; padding-bottom: 46px; }
+  .game .art svg { width: 110px; height: 110px; }
+  .game .name { position: relative; background: rgba(18,12,36,.55); padding: 8px 14px; font-size: 22px; font-weight: 800; }
+  .game .name small { display: block; font-size: 13px; font-weight: 600; opacity: .8; }
+  .empty-note { max-width: 960px; margin: 20px auto; text-align: center; opacity: .8; }
+  .center-foot { max-width: 960px; margin: 22px auto 0; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .center .btn { background: #fff; }
+
+  /* admin */
+  .admin { max-width: 960px; margin: 20px auto 0; background: rgba(255,255,255,.08); border: 3px solid var(--yellow); border-radius: 22px; padding: 14px 18px 18px; }
+  .admin h2 { margin: 0 0 4px; color: var(--yellow); }
+  .admin h3 { margin: 14px 0 6px; }
+  .admin p { margin: 4px 0; opacity: .85; }
+  .glist { display: flex; flex-direction: column; gap: 8px; }
+  .gitem { display: flex; align-items: center; gap: 8px; background: rgba(0,0,0,.25); border-radius: 14px; padding: 6px 10px; flex-wrap: wrap; }
+  .gitem .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--c); border: 2px solid #fff; flex: none; }
+  .gitem .gname { flex: 1; min-width: 120px; font-weight: 800; }
+  .gitem .gname small { font-weight: 600; opacity: .7; margin-left: 6px; }
+  .gitem.hiddenGame { opacity: .55; }
+  .field { font: 600 17px var(--font); border: 3px solid #6b5bd6; border-radius: 12px; padding: 4px 10px; width: 100%; box-sizing: border-box; outline: none; }
+  textarea.field { height: 110px; font: 13px/1.3 monospace; resize: vertical; }
+  .addgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 700px) { .addgrid { grid-template-columns: 1fr; } }
+  .drop { border: 3px dashed #fff; border-radius: 16px; padding: 18px 10px; text-align: center; cursor: pointer; font-weight: 800; }
+  .drop.over { background: rgba(255,207,51,.25); border-color: var(--yellow); }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .colors { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  .colors button { width: 30px; height: 30px; border-radius: 50%; border: 3px solid #fff; cursor: pointer; padding: 0; }
+  .colors button.on { outline: 3px solid var(--yellow); outline-offset: 2px; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 40; background: var(--yellow); color: var(--ink); font-weight: 800; padding: 6px 18px; border-radius: 999px; box-shadow: 0 5px 0 rgba(0,0,0,.25); transition: opacity .25s; }
+
+  /* a game playing (fills the screen) */
+  .teach { text-align: left; } .teach h2 { text-align: center; } .teach ul { margin: 4px 0; padding-left: 22px; } .teach p { margin: 8px 0; } .teach p:last-child { text-align: center; }
+  .player { position: fixed; inset: 0; z-index: 30; background: #000; }
+  .player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+  .player-bar { position: absolute; left: 8px; top: 8px; display: flex; gap: 6px; z-index: 2; opacity: .35; transition: opacity .2s; }
+  .player-bar:hover, .player-bar:focus-within { opacity: 1; }
+  .player-bar .btn { font-size: 13px; padding: 2px 10px; border-width: 3px; }
+</style>
+</head>
+<body>
+<canvas id="road"></canvas>
+
+<!-- racing: the question and the score -->
+<div class="hud" id="hud" hidden>
+  <div class="question" id="question">2 + 3 = ?</div>
+  <div class="bar"><span id="score">0 right</span><div class="progress"><i id="prog"></i></div><span id="left">10 to go</span></div>
+</div>
+<div class="help-line" id="helpLine" hidden>Up and down arrows (or tap above or below the car) to change lanes</div>
+<button class="mute" id="mute" title="Sound on or off" aria-label="Sound on or off"></button>
+
+<!-- start -->
+<div class="panel" id="start">
+  <div class="card">
+    <h1><span>Math</span> <span>Racer</span></h1>
+    <p>Drive through the right answer!</p>
+    <div class="levels" id="levels">
+      <button class="btn" data-level="easy">Easy<small>adding up to 10</small></button>
+      <button class="btn" data-level="medium">Medium<small>adding and taking away</small></button>
+      <button class="btn" data-level="hard">Hard<small>times tables</small></button>
+    </div>
+    <button class="btn go" id="go">Start racing</button>
+    <p class="best" id="best"></p>
+    <p><button class="btn small" id="teachersBtn">For teachers</button></p>
+  </div>
+</div>
+
+<!-- for teachers -->
+<div class="modal" id="teachers" hidden>
+  <div class="card teach">
+    <h2>For teachers</h2>
+    <p>Math Racer is a quick math practice game. Each race has <b>10 questions</b>. Kids drive the car into the lane with the right answer and get up to 3 stars.</p>
+    <ul>
+      <li><b>Easy:</b> adding up to 10</li>
+      <li><b>Medium:</b> adding and taking away</li>
+      <li><b>Hard:</b> times tables</li>
+    </ul>
+    <p>Wrong answers show the right one, so kids learn as they go. Controls: arrow keys, or tap above or below the car.</p>
+    <p>There is also a hidden Game Center with fun games, opened with a code.</p>
+    <p><button class="btn go" id="teachersClose">Got it</button></p>
+  </div>
+</div>
+
+<!-- results -->
+<div class="panel" id="results" hidden>
+  <div class="card">
+    <h2 id="resTitle">Finished!</h2>
+    <div class="stars" id="resStars"></div>
+    <p id="resText"></p>
+    <div class="row" style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+      <button class="btn go" id="again">Race again</button>
+      <button class="btn" id="menu">Change level</button>
+    </div>
+  </div>
+</div>
+
+<!-- the secret: click the car 10 times -->
+<div class="modal" id="codeModal" hidden>
+  <div class="card">
+    <h2 id="codeTitle">Welcome to the Game Center</h2>
+    <p id="codeText">Please enter the code.</p>
+    <input class="codebox" id="codeInput" maxlength="20" autocomplete="off" spellcheck="false" inputmode="text">
+    <div class="row">
+      <button class="btn go" id="codeOk">Enter</button>
+      <button class="btn" id="codeCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- the Game Center -->
+<div class="center" id="center" hidden>
+  <div class="center-top">
+    <div><h1>Game <b>Center</b></h1><p class="sub" id="centerSub">Pick a game!</p></div>
+    <button class="btn small" id="backToMath">Back to Math Racer</button>
+  </div>
+  <div class="games" id="games"></div>
+  <p class="empty-note" id="emptyNote" hidden>No games here yet. An admin can add some.</p>
+  <div class="center-foot"><button class="btn small" id="adminBtn">Admin</button></div>
+  <div class="admin" id="admin" hidden></div>
+</div>
+
+<!-- a game playing -->
+<div class="player" id="player" hidden>
+  <div class="player-bar"><button class="btn" id="exitGame">Back to the Game Center</button><button class="btn" id="fullBtn">Full screen</button></div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+  // ============================================================
+  //  MATH RACER
+  //  Drive the car into the lane with the right answer.
+  //  (And a secret: click the car 10 times...)
+  // ============================================================
+  const $ = (id) => document.getElementById(id);
+  const canvas = $('road'), ctx = canvas.getContext('2d');
+  let W = 0, H = 0, dpr = 1;
+  function resize() {
+    dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = innerWidth; H = innerHeight;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  // ---------------- saving (wrapped: some browsers don't allow it) ----------------
+  const load = (k, d) => { try { const v = localStorage.getItem('mathracer-' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } };
+  const save = (k, v) => { try { localStorage.setItem('mathracer-' + k, JSON.stringify(v)); } catch (e) { /* no saving here */ } };
+
+  // ---------------- sounds (made in code) ----------------
+  let audio = null, muted = load('muted', false);
+  function beep(freq, len, type = 'square', vol = 0.06, slide = 0) {
+    if (muted) return;
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      const o = audio.createOscillator(), g = audio.createGain(), t = audio.currentTime;
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      if (slide) o.frequency.exponentialRampToValueAtTime(Math.max(40, freq + slide), t + len);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+      o.connect(g); g.connect(audio.destination); o.start(t); o.stop(t + len + 0.02);
+    } catch (e) { /* no sound here */ }
+  }
+  const SND = {
+    right: () => { beep(660, 0.09, 'square', 0.05); setTimeout(() => beep(990, 0.14, 'square', 0.05), 80); },
+    wrong: () => beep(180, 0.3, 'sawtooth', 0.05, -80),
+    lane: () => beep(420, 0.05, 'triangle', 0.04),
+    honk: () => { beep(520, 0.09, 'square', 0.04); },
+    finish: () => [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.16, 'square', 0.05), i * 110)),
+    open: () => [392, 523, 659, 784, 1046].forEach((f, i) => setTimeout(() => beep(f, 0.12, 'triangle', 0.06), i * 70)),
+  };
+  const SPEAKER_ON = '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#2a2140"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="#2a2140" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  const SPEAKER_OFF = '<svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#2a2140"/><path d="M16 9l5 6M21 9l-5 6" stroke="#2a2140" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  function drawMute() { $('mute').innerHTML = muted ? SPEAKER_OFF : SPEAKER_ON; }
+  $('mute').addEventListener('click', () => { muted = !muted; save('muted', muted); drawMute(); });
+  drawMute();
+
+  // ---------------- questions ----------------
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  function makeQuestion(level) {
+    let text, answer;
+    if (level === 'easy') { const a = rnd(0, 9), b = rnd(1, 10 - a); text = `${a} + ${b}`; answer = a + b; }
+    else if (level === 'medium') {
+      if (Math.random() < 0.5) { const a = rnd(2, 15), b = rnd(1, 20 - a); text = `${a} + ${b}`; answer = a + b; }
+      else { const a = rnd(5, 20), b = rnd(1, a); text = `${a} - ${b}`; answer = a - b; }
+    } else { const a = rnd(2, 10), b = rnd(2, 10); text = `${a} × ${b}`; answer = a * b; }
+    // 2 wrong answers that are close to the right one
+    const wrong = new Set();
+    while (wrong.size < 2) {
+      const d = rnd(1, level === 'hard' ? 6 : 3) * (Math.random() < 0.5 ? -1 : 1);
+      const v = answer + d;
+      if (v >= 0 && v !== answer) wrong.add(v);
+    }
+    const options = [answer, ...wrong].sort(() => Math.random() - 0.5);
+    return { text, answer, options, lane: options.indexOf(answer) };
+  }
+
+  // ---------------- the race ----------------
+  const RACE_LEN = 10;
+  let level = load('level', 'easy');
+  let mode = 'menu';   // 'menu', 'race', 'results'
+  let lane = 1, carY = 0, carShake = 0, carTilt = 0, distance = 0, speed = 0, boost = 0, slow = 0;
+  let gate = null, nextGateIn = 1.2, asked = 0, right = 0, streak = 0, raceTime = 0, finishX = null;
+  let bubbles = [], sparks = [], clouds = [], last = performance.now();
+  for (let i = 0; i < 6; i++) clouds.push({ x: Math.random(), y: 0.05 + Math.random() * 0.22, s: 0.6 + Math.random() * 0.8 });
+
+  const roadTop = () => H * 0.46, roadBot = () => H * 0.94, laneH = () => (roadBot() - roadTop()) / 3;
+  const laneY = (i) => roadTop() + laneH() * (i + 0.5);
+  const carX = () => Math.max(70, W * 0.2);
+  const baseSpeed = () => Math.max(190, W * 0.25);
+  function carBox() { const h = laneH() * 0.62, w = h * 1.9; return { x: carX() - w / 2, y: carY - h / 2 - h * 0.25, w, h: h * 1.25 }; }
+
+  function startRace() {
+    mode = 'race'; lane = 1; carY = laneY(1); distance = 0; speed = baseSpeed(); boost = 0; slow = 0;
+    gate = null; nextGateIn = 1.0; asked = 0; right = 0; streak = 0; raceTime = 0; finishX = null; bubbles = []; sparks = [];
+    $('start').hidden = true; $('results').hidden = true; $('hud').hidden = false; $('helpLine').hidden = false;
+    $('question').textContent = 'Get ready...';
+    updateBar();
+  }
+  function updateBar() {
+    $('score').textContent = `${right} right`;
+    $('left').textContent = asked >= RACE_LEN ? 'Finish!' : `${RACE_LEN - asked} to go`;
+    $('prog').style.width = (asked / RACE_LEN * 100) + '%';
+  }
+  function newGate() {
+    const q = makeQuestion(level);
+    gate = { x: W + 60, q, done: false };
+    const el = $('question');
+    el.textContent = q.text + ' = ?';
+    el.classList.remove('pop'); void el.offsetWidth; el.classList.add('pop');
+  }
+  function passGate() {
+    gate.done = true; asked++;
+    const ok = lane === gate.q.lane;
+    if (ok) {
+      right++; streak++; boost = 1.3; SND.right();
+      bubbles.push({ text: streak >= 3 ? `${streak} in a row!` : 'Right!', x: carX(), y: carY - laneH() * 0.8, t: 0, c: '#5cc44a' });
+      for (let i = 0; i < 16; i++) sparks.push({ x: carX(), y: carY, vx: (Math.random() - 0.3) * 260, vy: -Math.random() * 260, t: 0, c: ['#ffcf33', '#5cc44a', '#4aa8ff', '#ff5a8a'][i % 4] });
+    } else {
+      streak = 0; slow = 1.1; carShake = 0.5; SND.wrong();
+      bubbles.push({ text: `${gate.q.text} = ${gate.q.answer}`, x: carX(), y: carY - laneH() * 0.8, t: 0, c: '#ff5a5f' });
+    }
+    $('question').textContent = ok ? 'Right!' : `${gate.q.text} = ${gate.q.answer}`;
+    updateBar();
+    nextGateIn = 0.7;
+    if (asked >= RACE_LEN) finishX = W + 40;
+  }
+  function finishRace() {
+    mode = 'results';
+    $('hud').hidden = true; $('helpLine').hidden = true;
+    const stars = right >= 10 ? 3 : right >= 8 ? 2 : right >= 5 ? 1 : 0;
+    const STAR = (on) => `<svg viewBox="0 0 24 24"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17l-5.9 3.3 1.3-6.5L2.5 9.3l6.6-.8z" fill="${on ? '#ffcf33' : '#e3d9cc'}" stroke="#2a2140" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+    $('resStars').innerHTML = [0, 1, 2].map((i) => STAR(i < stars)).join('');
+    $('resTitle').textContent = stars === 3 ? 'Perfect race!' : stars === 2 ? 'Great driving!' : stars === 1 ? 'Nice try!' : 'Keep practicing!';
+    $('resText').textContent = `You got ${right} out of ${RACE_LEN} right in ${raceTime.toFixed(1)} seconds.`;
+    const best = load('best-' + level, 0);
+    if (right > best) save('best-' + level, right);
+    $('results').hidden = false;
+    SND.finish();
+    showBest();
+  }
+  function showBest() { const b = load('best-' + level, 0); $('best').textContent = b ? `Your best on this level: ${b} out of ${RACE_LEN}` : ''; }
+
+  function setLane(d) {
+    if (mode !== 'race') return;
+    const n = Math.max(0, Math.min(2, lane + d));
+    if (n !== lane) { lane = n; carTilt = d * 0.18; SND.lane(); }
+  }
+
+  // ---------------- controls ----------------
+  window.addEventListener('keydown', (e) => {
+    if (!$('codeModal').hidden || !$('teachers').hidden || !$('center').hidden || !$('player').hidden) return;
+    if (e.code === 'ArrowUp' || e.code === 'KeyW') { setLane(-1); e.preventDefault(); }
+    else if (e.code === 'ArrowDown' || e.code === 'KeyS') { setLane(1); e.preventDefault(); }
+    else if ((e.code === 'Enter' || e.code === 'Space') && mode !== 'race') { e.preventDefault(); startRace(); }
+  });
+  // the secret: 10 quick clicks on the car opens the code box
+  let carClicks = 0, lastCarClick = 0;
+  function clickedCar() {
+    const now = performance.now();
+    if (now - lastCarClick > 1500) carClicks = 0;
+    lastCarClick = now;
+    carClicks++;
+    SND.honk();
+    carShake = 0.12;
+    if (carClicks >= 10) { carClicks = 0; openCode('center'); }
+  }
+  canvas.addEventListener('pointerdown', (e) => {
+    const b = carBox();
+    if (e.clientX >= b.x && e.clientX <= b.x + b.w && e.clientY >= b.y && e.clientY <= b.y + b.h) { clickedCar(); return; }
+    if (mode === 'race') setLane(e.clientY < carY ? -1 : 1);
+  });
+
+  // ---------------- drawing ----------------
+  function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+  function drawCloud(x, y, s) {
+    ctx.fillStyle = '#fff';
+    ctx.beginPath(); ctx.arc(x, y, 22 * s, 0, 7); ctx.arc(x + 24 * s, y - 10 * s, 26 * s, 0, 7); ctx.arc(x + 50 * s, y, 20 * s, 0, 7); ctx.fill();
+  }
+  function drawWorld(dt) {
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, roadTop());
+    sky.addColorStop(0, '#6fc3ff'); sky.addColorStop(1, '#c8ecff');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, roadTop());
+    // clouds (slow)
+    for (const c of clouds) {
+      const x = ((c.x * (W + 200) - distance * 0.05 * c.s) % (W + 200) + W + 200) % (W + 200) - 100;
+      drawCloud(x, c.y * H, c.s * Math.max(0.7, H / 700));
+    }
+    // hills (two layers, slower = further away)
+    const hill = (color, amp, base, freq, par) => {
+      ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(0, roadTop());
+      for (let x = 0; x <= W + 20; x += 20) { const wx = x + distance * par; ctx.lineTo(x, roadTop() - base - Math.sin(wx * freq) * amp - Math.sin(wx * freq * 2.3 + 1) * amp * 0.4); }
+      ctx.lineTo(W, roadTop()); ctx.closePath(); ctx.fill();
+    };
+    hill('#9fdc8a', H * 0.06, H * 0.1, 0.004, 0.15);
+    hill('#7cc96a', H * 0.04, H * 0.04, 0.007, 0.35);
+    // grass strips and road
+    ctx.fillStyle = '#5cb84f'; ctx.fillRect(0, roadTop() - H * 0.03, W, H * 0.03);
+    ctx.fillStyle = '#5cb84f'; ctx.fillRect(0, roadBot(), W, H - roadBot());
+    ctx.fillStyle = '#56535f'; ctx.fillRect(0, roadTop(), W, roadBot() - roadTop());
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, roadTop(), W, 4); ctx.fillRect(0, roadBot() - 4, W, 4);
+    // lane lines (moving)
+    ctx.fillStyle = 'rgba(255,255,255,.75)';
+    const dash = 46, gap = 34, off = distance % (dash + gap);
+    for (let l = 1; l < 3; l++) {
+      const y = roadTop() + laneH() * l - 3;
+      for (let x = -off; x < W; x += dash + gap) ctx.fillRect(x, y, dash, 6);
+    }
+    // little trees along the top
+    for (let i = 0; i < 12; i++) {
+      const x = ((i * 190 - distance * 0.9) % (12 * 190) + 12 * 190) % (12 * 190) - 60;
+      if (x > W + 60) continue;
+      const y = roadTop() - H * 0.03, s = Math.max(0.7, H / 700);
+      ctx.fillStyle = '#7a5532'; ctx.fillRect(x - 4 * s, y - 22 * s, 8 * s, 22 * s);
+      ctx.fillStyle = i % 2 ? '#3f9e45' : '#4caf50'; ctx.beginPath(); ctx.arc(x, y - 32 * s, 18 * s, 0, 7); ctx.fill();
+    }
+  }
+  function drawGate() {
+    if (!gate) return;
+    const lh = laneH(), sw = Math.min(lh * 1.25, 110), sh = lh * 0.72;
+    gate.q.options.forEach((v, i) => {
+      const y = laneY(i);
+      ctx.fillStyle = 'rgba(0,0,0,.18)'; rr(gate.x - sw / 2 + 4, y - sh / 2 + 6, sw, sh, 12); ctx.fill();
+      const colors = ['#ffcf33', '#ff8fb3', '#7cc8ff'];
+      ctx.fillStyle = gate.done ? (i === gate.q.lane ? '#5cc44a' : '#bbb') : colors[i];
+      ctx.strokeStyle = '#2a2140'; ctx.lineWidth = 4;
+      rr(gate.x - sw / 2, y - sh / 2, sw, sh, 12); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#2a2140'; ctx.font = `800 ${Math.round(sh * 0.62)}px 'Baloo 2', Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(v), gate.x, y + sh * 0.05);
+    });
+  }
+  function drawFinish() {
+    if (finishX === null) return;
+    const s = 16, top = roadTop(), bot = roadBot();
+    for (let y = top, r = 0; y < bot; y += s, r++) for (let c = 0; c < 3; c++) { ctx.fillStyle = (r + c) % 2 ? '#fff' : '#2a2140'; ctx.fillRect(finishX + c * s, y, s, Math.min(s, bot - y)); }
+  }
+  function drawCar() {
+    const h = laneH() * 0.62, w = h * 1.9, x = carX(), shake = carShake > 0 ? Math.sin(performance.now() / 25) * 6 * carShake : 0;
+    const y = carY + (mode === 'race' ? Math.sin(performance.now() / 90) * 1.2 : 0);
+    ctx.save(); ctx.translate(x + shake, y); ctx.rotate(carTilt);
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,.22)'; ctx.beginPath(); ctx.ellipse(0, h * 0.52, w * 0.52, h * 0.14, 0, 0, 7); ctx.fill();
+    // body
+    ctx.fillStyle = '#ff5a5f'; ctx.strokeStyle = '#2a2140'; ctx.lineWidth = 4;
+    rr(-w / 2, -h * 0.15, w, h * 0.55, h * 0.2); ctx.fill(); ctx.stroke();
+    // cabin with the driver
+    ctx.fillStyle = '#ff7a7f'; rr(-w * 0.22, -h * 0.55, w * 0.46, h * 0.46, h * 0.16); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#c8ecff'; rr(-w * 0.15, -h * 0.47, w * 0.32, h * 0.3, h * 0.1); ctx.fill();
+    ctx.fillStyle = '#4aa8ff'; ctx.beginPath(); ctx.arc(w * 0.02, -h * 0.3, h * 0.12, 0, 7); ctx.fill(); ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(w * 0.06, -h * 0.32, h * 0.04, 0, 7); ctx.fill();
+    // headlight and stripe
+    ctx.fillStyle = '#ffe680'; ctx.beginPath(); ctx.arc(w * 0.44, h * 0.05, h * 0.07, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(-w * 0.4, h * 0.08, w * 0.6, h * 0.07);
+    // wheels (spinning)
+    const spin = distance / (h * 0.2);
+    for (const wx of [-w * 0.3, w * 0.3]) {
+      ctx.save(); ctx.translate(wx, h * 0.42); ctx.rotate(spin);
+      ctx.fillStyle = '#2a2140'; ctx.beginPath(); ctx.arc(0, 0, h * 0.2, 0, 7); ctx.fill();
+      ctx.fillStyle = '#ccc'; ctx.beginPath(); ctx.arc(0, 0, h * 0.09, 0, 7); ctx.fill();
+      ctx.fillStyle = '#2a2140'; ctx.fillRect(-h * 0.02, -h * 0.09, h * 0.04, h * 0.18);
+      ctx.restore();
+    }
+    // speed lines when boosting
+    if (boost > 0) { ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 3; for (let i = 0; i < 3; i++) { const yy = -h * 0.1 + i * h * 0.22, l = 20 + Math.random() * 30; ctx.beginPath(); ctx.moveTo(-w * 0.6, yy); ctx.lineTo(-w * 0.6 - l, yy); ctx.stroke(); } }
+    ctx.restore();
+  }
+  function drawFx(dt) {
+    for (const s of sparks) { s.t += dt; s.x += s.vx * dt; s.y += s.vy * dt; s.vy += 600 * dt; ctx.fillStyle = s.c; ctx.fillRect(s.x - 4, s.y - 4, 8, 8); }
+    sparks = sparks.filter((s) => s.t < 1);
+    for (const b of bubbles) {
+      b.t += dt; const y = b.y - b.t * 40, a = Math.max(0, 1 - b.t / 1.6);
+      ctx.globalAlpha = a; ctx.font = `800 ${Math.round(Math.max(18, laneH() * 0.32))}px 'Baloo 2', Arial, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.lineWidth = 6; ctx.strokeStyle = '#fff'; ctx.strokeText(b.text, b.x + 30, y); ctx.fillStyle = b.c; ctx.fillText(b.text, b.x + 30, y);
+      ctx.globalAlpha = 1;
+    }
+    bubbles = bubbles.filter((b) => b.t < 1.6);
+  }
+
+  // ---------------- the main loop ----------------
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    const paused = !$('codeModal').hidden || !$('center').hidden || !$('player').hidden;
+    if (!paused) {
+      if (mode === 'race') {
+        raceTime += dt;
+        boost = Math.max(0, boost - dt); slow = Math.max(0, slow - dt);
+        const target = baseSpeed() * (boost > 0 ? 1.6 : 1) * (slow > 0 ? 0.45 : 1);
+        speed += (target - speed) * Math.min(1, dt * 3);
+        if (!gate || gate.done) {
+          if (gate && gate.done && gate.x < -150) gate = null;
+          if (!gate && asked < RACE_LEN) { nextGateIn -= dt; if (nextGateIn <= 0) newGate(); }
+        }
+        if (gate) { gate.x -= speed * dt; if (!gate.done && gate.x <= carX()) passGate(); }
+        if (finishX !== null) { finishX -= speed * dt; if (finishX <= carX()) finishRace(); }
+      } else speed += (baseSpeed() * 0.35 - speed) * Math.min(1, dt * 2);
+      distance += speed * dt;
+      carY += (laneY(lane) - carY) * Math.min(1, dt * 12);
+      carTilt *= Math.pow(0.02, dt);
+      carShake = Math.max(0, carShake - dt);
+    }
+    drawWorld(dt); drawGate(); drawFinish(); drawCar(); drawFx(paused ? 0 : dt);
+    requestAnimationFrame(frame);
+  }
+  carY = laneY(1);
+  requestAnimationFrame(frame);
+  // (for testing only: index.html?test shows the race's state)
+  if (/[?&]test\b/.test(location.search)) window.MR = { state: () => ({ mode, lane, asked, right, gate: gate && { lane: gate.q.lane, done: gate.done, x: gate.x } }) };
+
+  // ---------------- menu buttons ----------------
+  function drawLevels() { document.querySelectorAll('[data-level]').forEach((b) => b.classList.toggle('on', b.dataset.level === level)); showBest(); }
+  document.querySelectorAll('[data-level]').forEach((b) => b.addEventListener('click', () => { level = b.dataset.level; save('level', level); drawLevels(); SND.lane(); }));
+  drawLevels();
+  $('go').addEventListener('click', startRace);
+  $('again').addEventListener('click', startRace);
+  $('teachersBtn').addEventListener('click', () => { $('teachers').hidden = false; });
+  $('teachersClose').addEventListener('click', () => { $('teachers').hidden = true; });
+  $('menu').addEventListener('click', () => { mode = 'menu'; $('results').hidden = true; $('start').hidden = false; });
+
+  // ============================================================
+  //  THE SECRET GAME CENTER
+  //  The codes are kept scrambled (a "hash"), so they can't simply be read in this page's code.
+  // ============================================================
+  const CODE_CENTER = '2be0b46333b0fc998f75fa3613cbf4ef1fa3dabaa81f39887bd5988528d68814';
+  const CODE_ADMIN = '7d9c1288a28f1e22d5c9af6f0ca9122dbde3557baf2ef08163f5428effdd1326';
+  // SHA-256 (the scrambler), written out so it works everywhere
+  function sha256(str) {
+    const bytes = new TextEncoder().encode(str);
+    const K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+    const h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const len = bytes.length, total = ((len + 9 + 63) >> 6) << 6, m = new Uint8Array(total);
+    m.set(bytes); m[len] = 0x80;
+    const bits = len * 8; for (let i = 0; i < 4; i++) m[total - 1 - i] = (bits >>> (i * 8)) & 255;
+    const w = new Uint32Array(64), ror = (x, n) => (x >>> n) | (x << (32 - n));
+    for (let o = 0; o < total; o += 64) {
+      for (let i = 0; i < 16; i++) w[i] = (m[o + i * 4] << 24) | (m[o + i * 4 + 1] << 16) | (m[o + i * 4 + 2] << 8) | m[o + i * 4 + 3];
+      for (let i = 16; i < 64; i++) { const s0 = ror(w[i - 15], 7) ^ ror(w[i - 15], 18) ^ (w[i - 15] >>> 3), s1 = ror(w[i - 2], 17) ^ ror(w[i - 2], 19) ^ (w[i - 2] >>> 10); w[i] = (w[i - 16] + s0 + w[i - 7] + s1) | 0; }
+      let [a, b, c, d, e, f, g, hh] = h;
+      for (let i = 0; i < 64; i++) {
+        const t1 = (hh + (ror(e, 6) ^ ror(e, 11) ^ ror(e, 25)) + ((e & f) ^ (~e & g)) + K[i] + w[i]) | 0;
+        const t2 = ((ror(a, 2) ^ ror(a, 13) ^ ror(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) | 0;
+        hh = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      h[0] = (h[0] + a) | 0; h[1] = (h[1] + b) | 0; h[2] = (h[2] + c) | 0; h[3] = (h[3] + d) | 0; h[4] = (h[4] + e) | 0; h[5] = (h[5] + f) | 0; h[6] = (h[6] + g) | 0; h[7] = (h[7] + hh) | 0;
+    }
+    return h.map((x) => (x >>> 0).toString(16).padStart(8, '0')).join('');
+  }
+  const clean = (s) => String(s || '').replace(/\s+/g, '');
+
+  // the code box (for the Game Center, or for admin)
+  let codeFor = 'center';
+  function openCode(what) {
+    codeFor = what;
+    $('codeTitle').textContent = what === 'admin' ? 'Admin' : 'Welcome to the Game Center';
+    $('codeText').textContent = what === 'admin' ? 'Enter the admin code.' : 'Please enter the code.';
+    const inp = $('codeInput');
+    inp.value = ''; inp.classList.toggle('wide', what === 'admin'); inp.classList.remove('shake');
+    $('codeModal').hidden = false;
+    setTimeout(() => inp.focus(), 50);
+  }
+  function tryCode() {
+    const inp = $('codeInput'), v = clean(inp.value);
+    const ok = sha256(v) === (codeFor === 'admin' ? CODE_ADMIN : CODE_CENTER);
+    if (!ok) { inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); SND.wrong(); inp.select(); return; }
+    $('codeModal').hidden = true;
+    SND.open();
+    if (codeFor === 'admin') { adminOn = true; showCenter(); toast('Admin mode on'); }
+    else showCenter();
+  }
+  $('codeOk').addEventListener('click', tryCode);
+  $('codeCancel').addEventListener('click', () => { $('codeModal').hidden = true; });
+  $('codeInput').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') tryCode(); if (e.key === 'Escape') $('codeModal').hidden = true; });
+
+  let toastTimer = 0;
+  function toast(text) { const t = $('toast'); t.textContent = text; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2200); }
+
+  // ---------------- the list of games ----------------
+  // Floppy Party is built in. Admins can add games (a link, pasted code or an HTML file),
+  // hide or remove games, rename them and change their order. Saved in this browser.
+  const BEAN = (c) => `<svg viewBox="0 0 64 64" aria-hidden="true"><ellipse cx="32" cy="44" rx="16" ry="17" fill="${c}" stroke="#2a2140" stroke-width="4"/><circle cx="32" cy="22" r="14" fill="${c}" stroke="#2a2140" stroke-width="4"/><circle cx="27" cy="21" r="4" fill="#fff"/><circle cx="37" cy="21" r="4" fill="#fff"/><circle cx="28" cy="22" r="2" fill="#2a2140"/><circle cx="38" cy="22" r="2" fill="#2a2140"/><path d="M27 28q5 4 10 0" stroke="#2a2140" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M22 11l6 2 4-7 4 7 6-2-2 6H24z" fill="#ffcf33" stroke="#2a2140" stroke-width="2.5" stroke-linejoin="round"/></svg>`;
+  const JOY = '<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="8" y="22" width="48" height="28" rx="14" fill="#fff" stroke="#2a2140" stroke-width="4"/><path d="M20 30v12M14 36h12" stroke="#2a2140" stroke-width="4" stroke-linecap="round"/><circle cx="42" cy="32" r="4" fill="#ff5a5f"/><circle cx="48" cy="40" r="4" fill="#4aa8ff"/></svg>';
+  const COLORS = ['#ff5a8a', '#6b5bd6', '#4aa8ff', '#2fb380', '#ff9a3c', '#e0484d', '#8e44ad', '#1f9bb0'];
+  const BUILTIN = [{ id: 'floppy', name: 'Floppy Party', note: 'Wobbly ragdoll party game', url: '../floppy/index.html', color: '#ff5a8a', builtin: true }];
+  let custom = [];      // games added by an admin (from the browser's database)
+  let cfg = load('config', { hidden: [], order: [], names: {}, colors: {} });
+  if (!cfg.notes) cfg.notes = {};
+  let adminOn = false;
+
+  // the browser's database (games can be big, so not in the small storage)
+  let dbp = null;
+  function db() {
+    if (!dbp) dbp = new Promise((res, rej) => {
+      try {
+        const r = indexedDB.open('math-racer', 1);
+        r.onupgradeneeded = () => r.result.createObjectStore('games', { keyPath: 'id' });
+        r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+      } catch (e) { rej(e); }
+    });
+    return dbp;
+  }
+  async function dbAll() { try { const d = await db(); return await new Promise((res, rej) => { const q = d.transaction('games').objectStore('games').getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => rej(q.error); }); } catch (e) { return []; } }
+  async function dbPut(g) { const d = await db(); return new Promise((res, rej) => { const t = d.transaction('games', 'readwrite'); t.objectStore('games').put(g); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+  async function dbDel(id) { const d = await db(); return new Promise((res, rej) => { const t = d.transaction('games', 'readwrite'); t.objectStore('games').delete(id); t.oncomplete = res; t.onerror = () => rej(t.error); }); }
+
+  function allGames() {
+    const list = BUILTIN.concat(custom).map((g) => ({ ...g, name: cfg.names[g.id] || g.name, note: g.id in cfg.notes ? cfg.notes[g.id] : g.note, color: cfg.colors[g.id] || g.color || COLORS[0] }));
+    const pos = (g) => { const i = cfg.order.indexOf(g.id); return i < 0 ? 1000 + list.indexOf(g) : i; };
+    return list.sort((a, b) => pos(a) - pos(b));
+  }
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  async function showCenter() {
+    custom = await dbAll();
+    $('center').hidden = false;
+    drawGames();
+    drawAdmin();
+  }
+  function drawGames() {
+    const list = allGames().filter((g) => !cfg.hidden.includes(g.id));
+    $('games').innerHTML = list.map((g) => `<button class="game" data-play="${esc(g.id)}" style="--c:${esc(g.color)}"><div class="art">${g.id === 'floppy' ? BEAN('#ffd0de') : JOY}</div><div class="name">${esc(g.name)}${g.note ? `<small>${esc(g.note)}</small>` : ''}</div></button>`).join('');
+    $('emptyNote').hidden = list.length > 0;
+    $('centerSub').textContent = adminOn ? 'Admin mode is on.' : 'Pick a game!';
+    $('adminBtn').textContent = adminOn ? 'Leave admin mode' : 'Admin';
+    document.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => play(b.dataset.play)));
+  }
+  $('backToMath').addEventListener('click', () => { $('center').hidden = true; adminOn = false; });
+  $('adminBtn').addEventListener('click', () => { if (adminOn) { adminOn = false; drawGames(); drawAdmin(); toast('Admin mode off'); } else openCode('admin'); });
+
+  // ---------------- playing a game (full screen) ----------------
+  let blobUrl = null;
+  function play(id) {
+    const g = allGames().find((x) => x.id === id);
+    if (!g) return;
+    const box = $('player');
+    const old = box.querySelector('iframe'); if (old) old.remove();
+    if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
+    const f = document.createElement('iframe');
+    f.allow = 'fullscreen; autoplay; gamepad; screen-wake-lock';
+        if (g.html) { blobUrl = URL.createObjectURL(new Blob([g.html], { type: 'text/html' })); f.src = blobUrl; }
+    else f.src = g.url;
+    box.append(f);
+    box.hidden = false;
+    f.addEventListener('load', () => { try { f.focus(); } catch (e) { /* fine */ } });
+    goFull();
+  }
+  function goFull() {
+    const box = $('player');
+    const req = box.requestFullscreen || box.webkitRequestFullscreen;
+    if (!req) { fullFailed(); return; }
+    try { const p = req.call(box); if (p && p.catch) p.catch(fullFailed); } catch (e) { fullFailed(); }
+  }
+  // full screen isn't allowed here (for example inside some websites): the game still fills this whole box
+  function fullFailed() { $('fullBtn').textContent = 'Open in a new tab'; $('fullBtn').dataset.tab = '1'; }
+  $('fullBtn').addEventListener('click', () => {
+    if ($('fullBtn').dataset.tab) {
+      const f = $('player').querySelector('iframe');
+      if (f) window.open(f.src, '_blank');
+      return;
+    }
+    goFull();
+  });
+  function exitGame() {
+    if (document.fullscreenElement) { try { document.exitFullscreen(); } catch (e) { /* fine */ } }
+    const f = $('player').querySelector('iframe'); if (f) f.remove();
+    if (blobUrl) { URL.revokeObjectURL(blobUrl); blobUrl = null; }
+    $('player').hidden = true;
+  }
+  $('exitGame').addEventListener('click', exitGame);
+
+  // ---------------- admin ----------------
+  let addTab = 'file', addColor = COLORS[1];
+  function drawAdmin() {
+    const box = $('admin');
+    box.hidden = !adminOn;
+    if (!adminOn) return;
+    const list = allGames();
+    box.innerHTML = `
+      <h2>Admin controls</h2>
+      <p>Changes are saved in this browser on this computer. To change the games for everyone, change the BUILTIN list in math-racer/index.html.</p>
+      <h3>Games</h3>
+      <div class="glist">${list.map((g, i) => `
+        <div class="gitem${cfg.hidden.includes(g.id) ? ' hiddenGame' : ''}" style="--c:${esc(g.color)}">
+          <span class="dot"></span>
+          <span class="gname">${esc(g.name)}<small>${g.builtin ? 'built in' : g.html ? 'HTML game' : 'link'}${cfg.hidden.includes(g.id) ? ', hidden' : ''}</small></span>
+          <button class="btn small" data-up="${esc(g.id)}" ${i === 0 ? 'disabled' : ''}>Up</button>
+          <button class="btn small" data-down="${esc(g.id)}" ${i === list.length - 1 ? 'disabled' : ''}>Down</button>
+          <button class="btn small" data-rename="${esc(g.id)}">Rename</button>
+          <button class="btn small" data-note="${esc(g.id)}">Description</button>
+          <button class="btn small" data-color="${esc(g.id)}">Color</button>
+          <button class="btn small" data-hide="${esc(g.id)}">${cfg.hidden.includes(g.id) ? 'Show' : 'Hide'}</button>
+          ${g.builtin ? '' : `<button class="btn small danger" data-remove="${esc(g.id)}">Remove</button>`}
+        </div>`).join('')}
+      </div>
+      <h3>Add a game</h3>
+      <div class="tabs">
+        <button class="btn small${addTab === 'file' ? ' on' : ''}" data-tab="file">HTML file</button>
+        <button class="btn small${addTab === 'code' ? ' on' : ''}" data-tab="code">Paste the code</button>
+        <button class="btn small${addTab === 'link' ? ' on' : ''}" data-tab="link">Link</button>
+      </div>
+      <div class="addgrid">
+        <div>
+          <p>Name</p><input class="field" id="addName" maxlength="30" placeholder="My cool game">
+          <p>Description</p><input class="field" id="addNote" maxlength="60" placeholder="What is this game about?">
+          <p>Color</p><div class="colors">${COLORS.map((c) => `<button style="background:${c}" class="${c === addColor ? 'on' : ''}" data-pickcolor="${c}" title="${c}"></button>`).join('')}</div>
+        </div>
+        <div>
+          ${addTab === 'file' ? `<div class="drop" id="drop">Drag an HTML file here<br><small>or click to pick one</small></div><input type="file" id="fileInput" accept=".html,.htm,text/html" hidden>` : ''}
+          ${addTab === 'code' ? `<p>Paste the game's HTML code</p><textarea class="field" id="addCode" placeholder="<!DOCTYPE html>..."></textarea><p><button class="btn small go" id="addCodeBtn">Add the game</button></p>` : ''}
+          ${addTab === 'link' ? `<p>Paste the game's web address</p><input class="field" id="addLink" placeholder="https://..."><p><button class="btn small go" id="addLinkBtn">Add the game</button></p>` : ''}
+        </div>
+      </div>
+      <h3>Other</h3>
+      <p><button class="btn small" id="resetAll">Put everything back to how it was</button></p>`;
+    const q = (sel, fn) => box.querySelectorAll(sel).forEach((b) => b.addEventListener('click', () => fn(b)));
+    q('[data-up]', (b) => move(b.dataset.up, -1));
+    q('[data-down]', (b) => move(b.dataset.down, 1));
+    q('[data-rename]', (b) => { const g = allGames().find((x) => x.id === b.dataset.rename); const n = prompt('New name for this game:', g ? g.name : ''); if (n && n.trim()) { cfg.names[b.dataset.rename] = n.trim().slice(0, 30); saveCfg(); } });
+    q('[data-note]', (b) => { const g = allGames().find((x) => x.id === b.dataset.note); if (!g) return; const n = prompt('New description for this game:', g.note || ''); if (n !== null) { cfg.notes[g.id] = n.trim().slice(0, 60); saveCfg(); } });
+    q('[data-color]', (b) => { const g = allGames().find((x) => x.id === b.dataset.color); const i = COLORS.indexOf(g.color); cfg.colors[g.id] = COLORS[(i + 1) % COLORS.length]; saveCfg(); });
+    q('[data-hide]', (b) => { const id = b.dataset.hide; cfg.hidden = cfg.hidden.includes(id) ? cfg.hidden.filter((x) => x !== id) : cfg.hidden.concat(id); saveCfg(); });
+    q('[data-remove]', async (b) => { const g = allGames().find((x) => x.id === b.dataset.remove); if (!g || !confirm(`Remove "${g.name}" from the Game Center?`)) return; await dbDel(g.id); custom = await dbAll(); toast('Game removed'); drawGames(); drawAdmin(); });
+    q('[data-tab]', (b) => { addTab = b.dataset.tab; drawAdmin(); });
+    q('[data-pickcolor]', (b) => { addColor = b.dataset.pickcolor; box.querySelectorAll('[data-pickcolor]').forEach((x) => x.classList.toggle('on', x === b)); });
+    q('#resetAll', () => { if (!confirm('Put the Game Center back to how it was? Added games stay, but names, descriptions, colors, order and hidden games are reset.')) return; cfg = { hidden: [], order: [], names: {}, colors: {}, notes: {} }; saveCfg(); });
+    const drop = $('drop');
+    if (drop) {
+      const fi = $('fileInput');
+      drop.addEventListener('click', () => fi.click());
+      fi.addEventListener('change', () => { if (fi.files[0]) addFile(fi.files[0]); });
+      drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+      drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+      drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('over'); const f = e.dataTransfer.files[0]; if (f) addFile(f); });
+    }
+    const cb = $('addCodeBtn'); if (cb) cb.addEventListener('click', () => { const code = $('addCode').value; if (!/<(html|body|script|canvas|div)/i.test(code)) { toast('That doesn\'t look like HTML code'); return; } addGame({ html: code }); });
+    const lb = $('addLinkBtn'); if (lb) lb.addEventListener('click', () => { const url = $('addLink').value.trim(); if (!/^https?:\/\//i.test(url)) { toast('A link starts with https://'); return; } addGame({ url }); });
+    box.querySelectorAll('input, textarea').forEach((el) => el.addEventListener('keydown', (e) => e.stopPropagation()));
+  }
+  function saveCfg() { save('config', cfg); drawGames(); drawAdmin(); }
+  function move(id, d) {
+    const ids = allGames().map((g) => g.id), i = ids.indexOf(id), j = i + d;
+    if (i < 0 || j < 0 || j >= ids.length) return;
+    [ids[i], ids[j]] = [ids[j], ids[i]];
+    cfg.order = ids; saveCfg();
+  }
+  function addFile(file) {
+    if (!/\.html?$/i.test(file.name) && file.type !== 'text/html') { toast('Pick an HTML file (it ends with .html)'); return; }
+    const r = new FileReader();
+    r.onload = () => { const nameField = $('addName'); if (nameField && !nameField.value.trim()) nameField.value = file.name.replace(/\.html?$/i, '').replace(/[-_]+/g, ' ').slice(0, 30); addGame({ html: String(r.result) }); };
+    r.readAsText(file);
+  }
+  async function addGame(src) {
+    const name = (($('addName') && $('addName').value) || '').trim().slice(0, 30) || 'New game';
+    const note = (($('addNote') && $('addNote').value) || '').trim().slice(0, 60);
+    const g = { id: 'g' + Date.now().toString(36) + Math.floor(Math.random() * 1000), name, note, color: addColor, added: Date.now(), ...src };
+    try { await dbPut(g); } catch (e) { toast('Could not save the game in this browser'); return; }
+    custom = await dbAll();
+    toast(`Added "${name}"!`);
+    drawGames(); drawAdmin();
+  }
+})();
+</script>
+</body>
+</html>

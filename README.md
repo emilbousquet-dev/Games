@@ -1,6 +1,10 @@
 # LAB 13 👽🩸
 
-> 🆕 **NEW: [MY LIFE](my-life/README.md)** 👶➡️🧓: a 3D life simulator!
+> 🆕 **NEW: [MATH RACER](math-racer/index.html)** 🚗➕: a math practice racing game!
+> Drive through the right answer (adding, taking away, times tables). Open `math-racer/index.html` to play.
+> It also has a secret Game Center with [**Floppy Party**](floppy/README.md), the wobbly ragdoll party game.
+>
+> **Also: [MY LIFE](my-life/README.md)** 👶➡️🧓: a 3D life simulator!
 > Live a whole life from baby to old-timer by making choices. Be 😇 good, 😈 evil or 🤡 funny. Open `my-life/index.html` to play.
 >
 > **Also in this folder: [SIGMA RUN](sigma-run/README.md)** Σ🏃: a 3D first-person parkour runner!
