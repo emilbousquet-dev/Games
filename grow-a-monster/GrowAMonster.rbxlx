@@ -1,0 +1,1955 @@
+<roblox version="4">
+  <Item class="Lighting" referent="0">
+    <Properties>
+      <string name="Name">Lighting</string>
+      <float name="Brightness">2</float>
+      <float name="ClockTime">14</float>
+      <Color3 name="OutdoorAmbient">
+        <R>0.55</R>
+        <G>0.55</G>
+        <B>0.6</B>
+      </Color3>
+    </Properties>
+  </Item>
+  <Item class="ReplicatedStorage" referent="1">
+    <Properties>
+      <string name="Name">ReplicatedStorage</string>
+    </Properties>
+    <Item class="Folder" referent="2">
+      <Properties>
+        <string name="Name">Shared</string>
+      </Properties>
+      <Item class="ModuleScript" referent="3">
+        <Properties>
+          <string name="Name">GameData</string>
+          <string name="Source"><![CDATA[-- GameData: all the monsters, seeds and rarities live here.
+-- Want a new monster or to change a price? This is the file to edit!
+
+local GameData = {}
+
+-- How many soil patches each garden has
+GameData.SPOTS_PER_GARDEN = 6
+
+-- Rarities, from most common to most rare
+GameData.Rarities = {
+	Common = { order = 1, label = "COMMON", color = Color3.fromRGB(210, 210, 210) },
+	Uncommon = { order = 2, label = "UNCOMMON", color = Color3.fromRGB(90, 220, 90) },
+	Rare = { order = 3, label = "RARE", color = Color3.fromRGB(70, 150, 255) },
+	Epic = { order = 4, label = "EPIC", color = Color3.fromRGB(190, 90, 255) },
+	Legendary = { order = 5, label = "LEGENDARY", color = Color3.fromRGB(255, 200, 40) },
+}
+
+-- Every monster. "income" is money per second, "size" is how tall it is (in studs).
+-- The look of each monster is built in ServerScriptService > Server > MonsterBuilder.
+GameData.Monsters = {
+	Munchie = { name = "Munchie", rarity = "Common", income = 1, size = 3 },
+	LeafyLoony = { name = "Leafy Loony", rarity = "Common", income = 2, size = 3.2 },
+
+	PickletHorn = { name = "Picklet Horn", rarity = "Uncommon", income = 5, size = 4.2 },
+	BoogerBloom = { name = "Booger Bloom", rarity = "Uncommon", income = 8, size = 4 },
+
+	SinkweedSteve = { name = "Sinkweed Steve", rarity = "Rare", income = 20, size = 5.5 },
+	LeafErickson = { name = "Leaf Erickson", rarity = "Rare", income = 28, size = 5 },
+
+	ProfessorPootleaf = { name = "Professor Pootleaf", rarity = "Epic", income = 90, size = 6 },
+	SirBitesALot = { name = "Sir Bites-a-Lot", rarity = "Epic", income = 120, size = 6 },
+
+	ChompyMcChompface = { name = "Chompy McChompface", rarity = "Legendary", income = 350, size = 7 },
+	Chompzilla = { name = "Chompzilla", rarity = "Legendary", income = 600, size = 9 },
+}
+
+-- Selling a monster gives you this many seconds of its income
+GameData.SELL_SECONDS = 30
+
+-- Seeds. "odds" = the chance (in %) of each rarity. A seed picks a random monster of that rarity.
+-- "price = 0" means you can't buy it in the shop.
+GameData.Seeds = {
+	Starter = {
+		name = "Starter Seed",
+		price = 0,
+		growTime = 30,
+		color = Color3.fromRGB(140, 200, 90),
+		-- The starter seed never gives a Common!
+		odds = { Uncommon = 85, Rare = 12, Epic = 2.5, Legendary = 0.5 },
+	},
+	Mystery = {
+		name = "Mystery Seed",
+		price = 100,
+		growTime = 45,
+		color = Color3.fromRGB(150, 110, 70),
+		odds = { Common = 70, Uncommon = 22, Rare = 6, Epic = 1.8, Legendary = 0.2 },
+	},
+	Golden = {
+		name = "Golden Seed",
+		price = 2500,
+		growTime = 90,
+		color = Color3.fromRGB(255, 200, 40),
+		odds = { Uncommon = 40, Rare = 40, Epic = 16, Legendary = 4 },
+	},
+}
+
+-- The order seeds are shown in the shop
+GameData.ShopSeeds = { "Mystery", "Golden" }
+
+-- Turns 1234567 into "1.23M" and 12345 into "12,345"
+function GameData.formatMoney(n: number): string
+	n = math.floor(n)
+	if n >= 1e12 then
+		return string.format("%.2fT", n / 1e12)
+	elseif n >= 1e9 then
+		return string.format("%.2fB", n / 1e9)
+	elseif n >= 1e6 then
+		return string.format("%.2fM", n / 1e6)
+	end
+	local s = tostring(n)
+	local withCommas = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	if withCommas:sub(1, 1) == "," then
+		withCommas = withCommas:sub(2)
+	end
+	return withCommas
+end
+
+-- Turns 83 into "1:23"
+function GameData.formatTime(seconds: number): string
+	seconds = math.max(0, math.floor(seconds))
+	return string.format("%d:%02d", seconds // 60, seconds % 60)
+end
+
+-- Monster ids grouped by rarity, e.g. GameData.ByRarity.Rare = { "SinkweedSteve", "LeafErickson" }
+GameData.ByRarity = {}
+for id, monster in GameData.Monsters do
+	GameData.ByRarity[monster.rarity] = GameData.ByRarity[monster.rarity] or {}
+	table.insert(GameData.ByRarity[monster.rarity], id)
+end
+for _, list in GameData.ByRarity do
+	table.sort(list)
+end
+
+return GameData
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="ServerScriptService" referent="4">
+    <Properties>
+      <string name="Name">ServerScriptService</string>
+    </Properties>
+    <Item class="Folder" referent="5">
+      <Properties>
+        <string name="Name">Server</string>
+      </Properties>
+      <Item class="ModuleScript" referent="6">
+        <Properties>
+          <string name="Name">Data</string>
+          <string name="Source"><![CDATA[-- Data: saves and loads each player's money, seeds and garden.
+-- Saving only works in a published game, or in Studio with
+-- "Game Settings > Security > Enable Studio Access to API Services" turned on.
+
+local DataStoreService = game:GetService("DataStoreService")
+
+local Data = {}
+
+local STORE_NAME = "GrowAMonster_v1"
+
+local store = nil
+do
+	local ok, result = pcall(function()
+		return DataStoreService:GetDataStore(STORE_NAME)
+	end)
+	if ok then
+		store = result
+	else
+		warn("[Data] Saving is off: " .. tostring(result))
+	end
+end
+
+local function newData()
+	return {
+		money = 0,
+		seeds = {}, -- seedId -> how many
+		spots = {}, -- "1".."6" -> { seed = seedId, monster = monsterId, readyAt = os.time() number }
+		gotStarter = false,
+	}
+end
+
+local function keyFor(player: Player): string
+	return "player_" .. player.UserId
+end
+
+-- Returns (data, canSave). If loading fails we play with fresh data
+-- but never save it, so we don't wipe the player's real save.
+function Data.load(player: Player)
+	if not store then
+		return newData(), false
+	end
+
+	for attempt = 1, 3 do
+		local ok, result = pcall(function()
+			return store:GetAsync(keyFor(player))
+		end)
+		if ok then
+			local data = newData()
+			if type(result) == "table" then
+				for k, v in result do
+					data[k] = v
+				end
+			end
+			return data, true
+		end
+		warn(("[Data] Load failed for %s (try %d): %s"):format(player.Name, attempt, tostring(result)))
+		local message = tostring(result)
+		if message:find("API") or message:find("publish") then
+			break -- Studio without API access: retrying won't help
+		end
+		task.wait(1)
+	end
+	return newData(), false
+end
+
+function Data.save(player: Player, data)
+	if not store then
+		return
+	end
+	local ok, err = pcall(function()
+		store:SetAsync(keyFor(player), data, { player.UserId })
+	end)
+	if not ok then
+		warn(("[Data] Save failed for %s: %s"):format(player.Name, tostring(err)))
+	end
+end
+
+return Data
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="Script" referent="7">
+        <Properties>
+          <string name="Name">Main</string>
+          <token name="RunContext">0</token>
+          <string name="Source"><![CDATA[-- Grow a Monster: the main game script (runs on the server).
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Debris = game:GetService("Debris")
+
+local GameData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameData"))
+local MapBuilder = require(script.Parent.MapBuilder)
+local MonsterBuilder = require(script.Parent.MonsterBuilder)
+local Data = require(script.Parent.Data)
+
+local random = Random.new()
+
+-- Messages the server sends to players' screens
+local remotes = Instance.new("Folder")
+remotes.Name = "Remotes"
+remotes.Parent = ReplicatedStorage
+local notifyEvent = Instance.new("RemoteEvent")
+notifyEvent.Name = "Notify" -- (text, color)
+notifyEvent.Parent = remotes
+local revealEvent = Instance.new("RemoteEvent")
+revealEvent.Name = "Reveal" -- (monsterId) when your monster pops out
+revealEvent.Parent = remotes
+
+local function notify(player: Player, text: string, color: Color3?)
+	notifyEvent:FireClient(player, text, color or Color3.new(1, 1, 1))
+end
+
+local gardens, pedestals = MapBuilder.build()
+
+-- A giant Chompzilla statue in the middle of the Seed Shop
+local statue = MonsterBuilder.build("Chompzilla", CFrame.new(0, 0.4, 0) * CFrame.Angles(0, math.rad(90), 0), 16)
+statue.Name = "Chompzilla Statue"
+statue.Parent = workspace
+
+-- profiles[player] = { data = ..., canSave = bool, garden = ..., money = IntValue }
+local profiles = {}
+
+---------------------------------------------------------------------
+-- Seeds (they are Tools in your backpack)
+---------------------------------------------------------------------
+
+local function findSeedTool(player: Player, seedId: string): Tool?
+	for _, holder in { player:FindFirstChildOfClass("Backpack"), player.Character } do
+		if holder then
+			for _, tool in holder:GetChildren() do
+				if tool:IsA("Tool") and tool:GetAttribute("SeedId") == seedId then
+					return tool
+				end
+			end
+		end
+	end
+	return nil
+end
+
+local function makeSeedTool(seedId: string): Tool
+	local seed = GameData.Seeds[seedId]
+	local tool = Instance.new("Tool")
+	tool:SetAttribute("SeedId", seedId)
+	tool.CanBeDropped = false
+	tool.ToolTip = "Walk to your soil and press the button to plant!"
+	local handle = Instance.new("Part")
+	handle.Name = "Handle"
+	handle.Shape = Enum.PartType.Ball
+	handle.Size = Vector3.one * 1.2
+	handle.Color = seed.color
+	handle.Material = seedId == "Golden" and Enum.Material.Neon or Enum.Material.SmoothPlastic
+	handle.CanCollide = false
+	handle.Massless = true
+	handle.Parent = tool
+	return tool
+end
+
+-- Makes the seed tools in the backpack match how many seeds the player has
+local function refreshSeedTools(player: Player)
+	local profile = profiles[player]
+	local backpack = player:FindFirstChildOfClass("Backpack")
+	if not profile or not backpack then
+		return
+	end
+	for seedId, seed in GameData.Seeds do
+		local count = profile.data.seeds[seedId] or 0
+		local tool = findSeedTool(player, seedId)
+		if count <= 0 then
+			if tool then
+				tool:Destroy()
+			end
+		else
+			if not tool then
+				tool = makeSeedTool(seedId)
+				tool.Parent = backpack
+			end
+			tool.Name = count > 1 and ("%s x%d"):format(seed.name, count) or seed.name
+		end
+	end
+end
+
+local function addSeeds(player: Player, seedId: string, amount: number)
+	local profile = profiles[player]
+	profile.data.seeds[seedId] = (profile.data.seeds[seedId] or 0) + amount
+	refreshSeedTools(player)
+end
+
+-- Picks which monster comes out of a seed
+local function rollMonster(seedId: string): string
+	local odds = GameData.Seeds[seedId].odds
+	local total = 0
+	for _, chance in odds do
+		total += chance
+	end
+	local roll = random:NextNumber(0, total)
+	local picked = nil
+	-- go from rarest to most common so the order is always the same
+	local rarities = {}
+	for rarityId, chance in odds do
+		table.insert(rarities, { id = rarityId, chance = chance, order = GameData.Rarities[rarityId].order })
+	end
+	table.sort(rarities, function(a, b)
+		return a.order > b.order
+	end)
+	for _, r in rarities do
+		roll -= r.chance
+		if roll <= 0 then
+			picked = r.id
+			break
+		end
+	end
+	picked = picked or rarities[#rarities].id
+	local list = GameData.ByRarity[picked]
+	return list[random:NextInteger(1, #list)]
+end
+
+---------------------------------------------------------------------
+-- Soil spots: empty -> growing -> grown
+---------------------------------------------------------------------
+
+local function sellPrice(monsterId: string): number
+	return GameData.Monsters[monsterId].income * GameData.SELL_SECONDS
+end
+
+local function clearSpot(spot)
+	if spot.sprout then
+		spot.sprout:Destroy()
+		spot.sprout = nil
+	end
+	if spot.monster then
+		spot.monster:Destroy()
+		spot.monster = nil
+	end
+	spot.info = nil
+	spot.state = "empty"
+	spot.gui.Enabled = false
+	spot.prompt.ActionText = "Plant Seed"
+	spot.prompt.ObjectText = "Empty Soil"
+	spot.prompt.HoldDuration = 0
+	spot.prompt:SetAttribute("State", "empty")
+end
+
+local function setGrowing(spot, info)
+	clearSpot(spot)
+	spot.info = info
+	spot.state = "growing"
+	spot.sprout = MonsterBuilder.buildSprout(spot.top)
+	spot.sprout.Parent = spot.soil
+	spot.prompt:SetAttribute("State", "growing")
+	spot.gui.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
+	spot.gui.Enabled = true
+	spot.title.Text = "🌱 " .. GameData.Seeds[info.seed].name
+	spot.title.TextColor3 = Color3.new(1, 1, 1)
+end
+
+local function updateGrowing(spot, now: number)
+	local seed = GameData.Seeds[spot.info.seed]
+	local left = spot.info.readyAt - now
+	local progress = 1 - math.clamp(left / seed.growTime, 0, 1)
+	spot.subtitle.Text = "Growing... " .. GameData.formatTime(left)
+	spot.subtitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+	spot.sprout:ScaleTo(0.3 + progress * 1.2)
+end
+
+local function popEffect(part: BasePart, color: Color3)
+	local burst = Instance.new("ParticleEmitter")
+	burst.Color = ColorSequence.new(color)
+	burst.Rate = 0
+	burst.Speed = NumberRange.new(12, 20)
+	burst.SpreadAngle = Vector2.new(180, 180)
+	burst.Lifetime = NumberRange.new(0.6, 1.2)
+	burst.Size = NumberSequence.new(0.8, 0)
+	burst.LightEmission = 1
+	burst.Parent = part
+	burst:Emit(50)
+	Debris:AddItem(burst, 2)
+end
+
+-- isNew = true when it just popped out (not when loading a saved garden)
+local function setGrown(spot, info, owner: Player?, isNew: boolean)
+	clearSpot(spot)
+	local monster = GameData.Monsters[info.monster]
+	local rarity = GameData.Rarities[monster.rarity]
+	spot.info = info
+	spot.state = "grown"
+	spot.monster = MonsterBuilder.build(info.monster, spot.top)
+	spot.monster.Parent = spot.soil
+
+	spot.gui.StudsOffsetWorldSpace = Vector3.new(0, monster.size + 2.5, 0)
+	spot.gui.Enabled = true
+	spot.title.Text = monster.name
+	spot.title.TextColor3 = rarity.color
+	spot.subtitle.Text = ("%s  •  $%s/s"):format(rarity.label, GameData.formatMoney(monster.income))
+	spot.subtitle.TextColor3 = Color3.fromRGB(120, 255, 120)
+
+	spot.prompt.ActionText = "Sell"
+	spot.prompt.ObjectText = ("%s ($%s)"):format(monster.name, GameData.formatMoney(sellPrice(info.monster)))
+	-- rare monsters need a longer hold so you don't sell them by accident
+	spot.prompt.HoldDuration = rarity.order >= 3 and 2 or 0.6
+	spot.prompt:SetAttribute("State", "grown")
+
+	if isNew and owner then
+		popEffect(spot.monster.PrimaryPart, rarity.color)
+		revealEvent:FireClient(owner, info.monster)
+		if rarity.order >= 4 then
+			for _, other in Players:GetPlayers() do
+				if other ~= owner then
+					notify(
+						other,
+						("🎉 %s grew a %s %s!"):format(owner.DisplayName, rarity.label, monster.name),
+						rarity.color
+					)
+				end
+			end
+		end
+	end
+end
+
+local function plant(player: Player, garden, spot)
+	local profile = profiles[player]
+	local seeds = profile.data.seeds
+
+	-- Use the seed in your hand. If you only have one kind of seed, use that.
+	local seedId = nil
+	local held = player.Character and player.Character:FindFirstChildOfClass("Tool")
+	if held and held:GetAttribute("SeedId") then
+		seedId = held:GetAttribute("SeedId")
+	else
+		local kinds = {}
+		for id, count in seeds do
+			if count > 0 then
+				table.insert(kinds, id)
+			end
+		end
+		if #kinds == 1 then
+			seedId = kinds[1]
+		elseif #kinds == 0 then
+			notify(player, "You have no seeds! Buy some at the Seed Shop 🌱")
+			return
+		else
+			notify(player, "Hold the seed you want to plant!")
+			return
+		end
+	end
+	if (seeds[seedId] or 0) <= 0 then
+		return
+	end
+
+	seeds[seedId] -= 1
+	if seeds[seedId] <= 0 then
+		seeds[seedId] = nil
+	end
+	refreshSeedTools(player)
+
+	local info = {
+		seed = seedId,
+		monster = rollMonster(seedId), -- picked now, so leaving the game can't re-roll it
+		readyAt = os.time() + GameData.Seeds[seedId].growTime,
+	}
+	profile.data.spots[tostring(spot.index)] = info
+	setGrowing(spot, info)
+	updateGrowing(spot, os.time())
+end
+
+local function sell(player: Player, spot)
+	local profile = profiles[player]
+	local monsterId = spot.info.monster
+	local price = sellPrice(monsterId)
+	profile.money.Value += price
+	profile.data.spots[tostring(spot.index)] = nil
+	clearSpot(spot)
+	notify(player, ("Sold %s for $%s! 💰"):format(GameData.Monsters[monsterId].name, GameData.formatMoney(price)))
+end
+
+for _, garden in gardens do
+	for _, spot in garden.spots do
+		spot.prompt.Triggered:Connect(function(player)
+			if garden.owner ~= player then
+				notify(player, "This is not your garden! 🚫")
+				return
+			end
+			if spot.state == "empty" then
+				plant(player, garden, spot)
+			elseif spot.state == "grown" then
+				sell(player, spot)
+			end
+		end)
+	end
+end
+
+---------------------------------------------------------------------
+-- Seed Shop
+---------------------------------------------------------------------
+
+for _, pedestal in pedestals do
+	pedestal.prompt.Triggered:Connect(function(player)
+		local profile = profiles[player]
+		if not profile then
+			return
+		end
+		local seed = GameData.Seeds[pedestal.seedId]
+		if profile.money.Value < seed.price then
+			notify(
+				player,
+				("You need $%s more! 💸"):format(GameData.formatMoney(seed.price - profile.money.Value)),
+				Color3.fromRGB(255, 120, 120)
+			)
+			return
+		end
+		profile.money.Value -= seed.price
+		addSeeds(player, pedestal.seedId, 1)
+		notify(player, ("Bought a %s! 🌱 Go plant it in your garden."):format(seed.name), seed.color)
+	end)
+end
+
+---------------------------------------------------------------------
+-- Players joining and leaving
+---------------------------------------------------------------------
+
+local function teleportHome(player: Player)
+	local profile = profiles[player]
+	local character = player.Character
+	if profile and character and character:WaitForChild("HumanoidRootPart", 5) then
+		character:PivotTo(profile.garden.spawn)
+	end
+end
+
+local function onCharacterAdded(player: Player, character: Model)
+	local profile = profiles[player]
+	if not profile then
+		return -- not loaded yet; we'll handle this once the garden is ready
+	end
+	task.wait() -- let the character finish loading
+	refreshSeedTools(player)
+	teleportHome(player)
+
+	-- First time ever playing: put the Starter Seed straight into their hand
+	if profile.firstTime then
+		profile.firstTime = false
+		local tool = findSeedTool(player, "Starter")
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if tool and humanoid then
+			humanoid:EquipTool(tool)
+		end
+		notify(
+			player,
+			"Welcome! Walk to the brown soil and plant your Starter Seed 🌱",
+			Color3.fromRGB(140, 255, 120)
+		)
+	end
+end
+
+local function onPlayerAdded(player: Player)
+	-- Find a free garden
+	local garden = nil
+	for _, g in gardens do
+		if not g.owner then
+			garden = g
+			break
+		end
+	end
+	if not garden then
+		player:Kick("Sorry, all the gardens are full! Try another server.")
+		return
+	end
+	garden.owner = player
+
+	local data, canSave = Data.load(player)
+	if not player.Parent then
+		garden.owner = nil -- they left while loading
+		return
+	end
+
+	local leaderstats = Instance.new("Folder")
+	leaderstats.Name = "leaderstats"
+	local money = Instance.new("IntValue")
+	money.Name = "Money"
+	money.Value = data.money
+	money.Parent = leaderstats
+	leaderstats.Parent = player
+
+	local profile = { data = data, canSave = canSave, garden = garden, money = money, firstTime = false }
+	profiles[player] = profile
+	if not canSave then
+		notify(player, "⚠️ Saving is off right now, so progress won't be kept.", Color3.fromRGB(255, 200, 80))
+	end
+
+	MapBuilder.setSign(garden, player.DisplayName .. "'s Garden")
+	for _, spot in garden.spots do
+		spot.prompt:SetAttribute("Owner", player.UserId)
+	end
+
+	-- Bring back their saved garden (monsters keep growing while you're away!)
+	local now = os.time()
+	for key, info in data.spots do
+		local spot = garden.spots[tonumber(key)]
+		if spot and GameData.Monsters[info.monster] and GameData.Seeds[info.seed] then
+			if now >= info.readyAt then
+				setGrown(spot, info, player, false)
+			else
+				setGrowing(spot, info)
+				updateGrowing(spot, now)
+			end
+		else
+			data.spots[key] = nil
+		end
+	end
+
+	-- The free Starter Seed
+	if not data.gotStarter then
+		data.gotStarter = true
+		data.seeds.Starter = (data.seeds.Starter or 0) + 1
+		profile.firstTime = true
+	end
+
+	-- Safety net: if you somehow have nothing at all, get a free Mystery Seed
+	local hasSeeds = next(data.seeds) ~= nil
+	local hasMonsters = next(data.spots) ~= nil
+	if not hasSeeds and not hasMonsters and money.Value < GameData.Seeds.Mystery.price then
+		data.seeds.Mystery = 1
+		notify(player, "Here's a free Mystery Seed to get you going! 🌱")
+	end
+
+	player.CharacterAdded:Connect(function(character)
+		onCharacterAdded(player, character)
+	end)
+	if player.Character then
+		onCharacterAdded(player, player.Character)
+	end
+end
+
+local function saveProfile(player: Player)
+	local profile = profiles[player]
+	if profile and profile.canSave then
+		profile.data.money = profile.money.Value
+		Data.save(player, profile.data)
+	end
+end
+
+local function onPlayerRemoving(player: Player)
+	local profile = profiles[player]
+	if not profile then
+		return
+	end
+	saveProfile(player)
+	profiles[player] = nil
+	local garden = profile.garden
+	for _, spot in garden.spots do
+		clearSpot(spot)
+		spot.prompt:SetAttribute("Owner", 0)
+	end
+	MapBuilder.setSign(garden, "Empty Garden")
+	garden.owner = nil
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+Players.PlayerRemoving:Connect(onPlayerRemoving)
+for _, player in Players:GetPlayers() do
+	task.spawn(onPlayerAdded, player)
+end
+
+-- Save everyone when the server shuts down
+game:BindToClose(function()
+	for player in profiles do
+		task.spawn(saveProfile, player)
+	end
+	task.wait(3)
+end)
+
+-- Save everyone every 2 minutes, just in case
+task.spawn(function()
+	while true do
+		task.wait(120)
+		for player in profiles do
+			task.spawn(saveProfile, player)
+		end
+	end
+end)
+
+---------------------------------------------------------------------
+-- Every second: grow plants and pay money
+---------------------------------------------------------------------
+
+while true do
+	task.wait(1)
+	local now = os.time()
+	for player, profile in profiles do
+		local income = 0
+		for _, spot in profile.garden.spots do
+			if spot.state == "growing" then
+				if now >= spot.info.readyAt then
+					setGrown(spot, spot.info, player, true)
+				else
+					updateGrowing(spot, now)
+				end
+			end
+			if spot.state == "grown" then
+				income += GameData.Monsters[spot.info.monster].income
+			end
+		end
+		profile.money.Value += income
+		player:SetAttribute("Income", income)
+	end
+end
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="8">
+        <Properties>
+          <string name="Name">MapBuilder</string>
+          <string name="Source"><![CDATA[-- MapBuilder: builds the world when the game starts.
+-- The Seed Shop is in the middle, and the gardens are in a circle around it.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+
+local GameData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameData"))
+
+local MapBuilder = {}
+
+local GARDEN_COUNT = 8 -- set "Max Players" in Game Settings to this number
+local GARDEN_DISTANCE = 120 -- how far each garden is from the middle
+local GARDEN_SIZE = 56
+local HUB_RADIUS = 40
+local SOIL_TOP = 0.75 -- height of the top of the soil
+
+local function part(parent: Instance, props): Part
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	for key, value in props do
+		(p :: any)[key] = value
+	end
+	p.Parent = parent
+	return p
+end
+
+local function textLabel(parent: Instance, text: string, color: Color3, props: { [string]: any }?): TextLabel
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.Font = Enum.Font.FredokaOne
+	label.TextScaled = true
+	label.Text = text
+	label.TextColor3 = color
+	label.TextStrokeTransparency = 0
+	label.TextStrokeColor3 = Color3.fromRGB(30, 30, 30)
+	for key, value in props or {} do
+		(label :: any)[key] = value
+	end
+	label.Parent = parent
+	return label
+end
+
+local function signGui(board: Part, face: Enum.NormalId, text: string): TextLabel
+	local gui = Instance.new("SurfaceGui")
+	gui.Face = face
+	gui.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+	gui.PixelsPerStud = 40
+	gui.Parent = board
+	return textLabel(gui, text, Color3.fromRGB(255, 255, 255), {
+		Size = UDim2.fromScale(0.9, 0.8),
+		Position = UDim2.fromScale(0.05, 0.1),
+	})
+end
+
+---------------------------------------------------------------------
+-- The Seed Shop in the middle
+---------------------------------------------------------------------
+
+local function buildShop(map: Folder)
+	part(map, {
+		Name = "Hub",
+		Shape = Enum.PartType.Cylinder,
+		Size = Vector3.new(0.4, HUB_RADIUS * 2, HUB_RADIUS * 2),
+		CFrame = CFrame.new(0, 0.2, 0) * CFrame.Angles(0, 0, math.rad(90)),
+		Color = Color3.fromRGB(200, 180, 140),
+		Material = Enum.Material.Cobblestone,
+	})
+
+	local pedestals = {}
+	local count = #GameData.ShopSeeds * 2
+	for k = 0, count - 1 do
+		local seedId = GameData.ShopSeeds[(k % #GameData.ShopSeeds) + 1]
+		local seed = GameData.Seeds[seedId]
+		local angle = k / count * math.pi * 2 + math.pi / 4
+		local pos = Vector3.new(math.cos(angle) * 20, 0, math.sin(angle) * 20)
+		local facing = CFrame.lookAt(pos, Vector3.new(pos.X * 2, 0, pos.Z * 2)) -- faces outwards
+
+		local stand = part(map, {
+			Name = seed.name .. " Stand",
+			Shape = Enum.PartType.Cylinder,
+			Size = Vector3.new(3, 5, 5),
+			CFrame = facing * CFrame.new(0, 1.9, 0) * CFrame.Angles(0, 0, math.rad(90)),
+			Color = Color3.fromRGB(240, 240, 240),
+			Material = Enum.Material.Marble,
+		})
+		local seedBall = part(map, {
+			Name = seed.name,
+			Shape = Enum.PartType.Ball,
+			Size = Vector3.one * 2.5,
+			CFrame = facing * CFrame.new(0, 5, 0),
+			Color = seed.color,
+			Material = seedId == "Golden" and Enum.Material.Neon or Enum.Material.SmoothPlastic,
+			CanCollide = false,
+		})
+		CollectionService:AddTag(seedBall, "Spin")
+
+		local board = Instance.new("BillboardGui")
+		board.Size = UDim2.fromScale(9, 4)
+		board.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
+		board.MaxDistance = 90
+		board.LightInfluence = 0
+		board.Parent = seedBall
+		textLabel(board, seed.name, seed.color, { Size = UDim2.fromScale(1, 0.4) })
+		textLabel(board, "$" .. GameData.formatMoney(seed.price), Color3.fromRGB(120, 255, 120), {
+			Size = UDim2.fromScale(1, 0.3),
+			Position = UDim2.fromScale(0, 0.4),
+		})
+		local odds = {}
+		for rarityId, rarity in GameData.Rarities do
+			if seed.odds[rarityId] then
+				table.insert(
+					odds,
+					{ order = rarity.order, text = ("%s %g%%"):format(rarity.label, seed.odds[rarityId]) }
+				)
+			end
+		end
+		table.sort(odds, function(a, b)
+			return a.order < b.order
+		end)
+		local oddsText = {}
+		for _, o in odds do
+			table.insert(oddsText, o.text)
+		end
+		textLabel(board, table.concat(oddsText, "  "), Color3.fromRGB(255, 255, 255), {
+			Size = UDim2.fromScale(1, 0.25),
+			Position = UDim2.fromScale(0, 0.72),
+		})
+
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.ActionText = "Buy"
+		prompt.ObjectText = ("%s ($%s)"):format(seed.name, GameData.formatMoney(seed.price))
+		prompt.HoldDuration = 0
+		prompt.MaxActivationDistance = 10
+		prompt.RequiresLineOfSight = false
+		prompt.Parent = stand
+
+		table.insert(pedestals, { prompt = prompt, seedId = seedId })
+	end
+
+	-- Big sign floating above the middle
+	local signAnchor = part(map, {
+		Name = "ShopSign",
+		Size = Vector3.one,
+		CFrame = CFrame.new(0, 22, 0),
+		Transparency = 1,
+		CanCollide = false,
+	})
+	local sign = Instance.new("BillboardGui")
+	sign.Size = UDim2.fromScale(30, 7)
+	sign.LightInfluence = 0
+	sign.Parent = signAnchor
+	textLabel(sign, "🌱 SEED SHOP 🌱", Color3.fromRGB(140, 255, 120))
+
+	return pedestals
+end
+
+---------------------------------------------------------------------
+-- The gardens
+---------------------------------------------------------------------
+
+local function buildGarden(map: Folder, index: number)
+	local angle = (index - 1) / GARDEN_COUNT * math.pi * 2
+	local center = Vector3.new(math.cos(angle), 0, math.sin(angle)) * GARDEN_DISTANCE
+	-- The garden's front (LookVector) points at the Seed Shop
+	local cf = CFrame.lookAt(center, Vector3.zero)
+	local half = GARDEN_SIZE / 2
+
+	local model = Instance.new("Model")
+	model.Name = "Garden" .. index
+	model.Parent = map
+
+	part(model, {
+		Name = "Floor",
+		Size = Vector3.new(GARDEN_SIZE, 0.4, GARDEN_SIZE),
+		CFrame = cf * CFrame.new(0, 0.2, 0),
+		Color = Color3.fromRGB(120, 185, 85),
+		Material = Enum.Material.Grass,
+	})
+
+	-- Fence, with a gap at the front to walk in
+	local wood = Color3.fromRGB(235, 225, 205)
+	local function fence(x, z, sizeX, sizeZ)
+		part(model, {
+			Name = "Fence",
+			Size = Vector3.new(sizeX, 3, sizeZ),
+			CFrame = cf * CFrame.new(x, 1.9, z),
+			Color = wood,
+			Material = Enum.Material.WoodPlanks,
+		})
+	end
+	fence(0, half, GARDEN_SIZE, 0.6)
+	fence(-half, 0, 0.6, GARDEN_SIZE)
+	fence(half, 0, 0.6, GARDEN_SIZE)
+	fence(-(half + 6) / 2, -half, half - 6, 0.6)
+	fence((half + 6) / 2, -half, half - 6, 0.6)
+
+	-- Path from the Seed Shop to the garden
+	local pathStart = HUB_RADIUS - 2
+	local pathEnd = GARDEN_DISTANCE - half
+	local dir = center.Unit
+	local mid = dir * (pathStart + pathEnd) / 2
+	part(map, {
+		Name = "Path",
+		Size = Vector3.new(10, 0.2, pathEnd - pathStart),
+		CFrame = CFrame.lookAt(mid + Vector3.new(0, 0.1, 0), center + Vector3.new(0, 0.1, 0)),
+		Color = Color3.fromRGB(215, 190, 140),
+		Material = Enum.Material.Sand,
+	})
+
+	-- Name sign over the entrance
+	for _, x in { -7.5, 7.5 } do
+		part(model, {
+			Name = "SignPost",
+			Size = Vector3.new(0.8, 10.5, 0.8),
+			CFrame = cf * CFrame.new(x, 5.25, -half - 2),
+			Color = wood,
+			Material = Enum.Material.Wood,
+		})
+	end
+	local board = part(model, {
+		Name = "Sign",
+		Size = Vector3.new(16, 4, 0.6),
+		CFrame = cf * CFrame.new(0, 8.5, -half - 2),
+		Color = Color3.fromRGB(120, 80, 45),
+		Material = Enum.Material.Wood,
+	})
+	local signLabels = {
+		signGui(board, Enum.NormalId.Front, "Empty Garden"),
+		signGui(board, Enum.NormalId.Back, "Empty Garden"),
+	}
+
+	-- Soil patches: 2 rows of 3
+	local spots = {}
+	local columns = { -15, 0, 15 }
+	local rows = { 2, 17 }
+	for r, z in rows do
+		for col, x in columns do
+			local spotIndex = (r - 1) * #columns + col
+			local soil = part(model, {
+				Name = "Soil" .. spotIndex,
+				Size = Vector3.new(11, 0.5, 11),
+				CFrame = cf * CFrame.new(x, 0.5, z),
+				Color = Color3.fromRGB(95, 60, 35),
+				Material = Enum.Material.Ground,
+			})
+
+			local prompt = Instance.new("ProximityPrompt")
+			prompt.ActionText = "Plant Seed"
+			prompt.ObjectText = "Empty Soil"
+			prompt.HoldDuration = 0
+			prompt.MaxActivationDistance = 12
+			prompt.RequiresLineOfSight = false
+			prompt:SetAttribute("Owner", 0)
+			prompt:SetAttribute("State", "empty")
+			prompt.Parent = soil
+			CollectionService:AddTag(prompt, "SpotPrompt")
+
+			-- Text floating above the soil (timer while growing, name when grown)
+			local gui = Instance.new("BillboardGui")
+			gui.Size = UDim2.fromOffset(240, 60)
+			gui.MaxDistance = 80
+			gui.LightInfluence = 0
+			gui.Enabled = false
+			gui.Parent = soil
+			local title = textLabel(gui, "", Color3.new(1, 1, 1), { Size = UDim2.fromScale(1, 0.55) })
+			local subtitle = textLabel(gui, "", Color3.fromRGB(120, 255, 120), {
+				Size = UDim2.fromScale(1, 0.45),
+				Position = UDim2.fromScale(0, 0.55),
+			})
+
+			spots[spotIndex] = {
+				index = spotIndex,
+				soil = soil,
+				prompt = prompt,
+				top = cf * CFrame.new(x, SOIL_TOP, z),
+				gui = gui,
+				title = title,
+				subtitle = subtitle,
+				state = "empty",
+			}
+		end
+	end
+
+	return {
+		index = index,
+		model = model,
+		cframe = cf,
+		-- Where the owner spawns: just inside the entrance, looking at the soil
+		spawn = cf * CFrame.new(0, 4, -16) * CFrame.Angles(0, math.pi, 0),
+		signLabels = signLabels,
+		spots = spots,
+		owner = nil,
+	}
+end
+
+-- Builds everything. Returns (gardens, shopPedestals)
+function MapBuilder.build()
+	local map = Instance.new("Folder")
+	map.Name = "Map"
+	map.Parent = workspace
+
+	local pedestals = buildShop(map)
+	local gardens = {}
+	for i = 1, GARDEN_COUNT do
+		gardens[i] = buildGarden(map, i)
+	end
+	return gardens, pedestals
+end
+
+function MapBuilder.setSign(garden, text: string)
+	for _, label in garden.signLabels do
+		label.Text = text
+	end
+end
+
+return MapBuilder
+]]></string>
+        </Properties>
+      </Item>
+      <Item class="ModuleScript" referent="9">
+        <Properties>
+          <string name="Name">MonsterBuilder</string>
+          <string name="Source"><![CDATA[-- MonsterBuilder: builds each monster out of balls and blocks.
+-- Every monster has its own build function below. "s" is the monster's size (height in studs).
+-- "base" is the spot on the ground under the monster. Its front faces base.LookVector.
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+
+local GameData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameData"))
+
+local MonsterBuilder = {}
+
+local BLACK = Color3.fromRGB(25, 25, 30)
+local WHITE = Color3.fromRGB(250, 250, 250)
+
+---------------------------------------------------------------------
+-- Little helpers to make parts
+---------------------------------------------------------------------
+
+local function newPart(model: Model, shape: Enum.PartType, size: Vector3, color: Color3, cf: CFrame): Part
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanTouch = false
+	p.Material = Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth
+	p.BottomSurface = Enum.SurfaceType.Smooth
+	p.Shape = shape
+	p.Size = size
+	p.Color = color
+	p.CFrame = cf
+	p.Parent = model
+	return p
+end
+
+local function ball(model, diameter: number, color: Color3, cf: CFrame): Part
+	return newPart(model, Enum.PartType.Ball, Vector3.one * diameter, color, cf)
+end
+
+local function block(model, size: Vector3, color: Color3, cf: CFrame): Part
+	return newPart(model, Enum.PartType.Block, size, color, cf)
+end
+
+-- A squashed ball (an "ellipsoid") of any size
+local function blob(model, size: Vector3, color: Color3, cf: CFrame): Part
+	local p = block(model, size, color, cf)
+	local mesh = Instance.new("SpecialMesh")
+	mesh.MeshType = Enum.MeshType.Sphere
+	mesh.Parent = p
+	return p
+end
+
+-- A standing-up cylinder
+local function pillar(model, height: number, diameter: number, color: Color3, cf: CFrame): Part
+	return newPart(
+		model,
+		Enum.PartType.Cylinder,
+		Vector3.new(height, diameter, diameter),
+		color,
+		cf * CFrame.Angles(0, 0, math.rad(90))
+	)
+end
+
+-- How far forward the front of a ball (radius r) is, at side-offset x and height y
+local function surface(r: number, x: number, y: number): number
+	return math.sqrt(math.max(r * r - x * x - y * y, 0))
+end
+
+-- One eye: white ball + black pupil. "look" moves the pupil (Vector2, -1..1)
+local function eye(model, center: CFrame, x: number, y: number, z: number, d: number, look: Vector2?)
+	ball(model, d, WHITE, center * CFrame.new(x, y, z))
+	local lx = look and look.X or 0
+	local ly = look and look.Y or 0
+	ball(model, d * 0.48, BLACK, center * CFrame.new(x + lx * d * 0.15, y + ly * d * 0.15, z - d * 0.32))
+end
+
+-- Two eyes stuck on the front of a ball body
+local function ballEyes(model, center: CFrame, r: number, spread: number, height: number, d: number, look: Vector2?)
+	for _, side in { -1, 1 } do
+		local x, y = side * spread * r, height * r
+		eye(model, center, x, y, -surface(r, x, y) + d * 0.25, d, look)
+	end
+end
+
+-- A mouth on the front of a ball body, with optional teeth
+local function ballMouth(model, center: CFrame, r: number, height: number, width: number, tall: number, teeth: number?)
+	local y = height * r
+	local z = -surface(r, 0, y)
+	blob(model, Vector3.new(width * r, tall * r, 0.3 * r), BLACK, center * CFrame.new(0, y, z + 0.08 * r))
+	if teeth and teeth > 0 then
+		local toothW = width * r / (teeth + 1)
+		for i = 1, teeth do
+			local x = (i / (teeth + 1) - 0.5) * width * r * 0.9
+			local ty = y + tall * r * 0.3
+			block(
+				model,
+				Vector3.new(toothW * 0.7, tall * r * 0.35, 0.1 * r),
+				WHITE,
+				center * CFrame.new(x, ty, -surface(r, x, ty) - 0.02 * r)
+			)
+		end
+	end
+end
+
+local function feet(model, center: CFrame, r: number, color: Color3)
+	for _, side in { -1, 1 } do
+		blob(
+			model,
+			Vector3.new(0.5 * r, 0.3 * r, 0.6 * r),
+			color,
+			center * CFrame.new(side * 0.5 * r, -0.88 * r, -0.25 * r)
+		)
+	end
+end
+
+local function darker(c: Color3, amount: number?): Color3
+	local k = 1 - (amount or 0.3)
+	return Color3.new(c.R * k, c.G * k, c.B * k)
+end
+
+---------------------------------------------------------------------
+-- The monsters!
+---------------------------------------------------------------------
+
+local builders = {}
+
+-- COMMON: a little orange ball with two big buck teeth
+function builders.Munchie(m, base, s)
+	local r = s / 2
+	local color = Color3.fromRGB(255, 150, 50)
+	local c = base * CFrame.new(0, r, 0)
+	local body = ball(m, s, color, c)
+	feet(m, c, r, darker(color))
+	ballEyes(m, c, r, 0.32, 0.28, 0.42 * r)
+	ballMouth(m, c, r, -0.25, 0.7, 0.25)
+	for _, side in { -1, 1 } do
+		local x, y = side * 0.09 * r, -0.4 * r
+		block(m, Vector3.new(0.16 * r, 0.24 * r, 0.08 * r), WHITE, c * CFrame.new(x, y, -surface(r, x, y) - 0.03 * r))
+	end
+	return body
+end
+
+-- COMMON: green ball, one big eye and one small eye, leaves on its head
+function builders.LeafyLoony(m, base, s)
+	local r = s / 2
+	local color = Color3.fromRGB(150, 220, 100)
+	local c = base * CFrame.new(0, r, 0)
+	local body = ball(m, s, color, c)
+	feet(m, c, r, darker(color))
+	eye(m, c, -0.33 * r, 0.25 * r, -surface(r, 0.33 * r, 0.25 * r) + 0.15 * r, 0.6 * r, Vector2.new(0.8, 0.6))
+	eye(m, c, 0.36 * r, 0.3 * r, -surface(r, 0.36 * r, 0.3 * r) + 0.08 * r, 0.32 * r, Vector2.new(-0.8, -0.5))
+	ballMouth(m, c, r, -0.35, 0.8, 0.3, 3)
+	local leaf = Color3.fromRGB(50, 140, 50)
+	for _, tilt in { -0.6, 0, 0.6 } do
+		blob(
+			m,
+			Vector3.new(0.25 * r, 1.0 * r, 0.5 * r),
+			leaf,
+			c * CFrame.Angles(0, 0, tilt) * CFrame.new(0, 1.2 * r, 0)
+		)
+	end
+	return body
+end
+
+-- UNCOMMON: a pickle with a unicorn horn
+function builders.PickletHorn(m, base, s)
+	local w = s * 0.42 -- how wide
+	local h = s * 0.6 -- the straight middle part
+	local color = Color3.fromRGB(95, 145, 50)
+	local c = base * CFrame.new(0, w / 2 + h / 2, 0)
+	local body = pillar(m, h, w, color, c)
+	ball(m, w, color, c * CFrame.new(0, h / 2, 0))
+	ball(m, w, color, c * CFrame.new(0, -h / 2, 0))
+	-- pickle bumps
+	local bump = darker(color, 0.2)
+	for i = 0, 9 do
+		local angle = i * 2.4
+		local y = ((i % 5) / 4 - 0.5) * h
+		ball(m, 0.07 * s, bump, c * CFrame.new(math.cos(angle) * w / 2, y, math.sin(angle) * w / 2))
+	end
+	-- eyes and smile on the front of the pickle
+	local d = 0.32 * w
+	for _, side in { -1, 1 } do
+		local x = side * 0.22 * w
+		eye(m, c, x, 0.3 * h, -surface(w / 2, x, 0) + d * 0.2, d, Vector2.new(0, 0.5))
+	end
+	blob(m, Vector3.new(0.4 * w, 0.12 * w, 0.15 * w), BLACK, c * CFrame.new(0, 0.05 * h, -w / 2))
+	-- the horn: a stack of shrinking balls
+	local top = h / 2 + w / 2
+	local hornColor = Color3.fromRGB(255, 240, 180)
+	ball(m, 0.16 * s, hornColor, c * CFrame.new(0, top + 0.02 * s, 0))
+	ball(m, 0.11 * s, hornColor, c * CFrame.new(0, top + 0.12 * s, -0.01 * s))
+	ball(m, 0.07 * s, hornColor, c * CFrame.new(0, top + 0.2 * s, -0.02 * s))
+	ball(m, 0.04 * s, hornColor, c * CFrame.new(0, top + 0.26 * s, -0.03 * s))
+	return body
+end
+
+-- UNCOMMON: a slimy green booger ball with a pink flower on top
+function builders.BoogerBloom(m, base, s)
+	local r = s / 2
+	local color = Color3.fromRGB(160, 205, 60)
+	local c = base * CFrame.new(0, r, 0)
+	local body = ball(m, s, color, c)
+	body.Reflectance = 0.15
+	body.Transparency = 0.08
+	-- slime drips
+	for i, x in { -0.7, -0.2, 0.45, 0.8 } do
+		local y = -0.3 - i * 0.08
+		ball(m, 0.22 * r, color, c * CFrame.new(x * r, y * r, -surface(r, x * r, y * r) + 0.05 * r))
+	end
+	ballEyes(m, c, r, 0.3, 0.25, 0.4 * r, Vector2.new(0, -0.6))
+	ballMouth(m, c, r, -0.15, 0.5, 0.35)
+	ball(m, 0.18 * r, Color3.fromRGB(255, 120, 160), c * CFrame.new(0, -0.22 * r, -surface(r, 0, -0.22 * r) - 0.05 * r)) -- tongue
+	-- flower
+	local petal = Color3.fromRGB(255, 120, 190)
+	local flowerY = 1.02 * r
+	ball(m, 0.35 * r, Color3.fromRGB(255, 220, 60), c * CFrame.new(0, flowerY + 0.05 * r, 0))
+	for i = 0, 5 do
+		local a = i * math.pi / 3
+		ball(m, 0.32 * r, petal, c * CFrame.new(math.cos(a) * 0.3 * r, flowerY, math.sin(a) * 0.3 * r))
+	end
+	return body
+end
+
+-- RARE: tall seaweed guy with a blue cap and seaweed hair
+function builders.SinkweedSteve(m, base, s)
+	local w = s * 0.42
+	local h = s * 0.55
+	local color = Color3.fromRGB(40, 120, 90)
+	local c = base * CFrame.new(0, w / 2 + h / 2, 0)
+	local body = pillar(m, h, w, color, c)
+	ball(m, w, color, c * CFrame.new(0, h / 2, 0))
+	ball(m, w, color, c * CFrame.new(0, -h / 2, 0))
+	-- sleepy eyes
+	local d = 0.3 * w
+	for _, side in { -1, 1 } do
+		local x = side * 0.22 * w
+		eye(m, c, x, 0.35 * h, -surface(w / 2, x, 0) + d * 0.2, d, Vector2.new(0, -0.8))
+		block(
+			m,
+			Vector3.new(d * 1.1, d * 0.4, d * 0.5),
+			color,
+			c * CFrame.new(x, 0.35 * h + d * 0.3, -surface(w / 2, x, 0) - 0.02 * w)
+		)
+	end
+	blob(m, Vector3.new(0.35 * w, 0.08 * w, 0.12 * w), BLACK, c * CFrame.new(0.05 * w, 0.05 * h, -w / 2))
+	-- cap
+	local capColor = Color3.fromRGB(40, 90, 220)
+	local headY = h / 2
+	ball(m, w * 1.05, capColor, c * CFrame.new(0, headY + 0.08 * w, 0))
+	block(m, Vector3.new(w * 0.7, 0.04 * s, w * 0.5), capColor, c * CFrame.new(0, headY + 0.08 * w, -w * 0.55))
+	-- seaweed hair
+	local kelp = Color3.fromRGB(70, 170, 70)
+	for i, x in { -0.45, -0.15, 0.15, 0.45 } do
+		local tilt = x * 1.2
+		blob(
+			m,
+			Vector3.new(0.1 * w, 0.75 * w, 0.06 * w),
+			kelp,
+			c
+				* CFrame.new(x * w, headY + 0.1 * w, 0.25 * w)
+				* CFrame.Angles(0.4 + i * 0.05, 0, -tilt)
+				* CFrame.new(0, 0.35 * w, 0)
+		)
+	end
+	return body
+end
+
+-- RARE: a viking leaf with a horned helmet and a big orange beard
+function builders.LeafErickson(m, base, s)
+	local r = s / 2
+	local color = Color3.fromRGB(70, 165, 70)
+	local c = base * CFrame.new(0, r, 0)
+	local body = ball(m, s, color, c)
+	feet(m, c, r, Color3.fromRGB(110, 70, 40))
+	ballEyes(m, c, r, 0.3, 0.2, 0.36 * r)
+	-- angry eyebrows
+	for _, side in { -1, 1 } do
+		local x, y = side * 0.3 * r, 0.45 * r
+		block(
+			m,
+			Vector3.new(0.4 * r, 0.1 * r, 0.1 * r),
+			BLACK,
+			c * CFrame.new(x, y, -surface(r, x, y) - 0.02 * r) * CFrame.Angles(0, 0, side * -0.35)
+		)
+	end
+	ballMouth(m, c, r, -0.18, 0.4, 0.15)
+	-- beard
+	blob(
+		m,
+		Vector3.new(1.0 * r, 0.75 * r, 0.4 * r),
+		Color3.fromRGB(230, 120, 40),
+		c * CFrame.new(0, -0.55 * r, -0.78 * r)
+	)
+	-- helmet
+	local metal = Color3.fromRGB(165, 165, 175)
+	local helmet = ball(m, 1.6 * r, metal, c * CFrame.new(0, 0.55 * r, 0))
+	helmet.Material = Enum.Material.Metal
+	-- horns curving up and out
+	local horn = Color3.fromRGB(245, 240, 220)
+	for _, side in { -1, 1 } do
+		ball(m, 0.4 * r, horn, c * CFrame.new(side * 0.8 * r, 0.85 * r, 0))
+		ball(m, 0.3 * r, horn, c * CFrame.new(side * 1.05 * r, 1.1 * r, 0))
+		ball(m, 0.2 * r, horn, c * CFrame.new(side * 1.15 * r, 1.38 * r, 0))
+	end
+	return body
+end
+
+-- EPIC: a smart old leaf with glasses, a graduation cap... and very stinky toots
+function builders.ProfessorPootleaf(m, base, s)
+	local r = s / 2
+	local color = Color3.fromRGB(140, 130, 60)
+	local c = base * CFrame.new(0, r, 0)
+	local body = ball(m, s, color, c)
+	feet(m, c, r, darker(color))
+	ballEyes(m, c, r, 0.3, 0.2, 0.32 * r)
+	-- round glasses
+	for _, side in { -1, 1 } do
+		local x, y = side * 0.3 * r, 0.2 * r
+		local z = -surface(r, x, y) + 0.06 * r
+		pillar(m, 0.04 * r, 0.48 * r, BLACK, c * CFrame.new(x, y, z) * CFrame.Angles(math.rad(90), 0, 0))
+	end
+	block(
+		m,
+		Vector3.new(0.2 * r, 0.04 * r, 0.04 * r),
+		BLACK,
+		c * CFrame.new(0, 0.22 * r, -surface(r, 0, 0.22 * r) - 0.05 * r)
+	)
+	-- mustache
+	for _, side in { -1, 1 } do
+		blob(
+			m,
+			Vector3.new(0.45 * r, 0.16 * r, 0.12 * r),
+			Color3.fromRGB(240, 240, 240),
+			c
+				* CFrame.new(side * 0.2 * r, -0.12 * r, -surface(r, side * 0.2 * r, -0.12 * r) - 0.02 * r)
+				* CFrame.Angles(0, 0, side * 0.25)
+		)
+	end
+	ballMouth(m, c, r, -0.35, 0.35, 0.12)
+	-- graduation cap
+	ball(m, 1.3 * r, BLACK, c * CFrame.new(0, 0.6 * r, 0))
+	local board = c * CFrame.new(0, 1.2 * r, 0) * CFrame.Angles(0, math.rad(45), 0)
+	block(m, Vector3.new(1.4 * r, 0.08 * r, 1.4 * r), BLACK, board)
+	block(
+		m,
+		Vector3.new(0.05 * r, 0.5 * r, 0.05 * r),
+		Color3.fromRGB(255, 210, 40),
+		board * CFrame.new(0.65 * r, -0.25 * r, 0.65 * r)
+	)
+	-- a leaf sticking out the back
+	blob(
+		m,
+		Vector3.new(0.2 * r, 0.9 * r, 0.5 * r),
+		Color3.fromRGB(70, 150, 60),
+		c * CFrame.new(0, 0.3 * r, 1.0 * r) * CFrame.Angles(-0.7, 0, 0)
+	)
+	-- stinky green toot clouds
+	local stink = Instance.new("Attachment")
+	stink.Position = Vector3.new(0, -0.6 * r, 0.8 * r)
+	stink.Parent = body
+	local cloud = Instance.new("ParticleEmitter")
+	cloud.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	cloud.Color = ColorSequence.new(Color3.fromRGB(150, 220, 60))
+	cloud.Size = NumberSequence.new(0.5 * r, 1.2 * r)
+	cloud.Transparency = NumberSequence.new(0.3, 1)
+	cloud.Lifetime = NumberRange.new(1.5, 2.5)
+	cloud.Rate = 1.5
+	cloud.Speed = NumberRange.new(1, 2)
+	cloud.SpreadAngle = Vector2.new(30, 30)
+	cloud.EmissionDirection = Enum.NormalId.Back
+	cloud.Parent = stink
+	return body
+end
+
+-- EPIC: a red knight with a helmet, a feather and LOTS of teeth
+function builders.SirBitesALot(m, base, s)
+	local r = s / 2
+	local color = Color3.fromRGB(205, 55, 55)
+	local c = base * CFrame.new(0, r, 0)
+	local body = ball(m, s, color, c)
+	feet(m, c, r, darker(color))
+	ballEyes(m, c, r, 0.3, 0.25, 0.34 * r, Vector2.new(0, -0.4))
+	ballMouth(m, c, r, -0.3, 1.1, 0.4, 6)
+	-- knight helmet
+	local metal = Color3.fromRGB(170, 170, 185)
+	local helmet = ball(m, 1.75 * r, metal, c * CFrame.new(0, 0.5 * r, 0))
+	helmet.Material = Enum.Material.Metal
+	-- feather plume
+	for i, color2 in { Color3.fromRGB(255, 255, 255), Color3.fromRGB(240, 60, 60), Color3.fromRGB(255, 255, 255) } do
+		blob(
+			m,
+			Vector3.new(0.18 * r, 0.9 * r, 0.3 * r),
+			color2,
+			c * CFrame.new((i - 2) * 0.14 * r, 1.4 * r, 0.1 * r) * CFrame.Angles(0.5, 0, (i - 2) * -0.3)
+		)
+	end
+	-- sword
+	local sword = c * CFrame.new(1.25 * r, 0, -0.3 * r) * CFrame.Angles(0, 0, -0.2)
+	local blade = block(
+		m,
+		Vector3.new(0.15 * r, 1.6 * r, 0.05 * r),
+		Color3.fromRGB(220, 220, 235),
+		sword * CFrame.new(0, 0.6 * r, 0)
+	)
+	blade.Material = Enum.Material.Metal
+	block(m, Vector3.new(0.6 * r, 0.1 * r, 0.12 * r), Color3.fromRGB(230, 180, 40), sword * CFrame.new(0, -0.2 * r, 0))
+	block(m, Vector3.new(0.1 * r, 0.4 * r, 0.1 * r), Color3.fromRGB(100, 60, 30), sword * CFrame.new(0, -0.45 * r, 0))
+	return body
+end
+
+-- LEGENDARY: a purple ball that is basically one giant mouth
+function builders.ChompyMcChompface(m, base, s)
+	local r = s / 2
+	local color = Color3.fromRGB(145, 60, 210)
+	local c = base * CFrame.new(0, r, 0)
+	local body = ball(m, s, color, c)
+	feet(m, c, r, darker(color))
+	ballEyes(m, c, r, 0.28, 0.55, 0.38 * r, Vector2.new(0, 0.5))
+	-- huge mouth
+	blob(m, Vector3.new(1.45 * r, 0.85 * r, 0.3 * r), BLACK, c * CFrame.new(0, -0.15 * r, -0.82 * r))
+	ball(m, 0.5 * r, Color3.fromRGB(255, 110, 150), c * CFrame.new(0, -0.38 * r, -0.85 * r)) -- tongue
+	-- top and bottom teeth
+	for row, y in { 0.15, -0.48 } do
+		local count = row == 1 and 7 or 6
+		for i = 1, count do
+			local x = (i / (count + 1) - 0.5) * 1.2 * r
+			local ty = (y + math.abs(x / r) * (row == 1 and -0.15 or 0.15)) * r
+			block(
+				m,
+				Vector3.new(0.13 * r, 0.2 * r, 0.12 * r),
+				WHITE,
+				c * CFrame.new(x, ty, -surface(r, x, ty) - 0.05 * r) * CFrame.Angles(0, 0, math.rad(45))
+			)
+		end
+	end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = Color3.fromRGB(255, 220, 80)
+	sparkles.Parent = body
+	return body
+end
+
+-- LEGENDARY: a giant green dinosaur monster
+function builders.Chompzilla(m, base, s)
+	local color = Color3.fromRGB(60, 150, 60)
+	local belly = Color3.fromRGB(190, 220, 120)
+	local bodyD = 0.6 * s
+	local c = base * CFrame.new(0, 0.38 * s, 0)
+	local body = ball(m, bodyD, color, c)
+	blob(m, Vector3.new(0.4 * s, 0.45 * s, 0.1 * s), belly, c * CFrame.new(0, -0.02 * s, -0.27 * s))
+	-- legs and feet
+	for _, side in { -1, 1 } do
+		blob(m, Vector3.new(0.18 * s, 0.25 * s, 0.2 * s), color, c * CFrame.new(side * 0.17 * s, -0.25 * s, 0))
+		blob(
+			m,
+			Vector3.new(0.18 * s, 0.08 * s, 0.26 * s),
+			darker(color),
+			base * CFrame.new(side * 0.17 * s, 0.04 * s, -0.04 * s)
+		)
+		-- tiny arms
+		blob(
+			m,
+			Vector3.new(0.06 * s, 0.06 * s, 0.16 * s),
+			color,
+			c * CFrame.new(side * 0.2 * s, 0.05 * s, -0.25 * s) * CFrame.Angles(0.5, 0, 0)
+		)
+	end
+	-- tail
+	for k = 1, 5 do
+		ball(m, (0.24 - k * 0.032) * s, color, c * CFrame.new(0, -0.12 * s - k * 0.025 * s, 0.22 * s + k * 0.1 * s))
+	end
+	-- head and snout
+	local head = c * CFrame.new(0, 0.34 * s, -0.16 * s)
+	ball(m, 0.4 * s, color, head)
+	local snout = head * CFrame.new(0, -0.06 * s, -0.2 * s)
+	blob(m, Vector3.new(0.3 * s, 0.18 * s, 0.3 * s), color, snout)
+	blob(m, Vector3.new(0.26 * s, 0.04 * s, 0.24 * s), BLACK, snout * CFrame.new(0, -0.03 * s, -0.04 * s))
+	for i = 1, 6 do
+		local x = (i / 7 - 0.5) * 0.24 * s
+		block(m, Vector3.new(0.025 * s, 0.05 * s, 0.025 * s), WHITE, snout * CFrame.new(x, -0.02 * s, -0.14 * s))
+	end
+	-- nostrils
+	for _, side in { -1, 1 } do
+		ball(m, 0.03 * s, BLACK, snout * CFrame.new(side * 0.05 * s, 0.07 * s, -0.13 * s))
+	end
+	-- eyes
+	for _, side in { -1, 1 } do
+		eye(m, head, side * 0.1 * s, 0.08 * s, -0.17 * s, 0.11 * s, Vector2.new(0, 0.3))
+		block(
+			m,
+			Vector3.new(0.13 * s, 0.03 * s, 0.05 * s),
+			darker(color, 0.5),
+			head * CFrame.new(side * 0.1 * s, 0.15 * s, -0.16 * s) * CFrame.Angles(0, 0, side * -0.4)
+		)
+	end
+	-- spikes down the back (diamonds poking out of the body and head)
+	local spike = Color3.fromRGB(240, 140, 40)
+	for i = 0, 6 do
+		local a = math.rad(15 + i * 22)
+		local pos = Vector3.new(0, math.cos(a) * bodyD / 2, math.sin(a) * bodyD / 2)
+		block(
+			m,
+			Vector3.new(0.04 * s, 0.11 * s, 0.11 * s),
+			spike,
+			c * CFrame.new(pos) * CFrame.Angles(a + math.rad(45), 0, 0)
+		)
+	end
+	for i = 0, 2 do
+		local a = math.rad(-20 + i * 30)
+		local pos = Vector3.new(0, math.cos(a) * 0.2 * s, math.sin(a) * 0.2 * s)
+		block(
+			m,
+			Vector3.new(0.03 * s, 0.08 * s, 0.08 * s),
+			spike,
+			head * CFrame.new(pos) * CFrame.Angles(a + math.rad(45), 0, 0)
+		)
+	end
+	local sparkles = Instance.new("Sparkles")
+	sparkles.SparkleColor = Color3.fromRGB(255, 220, 80)
+	sparkles.Parent = body
+	return body
+end
+
+---------------------------------------------------------------------
+
+-- Builds a monster standing on "base". Returns the Model.
+-- sizeOverride lets us make giant statues of a monster.
+function MonsterBuilder.build(monsterId: string, base: CFrame, sizeOverride: number?): Model
+	local info = GameData.Monsters[monsterId]
+	assert(info, "Unknown monster: " .. tostring(monsterId))
+	local builder = builders[monsterId]
+	assert(builder, "No look made yet for monster: " .. tostring(monsterId))
+
+	local model = Instance.new("Model")
+	model.Name = info.name
+	local body = builder(model, base, sizeOverride or info.size)
+	model.PrimaryPart = body
+	model.WorldPivot = base
+	model:SetAttribute("MonsterId", monsterId)
+	model:SetAttribute("BaseCFrame", base)
+	CollectionService:AddTag(model, "Monster")
+	return model
+end
+
+-- A little sprout that grows on the soil until the monster pops out
+function MonsterBuilder.buildSprout(base: CFrame): Model
+	local model = Instance.new("Model")
+	model.Name = "Sprout"
+	local green = Color3.fromRGB(80, 180, 60)
+	pillar(model, 2.4, 0.35, green, base * CFrame.new(0, 1.2, 0))
+	for _, side in { -1, 1 } do
+		blob(
+			model,
+			Vector3.new(1.4, 0.2, 0.8),
+			green,
+			base * CFrame.new(side * 0.65, 2.1, 0) * CFrame.Angles(0, 0, side * 0.4)
+		)
+	end
+	ball(model, 0.7, Color3.fromRGB(255, 150, 200), base * CFrame.new(0, 2.6, 0))
+	model.WorldPivot = base
+	return model
+end
+
+return MonsterBuilder
+]]></string>
+        </Properties>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="StarterPlayer" referent="10">
+    <Properties>
+      <string name="Name">StarterPlayer</string>
+    </Properties>
+    <Item class="StarterPlayerScripts" referent="11">
+      <Properties>
+        <string name="Name">StarterPlayerScripts</string>
+      </Properties>
+      <Item class="Folder" referent="12">
+        <Properties>
+          <string name="Name">Client</string>
+        </Properties>
+        <Item class="LocalScript" referent="13">
+          <Properties>
+            <string name="Name">Hud</string>
+            <string name="Source"><![CDATA[-- Hud: everything on the player's screen, plus little animations.
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+
+local GameData = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("GameData"))
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "GrowAMonsterHud"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local function label(parent: Instance, props): TextLabel
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = Enum.Font.FredokaOne
+	l.TextScaled = true
+	l.TextColor3 = Color3.new(1, 1, 1)
+	l.TextStrokeTransparency = 0
+	l.TextStrokeColor3 = Color3.fromRGB(30, 30, 30)
+	for key, value in props do
+		(l :: any)[key] = value
+	end
+	l.Parent = parent
+	return l
+end
+
+local function round(instance: Instance, radius: number)
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, radius)
+	corner.Parent = instance
+end
+
+---------------------------------------------------------------------
+-- Money box at the top of the screen
+---------------------------------------------------------------------
+
+local moneyBox = Instance.new("Frame")
+moneyBox.AnchorPoint = Vector2.new(0.5, 0)
+moneyBox.Position = UDim2.new(0.5, 0, 0, 8)
+moneyBox.Size = UDim2.fromOffset(240, 70)
+moneyBox.BackgroundColor3 = Color3.fromRGB(30, 40, 30)
+moneyBox.BackgroundTransparency = 0.25
+moneyBox.Parent = gui
+round(moneyBox, 14)
+
+local moneyLabel = label(moneyBox, {
+	Size = UDim2.new(1, -16, 0.62, 0),
+	Position = UDim2.fromOffset(8, 4),
+	Text = "💰 $0",
+	TextColor3 = Color3.fromRGB(255, 230, 90),
+})
+local incomeLabel = label(moneyBox, {
+	Size = UDim2.new(1, -16, 0.32, 0),
+	Position = UDim2.new(0, 8, 0.62, 0),
+	Text = "+$0/s",
+	TextColor3 = Color3.fromRGB(120, 255, 120),
+})
+
+local function watchMoney()
+	local leaderstats = player:WaitForChild("leaderstats")
+	local money = leaderstats:WaitForChild("Money") :: IntValue
+	local function update()
+		moneyLabel.Text = "💰 $" .. GameData.formatMoney(money.Value)
+	end
+	money.Changed:Connect(update)
+	update()
+end
+task.spawn(watchMoney)
+
+local function updateIncome()
+	incomeLabel.Text = "+$" .. GameData.formatMoney(player:GetAttribute("Income") or 0) .. "/s"
+end
+player:GetAttributeChangedSignal("Income"):Connect(updateIncome)
+updateIncome()
+
+---------------------------------------------------------------------
+-- Little messages under the money box
+---------------------------------------------------------------------
+
+local messages = Instance.new("Frame")
+messages.AnchorPoint = Vector2.new(0.5, 0)
+messages.Position = UDim2.new(0.5, 0, 0, 86)
+messages.Size = UDim2.fromOffset(520, 200)
+messages.BackgroundTransparency = 1
+messages.Parent = gui
+local layout = Instance.new("UIListLayout")
+layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+layout.Padding = UDim.new(0, 4)
+layout.SortOrder = Enum.SortOrder.LayoutOrder
+layout.Parent = messages
+
+local messageCount = 0
+remotes:WaitForChild("Notify").OnClientEvent:Connect(function(text: string, color: Color3)
+	messageCount += 1
+	local message = label(messages, {
+		Size = UDim2.new(1, 0, 0, 30),
+		Text = text,
+		TextColor3 = color,
+		LayoutOrder = messageCount,
+	})
+	-- only keep the newest 4
+	local all = {}
+	for _, child in messages:GetChildren() do
+		if child:IsA("TextLabel") then
+			table.insert(all, child)
+		end
+	end
+	table.sort(all, function(a, b)
+		return a.LayoutOrder < b.LayoutOrder
+	end)
+	for i = 1, #all - 4 do
+		all[i]:Destroy()
+	end
+
+	task.delay(3.5, function()
+		if message.Parent then
+			local fade =
+				TweenService:Create(message, TweenInfo.new(0.5), { TextTransparency = 1, TextStrokeTransparency = 1 })
+			fade:Play()
+			fade.Completed:Wait()
+			message:Destroy()
+		end
+	end)
+end)
+
+---------------------------------------------------------------------
+-- The big "YOU GOT A ..." reveal when your monster pops out
+---------------------------------------------------------------------
+
+local reveal = Instance.new("Frame")
+reveal.AnchorPoint = Vector2.new(0.5, 0.5)
+reveal.Position = UDim2.fromScale(0.5, 0.42)
+reveal.Size = UDim2.fromOffset(560, 190)
+reveal.BackgroundTransparency = 1
+reveal.Visible = false
+reveal.Parent = gui
+local revealScale = Instance.new("UIScale")
+revealScale.Parent = reveal
+local revealRarity = label(reveal, { Size = UDim2.fromScale(1, 0.3) })
+local revealName = label(reveal, { Size = UDim2.fromScale(1, 0.45), Position = UDim2.fromScale(0, 0.3) })
+local revealIncome = label(reveal, {
+	Size = UDim2.fromScale(1, 0.22),
+	Position = UDim2.fromScale(0, 0.77),
+	TextColor3 = Color3.fromRGB(120, 255, 120),
+})
+
+local revealId = 0
+remotes:WaitForChild("Reveal").OnClientEvent:Connect(function(monsterId: string)
+	local monster = GameData.Monsters[monsterId]
+	local rarity = GameData.Rarities[monster.rarity]
+	revealId += 1
+	local myId = revealId
+
+	revealRarity.Text = "✨ " .. rarity.label .. " ✨"
+	revealRarity.TextColor3 = rarity.color
+	revealName.Text = monster.name
+	revealName.TextColor3 = rarity.color
+	revealIncome.Text = "+$" .. GameData.formatMoney(monster.income) .. " every second!"
+	for _, l in { revealRarity, revealName, revealIncome } do
+		l.TextTransparency = 0
+		l.TextStrokeTransparency = 0
+	end
+
+	reveal.Visible = true
+	revealScale.Scale = 0.2
+	TweenService
+		:Create(revealScale, TweenInfo.new(0.45, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 })
+		:Play()
+
+	task.delay(2.8, function()
+		if revealId ~= myId then
+			return
+		end
+		for _, l in { revealRarity, revealName, revealIncome } do
+			TweenService:Create(l, TweenInfo.new(0.5), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+		end
+		task.wait(0.5)
+		if revealId == myId then
+			reveal.Visible = false
+		end
+	end)
+end)
+
+---------------------------------------------------------------------
+-- Only show "Plant Seed" / "Sell" buttons in YOUR garden
+---------------------------------------------------------------------
+
+local function setupSpotPrompt(prompt: ProximityPrompt)
+	local function update()
+		local mine = prompt:GetAttribute("Owner") == player.UserId
+		prompt.Enabled = mine and prompt:GetAttribute("State") ~= "growing"
+	end
+	prompt:GetAttributeChangedSignal("Owner"):Connect(update)
+	prompt:GetAttributeChangedSignal("State"):Connect(update)
+	update()
+end
+CollectionService:GetInstanceAddedSignal("SpotPrompt"):Connect(setupSpotPrompt)
+for _, prompt in CollectionService:GetTagged("SpotPrompt") do
+	setupSpotPrompt(prompt)
+end
+
+---------------------------------------------------------------------
+-- Make monsters bounce and shop seeds spin
+---------------------------------------------------------------------
+
+local spinStart = {}
+
+RunService.RenderStepped:Connect(function()
+	local t = os.clock()
+	local camPos = camera.CFrame.Position
+
+	for _, model in CollectionService:GetTagged("Monster") do
+		local base = model:GetAttribute("BaseCFrame")
+		if base and model:IsA("Model") and (base.Position - camPos).Magnitude < 160 then
+			local phase = (base.Position.X + base.Position.Z) * 0.37
+			local hop = math.abs(math.sin(t * 2.5 + phase)) * 0.35
+			local sway = math.sin(t * 1.3 + phase) * 0.12
+			model:PivotTo(base * CFrame.new(0, hop, 0) * CFrame.Angles(0, sway, 0))
+		end
+	end
+
+	for _, seedBall in CollectionService:GetTagged("Spin") do
+		if seedBall:IsA("BasePart") then
+			spinStart[seedBall] = spinStart[seedBall] or seedBall.CFrame
+			local start = spinStart[seedBall]
+			seedBall.CFrame = start * CFrame.new(0, math.sin(t * 2) * 0.3, 0) * CFrame.Angles(0, t * 1.5, 0)
+		end
+	end
+end)
+]]></string>
+          </Properties>
+        </Item>
+      </Item>
+    </Item>
+  </Item>
+  <Item class="Workspace" referent="14">
+    <Properties>
+      <string name="Name">Workspace</string>
+      <bool name="NeedsPivotMigration">false</bool>
+    </Properties>
+    <Item class="Part" referent="15">
+      <Properties>
+        <string name="Name">Baseplate</string>
+        <bool name="Anchored">true</bool>
+        <token name="BottomSurface">0</token>
+        <Color3uint8 name="Color3uint8">6069829</Color3uint8>
+        <bool name="Locked">true</bool>
+        <token name="Material">1280</token>
+        <Vector3 name="Position">
+          <X>0</X>
+          <Y>-1</Y>
+          <Z>0</Z>
+        </Vector3>
+        <Vector3 name="size">
+          <X>700</X>
+          <Y>2</Y>
+          <Z>700</Z>
+        </Vector3>
+        <token name="TopSurface">0</token>
+      </Properties>
+    </Item>
+    <Item class="SpawnLocation" referent="16">
+      <Properties>
+        <string name="Name">HubSpawn</string>
+        <bool name="Anchored">true</bool>
+        <bool name="CanCollide">false</bool>
+        <int name="Duration">0</int>
+        <bool name="Neutral">true</bool>
+        <Vector3 name="Position">
+          <X>0</X>
+          <Y>0.5</Y>
+          <Z>30</Z>
+        </Vector3>
+        <Vector3 name="size">
+          <X>6</X>
+          <Y>1</Y>
+          <Z>6</Z>
+        </Vector3>
+        <float name="Transparency">1</float>
+      </Properties>
+    </Item>
+  </Item>
+</roblox>
